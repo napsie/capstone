@@ -1,0 +1,321 @@
+/* Main Dark Mode Styles */
+
+body.dark-mode {
+    --primary: #e6eef9;
+    --secondary: #6ea8ff;
+    --accent: #ff7b7b;
+    --success: #7ad389;
+    --warning: #ffb86b;
+    --light: #0f1722;
+    --dark: #0b1220;
+    --gray: #9aa3ab;
+
+    --bg: #0b1220;
+    --card-bg: #1a2433;
+    --text: #e6eef9;
+    --border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode {
+    background-color: var(--bg);
+    color: var(--text);
+}
+
+.dark-mode .sidebar {
+    background: linear-gradient(135deg, #0d3a6e 0%, #1a4b8c 50%);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+    border-top-right-radius: 15px;
+    border-bottom-right-radius: 15px;
+}
+
+.dark-mode .sidebar .nav-links li:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.dark-mode .sidebar .nav-links li.active {
+    background: var(--secondary);
+    box-shadow: inset 3px 0 0 white;
+}
+
+.dark-mode .header {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.dark-mode .welcome-message {
+    color: var(--gray);
+}
+
+.dark-mode .user-info {
+    background: var(--card-bg);
+    color: var(--text);
+}
+
+.dark-mode .user-details h2 {
+    color: var(--primary);
+}
+
+.dark-mode .user-details p {
+    color: var(--gray);
+}
+
+.dark-mode .settings-card,
+.dark-mode .application-form,
+.dark-mode .applications-table,
+.dark-mode .chart-card, 
+.dark-mode .calendar-card, 
+.dark-mode .notifications-card,
+.dark-mode .records-section,
+.dark-mode .yearly-records,
+.dark-mode .filter-section,
+.dark-mode .records-table {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.dark-mode .settings-card h3,
+.dark-mode .form-section h3,
+.dark-mode .table-header h2,
+.dark-mode .chart-card h3, 
+.dark-mode .calendar-card h3, 
+.dark-mode .notifications-card h3 {
+    color: var(--primary);
+}
+
+.dark-mode .form-group label {
+    color: var(--primary);
+}
+
+.dark-mode .form-group input,
+.dark-mode .form-group select,
+.dark-mode .form-group textarea,
+.dark-mode .search-box input,
+.dark-mode .search-box {
+    background: #0f1722;
+    color: var(--text);
+    border: 1px solid var(--border-color);
+}
+
+.dark-mode .form-group input:focus,
+.dark-mode .form-group select:focus,
+.dark-mode .form-group textarea:focus {
+    border-color: var(--secondary);
+}
+
+.dark-mode .btn {
+    background: var(--secondary);
+    color: white;
+}
+
+.dark-mode .btn:hover {
+    background: #5a98e0;
+}
+
+.dark-mode .btn-secondary {
+    background: var(--gray);
+}
+
+.dark-mode .btn-secondary:hover {
+    background: #8a9bab;
+}
+
+.dark-mode th {
+    background-color: #1a2433;
+    color: var(--primary);
+}
+
+.dark-mode td {
+    color: var(--text);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.dark-mode tr:hover,
+.dark-mode .table-row:hover {
+    background-color: #0f1722;
+}
+
+.dark-mode .modal-content {
+    background-color: var(--card-bg);
+}
+
+.dark-mode .modal-header {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.dark-mode .modal-header h2 {
+    color: var(--primary);
+}
+
+.dark-mode .close-modal {
+    color: var(--gray);
+}
+
+.dark-mode .close-modal:hover {
+    color: var(--accent);
+}
+
+.dark-mode .status-pending { background-color: #4a4128; color: #ffeb99; }
+.dark-mode .status-approved { background-color: #1c4b3c; color: #a3e9b8; }
+.dark-mode .status-rejected { background-color: #5a2c3a; color: #f5c6cb; }
+
+.dark-mode .name-link {
+    color: var(--secondary);
+}
+
+.dark-mode .profile-section {
+    background: var(--card-bg);
+}
+
+.dark-mode .theme-toggle {
+    background: var(--card-bg);
+    border: 1px solid rgba(16, 24, 40, 0.06);
+    color: var(--primary);
+}
+
+/* Change Password Form Styles */
+.dark-mode .settings-card form .form-group input[type="password"] {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    color: var(--text);
+    padding: 12px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.dark-mode .settings-card form .form-group input[type="password"]:focus {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--secondary);
+    box-shadow: 0 0 0 3px rgba(110, 168, 255, 0.3);
+}
+
+.dark-mode .settings-card form .actions button {
+    transition: all 0.3s ease;
+}
+
+.dark-mode .settings-card form .actions button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Chart.js Dark Mode Styles */
+.dark-mode .chart-card {
+    background: var(--card-bg);
+}
+
+/* Calendar Dark Mode */
+.dark-mode .calendar-header .month-year {
+    color: var(--text);
+}
+.dark-mode .calendar-table th {
+    background: #0f1722;
+    color: var(--text);
+}
+.dark-mode .calendar-table td {
+    color: var(--text);
+    border: 1px solid var(--border-color);
+}
+.dark-mode .calendar-table td.inactive {
+    color: var(--gray);
+    background-color: #0f1722;
+}
+.dark-mode .calendar-table td.today {
+    background: var(--secondary);
+    color: white;
+}
+
+/* Notifications Dark Mode */
+.dark-mode .notification-item {
+    border-bottom: 1px solid var(--border-color);
+}
+.dark-mode .notification-title {
+    color: var(--primary);
+}
+.dark-mode .notification-message {
+    color: var(--text);
+}
+.dark-mode .notification-time {
+    color: var(--gray);
+}
+.dark-mode .page-title p {
+    color: var(--text);
+}
+.dark-mode .year-btn {
+    background: #0f1722;
+    color: var(--text);
+    border: 1px solid var(--border-color);
+}
+.dark-mode .year-btn.active {
+    background: var(--secondary);
+    color: white;
+    border-color: var(--secondary);
+}
+.dark-mode .year-btn:hover:not(.active) {
+    background: #1a2433;
+}
+.dark-mode .table-header {
+    background: #0f1722;
+    color: white;
+}
+
+/* Barangay Records Dark Mode */
+.dark-mode .records-header h2,
+.dark-mode .records-section h2 {
+    color: var(--text);
+}
+
+.dark-mode .search-box {
+    background: #0f1722;
+    color: var(--text);
+    border: 1px solid var(--border-color);
+}
+
+.dark-mode .search-box input {
+    color: var(--text);
+}
+
+.dark-mode .year-btn {
+    background: #0f1722;
+    color: var(--text);
+    border: 1px solid var(--border-color);
+}
+
+.dark-mode .year-btn.active {
+    background: var(--secondary);
+    color: white;
+    border-color: var(--secondary);
+}
+
+.dark-mode .year-btn:hover:not(.active) {
+    background: #1a2433;
+}
+
+.dark-mode .filter-section {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+}
+
+.dark-mode .filter-group label {
+    color: var(--text);
+}
+
+.dark-mode .filter-group select,
+.dark-mode .filter-group input {
+    background: #0f1722;
+    color: var(--text);
+    border: 1px solid var(--border-color);
+}
+
+.dark-mode .table-header {
+    background: #0f1722;
+    color: white;
+}
+
+.dark-mode .table-row {
+    color: var(--text);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.dark-mode .table-row:hover {
+    background-color: #0f1722;
+}

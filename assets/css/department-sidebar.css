@@ -1,0 +1,232 @@
+/* Department Sidebar Styles - Synced with barangay-sidebar.css */
+:root {
+    --sidebar-width: 220px; /* Synced */
+    --topbar-height: 64px;
+    --primary: #2c3e50;
+    --secondary: #3498db;
+    --accent: #e74c3c;
+    --success: #155f34;
+    --warning: #f39c12;
+    --light: #ecf0f1;
+    --dark: #34495e;
+    --gray: #95a5a6;
+}
+
+/* Layout helpers */
+.container { display: flex; min-height: 100vh; }
+
+/* Department Sidebar */
+.sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: var(--sidebar-width);
+    background: linear-gradient(135deg, #1a4b8c 0%, #0d3a6e 50%);
+    color: #fff;
+    padding: 20px 15px; /* Synced */
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    z-index: 1000;
+    transition: width 0.3s, box-shadow 0.3s;
+    border-top-right-radius: 15px;
+    border-bottom-right-radius: 15px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3); /* Synced */
+}
+
+.sidebar .logo {
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding-bottom:15px; /* Synced */
+    margin-bottom:15px; /* Synced */
+    border-bottom:1px solid rgba(255,255,255,0.1); /* Synced */
+}
+
+.logo-image {
+    height: 36px; /* Synced */
+    border-radius: 6px;
+    object-fit: cover;
+}
+
+.logo-text {
+    font-size: 18px; /* Synced */
+    font-weight: 600;
+    color: white;
+    margin:0;
+}
+
+.sidebar-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.sidebar-menu ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-menu li {
+    padding: 14px 18px; /* Synced */
+    margin-bottom: 5px; /* Synced */
+    border-radius: 8px; /* Synced */
+    transition: background 0.3s, transform 0.2s; /* Synced */
+    border-left: none; /* Reset for consistency */
+}
+
+.sidebar-menu li:hover {
+    background: rgba(255,255,255,0.08); /* Synced */
+    transform: translateX(3px); /* Synced */
+}
+
+.sidebar-menu li.active {
+    background: var(--secondary, #3498db);
+    box-shadow: inset 3px 0 0 white; /* Synced */
+    border-left: none; /* Synced */
+    font-weight: 600; /* Synced */
+}
+
+.sidebar-menu a {
+    color: white;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 12px; /* Synced */
+    font-size: 15px; /* Synced */
+    letter-spacing: 0.5px; /* Synced */
+}
+
+.sidebar-menu i {
+    width: 20px;
+    text-align: center;
+    font-size: 18px; /* Synced */
+}
+
+.logout-item {
+    margin-top: auto;
+}
+
+/* Main content offset for department pages */
+.main-content {
+    margin-left: var(--sidebar-width);
+    padding: 20px;
+    overflow-y: auto;
+    min-height: 100vh;
+    transition: margin-left 0.3s;
+    flex: 1;
+    width: 100%;
+}
+
+/* Mobile: stack sidebar on top */
+@media (max-width: 768px) {
+    .sidebar {
+        position: static;
+        width: 100%;
+        height: auto;
+        flex-direction: row;
+        align-items: center;
+        padding: 10px;
+    }
+
+    .sidebar-menu ul {
+        display: flex;
+        flex-direction: row;
+        gap: 8px;
+    }
+
+    .sidebar-menu li {
+        white-space: nowrap;
+        border-left: none;
+        border-bottom: 4px solid transparent;
+        margin-bottom: 0;
+    }
+
+    .sidebar-menu li:hover,
+    .sidebar-menu li.active {
+        border-left: none;
+        border-bottom: 4px solid white;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .logout-item { margin-top: 0; }
+
+    .main-content {
+        padding-left: 0;
+        padding: 10px;
+        margin-left: 0; /* Ensure no margin-left on mobile */
+    }
+}
+
+.sidebar.collapsed {
+    width: 80px;
+}
+
+.sidebar.collapsed .logo-text,
+.sidebar.collapsed .link-text {
+    display: none;
+}
+
+.sidebar.collapsed .logo {
+    justify-content: center;
+}
+
+.sidebar.collapsed .sidebar-menu a {
+    justify-content: center;
+}
+
+.sidebar.collapsed .logo-image {
+    height: 50px; /* Increased size for collapsed state */
+}
+
+.main-content.collapsed {
+    margin-left: 80px;
+}
+
+/* These user styles are duplicated from barangay, can be extracted to a common file later */
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 15px;
+    background: white;
+    border-radius: 25px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 18px;
+}
+
+.user-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.user-details h2 {
+    font-size: 14px;
+    margin-bottom: 2px;
+    color: var(--primary);
+}
+
+.user-details p {
+    color: var(--gray);
+    font-size: 12px;
+}
