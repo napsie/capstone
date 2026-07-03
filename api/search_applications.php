@@ -35,14 +35,14 @@ if (!empty($filter_type)) {
 if (!empty($filter_status)) {
     $statuses = explode(',', $filter_status);
     if (count($statuses) > 1) {
-        $placeholders = implode(',', array_fill(0, count($statuses), '?'));
-        $where_clauses[] = "a.status IN ($placeholders)";
-        foreach ($statuses as $status) {
-            $params[] = $status;
+        $placeholders    = implode(',', array_fill(0, count($statuses), '?'));
+        $where_clauses[] = "COALESCE(a.workflow_state, 'Received') IN ($placeholders)";
+        foreach ($statuses as $s) {
+            $params[] = trim($s);
         }
     } else {
-        $where_clauses[] = "a.status = ?";
-        $params[] = $filter_status;
+        $where_clauses[] = "COALESCE(a.workflow_state, 'Received') = ?";
+        $params[]        = trim($filter_status);
     }
 }
 

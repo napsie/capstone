@@ -7,7 +7,7 @@ if ($dbUrl === false) {
     $servername = "localhost";
     $username = "root";
     $password = "";
-    $dbname = "carelink_db";
+    $dbname = "capstone1";
     $conn_str = "mysql:host=$servername;dbname=$dbname";
     $pdo_username = $username;
     $pdo_password = $password;
@@ -43,6 +43,23 @@ try {
     
     // Check the driver and use the appropriate INSERT syntax
     $driver = $conn->getAttribute(PDO::ATTR_DRIVER_NAME);
+
+    // Dynamically increase max_allowed_packet for MySQL if needed and if possible
+    if ($driver === 'mysql') {
+        try {
+            $stmt = $conn->query("SHOW VARIABLES LIKE 'max_allowed_packet'");
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row && intval($row['Value']) < 33554432) { // 32MB
+                $conn->exec("SET GLOBAL max_allowed_packet = 33554432");
+                // Reconnect to apply the new global configuration to this session
+                $conn = null;
+                $conn = new PDO($conn_str, $pdo_username, $pdo_password);
+                $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            }
+        } catch (PDOException $ex) {
+            // Ignore if setting fails due to privileges or other issues
+        }
+    }
     if ($driver === 'pgsql') {
         // Use ON CONFLICT DO NOTHING for PostgreSQL to avoid inserting duplicates
         $conn->exec("
@@ -61,16 +78,25 @@ try {
     // --- CPRAS System Enhancements Schema Migrations ---
     // Add columns to applications table if they do not exist
     $columns_to_add = [
-        'sss_number' => "VARCHAR(50) DEFAULT NULL",
-        'pension_amount' => "DECIMAL(10,2) DEFAULT NULL",
-        'date_of_death' => "DATE DEFAULT NULL",
-        'relationship_to_deceased' => "VARCHAR(100) DEFAULT NULL",
-        'is_proxy_application' => "INT DEFAULT 0",
-        'proxy_name' => "VARCHAR(255) DEFAULT NULL",
-        'proxy_relationship' => "VARCHAR(100) DEFAULT NULL",
-        'proxy_token' => "VARCHAR(255) DEFAULT NULL",
-        'priority_level' => "VARCHAR(20) DEFAULT 'normal'",
-        'workflow_state' => "VARCHAR(50) DEFAULT 'Received'"
+        'sss_number'                 => "VARCHAR(50) DEFAULT NULL",
+        'pension_amount'             => "DECIMAL(10,2) DEFAULT NULL",
+        'date_of_death'              => "DATE DEFAULT NULL",
+        'relationship_to_deceased'   => "VARCHAR(100) DEFAULT NULL",
+        'is_proxy_application'       => "INT DEFAULT 0",
+        'proxy_name'                 => "VARCHAR(255) DEFAULT NULL",
+        'proxy_relationship'         => "VARCHAR(100) DEFAULT NULL",
+        'proxy_token'                => "VARCHAR(255) DEFAULT NULL",
+        'priority_level'             => "VARCHAR(20) DEFAULT 'normal'",
+        'workflow_state'             => "VARCHAR(50) DEFAULT 'Received'",
+        // Columns required by import_applications.php CSV map
+        'email_address'              => "VARCHAR(255) DEFAULT NULL",
+        'medical_conditions'         => "TEXT DEFAULT NULL",
+        'birth_certificate_type'     => "VARCHAR(100) DEFAULT NULL",
+        'medical_certificate_type'   => "VARCHAR(100) DEFAULT NULL",
+        'client_identification_type' => "VARCHAR(100) DEFAULT NULL",
+        'additional_notes'           => "TEXT DEFAULT NULL",
+        // Dedicated return reason for FSM document rejection tracking
+        'return_reason'              => "VARCHAR(500) DEFAULT NULL",
     ];
 
     foreach ($columns_to_add as $column => $definition) {
@@ -84,7 +110,7 @@ try {
     // Modify application_type column type based on DB driver
     if ($driver === 'mysql') {
         try {
-            $conn->exec("ALTER TABLE applications MODIFY COLUMN application_type ENUM('pwd', 'senior', 'pension', 'burial') NOT NULL");
+            $conn->exec("ALTER TABLE applications MODIFY COLUMN application_type VARCHAR(50) NOT NULL");
         } catch (PDOException $e) {
             // Ignore if modification fails
         }

@@ -151,7 +151,6 @@ function getStatusClass($status) {
                         <label for="type-filter">Application Type:</label>
                         <select id="type-filter" onchange="applyFilters()">
                             <option value="all">All Types</option>
-                            <option value="PWD">PWD</option>
                             <option value="Senior Citizen">Senior Citizen</option>
                         </select>
                     </div>
@@ -576,7 +575,6 @@ function getStatusClass($status) {
                                     <div class="form-group">
                                         <label for="applicationType">Application Type</label>
                                         <select id="applicationType" name="applicationType" required>
-                                            <option value="pwd" ${application.application_type === 'pwd' ? 'selected' : ''}>PWD</option>
                                             <option value="senior" ${application.application_type === 'senior' ? 'selected' : ''}>Senior Citizen</option>
                                         </select>
                                     </div>
@@ -627,42 +625,6 @@ function getStatusClass($status) {
                                 </div>
                             </div>
 
-                            <div id="pwd-fields-modal" style="display: ${application.application_type === 'pwd' ? 'block' : 'none'}">
-                                <div class="form-section">
-                                    <h3><i class="fas fa-wheelchair"></i> PWD Specific Information</h3>
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label for="pwdIdNumber">ID Number</label>
-                                            <input type="text" id="pwdIdNumber" name="idNumber" value="${application.id_number || ''}" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')">
-                                        </div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Type of Disability</label>
-                                        <div>
-                                            <input type="checkbox" name="disabilityType[]" value="Deaf/Hard of Hearing" ${application.disability_type && application.disability_type.includes('Deaf/Hard of Hearing') ? 'checked' : ''}> Deaf/Hard of Hearing<br>
-                                            <input type="checkbox" name="disabilityType[]" value="Intellectual Disability" ${application.disability_type && application.disability_type.includes('Intellectual Disability') ? 'checked' : ''}> Intellectual Disability<br>
-                                            <input type="checkbox" name="disabilityType[]" value="Learning Disability" ${application.disability_type && application.disability_type.includes('Learning Disability') ? 'checked' : ''}> Learning Disability<br>
-                                            <input type="checkbox" name="disabilityType[]" value="Mental Disability" ${application.disability_type && application.disability_type.includes('Mental Disability') ? 'checked' : ''}> Mental Disability<br>
-                                            <input type="checkbox" name="disabilityType[]" value="Orthopedic" ${application.disability_type && application.disability_type.includes('Orthopedic') ? 'checked' : ''}> Orthopedic<br>
-                                            <input type="checkbox" name="disabilityType[]" value="Physical Disability" ${application.disability_type && application.disability_type.includes('Physical Disability') ? 'checked' : ''}> Physical Disability<br>
-                                            <input type="checkbox" name="disabilityType[]" value="Psychosocial Disability" ${application.disability_type && application.disability_type.includes('Psychosocial Disability') ? 'checked' : ''}> Psychosocial Disability<br>
-                                            <input type="checkbox" name="disabilityType[]" value="Speech and Language Impairment" ${application.disability_type && application.disability_type.includes('Speech and Language Impairment') ? 'checked' : ''}> Speech and Language Impairment<br>
-                                            <input type="checkbox" name="disabilityType[]" value="Visual Disability" ${application.disability_type && application.disability_type.includes('Visual Disability') ? 'checked' : ''}> Visual Disability<br>
-                                        </div>
-                                    </div>
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label for="pwdIdIssueDate">ID Issue Date</label>
-                                            <input type="date" id="pwdIdIssueDate" name="pwdIdIssueDate" value="${application.pwd_id_issue_date || ''}">
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="pwdIdExpiryDate">ID Expiry Date</label>
-                                            <input type="date" id="pwdIdExpiryDate" name="pwdIdExpiryDate" value="${application.pwd_id_expiry_date || ''}">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
                             <div id="senior-fields-modal" style="display: ${application.application_type === 'senior' ? 'block' : 'none'}">
                                 <div class="form-section">
                                     <h3><i class="fas fa-user-friends"></i> Senior Citizen Specific Information</h3>
@@ -705,17 +667,6 @@ function getStatusClass($status) {
                             </div>
                         </form>
                     `;
-
-                    // Add event listener for application type change within the modal
-                    document.getElementById('applicationType').addEventListener('change', function () {
-                        if (this.value === 'pwd') {
-                            document.getElementById('pwd-fields-modal').style.display = 'block';
-                            document.getElementById('senior-fields-modal').style.display = 'none';
-                        } else if (this.value === 'senior') {
-                            document.getElementById('pwd-fields-modal').style.display = 'none';
-                            document.getElementById('senior-fields-modal').style.display = 'block';
-                        }
-                    });
 
                     // Handle form submission for updating application
                     document.getElementById('applicationDetailForm').addEventListener('submit', function(e) {

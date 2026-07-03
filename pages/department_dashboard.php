@@ -553,16 +553,6 @@ require_once '../includes/db_connect.php';
                 </div>
                 
                 <div class="stat-card">
-                    <div class="stat-icon bg-warning">
-                        <i class="fas fa-wheelchair"></i>
-                    </div>
-                    <div class="stat-info">
-                        <h3>67</h3>
-                        <p>PWD Records</p>
-                    </div>
-                </div>
-                
-                <div class="stat-card">
                     <div class="stat-icon bg-danger">
                         <i class="fas fa-chart-line"></i>
                     </div>
@@ -647,8 +637,7 @@ require_once '../includes/db_connect.php';
         function updateStatCards(data) {
             document.querySelector('.stat-card:nth-child(1) h3').textContent = data.verified_applications;
             document.querySelector('.stat-card:nth-child(2) h3').textContent = data.senior_citizen_records;
-            document.querySelector('.stat-card:nth-child(3) h3').textContent = data.pwd_records;
-            document.querySelector('.stat-card:nth-child(4) h3').textContent = data.total_processed;
+            document.querySelector('.stat-card:nth-child(3) h3').textContent = data.total_processed;
         }
 
         function updateTime() {

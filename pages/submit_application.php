@@ -246,7 +246,6 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                         <input type="text" class="search-box" placeholder="Search applications...">
                         <select id="applicationTypeFilter" class="btn">
                             <option value="">All Types</option>
-                            <option value="pwd">PWD</option>
                             <option value="senior">Senior</option>
                             <option value="pension">Pension</option>
                             <option value="burial">Burial</option>
@@ -325,7 +324,6 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                                     <div class="form-group">
                                         <label for="applicationType">Application Type</label>
                                         <select id="applicationType" name="applicationType" required disabled>
-                                            <option value="pwd">PWD</option>
                                             <option value="senior">Senior Citizen</option>
                                             <option value="pension">Local Social Pension</option>
                                             <option value="burial">Burial Assistance</option>

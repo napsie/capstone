@@ -19,10 +19,18 @@ if (!$isAdmin && !$isStaff) {
     exit();
 }
 
+/**
+ * Safe string sanitizer — replaces deprecated FILTER_SANITIZE_STRING.
+ */
+function sanitize_str(?string $value): ?string {
+    if ($value === null) return null;
+    return htmlspecialchars(strip_tags(trim($value)), ENT_QUOTES, 'UTF-8');
+}
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $appId    = filter_input(INPUT_POST, 'applicationId', FILTER_SANITIZE_STRING);
-    $action   = filter_input(INPUT_POST, 'action', FILTER_SANITIZE_STRING); // 'next' or 'return'
-    $comments = filter_input(INPUT_POST, 'comments', FILTER_SANITIZE_STRING) ?? '';
+    $appId    = sanitize_str($_POST['applicationId'] ?? null);
+    $action   = sanitize_str($_POST['action']         ?? null); // 'next' or 'return'
+    $comments = sanitize_str($_POST['comments']       ?? '') ?? '';
 
     if (empty($appId) || empty($action)) {
         echo json_encode(['success' => false, 'message' => 'Missing required parameters.']);

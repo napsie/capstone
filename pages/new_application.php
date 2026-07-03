@@ -55,29 +55,45 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $barangay = $_SESSION['barangay'] ?? ''; // Barangay from session
 
     $idNumber = isset($_POST['idNumber']) ? trim(strip_tags($_POST['idNumber'])) : '';
-    $disabilityType = isset($_POST['disabilityType']) ? implode(', ', (array)$_POST['disabilityType']) : null;
+    $disabilityType = null;
 
     // Rule-Based Compliance validation on backend
-    // Age check for Senior, Pension, and Burial applications (must be >= 60)
-    if ($applicationType !== 'pwd' && !empty($birthDate)) {
+    if (!empty($birthDate)) {
         $birthDateObj = new DateTime($birthDate);
         $today = new DateTime();
         $age = $today->diff($birthDateObj)->y;
-        if ($age < 60) {
+        
+        if (($applicationType === 'senior' || $applicationType === 'burial') && $age < 60) {
             $errorMessage = "Localized Compliance Check Failed: Applicant must be at least 60 years old (current age: $age).";
+        } elseif (($applicationType === 'pension' || $applicationType === 'national_pension') && $age < 65) {
+            $errorMessage = "Localized Compliance Check Failed: Local/National Social Pension requires applicant to be at least 65 years old (current age: $age).";
+        } elseif ($applicationType === 'milestone_gift') {
+            $milestones = [80, 85, 90, 95];
+            $isMilestone = in_array($age, $milestones) || ($age >= 100);
+            if (!$isMilestone) {
+                $errorMessage = "Localized Compliance Check Failed: Milestone Cash Gift is only available for ages 80, 85, 90, 95, or 100+ (current age: $age).";
+            }
         }
     }
 
-    // Social Pension validation (SSS cap <= P4,000)
+    // Social Pension validation (SSS cap <= P4,000 for local, 0 for national)
     $sssNumber = null;
     $pensionAmount = null;
     if ($applicationType === 'pension') {
         $sssNumber = isset($_POST['sssNumber']) ? trim(strip_tags($_POST['sssNumber'])) : '';
         $pensionAmount = isset($_POST['pensionAmount']) ? floatval($_POST['pensionAmount']) : 0;
         if (empty($sssNumber)) {
-            $errorMessage = "Localized Compliance Check Failed: SSS Number is required for social pension.";
+            $errorMessage = "Localized Compliance Check Failed: SSS Number is required for local social pension.";
         } else if ($pensionAmount > 4000) {
             $errorMessage = "Localized Compliance Check Failed: Monthly SSS Pension exceeds the local limit of P4,000 (current: P" . number_format($pensionAmount, 2) . ").";
+        }
+    } elseif ($applicationType === 'national_pension') {
+        $sssNumber = isset($_POST['sssNumber']) ? trim(strip_tags($_POST['sssNumber'])) : '';
+        $pensionAmount = isset($_POST['pensionAmount']) ? floatval($_POST['pensionAmount']) : 0;
+        if (empty($sssNumber)) {
+            $errorMessage = "Localized Compliance Check Failed: SSS Number is required for national social pension.";
+        } else if ($pensionAmount > 0) {
+            $errorMessage = "Localized Compliance Check Failed: National DSWD Social Pension is restricted to indigent seniors with no other pension benefits (current verified: P" . number_format($pensionAmount, 2) . ").";
         }
     }
 
@@ -105,42 +121,89 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $priorityLevel = ($isProxy && !empty($proxyToken)) ? 'high' : 'normal';
 
     if (empty($errorMessage)) {
-        $proofOfAddress = isset($_FILES['proofOfAddress']) && $_FILES['proofOfAddress']['error'] == 0 ? file_get_contents($_FILES['proofOfAddress']['tmp_name']) : null;
-        $proofOfAddressType = isset($_FILES['proofOfAddress']) && $_FILES['proofOfAddress']['error'] == 0 ? $_FILES['proofOfAddress']['type'] : null;
-        $idImage = isset($_FILES['idImage']) && $_FILES['idImage']['error'] == 0 ? file_get_contents($_FILES['idImage']['tmp_name']) : null;
-        $idImageType = isset($_FILES['idImage']) && $_FILES['idImage']['error'] == 0 ? $_FILES['idImage']['type'] : null;
-
-        // Prepare and bind - Including new columns
-        $stmt = $conn->prepare("INSERT INTO applications (
-                    id_number, full_name, application_type, birth_date, contact_number, complete_address,
-                    emergency_contact, emergency_contact_name, barangay,
-                    proof_of_address, proof_of_address_type, id_image, id_image_type,
-                    lastName, firstName, middleName, suffix, disability_type,
-                    sss_number, pension_amount, date_of_death, relationship_to_deceased,
-                    is_proxy_application, proxy_name, proxy_relationship, proxy_token,
-                    priority_level, workflow_state
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-
-        if ($stmt->execute([
-            $idNumber, $fullName, $applicationType, $birthDate, $contactNumber, $completeAddress,
-            $emergencyContact, $emergencyContactName, $barangay,
-            $proofOfAddress, $proofOfAddressType, $idImage, $idImageType,
-            $lastName, $firstName, $middleName, $suffix, $disabilityType,
-            $sssNumber, $pensionAmount, $dateOfDeath, $relationshipToDeceased,
-            $isProxy, $proxyName, $proxyRelationship, $proxyToken,
-            $priorityLevel, 'Received'
-        ])) {
-            // Log history
-            $stmtHist = $conn->prepare("INSERT INTO application_history (application_id, previous_state, new_state, changed_by, comments) VALUES (?, ?, ?, ?, ?)");
-            $userName = $_SESSION['username'] ?? 'barangay_staff';
-            $stmtHist->execute([$idNumber, 'None', 'Received', $userName, 'Application created and received at the counter.']);
-
-            header("Location: submit_application.php?success=1");
-            exit();
+        // Detect silent POST failure caused by upload exceeding post_max_size
+        if (empty($_FILES) && $_SERVER['CONTENT_LENGTH'] > 0) {
+            $maxSize = ini_get('post_max_size');
+            $errorMessage = "Upload failed: the total request size exceeds the server limit (post_max_size = {$maxSize}). Please use smaller images (under 5MB each) and try again.";
         } else {
-            $errorMessage = "Error: " . $stmt->errorInfo()[2];
+            // Allowed MIME types for uploaded documents
+            $allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+            $finfo = new finfo(FILEINFO_MIME_TYPE);
+
+            $proofOfAddress     = null;
+            $proofOfAddressType = null;
+            if (isset($_FILES['proofOfAddress']) && $_FILES['proofOfAddress']['error'] === UPLOAD_ERR_OK && $_FILES['proofOfAddress']['size'] > 0) {
+                $mimeType = $finfo->file($_FILES['proofOfAddress']['tmp_name']);
+                if (!in_array($mimeType, $allowedMimes)) {
+                    $errorMessage = "Proof of Address: only JPEG, PNG, GIF, and PDF files are accepted. You uploaded: {$mimeType}";
+                } else {
+                    $proofOfAddress     = file_get_contents($_FILES['proofOfAddress']['tmp_name']);
+                    $proofOfAddressType = $mimeType;
+                }
+            } elseif (isset($_FILES['proofOfAddress']) && $_FILES['proofOfAddress']['error'] !== UPLOAD_ERR_NO_FILE) {
+                $uploadErr = $_FILES['proofOfAddress']['error'];
+                $errorMessage = "Proof of Address upload error (code {$uploadErr}). Please try a smaller file.";
+            }
+
+            $idImage     = null;
+            $idImageType = null;
+            if (empty($errorMessage)) {
+                if (isset($_FILES['idImage']) && $_FILES['idImage']['error'] === UPLOAD_ERR_OK && $_FILES['idImage']['size'] > 0) {
+                    $mimeType = $finfo->file($_FILES['idImage']['tmp_name']);
+                    if (!in_array($mimeType, $allowedMimes)) {
+                        $errorMessage = "ID Image: only JPEG, PNG, GIF, and PDF files are accepted. You uploaded: {$mimeType}";
+                    } else {
+                        $idImage     = file_get_contents($_FILES['idImage']['tmp_name']);
+                        $idImageType = $mimeType;
+                    }
+                } elseif (isset($_FILES['idImage']) && $_FILES['idImage']['error'] !== UPLOAD_ERR_NO_FILE) {
+                    $uploadErr = $_FILES['idImage']['error'];
+                    $errorMessage = "ID Image upload error (code {$uploadErr}). Please try a smaller file.";
+                }
+            }
         }
-    }
+
+        if (empty($errorMessage)) {
+            try {
+                // Prepare and bind - Including new columns
+                $stmt = $conn->prepare("INSERT INTO applications (
+                            id_number, full_name, application_type, birth_date, contact_number, complete_address,
+                            emergency_contact, emergency_contact_name, barangay,
+                            proof_of_address, proof_of_address_type, id_image, id_image_type,
+                            lastName, firstName, middleName, suffix, disability_type,
+                            sss_number, pension_amount, date_of_death, relationship_to_deceased,
+                            is_proxy_application, proxy_name, proxy_relationship, proxy_token,
+                            priority_level, workflow_state
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+                if ($stmt->execute([
+                    $idNumber, $fullName, $applicationType, $birthDate, $contactNumber, $completeAddress,
+                    $emergencyContact, $emergencyContactName, $barangay,
+                    $proofOfAddress, $proofOfAddressType, $idImage, $idImageType,
+                    $lastName, $firstName, $middleName, $suffix, $disabilityType,
+                    $sssNumber, $pensionAmount, $dateOfDeath, $relationshipToDeceased,
+                    $isProxy, $proxyName, $proxyRelationship, $proxyToken,
+                    $priorityLevel, 'Received'
+                ])) {
+                    // Log history
+                    $stmtHist = $conn->prepare("INSERT INTO application_history (application_id, previous_state, new_state, changed_by, comments) VALUES (?, ?, ?, ?, ?)");
+                    $userName = $_SESSION['username'] ?? 'barangay_staff';
+                    $stmtHist->execute([$idNumber, 'None', 'Received', $userName, 'Application created and received at the counter.']);
+
+                    header("Location: submit_application.php?success=1");
+                    exit();
+                } else {
+                    $errorMessage = "Database error while saving the application. Please try again.";
+                }
+            } catch (PDOException $e) {
+                if (strpos($e->getMessage(), 'max_allowed_packet') !== false || $e->getCode() == '08S01') {
+                    $errorMessage = "Upload failed: The size of the uploaded files exceeds the database's transfer limit (max_allowed_packet). Please try uploading smaller images/files (under 2MB each) or contact the administrator to increase the MySQL max_allowed_packet size.";
+                } else {
+                    $errorMessage = "Database error: " . $e->getMessage();
+                }
+            }
+        } // end inner errorMessage check
+    } // end outer errorMessage check
 }
 ?>
 <!DOCTYPE html>
@@ -289,10 +352,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             <div class="form-group">
                                 <label for="applicationType">Application Type</label>
                                 <select id="applicationType" name="applicationType" required onchange="toggleFields()">
-                                    <option value="pwd" <?php echo ($loadedProxyData['applicationType'] ?? '') === 'pwd' ? 'selected' : ''; ?>>PWD</option>
-                                    <option value="senior" <?php echo ($loadedProxyData['applicationType'] ?? '') === 'senior' ? 'selected' : ''; ?>>Senior Citizen ID Card</option>
-                                    <option value="pension" <?php echo ($loadedProxyData['applicationType'] ?? '') === 'pension' ? 'selected' : ''; ?>>Local Social Pension</option>
-                                    <option value="burial" <?php echo ($loadedProxyData['applicationType'] ?? '') === 'burial' ? 'selected' : ''; ?>>Burial Assistance</option>
+                                    <option value="senior" <?php echo ($loadedProxyData['applicationType'] ?? '') === 'senior' ? 'selected' : ''; ?>>Senior Citizen ID & Booklet</option>
+                                    <option value="pension" <?php echo ($loadedProxyData['applicationType'] ?? '') === 'pension' ? 'selected' : ''; ?>>Local Social Pension (Ordinance 17-2025)</option>
+                                    <option value="national_pension" <?php echo ($loadedProxyData['applicationType'] ?? '') === 'national_pension' ? 'selected' : ''; ?>>National DSWD Pension (RA 11916)</option>
+                                    <option value="milestone_gift" <?php echo ($loadedProxyData['applicationType'] ?? '') === 'milestone_gift' ? 'selected' : ''; ?>>Milestone Cash Gift</option>
+                                    <option value="burial" <?php echo ($loadedProxyData['applicationType'] ?? '') === 'burial' ? 'selected' : ''; ?>>Burial Assistance (Ordinance 3-2026)</option>
                                 </select>
                             </div>
                             <div class="form-group">
@@ -343,27 +407,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             <div class="form-group">
                                 <label for="emergencyContact">Emergency Contact Number</label>
                                 <input type="text" id="emergencyContact" name="emergencyContact" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- PWD Specific Fields -->
-                    <div id="pwd-fields">
-                        <div class="form-section">
-                            <h3><i class="fas fa-wheelchair"></i> PWD Specific Information</h3>
-                            <div class="form-group">
-                                <label>Type of Disability</label>
-                                <div>
-                                    <input type="checkbox" name="disabilityType[]" value="Deaf/Hard of Hearing"> Deaf/Hard of Hearing<br>
-                                    <input type="checkbox" name="disabilityType[]" value="Intellectual Disability"> Intellectual Disability<br>
-                                    <input type="checkbox" name="disabilityType[]" value="Learning Disability"> Learning Disability<br>
-                                    <input type="checkbox" name="disabilityType[]" value="Mental Disability"> Mental Disability<br>
-                                    <input type="checkbox" name="disabilityType[]" value="Orthopedic"> Orthopedic<br>
-                                    <input type="checkbox" name="disabilityType[]" value="Physical Disability"> Physical Disability<br>
-                                    <input type="checkbox" name="disabilityType[]" value="Psychosocial Disability"> Psychosocial Disability<br>
-                                    <input type="checkbox" name="disabilityType[]" value="Speech and Language Impairment"> Speech and Language Impairment<br>
-                                    <input type="checkbox" name="disabilityType[]" value="Visual Disability"> Visual Disability<br>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -427,13 +470,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <!-- Required Documents -->
                     <div class="form-section">
                         <h3><i class="fas fa-file-alt"></i> Required Documents</h3>
+                        <p style="font-size:0.82rem; color:#94a3b8; margin-bottom:10px;"><i class="fas fa-info-circle"></i> Accepted formats: JPEG, PNG, PDF &mdash; Max 8MB per file.</p>
                         <div class="form-group">
-                            <label for="proofOfAddress">Proof of Address</label>
-                            <input type="file" id="proofOfAddress" name="proofOfAddress" required>
+                            <label for="proofOfAddress" id="labelProofOfAddress">Proof of Address</label>
+                            <input type="file" id="proofOfAddress" name="proofOfAddress" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)">
+                            <div id="proofOfAddressSizeWarn" style="display:none; color:#e74c3c; font-size:0.8rem; margin-top:4px;"><i class="fas fa-exclamation-triangle"></i> File is large (&gt;8MB). It may fail to upload. Consider compressing it first.</div>
                         </div>
                         <div class="form-group">
-                            <label for="idImage">ID Image / Supporting Document Photo</label>
-                            <input type="file" id="idImage" name="idImage" required>
+                            <label for="idImage" id="labelIdImage">ID Image / Supporting Document Photo</label>
+                            <input type="file" id="idImage" name="idImage" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)">
+                            <div id="idImageSizeWarn" style="display:none; color:#e74c3c; font-size:0.8rem; margin-top:4px;"><i class="fas fa-exclamation-triangle"></i> File is large (&gt;8MB). It may fail to upload. Consider compressing it first.</div>
                         </div>
                     </div>
 
@@ -567,7 +613,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             const type = document.getElementById('applicationType').value;
             
             // Hide all sub-sections
-            document.getElementById('pwd-fields').style.display = 'none';
             document.getElementById('pension-fields').style.display = 'none';
             document.getElementById('burial-fields').style.display = 'none';
 
@@ -576,22 +621,39 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             document.getElementById('dateOfDeath').removeAttribute('required');
             document.getElementById('relationshipToDeceased').removeAttribute('required');
 
-            if (type === 'pwd') {
-                document.getElementById('pwd-fields').style.display = 'block';
+            // Default document labels
+            const labelProof = document.getElementById('labelProofOfAddress');
+            const labelId = document.getElementById('labelIdImage');
+
+            if (type === 'senior') {
+                labelProof.textContent = "Proof of Address (Barangay Residency / Govt ID showing Pasig Address)";
+                labelId.textContent = "PSA Birth Certificate (Copy)";
             } else if (type === 'pension') {
                 document.getElementById('pension-fields').style.display = 'block';
                 document.getElementById('sssNumber').setAttribute('required', 'required');
+                labelProof.textContent = "Certificate of Barangay Indigency";
+                labelId.textContent = "Landbank ATM Card/Stub or Senior ID";
+            } else if (type === 'national_pension') {
+                document.getElementById('pension-fields').style.display = 'block';
+                document.getElementById('sssNumber').setAttribute('required', 'required');
+                labelProof.textContent = "Certificate of Indigency (City Urban Poor / CSWD)";
+                labelId.textContent = "DSWD Social Pension Application Form or Senior ID";
+            } else if (type === 'milestone_gift') {
+                labelProof.textContent = "PSA or LCR Birth Certificate (Certified True Copy)";
+                labelId.textContent = "Latest Whole-Body Picture of Senior (Printed on A4 bond paper)";
             } else if (type === 'burial') {
                 document.getElementById('burial-fields').style.display = 'block';
                 document.getElementById('dateOfDeath').setAttribute('required', 'required');
                 document.getElementById('relationshipToDeceased').setAttribute('required', 'required');
+                labelProof.textContent = "Certified True Copy of Death Certificate";
+                labelId.textContent = "Proof of Relationship (Marriage/Birth Certificate) and surrendering Deceased's IDs";
             }
             
             // Trigger checks
             checkAgeCompliance();
         }
 
-        // Live Localized Compliance: Age check (60 years old)
+        // Live Localized Compliance: Age check
         function checkAgeCompliance() {
             const birthDateVal = document.getElementById('birthDate').value;
             const type = document.getElementById('applicationType').value;
@@ -599,11 +661,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             
             if (!birthDateVal) {
                 container.innerHTML = "";
-                return;
-            }
-
-            if (type === 'pwd') {
-                container.innerHTML = `<span class="compliance-badge compliance-info"><i class="fas fa-info-circle"></i> PWD application (No senior age restriction)</span>`;
                 return;
             }
 
@@ -616,18 +673,35 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 age--;
             }
 
-            if (age >= 60) {
-                container.innerHTML = `<span class="compliance-badge compliance-pass"><i class="fas fa-check"></i> Qualifies: Age matches Senior status (${age} years old)</span>`;
-            } else {
-                container.innerHTML = `<span class="compliance-badge compliance-fail"><i class="fas fa-times"></i> Disqualified: Age ${age} is under 60 (Pasig Ord. 17/2025 compliance)</span>`;
+            if (type === 'pension' || type === 'national_pension') {
+                if (age >= 65) {
+                    container.innerHTML = `<span class="compliance-badge compliance-pass"><i class="fas fa-check"></i> Qualifies: Age matches Pension status (${age} years old)</span>`;
+                } else {
+                    container.innerHTML = `<span class="compliance-badge compliance-fail"><i class="fas fa-times"></i> Disqualified: Age ${age} is under 65 (Requires 65+ for social pension)</span>`;
+                }
+            } else if (type === 'milestone_gift') {
+                const milestones = [80, 85, 90, 95];
+                const isMilestone = milestones.includes(age) || (age >= 100);
+                if (isMilestone) {
+                    container.innerHTML = `<span class="compliance-badge compliance-pass"><i class="fas fa-check"></i> Qualifies: Age ${age} matches Milestone Cash Gift bracket</span>`;
+                } else {
+                    container.innerHTML = `<span class="compliance-badge compliance-fail"><i class="fas fa-times"></i> Disqualified: Age ${age} is not a milestone age (Requires 80, 85, 90, 95, or 100+)</span>`;
+                }
+            } else { // senior, burial
+                if (age >= 60) {
+                    container.innerHTML = `<span class="compliance-badge compliance-pass"><i class="fas fa-check"></i> Qualifies: Age matches Senior status (${age} years old)</span>`;
+                } else {
+                    container.innerHTML = `<span class="compliance-badge compliance-fail"><i class="fas fa-times"></i> Disqualified: Age ${age} is under 60 (Requires 60+)</span>`;
+                }
             }
         }
 
-        // Live Localized Compliance: Pension check (SSS Cap P4,000)
+        // Live Localized Compliance: Pension check (SSS Cap P4,000 for local, 0 for national)
         async function verifySssPension() {
             const sssNum = document.getElementById('sssNumber').value.trim();
             const container = document.getElementById('pensionComplianceResult');
             const amountInput = document.getElementById('pensionAmount');
+            const type = document.getElementById('applicationType').value;
             
             if (!sssNum) {
                 alert("Please enter an SSS Number first.");
@@ -644,10 +718,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     const amount = data.pension_amount;
                     amountInput.value = amount.toFixed(2);
                     
-                    if (amount <= 4000) {
-                        container.innerHTML = `<span class="compliance-badge compliance-pass"><i class="fas fa-check"></i> Qualifies: Pension (P${amount.toFixed(2)}) is <= P4,000 limit</span>`;
-                    } else {
-                        container.innerHTML = `<span class="compliance-badge compliance-fail"><i class="fas fa-times"></i> Disqualified: Pension (P${amount.toFixed(2)}) exceeds P4,000 cap</span>`;
+                    if (type === 'national_pension') {
+                        if (amount === 0) {
+                            container.innerHTML = `<span class="compliance-badge compliance-pass"><i class="fas fa-check"></i> Qualifies: Applicant has no active SSS pension</span>`;
+                        } else {
+                            container.innerHTML = `<span class="compliance-badge compliance-fail"><i class="fas fa-times"></i> Disqualified: National pension is restricted to indigent seniors with no SSS pension (current: P${amount.toFixed(2)})</span>`;
+                        }
+                    } else { // local pension
+                        if (amount <= 4000) {
+                            container.innerHTML = `<span class="compliance-badge compliance-pass"><i class="fas fa-check"></i> Qualifies: Pension (P${amount.toFixed(2)}) is <= P4,000 limit</span>`;
+                        } else {
+                            container.innerHTML = `<span class="compliance-badge compliance-fail"><i class="fas fa-times"></i> Disqualified: Pension (P${amount.toFixed(2)}) exceeds P4,000 cap</span>`;
+                        }
                     }
                 } else {
                     container.innerHTML = `<span class="compliance-badge compliance-fail"><i class="fas fa-exclamation-circle"></i> SSS Verification failed: ${data.message}</span>`;
@@ -698,17 +780,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             const type = document.getElementById('applicationType').value;
             
             // Age compliance block
-            if (type !== 'pwd') {
-                const birthDateVal = document.getElementById('birthDate').value;
-                const today = new Date();
-                const birthDate = new Date(birthDateVal);
-                let age = today.getFullYear() - birthDate.getFullYear();
-                const m = today.getMonth() - birthDate.getMonth();
-                if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-                    age--;
-                }
-                if (age < 60) {
-                    alert("Localized Compliance Error:\nApplicant is under 60 years old. Senior citizen benefits require age 60+.");
+            const birthDateVal = document.getElementById('birthDate').value;
+            const today = new Date();
+            const birthDate = new Date(birthDateVal);
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+            
+            if ((type === 'senior' || type === 'burial') && age < 60) {
+                alert("Localized Compliance Error:\nApplicant is under 60 years old. Senior citizen benefits require age 60+.");
+                e.preventDefault();
+                return;
+            } else if ((type === 'pension' || type === 'national_pension') && age < 65) {
+                alert("Localized Compliance Error:\nSocial pension applications require age 65+.");
+                e.preventDefault();
+                return;
+            } else if (type === 'milestone_gift') {
+                const milestones = [80, 85, 90, 95];
+                const isMilestone = milestones.includes(age) || (age >= 100);
+                if (!isMilestone) {
+                    alert("Localized Compliance Error:\nMilestone Cash Gift is only available for ages 80, 85, 90, 95, or 100+.");
                     e.preventDefault();
                     return;
                 }
@@ -723,6 +816,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     return;
                 } else if (pensionAmt > 4000) {
                     alert("Localized Compliance Error:\nApplicant is receiving an SSS pension of P" + pensionAmt.toFixed(2) + ", which exceeds the P4,000 cap mandated under Pasig Ordinance No. 17 (Series of 2025).");
+                    e.preventDefault();
+                    return;
+                }
+            } else if (type === 'national_pension') {
+                const pensionAmt = parseFloat(document.getElementById('pensionAmount').value);
+                if (isNaN(pensionAmt)) {
+                    alert("Localized Compliance Error:\nPlease verify SSS Pension before submitting.");
+                    e.preventDefault();
+                    return;
+                } else if (pensionAmt > 0) {
+                    alert("Localized Compliance Error:\nNational DSWD Social Pension is restricted to indigent seniors with NO other pension benefits.");
                     e.preventDefault();
                     return;
                 }
@@ -752,6 +856,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         // Initialize toggle on load
         toggleFields();
+
+        // JS file size check — warn before upload (8MB threshold)
+        function checkFileSize(input) {
+            const maxBytes = 8 * 1024 * 1024; // 8MB
+            const warnId   = input.id + 'SizeWarn';
+            const warnEl   = document.getElementById(warnId);
+            if (!warnEl) return;
+            if (input.files && input.files[0] && input.files[0].size > maxBytes) {
+                warnEl.style.display = 'block';
+            } else {
+                warnEl.style.display = 'none';
+            }
+        }
     </script>
 </body>
 </html>
