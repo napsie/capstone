@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CPRAS Architectural Framework</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  
+  :root {
+    --bg-color: #f8fafc;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --border-color: #cbd5e1;
+    --blue-bg: #eff6ff;
+    --blue-border: #bfdbfe;
+    --blue-text: #1e40af;
+    --gray-bg: #f1f5f9;
+    --gray-border: #e2e8f0;
+    --gray-text: #334155;
+    --orange-bg: #fff7ed;
+    --orange-border: #fed7aa;
+    --orange-text: #9a3412;
+    --green-bg: #f0fdf4;
+    --green-border: #bbf7d0;
+    --green-text: #166534;
+    --red-bg: #fff5f5;
+    --red-border: #feb2b2;
+    --red-text: #9b2c2c;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 100vh;
+    padding: 40px 20px;
+  }
+
+  .title-container {
+    text-align: center;
+    margin-bottom: 50px;
+    max-width: 800px;
+  }
+
+  h1 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+  }
+
+  p.subtitle {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  .flowchart-container {
+    position: relative;
+    width: 100%;
+    max-width: 850px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* SVG Connector Layer */
+  .connector-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  /* Flowchart Node Styles */
+  .node {
+    position: relative;
+    z-index: 2;
+    border-radius: 12px;
+    border: 1.5px solid;
+    padding: 20px 24px;
+    width: 100%;
+    max-width: 460px;
+    text-align: center;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    margin-bottom: 70px;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .node:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.08);
+  }
+
+  .node-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+  }
+
+  .node-desc {
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+
+  /* Two-column layer */
+  .row-layer {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 780px;
+    margin-bottom: 70px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .row-layer .node {
+    width: 46%;
+    margin-bottom: 0;
+  }
+
+  /* Colors mapping */
+  .node-blue {
+    background-color: var(--blue-bg);
+    border-color: var(--blue-border);
+    color: var(--blue-text);
+  }
+
+  .node-gray {
+    background-color: var(--gray-bg);
+    border-color: var(--gray-border);
+    color: var(--gray-text);
+  }
+
+  .node-orange {
+    background-color: var(--orange-bg);
+    border-color: var(--orange-border);
+    color: var(--orange-text);
+  }
+
+  .node-green {
+    background-color: var(--green-bg);
+    border-color: var(--green-border);
+    color: var(--green-text);
+  }
+
+  .node-red {
+    background-color: var(--red-bg);
+    border-color: var(--red-border);
+    color: var(--red-text);
+  }
+
+  /* Flow Lines container helper for canvas dimensions */
+  #canvas-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+</style>
+</head>
+<body>
+
+<div class="title-container">
+  <h1>CPRAS Architectural Framework</h1>
+  <p class="subtitle">Centralized Profiling and Record Authentication System<br>Simplified FSM & Rule-Based Logic Architecture</p>
+</div>
+
+<div class="flowchart-container" id="flowchart">
+  
+  <!-- Canvas for drawing connector arrows dynamically -->
+  <svg class="connector-svg" id="svg-canvas">
+    <defs>
+      <!-- Arrow Marker Definition -->
+      <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#64748b" />
+      </marker>
+      <!-- Double Headed Arrow Marker -->
+      <marker id="double-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#64748b" />
+      </marker>
+    </defs>
+    
+    <!-- Paths will be injected dynamically by JavaScript to connect boxes perfectly -->
+    <path id="path1" d="" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+    <path id="path2" d="" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+    <path id="path3" d="" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+    <path id="path4" d="" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+    <path id="path5" d="" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" marker-start="url(#arrow)" />
+    <path id="path6" d="" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
+  </svg>
+
+  <!-- 1. PRESENTATION & CONTROLLER LAYER -->
+  <div class="node node-blue" id="node-webserver">
+    <div class="node-title">HTML5, CSS3, JS Frontend & PHP Web Server</div>
+    <div class="node-desc">Unified client-server interface hosted on Apache (XAMPP local environment)</div>
+  </div>
+
+  <!-- 2. INTERMEDIARY LAYER (Two Columns) -->
+  <div class="row-layer">
+    <!-- Left Column: File Upload Middleware -->
+    <div class="node node-gray" id="node-middleware">
+      <div class="node-title">PHP $_FILES Upload Handler & CSV Parser</div>
+      <div class="node-desc">MIME-type / size validation for PDF and image scans, and CSV import engine</div>
+    </div>
+    
+    <!-- Right Column: Database Storage -->
+    <div class="node node-orange" id="node-database">
+      <div class="node-title">MySQL / MariaDB Database</div>
+      <div class="node-desc">capstone1 relational database storing applicants, system logs, settings, and FSM states</div>
+    </div>
+  </div>
+
+  <!-- 3. PROCESSING LAYER (Compliance Rules) -->
+  <div class="node node-green" id="node-fsm">
+    <div class="node-title">PHP FSM State Controller & Compliance Rules Engine</div>
+    <div class="node-desc">Rule-based validation of ordinance bounds (Senior Citizens age &ge; 60, Social Pension &le; ₱4,000, Burial Assistance filing &le; 30 working days)</div>
+  </div>
+
+  <!-- 4. PERSISTENCE & HISTORY LAYER -->
+  <div class="node node-red" id="node-history">
+    <div class="node-title">Application History Log & System Notifications</div>
+    <div class="node-desc">Enforces FSM workflow audit trail: Received &rarr; For Review &rarr; Verified &rarr; Approved &rarr; Released</div>
+  </div>
+
+</div>
+
+<script>
+  function drawConnectors() {
+    const svg = document.getElementById('svg-canvas');
+    const container = document.getElementById('flowchart').getBoundingClientRect();
+    
+    const webserver = document.getElementById('node-webserver').getBoundingClientRect();
+    const middleware = document.getElementById('node-middleware').getBoundingClientRect();
+    const database = document.getElementById('node-database').getBoundingClientRect();
+    const fsm = document.getElementById('node-fsm').getBoundingClientRect();
+    const history = document.getElementById('node-history').getBoundingClientRect();
+    
+    const getRelativeCoords = (rect) => {
+      return {
+        top: rect.top - container.top,
+        bottom: rect.bottom - container.top,
+        left: rect.left - container.left,
+        right: rect.right - container.left,
+        width: rect.width,
+        height: rect.height,
+        centerX: (rect.left - container.left) + rect.width / 2,
+        centerY: (rect.top - container.top) + rect.height / 2
+      };
+    };
+    
+    const w = getRelativeCoords(webserver);
+    const m = getRelativeCoords(middleware);
+    const d = getRelativeCoords(database);
+    const f = getRelativeCoords(fsm);
+    const h = getRelativeCoords(history);
+    
+    // Connect WebServer bottom to Middleware top
+    // Draw an elbow or diagonal arrow
+    document.getElementById('path1').setAttribute('d', 
+      `M ${w.centerX} ${w.bottom} Q ${w.centerX} ${w.bottom + 20}, ${m.centerX} ${m.top - 8}`);
+
+    // Connect WebServer bottom to Database top
+    document.getElementById('path2').setAttribute('d', 
+      `M ${w.centerX} ${w.bottom} Q ${w.centerX} ${w.bottom + 20}, ${d.centerX} ${d.top - 8}`);
+      
+    // Connect Middleware bottom to FSM top
+    document.getElementById('path3').setAttribute('d', 
+      `M ${m.centerX} ${m.bottom} Q ${m.centerX} ${m.bottom + 20}, ${f.centerX} ${f.top - 8}`);
+      
+    // Connect FSM bottom to History top
+    document.getElementById('path4').setAttribute('d', 
+      `M ${f.centerX} ${f.bottom} L ${f.centerX} ${h.top - 8}`);
+      
+    // Connect Database to FSM (Two way connector line)
+    document.getElementById('path5').setAttribute('d', 
+      `M ${d.centerX} ${d.bottom} Q ${d.centerX} ${d.bottom + 25}, ${f.right - 20} ${f.top - 5}`);
+  }
+
+  // Draw on load and resize
+  window.addEventListener('load', drawConnectors);
+  window.addEventListener('resize', drawConnectors);
+</script>
+
+</body>
+</html>
