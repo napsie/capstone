@@ -423,7 +423,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                     data: {
                         labels: chartLabels, // Use the new chartLabels
                         datasets: [
-                            { label: 'PWD Applications', data: pwdData, backgroundColor: '#3498db' },
+                            { label: 'Disability Support Applications', data: pwdData, backgroundColor: '#3498db' },
                             { label: 'Senior Citizen Applications', data: seniorData, backgroundColor: '#2ecc71' }
                         ]
                     },

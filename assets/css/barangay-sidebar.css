@@ -104,6 +104,12 @@ body {
     font-size:15px; /* Increased font size */
     letter-spacing: 0.5px; /* Added letter spacing */
 }
+.nav-links a:focus,
+.nav-links a:focus-visible {
+    outline: 3px solid rgba(255,255,255,0.14);
+    outline-offset: 2px;
+    border-radius: 8px;
+}
 .nav-links i {
     width:20px;
     text-align:center;
@@ -417,6 +423,49 @@ tr:hover {
 .sidebar.collapsed {
     width: 80px;
 }
+
+/* Tooltip for collapsed sidebar */
+.sidebar.collapsed a[data-tooltip] {
+    position: relative;
+}
+.sidebar.collapsed a[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%) translateX(10px);
+    background: rgba(17,24,39,0.95);
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .12s ease, transform .12s ease;
+    font-size: 13px;
+    z-index: 1200;
+}
+.sidebar.collapsed a[data-tooltip]:hover::after,
+.sidebar.collapsed a[data-tooltip]:focus::after {
+    opacity: 1;
+    transform: translateY(-50%) translateX(6px);
+}
+
+/* Active indicator: colored left bar */
+.nav-links li.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: #ffffff33;
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+.nav-links li { position: relative; }
 
 .sidebar.collapsed .logo-text,
 .sidebar.collapsed .link-text {

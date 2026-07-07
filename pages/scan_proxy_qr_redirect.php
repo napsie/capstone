@@ -77,7 +77,7 @@ if (!$is_authenticated) {
                 Scanning with public, unauthorized devices is blocked. The records can only be decrypted and viewed inside the secure, authenticated Carelink terminal environment.
             </p>
             <div class="law-ref">
-                Office of Senior Citizen Affairs (OSCA) & PWD Affairs Section Office Office — Pasig City Compliance Engine
+                Office of Senior Citizen Affairs (OSCA) Affairs Section Office — Pasig City Compliance Engine
             </div>
         </div>
     </body>

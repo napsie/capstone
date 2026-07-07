@@ -338,6 +338,694 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .btn-verify-sss:hover {
             background-color: #1e8449;
         }
+
+        /* ── Google Font ─────────────────────────────── */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        body, .main-content { font-family: 'Inter', sans-serif; }
+
+        /* ── Hero intro banner ───────────────────────── */
+        .new-app-hero {
+            background: linear-gradient(135deg, #1e3a5f 0%, #1e293b 50%, #0f172a 100%);
+            border-radius: 20px;
+            padding: 36px 40px;
+            margin-bottom: 32px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(59,130,246,0.2);
+        }
+        .new-app-hero::before {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 260px; height: 260px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(59,130,246,0.18) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .new-app-hero::after {
+            content: '';
+            position: absolute;
+            bottom: -40px; left: 30%;
+            width: 180px; height: 180px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .new-app-hero h2 {
+            margin: 0 0 6px;
+            font-size: 1.6rem;
+            font-weight: 800;
+            background: linear-gradient(90deg, #e2e8f0, #93c5fd);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .new-app-hero p {
+            margin: 0;
+            font-size: 1rem;
+            color: #94a3b8;
+            max-width: 520px;
+            line-height: 1.6;
+        }
+        .hero-step-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(59,130,246,0.15);
+            border: 1px solid rgba(59,130,246,0.3);
+            color: #93c5fd;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 4px 12px;
+            border-radius: 100px;
+            margin-bottom: 14px;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           APPLICATION TYPE CARD SYSTEM — HCI Premium Design
+           ═══════════════════════════════════════════════════════════ */
+
+        /* ── Hint text above cards ─────────────────────────────── */
+        .card-section-hint {
+            font-size: 0.875rem;
+            color: #64748b;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+        .card-section-hint i { color: #475569; }
+
+        /* ── Card entrance animation ────────────────────────────── */
+        @keyframes cardFadeUp {
+            from { opacity: 0; transform: translateY(18px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .app-type-card { animation: cardFadeUp 0.4s ease both; }
+        .app-type-card:nth-child(1) { animation-delay: 0.03s; }
+        .app-type-card:nth-child(2) { animation-delay: 0.08s; }
+        .app-type-card:nth-child(3) { animation-delay: 0.13s; }
+        .app-type-card:nth-child(4) { animation-delay: 0.18s; }
+        .app-type-card:nth-child(5) { animation-delay: 0.23s; }
+        .app-type-card:nth-child(6) { animation-delay: 0.28s; }
+        .app-type-card:nth-child(7) { animation-delay: 0.33s; }
+
+        /* ── Card Grid ────────────────────────────────────────────── */
+        .app-type-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr)); /* 4 columns layout */
+            gap: 22px;
+            margin-bottom: 18px;
+        }
+
+        /* Responsive fallback for smaller screens */
+        @media (max-width: 1200px) {
+            .app-type-grid { grid-template-columns: repeat(3, minmax(0,1fr)); }
+        }
+        @media (max-width: 900px) {
+            .app-type-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+        }
+        @media (max-width: 480px) {
+            .app-type-grid { grid-template-columns: 1fr; }
+        }
+
+        /* ── Individual Card ──────────────────────────────────────── */
+        .app-type-card {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding: 26px 22px 22px;
+            border-radius: 18px;
+            border: 1.5px solid rgba(255,255,255,0.08);
+            background: linear-gradient(145deg, rgba(10,14,23,0.75), rgba(15,23,42,0.85)), var(--card-bg, linear-gradient(160deg, rgba(30,41,59,0.98) 0%, rgba(15,23,42,0.95) 100%));
+            cursor: pointer;
+            transition: transform 0.22s cubic-bezier(0.34,1.2,0.64,1),
+                        border-color 0.22s ease,
+                        box-shadow 0.22s ease;
+            user-select: none;
+            overflow: hidden;
+            outline: none;
+        }
+        /* Glass sheen overlay */
+        .app-type-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 18px;
+            background: linear-gradient(135deg,
+                rgba(255,255,255,0.04) 0%,
+                transparent 50%);
+            pointer-events: none;
+        }
+        /* Color accent bottom strip */
+        .app-type-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 3px;
+            background: var(--card-accent, transparent);
+            border-radius: 0 0 18px 18px;
+            opacity: 0;
+            transition: opacity 0.22s ease;
+        }
+        .app-type-card:hover::after { opacity: 1; }
+        .app-type-card.selected::after {
+            opacity: 1;
+            /* shimmer on the strip */
+            background: linear-gradient(90deg,
+                transparent,
+                rgba(255,255,255,0.5),
+                transparent);
+            background-size: 200% 100%;
+            animation: stripShimmer 1.8s linear infinite;
+        }
+        @keyframes stripShimmer {
+            0%   { background-position: -200% 0; }
+            100% { background-position:  200% 0; }
+        }
+
+        .app-type-card:hover {
+            transform: translateY(-6px) scale(1.015);
+            border-color: rgba(148,163,184,0.3);
+            box-shadow:
+                0 16px 40px rgba(0,0,0,0.35),
+                0 0 0 1px rgba(255,255,255,0.06) inset;
+        }
+        .app-type-card:focus-visible {
+            border-color: rgba(96,165,250,0.7);
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.35);
+        }
+        .app-type-card.selected {
+            transform: translateY(-4px);
+            border-color: rgba(99,102,241,0.7);
+            background: linear-gradient(160deg,
+                rgba(30,27,75,0.95) 0%,
+                rgba(15,23,42,0.98) 100%);
+            box-shadow:
+                0 0 0 3px rgba(99,102,241,0.28),
+                0 20px 50px rgba(0,0,0,0.4);
+        }
+
+        /* ── Icon tile ────────────────────────────────────────────── */
+        .app-type-card .card-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            flex-shrink: 0;
+            position: relative;
+            transition: transform 0.25s cubic-bezier(0.34,1.4,0.64,1);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+        .app-type-card:hover .card-icon {
+            transform: scale(1.14) rotate(-5deg);
+        }
+        .app-type-card.selected .card-icon {
+            transform: scale(1.08) rotate(0deg);
+        }
+
+        /* ── Text ─────────────────────────────────────────────────── */
+        .app-type-card .card-code {
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: #64748b;
+            margin-bottom: -8px;
+        }
+
+        /* Visually hidden helper for screen readers */
+        .sr-only { position: absolute !important; height: 1px; width: 1px; overflow: hidden; clip: rect(1px, 1px, 1px, 1px); white-space: nowrap; }
+        .app-type-card.selected .card-code { color: #818cf8; }
+        .app-type-card .card-title {
+            font-size: 1rem;
+            font-weight: 800;
+            color: #0b2330; /* darker, high-contrast title */
+            line-height: 1.35;
+        }
+        .app-type-card.selected .card-title { color: #0b2330; }
+        .app-type-card .card-desc {
+            font-size: 0.86rem;
+            color: #606f7a; /* slightly darker description for readability */
+            line-height: 1.45;
+            margin-top: -2px;
+        }
+        .app-type-card:hover .card-desc { color: #4b5962; }
+        .app-type-card.selected .card-desc { color: #0b2330; }
+
+        /* ── Selected check badge ─────────────────────────────────── */
+        .app-type-card .card-check {
+            position: absolute;
+            top: 14px; right: 14px;
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: #fff;
+            font-size: 0.65rem;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 3px 10px rgba(99,102,241,0.55);
+            animation: popIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        @keyframes popIn {
+            from { transform: scale(0) rotate(-30deg); opacity: 0; }
+            to   { transform: scale(1) rotate(0deg);   opacity: 1; }
+        }
+        .app-type-card.selected .card-check { display: flex; }
+
+        /* ── Arrow accent ─────────────────────────────────────────── */
+        .app-type-card .card-arrow {
+            position: absolute;
+            bottom: 18px; right: 18px;
+            font-size: 0.95rem;
+            color: #1e293b;
+            transition: color 0.22s, transform 0.22s;
+        }
+        .app-type-card:hover .card-arrow {
+            color: #94a3b8;
+            transform: translateX(4px);
+        }
+        .app-type-card.selected .card-arrow { display: none; }
+
+        /* ── Section label above grid ─────────────────────────────── */
+        .card-section-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            color: #64748b;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        .card-section-label::before,
+        .card-section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(255,255,255,0.06);
+        }
+
+        /* ── Form body reveal ─────────────────────────────────────── */
+        #formBody {
+            overflow: hidden;
+            max-height: 0;
+            opacity: 0;
+            transition: max-height 0.6s cubic-bezier(0.4,0,0.2,1), opacity 0.45s ease;
+        }
+        #formBody.visible { max-height: 8000px; opacity: 1; }
+
+        /* ── Selected type banner ─────────────────────────────────── */
+        .selected-type-banner {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 22px;
+            border-radius: 14px;
+            border: 1.5px solid rgba(99,102,241,0.4);
+            background: linear-gradient(135deg,
+                rgba(30,27,75,0.5) 0%,
+                rgba(15,23,42,0.7) 100%);
+            margin-bottom: 28px;
+            backdrop-filter: blur(12px);
+            animation: fadeSlideDown 0.35s ease;
+        }
+        @keyframes fadeSlideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .selected-type-banner .banner-icon {
+            width: 46px; height: 46px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; flex-shrink: 0;
+        }
+        .selected-type-banner .banner-info { flex: 1; }
+        .selected-type-banner .banner-info small {
+            display: block; font-size: 0.75rem;
+            text-transform: uppercase; letter-spacing: 0.08em;
+            color: #64748b; margin-bottom: 3px;
+        }
+        .selected-type-banner .banner-info strong {
+            font-size: 1.05rem; font-weight: 700;
+            color: #e2e8f0;
+        }
+        .btn-change-type {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: #94a3b8;
+            padding: 9px 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: flex; align-items: center; gap: 7px;
+            font-family: inherit;
+        }
+        .btn-change-type:hover {
+            border-color: #6366f1;
+            color: #a5b4fc;
+            background: rgba(99,102,241,0.1);
+        }
+
+        /* ── Step headings (inside form) ──────────────────────────── */
+        .step-heading {
+            display: flex; align-items: flex-start; gap: 14px;
+            margin-bottom: 24px;
+        }
+        .step-number {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            color: #fff; font-size: 1rem; font-weight: 800;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; box-shadow: 0 4px 12px rgba(59,130,246,0.4);
+        }
+        .step-heading h3 {
+            margin: 0 0 3px;
+            font-size: 1.15rem; font-weight: 700;
+            color: var(--text, #f1f5f9);
+        }
+        .step-heading p {
+            margin: 0; font-size: 0.875rem; color: #64748b;
+        }
+
+        /* ── Individual Card ─────────────────────────── */
+        .app-type-card {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            padding: 22px 20px;
+            border-radius: 16px;
+            border: 1.5px solid rgba(255,255,255,0.07);
+            background: linear-gradient(145deg, rgba(10,14,23,0.7), rgba(15,23,42,0.85)), var(--card-bg, linear-gradient(145deg, rgba(30,41,59,0.95), rgba(15,23,42,0.9)));
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+            user-select: none;
+            overflow: hidden;
+        }
+        .app-type-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 16px;
+            background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.03));
+            pointer-events: none;
+        }
+        .app-type-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            border-color: rgba(96,165,250,0.5);
+            box-shadow: 0 12px 40px rgba(59,130,246,0.2), 0 0 0 1px rgba(96,165,250,0.1);
+        }
+        .app-type-card.selected {
+            border-color: rgba(59,130,246,0.8);
+            background: linear-gradient(145deg, rgba(30,58,138,0.5), rgba(15,23,42,0.95));
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.25), 0 16px 48px rgba(59,130,246,0.3);
+        }
+        /* Shimmer sweep on selected */
+        .app-type-card.selected::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 60%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+            animation: shimmer 1.8s ease infinite;
+        }
+        @keyframes shimmer {
+            0%   { left: -100%; }
+            100% { left: 200%; }
+        }
+
+        /* ── Card Icon ───────────────────────────────── */
+        .app-type-card .card-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            flex-shrink: 0;
+            position: relative;
+            transition: transform 0.25s ease;
+        }
+        .app-type-card:hover .card-icon {
+            transform: scale(1.12) rotate(-4deg);
+        }
+
+        /* ── Card Text ───────────────────────────────── */
+        .app-type-card .card-code {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            opacity: 0.55;
+            color: var(--text, #f1f5f9);
+            margin-bottom: -8px;
+        }
+        .app-type-card .card-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--text, #f1f5f9);
+            line-height: 1.35;
+        }
+        .app-type-card .card-desc {
+            font-size: 0.85rem;
+            color: #64748b;
+            line-height: 1.5;
+            margin-top: -4px;
+        }
+        .app-type-card.selected .card-desc { color: #93c5fd; }
+
+        /* ── Check badge ─────────────────────────────── */
+        .app-type-card .card-check {
+            position: absolute;
+            top: 12px; right: 12px;
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            color: #fff;
+            font-size: 0.65rem;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(59,130,246,0.5);
+            animation: popIn 0.2s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        @keyframes popIn {
+            from { transform: scale(0); opacity: 0; }
+            to   { transform: scale(1); opacity: 1; }
+        }
+        .app-type-card.selected .card-check { display: flex; }
+
+        /* ── Arrow accent on card ────────────────────── */
+        .app-type-card .card-arrow {
+            position: absolute;
+            bottom: 16px; right: 16px;
+            font-size: 1rem;
+            color: #334155;
+            transition: color 0.2s, transform 0.2s;
+        }
+        .app-type-card:hover .card-arrow { color: #60a5fa; transform: translateX(3px); }
+        .app-type-card.selected .card-arrow { display: none; }
+
+        /* ── Form body reveal ────────────────────────── */
+        #formBody {
+            overflow: hidden;
+            max-height: 0;
+            opacity: 0;
+            transition: max-height 0.55s cubic-bezier(0.4,0,0.2,1), opacity 0.4s ease;
+        }
+        #formBody.visible { max-height: 8000px; opacity: 1; }
+
+        /* ── Selected type banner ────────────────────── */
+        .selected-type-banner {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 22px;
+            border-radius: 14px;
+            border: 1.5px solid rgba(59,130,246,0.4);
+            background: linear-gradient(135deg, rgba(30,58,138,0.3), rgba(15,23,42,0.6));
+            margin-bottom: 28px;
+            backdrop-filter: blur(8px);
+            animation: fadeSlideDown 0.35s ease;
+        }
+        @keyframes fadeSlideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .selected-type-banner .banner-icon {
+            width: 46px; height: 46px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; flex-shrink: 0;
+        }
+        .selected-type-banner .banner-info { flex: 1; }
+        .selected-type-banner .banner-info small {
+            display: block; font-size: 0.85rem;
+            text-transform: uppercase; letter-spacing: 0.08em;
+            color: #64748b; margin-bottom: 3px;
+        }
+        .selected-type-banner .banner-info strong {
+            font-size: 1.15rem; font-weight: 700;
+            color: #e2e8f0;
+        }
+        .btn-change-type {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #94a3b8;
+            padding: 8px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: flex; align-items: center; gap: 7px;
+        }
+        .btn-change-type:hover {
+            border-color: #3b82f6;
+            color: #60a5fa;
+            background: rgba(59,130,246,0.08);
+        }
+
+        /* ── Step headings ───────────────────────────── */
+        .step-heading {
+            display: flex; align-items: flex-start; gap: 14px;
+            margin-bottom: 24px;
+        }
+        .step-number {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            color: #fff; font-size: 1rem; font-weight: 800;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; box-shadow: 0 4px 12px rgba(59,130,246,0.4);
+        }
+        .step-heading h3 {
+            margin: 0 0 3px;
+            font-size: 1.2rem; font-weight: 700;
+            color: var(--text, #f1f5f9);
+        }
+        .step-heading p {
+            margin: 0; font-size: 0.9rem; color: #64748b;
+        }
+        /* ---------------------------------------------------------------------------
+           Simple flat card override (makes application-type cards minimal and static)
+           - Removes entrance animations, shimmer, heavy shadows and transforms
+           - Uses flat background, thin border, and clear contrast for text
+           --------------------------------------------------------------------------- */
+        /* entrance animation */
+        @keyframes cardLiftIn {
+            from { opacity: 0; transform: translateY(12px) scale(.995); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        /* staggered entrance for up to 8 cards */
+        #appTypeGrid .app-type-card { animation: cardLiftIn 420ms cubic-bezier(0.2,0.8,0.2,1) both; }
+        #appTypeGrid .app-type-card:nth-child(1) { animation-delay: 40ms; }
+        #appTypeGrid .app-type-card:nth-child(2) { animation-delay: 90ms; }
+        #appTypeGrid .app-type-card:nth-child(3) { animation-delay: 140ms; }
+        #appTypeGrid .app-type-card:nth-child(4) { animation-delay: 190ms; }
+        #appTypeGrid .app-type-card:nth-child(5) { animation-delay: 240ms; }
+        #appTypeGrid .app-type-card:nth-child(6) { animation-delay: 290ms; }
+        #appTypeGrid .app-type-card:nth-child(7) { animation-delay: 340ms; }
+        #appTypeGrid .app-type-card:nth-child(8) { animation-delay: 390ms; }
+
+        .app-type-card {
+            transition: transform 260ms cubic-bezier(0.2,0.8,0.2,1), box-shadow 260ms ease, border-color 160ms ease;
+            background: #ffffff !important;
+            border-radius: 12px !important;
+            border: 1px solid rgba(15,23,42,0.06) !important;
+            box-shadow: 0 14px 40px rgba(2,6,23,0.06) !important;
+            display: flex;
+            align-items: flex-start;
+            gap: 18px;
+            padding: 20px 22px;
+            min-height: 140px;
+            position: relative;
+            will-change: transform, box-shadow;
+            transform-origin: center bottom;
+        }
+        .app-type-card::before,
+        .app-type-card::after {
+            display: none !important;
+        }
+        .app-type-card:hover {
+            transform: translateY(-12px) scale(1.015);
+            box-shadow: 0 36px 90px rgba(2,6,23,0.14);
+            border-color: rgba(15,23,42,0.12) !important;
+        }
+        .app-type-card .card-icon {
+            width: 56px; height: 56px; border-radius: 12px;
+            box-shadow: 0 6px 18px rgba(2,6,23,0.06);
+            transform: none !important; font-size: 1.25rem;
+            display:flex; align-items:center; justify-content:center; color: #ffffff !important;
+            flex-shrink: 0;
+            transition: transform 260ms cubic-bezier(0.2,0.8,0.2,1), box-shadow 260ms ease;
+        }
+        .app-type-card:hover .card-icon { transform: translateY(-4px) scale(1.06); box-shadow: 0 18px 36px rgba(2,6,23,0.12); }
+
+        /* subtle icon pop when card is selected */
+        .app-type-card.selected .card-icon { animation: popIcon 420ms cubic-bezier(0.2,0.9,0.2,1); }
+        @keyframes popIcon { 0% { transform: scale(.9); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
+        .app-type-card .card-content { display:flex; flex-direction:column; gap:8px; flex:1; }
+        .app-type-card .card-desc { margin-top:6px; }
+        .app-type-card .card-code { font-size: 0.72rem; opacity: 0.7; color: #6b7280; }
+        .app-type-card .card-title { font-size: 1.06rem; font-weight: 800; color: #071727; }
+        .app-type-card .card-desc { font-size: 0.86rem; color: #475569; }
+        .app-type-card .card-check { display: flex !important; opacity: 0; visibility: hidden; }
+        .app-type-card.selected .card-check { opacity: 1; visibility: visible; }
+        /* Arrow: right aligned vertically centered */
+        .app-type-card .card-arrow { position: absolute; right: 18px; top: 50%; transform: translateY(-50%); color: #c7cdd4; font-size: 0.95rem; transition: transform 200ms ease, color 200ms ease; }
+        .app-type-card:hover .card-arrow { transform: translateY(-50%) translateX(6px); color: #94a3b8; }
+
+        /* container shadow around the whole application form area */
+        .application-form {
+            padding: 18px 20px 28px;
+            border-radius: 12px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.99), rgba(250,250,250,0.98));
+            box-shadow: 0 18px 60px rgba(2,6,23,0.06);
+            border: 1px solid rgba(2,6,23,0.03);
+        }
+        /* Final UI polish overrides */
+        .app-type-card {
+            border-left: 4px solid transparent !important;
+            overflow: visible;
+        }
+        .app-type-card::before {
+            content: '';
+            position: absolute;
+            left: 12px; top: 18px; bottom: 18px;
+            width: 4px; border-radius: 4px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.02));
+            opacity: 0; transition: opacity 200ms ease, background 200ms ease;
+        }
+        .app-type-card:hover::before { opacity: 1; }
+        .app-type-card:hover { border-left-color: var(--card-accent, #60a5fa) !important; }
+
+        .app-type-card .card-icon {
+            width: 64px !important; height: 64px !important; border-radius: 50% !important;
+            font-size: 1.4rem !important; box-shadow: 0 18px 36px rgba(2,6,23,0.10) !important;
+            display:flex; align-items:center; justify-content:center; color: #fff !important;
+        }
+
+        .app-type-card .card-title {
+            font-size: 1.06rem; font-weight: 800; color: #081022;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        .app-type-card:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(99,102,241,0.12); }
+
+        /* Slightly tighten grid spacing for nicer layout */
+        .app-type-grid { gap: 20px; }
     </style>
 </head>
 <body>
@@ -348,7 +1036,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <h1 style="color: var(--text);">New Application</h1>
                 <button class="proxy-load-btn" onclick="openProxyModal()"><i class="fas fa-qrcode"></i> Scan Proxy QR Code</button>
             </div>
-            
+
+
             <div class="application-form">
                 <?php if (!empty($errorMessage)): ?>
                     <div class="alert alert-error"><i class="fas fa-exclamation-triangle"></i> <?php echo $errorMessage; ?></div>
@@ -357,23 +1046,83 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <div class="alert alert-success"><i class="fas fa-check-circle"></i> <?php echo $successMessage; ?></div>
                 <?php endif; ?>
 
+                <!-- Application Type Cards — directly visible on load -->
+                <div id="cardSelectorSection">
+                    <p class="card-section-hint"><i class="fas fa-hand-pointer"></i> Select an application type to begin filling out the form.</p>
+                    <?php
+                    $typeIcons = [
+                        'senior'           => ['icon' => 'fas fa-id-card',       'color' => '#60a5fa', 'grad' => 'linear-gradient(135deg,#1e3a8a,#1d4ed8)', 'desc' => 'Senior Citizens ID registration',    'code' => 'Form 1',    'accent' => '#3b82f6'],
+                        'landbank'         => ['icon' => 'fas fa-credit-card',   'color' => '#34d399', 'grad' => 'linear-gradient(135deg,#064e3b,#059669)', 'desc' => 'Land Bank Cash Card enrollment',       'code' => 'Form 2',    'accent' => '#10b981'],
+                        'pension'          => ['icon' => 'fas fa-wallet',        'color' => '#fbbf24', 'grad' => 'linear-gradient(135deg,#78350f,#d97706)', 'desc' => 'Local social pension benefit',          'code' => 'Local',     'accent' => '#f59e0b'],
+                        'national_pension' => ['icon' => 'fas fa-landmark',     'color' => '#a78bfa', 'grad' => 'linear-gradient(135deg,#4c1d95,#7c3aed)', 'desc' => 'National DSWD pension (RA 11916)',     'code' => 'National',  'accent' => '#8b5cf6'],
+                        'milestone_gift'   => ['icon' => 'fas fa-gift',          'color' => '#f472b6', 'grad' => 'linear-gradient(135deg,#831843,#db2777)', 'desc' => 'Octogenarian / Centenarian cash gift',  'code' => 'Form 5',    'accent' => '#ec4899'],
+                        'burial'           => ['icon' => 'fas fa-ribbon',        'color' => '#94a3b8', 'grad' => 'linear-gradient(135deg,#1e293b,#475569)', 'desc' => 'Burial financial assistance claim',      'code' => 'Form 7',    'accent' => '#64748b'],
+                        'home_visit'       => ['icon' => 'fas fa-house-medical', 'color' => '#22d3ee', 'grad' => 'linear-gradient(135deg,#164e63,#0891b2)', 'desc' => 'Home visitation &amp; confirmation',     'code' => 'Form 8',    'accent' => '#06b6d4'],
+                    ];
+                    ?>
+                    <div class="app-type-grid" id="appTypeGrid">
+                        <?php foreach (getApplicationTypeOptions() as $val => $label):
+                            $meta = $typeIcons[$val] ?? ['icon' => 'fas fa-file', 'color' => '#94a3b8', 'grad' => 'linear-gradient(135deg,#1e293b,#334155)', 'desc' => '', 'code' => '', 'accent' => '#64748b'];
+                        ?>
+                            <div class="app-type-card"
+                                style="--card-accent: <?php echo $meta['accent']; ?>; --card-bg: <?php echo $meta['grad']; ?>;"
+                             data-value="<?php echo $val; ?>"
+                             data-label="<?php echo htmlspecialchars($label); ?>"
+                             data-icon="<?php echo $meta['icon']; ?>"
+                             data-color="<?php echo $meta['color']; ?>"
+                             data-bg="<?php echo $meta['grad']; ?>"
+                             data-accent="<?php echo $meta['accent']; ?>"
+                             onclick="selectAppType('<?php echo $val; ?>')"
+                             role="button"
+                             tabindex="0"
+                             aria-pressed="false"
+                             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectAppType('<?php echo $val; ?>');}"
+                             title="<?php echo htmlspecialchars($label); ?>">
+                            <div class="card-check"><i class="fas fa-check"></i></div>
+                            <div class="card-arrow"><i class="fas fa-chevron-right"></i></div>
+                            <div class="card-icon" style="background: <?php echo $meta['color']; ?>; color: #fff;">
+                                <i class="<?php echo $meta['icon']; ?>" aria-hidden="true"></i>
+                                <span class="sr-only"><?php echo htmlspecialchars($label); ?></span>
+                            </div>
+                            <div class="card-content">
+                                <div class="card-code"><?php echo htmlspecialchars($meta['code']); ?></div>
+                                <div class="card-title"><?php echo htmlspecialchars($label); ?></div>
+                                <div class="card-desc"><?php echo $meta['desc']; ?></div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <!-- STEP 2: Full Form (hidden until a card is selected) -->
+                <div id="formBody">
+                    <!-- Selected type banner -->
+                    <div class="selected-type-banner" id="selectedTypeBanner" style="display:none;">
+                        <div class="banner-icon" id="bannerIcon"></div>
+                        <div class="banner-info">
+                            <small><i class="fas fa-layer-group"></i> Selected Application Type</small>
+                            <strong id="bannerLabel"></strong>
+                        </div>
+                        <button type="button" class="btn-change-type" onclick="resetAppType()"><i class="fas fa-arrow-left"></i> Change</button>
+                    </div>
+
                 <form method="POST" action="new_application.php" enctype="multipart/form-data" id="mainAppForm">
                     <!-- Hidden Proxy Fields -->
                     <input type="hidden" name="isProxy" id="isProxy" value="<?php echo $loadedProxyData ? 1 : 0; ?>">
                     <input type="hidden" name="proxyToken" id="proxyToken" value="<?php echo htmlspecialchars($loadedProxyData['transactionId'] ?? ''); ?>">
+                    <input type="hidden" id="applicationType" name="applicationType" value="" required>
 
                     <!-- Basic Information -->
                     <div class="form-section">
-                        <h3><i class="fas fa-user"></i> Basic Information</h3>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="applicationType">Application Type</label>
-                                <select id="applicationType" name="applicationType" required onchange="toggleFields()">
-                                    <?php foreach (getApplicationTypeOptions() as $val => $label): ?>
-                                    <option value="<?php echo $val; ?>" <?php echo ($loadedProxyData['applicationType'] ?? '') === $val ? 'selected' : ''; ?>><?php echo htmlspecialchars($label); ?></option>
-                                    <?php endforeach; ?>
-                                </select>
+                        <div class="step-heading">
+                            <div class="step-number">2</div>
+                            <div>
+                                <h3>Basic Information</h3>
+                                <p>Fill in the applicant's personal details below.</p>
                             </div>
+                        </div>
+
+                        <div class="form-row">
                             <div class="form-group">
                                 <label for="idNumber">ID Number / Reference ID</label>
                                 <input type="text" id="idNumber" name="idNumber" value="<?php echo htmlspecialchars($loadedProxyData['transactionId'] ?? uniqid('APP-')); ?>" oninput="this.value = this.value.replace(/[^a-zA-Z0-9-]/g, '')" required>
@@ -504,6 +1253,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         <button type="submit" class="btn" style="background-color: var(--primary);"><i class="fas fa-save"></i> Submit Application</button>
                     </div>
                 </form>
+                </div><!-- /#formBody -->
             </div>
         </div>
     </div>
@@ -585,8 +1335,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     document.getElementById('idNumber').value = data.transactionId || '';
                     
                     // Application type
-                    document.getElementById('applicationType').value = data.applicationType || 'senior';
-                    
+                    const loadedType = data.applicationType || 'senior';
+                    selectAppType(loadedType);
+
                     // Proxy fields
                     document.getElementById('isProxy').value = 1;
                     document.getElementById('proxyToken').value = data.transactionId || '';
@@ -625,6 +1376,67 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 console.error("Failed to fetch proxy QR details:", error);
                 document.getElementById('modalError').textContent = "Server communication failure.";
             }
+        }
+
+        const TYPE_META = {};
+        document.querySelectorAll('#appTypeGrid .app-type-card').forEach(card => {
+            TYPE_META[card.dataset.value] = {
+                label:  card.dataset.label,
+                icon:   card.dataset.icon,
+                color:  card.dataset.color,
+                bg:     card.dataset.bg,
+                accent: card.dataset.accent,
+            };
+        });
+
+        function selectAppType(value) {
+            // Update hidden input
+            document.getElementById('applicationType').value = value;
+
+            // Highlight selected card + aria
+            document.querySelectorAll('#appTypeGrid .app-type-card').forEach(card => {
+                const sel = card.dataset.value === value;
+                card.classList.toggle('selected', sel);
+                card.setAttribute('aria-pressed', sel ? 'true' : 'false');
+            });
+
+            // Show banner with accent-matched border
+            const meta   = TYPE_META[value] || {};
+            const banner = document.getElementById('selectedTypeBanner');
+            document.getElementById('bannerLabel').textContent = meta.label || value;
+            const bannerIcon = document.getElementById('bannerIcon');
+            bannerIcon.innerHTML = `<i class="${meta.icon || 'fas fa-file'}" style="font-size:1.1rem;"></i>`;
+            bannerIcon.style.background = meta.bg    || '';
+            bannerIcon.style.color      = meta.color || '';
+            if (meta.accent) {
+                banner.style.borderColor = meta.accent + '80'; // 50% opacity
+            }
+            banner.style.display = 'flex';
+
+            // Reveal full form
+            const formBody = document.getElementById('formBody');
+            formBody.classList.add('visible');
+
+            // Scroll smoothly to form
+            setTimeout(() => formBody.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+
+            // Trigger dependent logic
+            toggleFields();
+            checkAgeCompliance();
+        }
+
+        function resetAppType() {
+            document.getElementById('applicationType').value = '';
+            document.querySelectorAll('#appTypeGrid .app-type-card').forEach(c => {
+                c.classList.remove('selected');
+                c.setAttribute('aria-pressed', 'false');
+            });
+
+            const formBody = document.getElementById('formBody');
+            formBody.classList.remove('visible');
+            document.getElementById('selectedTypeBanner').style.display = 'none';
+
+            document.getElementById('cardSelectorSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function toggleFields() {
@@ -851,8 +1663,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
         });
 
-        // Initialize toggle on load
-        toggleFields();
+        // Auto-init: if an application type is already set (proxy load, POST error re-render), show form
+        (function() {
+            const presetType = document.getElementById('applicationType').value;
+            if (presetType) {
+                selectAppType(presetType);
+            }
+        })();
 
         // JS file size check — warn before upload (8MB threshold)
         function checkFileSize(input) {

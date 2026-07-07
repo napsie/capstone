@@ -60,7 +60,7 @@ if ($addr === ', , Pasig City') $addr = $app['complete_address'] ?? '';
         <?php echo oscaCheck(($app['health_status'] ?? '') === 'Physically Fit'); ?> Physically Fit
         <?php echo oscaCheck(($app['health_status'] ?? '') === 'Bedridden'); ?> Bedridden
         <?php echo oscaCheck(str_contains($app['health_status'] ?? '', 'Frail')); ?> Frail/Sickly
-        <?php echo oscaCheck(($app['health_status'] ?? '') === 'PWD'); ?> PWD
+        <?php echo oscaCheck(($app['health_status'] ?? '') === 'PWD'); ?> Disability Support
     </div>
 
     <div class="cert-box">

@@ -88,7 +88,7 @@ $id = fn($name) => $prefix . $name;
                 <option value="Physically Fit">Physically Fit</option>
                 <option value="Bedridden">Bedridden</option>
                 <option value="Frail/Sickly">Frail/Sickly</option>
-                <option value="PWD">PWD</option>
+                <option value="PWD">Disability Support</option>
             </select>
         </div>
     </div>

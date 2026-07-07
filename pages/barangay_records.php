@@ -216,7 +216,7 @@ function getStatusClass($status) {
                             <div class="form-group">
                                 <label for="applicationType">Application Type</label>
                                 <select id="applicationType" name="applicationType" required>
-                                    <option value="pwd">PWD</option>
+                                    <option value="pwd">Disability Support</option>
                                     <option value="senior">Senior Citizen</option>
                                 </select>
                             </div>
@@ -293,7 +293,7 @@ function getStatusClass($status) {
 
                     <div id="pwd-fields-modal">
                         <div class="form-section">
-                            <h3><i class="fas fa-wheelchair"></i> PWD Specific Information</h3>
+                            <h3><i class="fas fa-wheelchair"></i> Disability Support Information</h3>
                             <div class="form-group">
                                 <label>Type of Disability</label>
                                 <div>

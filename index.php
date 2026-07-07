@@ -136,7 +136,7 @@ header('Expires: 0');
                 <i class="fas fa-hands-helping"></i>
             </div>
             <div class="brand-text">
-                <h1>CARELINK</h1>
+                <h1>SENIORLINK</h1>
                 <p>Centralized Profiling System</p>
             </div>
         </div>
@@ -154,26 +154,12 @@ header('Expires: 0');
                 <i class="fas fa-shield-alt" aria-hidden="true"></i>
                 Government Services Portal
             </div>
-            <h2 id="hero-title">Secure profiling for <span>Seniors &amp; PWD</span></h2>
-            <p class="hero-sub">CARELINK is a centralized profiling and record authentication system for efficient government service delivery.</p>
+            <h2 id="hero-title">Secure profiling for <span>Seniors &amp; Community Members</span></h2>
+            <p class="hero-sub">SENIORLINK is a centralized profiling and record authentication system for efficient government service delivery.</p>
             <p class="hero-audience">
                 <i class="fas fa-users" aria-hidden="true"></i>
-                Built for Senior Citizens and Persons with Disabilities
+                Built for senior citizens and eligible residents
             </p>
-            <div class="hero-stats" aria-hidden="true">
-                <div class="hero-stat">
-                    <strong>Secure</strong>
-                    <span>Identity Verification</span>
-                </div>
-                <div class="hero-stat">
-                    <strong>Fast</strong>
-                    <span>Record Access</span>
-                </div>
-                <div class="hero-stat">
-                    <strong>Trusted</strong>
-                    <span>Data Privacy</span>
-                </div>
-            </div>
         </section>
 
         <section class="portal-panel" aria-labelledby="portal-heading">
@@ -228,7 +214,7 @@ header('Expires: 0');
         </div>
 
         <footer class="site-footer">
-            <p>&copy; 2025 CARELINK — Centralized Profiling System. All Rights Reserved.</p>
+            <p>&copy; 2025 SENIORLINK — Centralized Profiling System. All Rights Reserved.</p>
         </footer>
     </div>
 
@@ -236,13 +222,13 @@ header('Expires: 0');
          aria-labelledby="about-title" aria-hidden="true">
         <div class="about-content">
             <div class="about-header">
-                <h3 id="about-title">About CARELINK</h3>
+                <h3 id="about-title">About SENIORLINK</h3>
                 <button class="close-btn" type="button" aria-label="Close about dialog">&times;</button>
             </div>
             <div class="about-body">
-                <p>CARELINK is a Centralized Profiling and Record Authentication System designed specifically for Senior Citizens and Persons with Disabilities (PWD).</p>
-                <p>CARELINK ensures secure and accurate identity verification while maintaining data privacy.</p>
-                <p>The system provides efficient access to government services for our senior citizens and PWD community members.</p>
+                <p>SENIORLINK is a Centralized Profiling and Record Authentication System designed for senior citizens and community members who need reliable access to government services.</p>
+                <p>SENIORLINK ensures secure and accurate identity verification while maintaining data privacy.</p>
+                <p>The system provides efficient access to essential services for eligible residents.</p>
                 <div class="team-section">
                     <h4>Our Team</h4>
                     <div class="team-members-container">

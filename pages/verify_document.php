@@ -13,7 +13,7 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['department_ad
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CARELINK — Verify Documents</title>
+    <title>SENIORLINK — Verify Documents</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/department-sidebar.css">
     <style>
@@ -542,7 +542,7 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['department_ad
                                 if ($state === 'Released') $stateBadgeClass = 'badge-released';
 
                                 $typeLabel = '';
-                                if ($row['application_type'] === 'pwd') $typeLabel = 'PWD';
+                                if ($row['application_type'] === 'pwd') $typeLabel = 'Disability Support';
                                 if ($row['application_type'] === 'senior') $typeLabel = 'Senior Citizen ID';
                                 if ($row['application_type'] === 'pension') $typeLabel = 'Local Social Pension';
                                 if ($row['application_type'] === 'burial') $typeLabel = 'Burial Assistance';
@@ -763,7 +763,7 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['department_ad
                 } else {
                     complianceHtml += `
                         <div class="compliance-item">
-                            <span>Age Compliance (PWD check)</span>
+                            <span>Age Compliance (Disability support check)</span>
                             <span class="pass-tag" style="color: #3498db;"><i class="fas fa-info-circle"></i> No senior restriction</span>
                         </div>`;
                 }
@@ -819,7 +819,7 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['department_ad
                 let dynamicHtml = "";
                 if (app.application_type === 'pwd') {
                     dynamicHtml = `
-                        <h3 style="font-size: 1rem; color: var(--primary); margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">PWD Details</h3>
+                        <h3 style="font-size: 1rem; color: var(--primary); margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">Disability Support Details</h3>
                         <p style="font-size: 0.9rem; margin-bottom: 5px;"><strong>Disability Type:</strong> ${app.disability_type || 'None selected'}</p>
                     `;
                 } else if (app.application_type === 'pension') {

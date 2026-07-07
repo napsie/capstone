@@ -67,6 +67,13 @@ body.dark-mode {
 .dark-mode .records-section,
 .dark-mode .yearly-records,
 .dark-mode .filter-section,
+
+/* Card improvements for application tiles (global fallback) */
+.app-type-card {
+    will-change: transform, box-shadow;
+    -webkit-font-smoothing: antialiased;
+}
+.app-type-card .card-icon { box-shadow: 0 8px 18px rgba(2,6,23,0.35); }
 .dark-mode .records-table {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
