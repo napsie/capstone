@@ -292,11 +292,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             color: var(--text, #f8fafc);
             margin: 15% auto; 
             padding: 30px;
-            border: 1px solid var(--border-color, #475569);
+            border: 1px solid #d0dae8;
             width: 90%;
             max-width: 500px;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            border-radius: 14px;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.1), 0 24px 56px rgba(15, 23, 42, 0.2);
         }
         .close {
             color: #aaa;
@@ -718,6 +718,37 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             margin: 0; font-size: 0.875rem; color: #64748b;
         }
 
+        .form-top-nav {
+            margin-bottom: 18px;
+        }
+        .btn-form-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border-radius: 10px;
+            border: 1px solid rgba(15,23,42,0.12);
+            background: #fff;
+            color: #475569;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+        }
+        .btn-form-back:hover {
+            background: #f8fafc;
+            border-color: rgba(59,130,246,0.35);
+            color: #1e40af;
+        }
+        .form-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
         /* ── Individual Card ─────────────────────────── */
         .app-type-card {
             position: relative;
@@ -928,6 +959,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             from { opacity: 0; transform: translateY(12px) scale(.995); }
             to   { opacity: 1; transform: translateY(0) scale(1); }
         }
+        @keyframes cardHoverBounce {
+            0%   { transform: translateY(0) scale(1); }
+            40%  { transform: translateY(-18px) scale(1.025); }
+            65%  { transform: translateY(-10px) scale(1.012); }
+            85%  { transform: translateY(-14px) scale(1.018); }
+            100% { transform: translateY(-12px) scale(1.015); }
+        }
+        @keyframes arrowBounce {
+            0%, 100% { transform: translateY(-50%) translateX(0); }
+            50%      { transform: translateY(-50%) translateX(10px); }
+        }
         /* staggered entrance for up to 8 cards */
         #appTypeGrid .app-type-card { animation: cardLiftIn 420ms cubic-bezier(0.2,0.8,0.2,1) both; }
         #appTypeGrid .app-type-card:nth-child(1) { animation-delay: 40ms; }
@@ -940,11 +982,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         #appTypeGrid .app-type-card:nth-child(8) { animation-delay: 390ms; }
 
         .app-type-card {
-            transition: transform 260ms cubic-bezier(0.2,0.8,0.2,1), box-shadow 260ms ease, border-color 160ms ease;
+            transition: transform 0.35s cubic-bezier(0.34, 1.2, 0.64, 1), box-shadow 260ms ease, border-color 200ms ease;
             background: #ffffff !important;
             border-radius: 14px !important;
-            border: 1px solid rgba(15,23,42,0.06) !important;
-            box-shadow: 0 14px 40px rgba(2,6,23,0.06) !important;
+            border: 1px solid #d8e0ea !important;
+            box-shadow: 0 4px 6px rgba(15, 23, 42, 0.04), 0 12px 28px rgba(15, 23, 42, 0.08) !important;
             display: flex;
             align-items: flex-start;
             gap: 22px;
@@ -959,9 +1001,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             display: none !important;
         }
         .app-type-card:hover {
-            transform: translateY(-12px) scale(1.015);
-            box-shadow: 0 36px 90px rgba(2,6,23,0.14);
-            border-color: rgba(15,23,42,0.12) !important;
+            animation: cardHoverBounce 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            box-shadow: 0 8px 16px rgba(15, 23, 42, 0.06), 0 24px 48px rgba(15, 23, 42, 0.14) !important;
+            border-color: #b8c8dc !important;
         }
         .app-type-card .card-icon {
             width: 56px; height: 56px; border-radius: 12px;
@@ -984,16 +1026,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .app-type-card .card-check { display: flex !important; opacity: 0; visibility: hidden; }
         .app-type-card.selected .card-check { opacity: 1; visibility: visible; }
         /* Arrow: right aligned vertically centered */
-        .app-type-card .card-arrow { position: absolute; right: 18px; top: 50%; transform: translateY(-50%); color: #c7cdd4; font-size: 0.95rem; transition: transform 200ms ease, color 200ms ease; }
-        .app-type-card:hover .card-arrow { transform: translateY(-50%) translateX(6px); color: #94a3b8; }
+        .app-type-card .card-arrow {
+            position: absolute;
+            right: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 1rem;
+        }
+        .app-type-card:hover .card-arrow {
+            color: var(--card-accent, #3b82f6);
+            animation: arrowBounce 0.75s ease-in-out infinite;
+        }
 
         /* container shadow around the whole application form area */
         .application-form {
             padding: 18px 20px 28px;
-            border-radius: 12px;
+            border-radius: 14px;
             background: linear-gradient(180deg, rgba(255,255,255,0.99), rgba(250,250,250,0.98));
-            box-shadow: 0 18px 60px rgba(2,6,23,0.06);
-            border: 1px solid rgba(2,6,23,0.03);
+            box-shadow: 0 4px 8px rgba(15, 23, 42, 0.04), 0 16px 40px rgba(15, 23, 42, 0.08);
+            border: 1px solid #d8e0ea;
         }
         /* Final UI polish overrides */
         .app-type-card {
@@ -1009,7 +1061,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             opacity: 0; transition: opacity 200ms ease, background 200ms ease;
         }
         .app-type-card:hover::before { opacity: 1; }
-        .app-type-card:hover { border-left-color: var(--card-accent, #60a5fa) !important; }
+        .app-type-card:hover { border-left-color: var(--card-accent, #60a5fa) !important; border-color: #b8c8dc !important; }
 
         .app-type-card .card-icon {
             width: 72px !important; height: 72px !important; border-radius: 50% !important;
@@ -1026,164 +1078,287 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         .app-type-grid { gap: 24px; }
 
+        .application-form .selected-type-banner {
+            border: 1px solid #d0dae8 !important;
+            box-shadow: 0 4px 10px rgba(15, 23, 42, 0.05), 0 14px 32px rgba(15, 23, 42, 0.08);
+        }
+        .application-form .form-section {
+            border: 1px solid #d8e0ea;
+            border-radius: 14px;
+            padding: 22px 24px;
+            margin-bottom: 20px;
+            background: #ffffff;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04), 0 10px 24px rgba(15, 23, 42, 0.06);
+        }
+
         #cardSelectorSection.hidden { display: none; }
 
         /* Benefit details modal */
         #benefitModal {
-            display: none;
             align-items: center;
             justify-content: center;
             padding: 24px;
             box-sizing: border-box;
         }
         #benefitModal .modal-content {
-            margin: 0;
+            max-width: 680px;
             width: 100%;
-            max-width: 720px;
-            max-height: calc(100vh - 48px);
-            border-radius: 16px;
+            margin: 0;
+            max-height: 90vh;
+            border-radius: 18px;
             padding: 0;
             overflow: hidden;
-            position: relative;
             display: flex;
             flex-direction: column;
+            background: #ffffff !important;
+            color: #1e293b !important;
+            border: 1px solid #d0dae8;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08), 0 28px 70px rgba(15, 23, 42, 0.18);
         }
         .benefit-modal-header {
             display: flex;
             align-items: flex-start;
-            gap: 18px;
-            padding: 28px 28px 22px;
-            background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(99,102,241,0.04));
-            border-bottom: 1px solid rgba(15,23,42,0.08);
+            gap: 16px;
+            padding: 24px 56px 22px 24px;
+            background: linear-gradient(135deg, #f0f7ff 0%, #f8fafc 55%, #ffffff 100%);
+            border-bottom: 1px solid #e2e8f0;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .benefit-modal-header::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 5px;
+            background: var(--benefit-accent, #3b82f6);
+            border-radius: 18px 0 0 0;
         }
         .benefit-modal-icon {
-            width: 64px;
-            height: 64px;
-            border-radius: 50%;
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.45rem;
+            font-size: 1.35rem;
             color: #fff;
             flex-shrink: 0;
-            box-shadow: 0 12px 28px rgba(2,6,23,0.12);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.25);
         }
         .benefit-modal-header h2 {
-            margin: 0 0 6px;
-            font-size: 1.25rem;
+            margin: 0 0 8px;
+            font-size: 1.15rem;
             font-weight: 800;
-            color: #0f172a;
-            line-height: 1.35;
+            color: #0f172a !important;
+            line-height: 1.4;
+            padding-right: 8px;
         }
         .benefit-modal-header p {
             margin: 0;
-            font-size: 0.92rem;
-            color: #475569;
-            line-height: 1.55;
+            font-size: 0.9rem;
+            color: #64748b !important;
+            line-height: 1.6;
         }
         .benefit-modal-body {
-            padding: 24px 28px 28px;
+            padding: 20px 24px 24px;
+            max-height: none;
             flex: 1;
             overflow-y: auto;
+            background: #ffffff !important;
         }
-        .benefit-modal-section {
-            margin-bottom: 22px;
+        .benefit-detail-block {
+            background: #f8fafc;
+            border: 1px solid #d8e0ea;
+            border-radius: 12px;
+            padding: 16px 18px;
+            margin-bottom: 14px;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04), 0 8px 20px rgba(15, 23, 42, 0.05);
         }
-        .benefit-modal-section:last-of-type { margin-bottom: 0; }
-        .benefit-modal-section h3 {
+        .benefit-detail-block:last-of-type {
+            margin-bottom: 0;
+        }
+        .benefit-detail-label {
             margin: 0 0 12px;
-            font-size: 0.82rem;
-            font-weight: 800;
+            font-size: 0.78rem;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: #64748b;
+            letter-spacing: 0.06em;
+            color: #475569;
             display: flex;
             align-items: center;
             gap: 8px;
         }
-        .benefit-modal-section h3 i { color: #3b82f6; }
-        .benefit-list {
+        .benefit-detail-label i {
+            width: 26px;
+            height: 26px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.72rem;
+            flex-shrink: 0;
+        }
+        .benefit-detail-block--benefits .benefit-detail-label i {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+        .benefit-detail-block--requirements .benefit-detail-label i,
+        .benefit-detail-block--documents .benefit-detail-label i {
+            background: #dbeafe;
+            color: #2563eb;
+        }
+        .benefit-detail-list {
             margin: 0;
             padding: 0;
             list-style: none;
         }
-        .benefit-list li {
+        .benefit-detail-list li {
             position: relative;
-            padding: 10px 12px 10px 36px;
-            margin-bottom: 8px;
-            background: #f8fafc;
-            border: 1px solid rgba(15,23,42,0.06);
-            border-radius: 10px;
+            padding: 9px 0 9px 22px;
             font-size: 0.9rem;
-            color: #334155;
-            line-height: 1.45;
+            color: #334155 !important;
+            line-height: 1.55;
+            border-bottom: 1px solid #e8eef4;
         }
-        .benefit-list li::before {
-            content: '\f00c';
-            font-family: 'Font Awesome 6 Free';
-            font-weight: 900;
+        .benefit-detail-list li:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        .benefit-detail-list li:first-child {
+            padding-top: 0;
+        }
+        .benefit-detail-list li::before {
+            content: '';
             position: absolute;
-            left: 12px;
-            top: 12px;
-            color: #10b981;
-            font-size: 0.75rem;
+            left: 4px;
+            top: 15px;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #94a3b8;
         }
-        .benefit-list.requirements li::before {
-            content: '\f15c';
-            color: #3b82f6;
+        .benefit-detail-block--benefits .benefit-detail-list li::before {
+            background: #22c55e;
+        }
+        .benefit-detail-block--requirements .benefit-detail-list li::before,
+        .benefit-detail-block--documents .benefit-detail-list li::before {
+            background: #3b82f6;
+        }
+        .benefit-detail-block--benefits .benefit-detail-list li:first-child::before {
+            top: 6px;
+        }
+        .benefit-detail-block--requirements .benefit-detail-list li:first-child::before,
+        .benefit-detail-block--documents .benefit-detail-list li:first-child::before {
+            top: 6px;
         }
         .benefit-ack-row {
             display: flex;
             align-items: flex-start;
-            gap: 10px;
-            margin-top: 20px;
+            gap: 12px;
+            margin-top: 16px;
             padding: 14px 16px;
             background: #fffbeb;
-            border: 1px solid #fde68a;
-            border-radius: 10px;
+            border: 1px solid #f0d78c;
+            border-radius: 12px;
             font-size: 0.88rem;
-            color: #78350f;
-            line-height: 1.45;
+            color: #92400e !important;
+            line-height: 1.55;
+            box-shadow: 0 2px 8px rgba(146, 64, 14, 0.06);
         }
-        .benefit-ack-row input { margin-top: 3px; flex-shrink: 0; }
+        .benefit-ack-row input {
+            margin-top: 4px;
+            flex-shrink: 0;
+            accent-color: #3b82f6;
+        }
         .benefit-modal-actions {
             display: flex;
             gap: 12px;
             justify-content: flex-end;
-            padding: 18px 28px 24px;
-            border-top: 1px solid rgba(15,23,42,0.08);
-            background: #fafafa;
+            padding: 16px 24px 20px;
+            border-top: 1px solid #d8e0ea;
+            background: #f8fafc !important;
+            flex-shrink: 0;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
         }
         .btn-benefit-cancel {
             padding: 11px 20px;
             border-radius: 10px;
-            border: 1px solid rgba(15,23,42,0.12);
-            background: #fff;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
             color: #475569;
             font-weight: 600;
             cursor: pointer;
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+        .btn-benefit-cancel:hover {
+            background: #f1f5f9;
+            border-color: #94a3b8;
         }
         .btn-benefit-proceed {
             padding: 11px 22px;
             border-radius: 10px;
             border: none;
-            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
             color: #fff;
             font-weight: 700;
             cursor: pointer;
             display: inline-flex;
             align-items: center;
             gap: 8px;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .btn-benefit-proceed:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px rgba(37, 99, 235, 0.4);
         }
         .btn-benefit-proceed:disabled {
-            opacity: 0.45;
+            opacity: 0.5;
             cursor: not-allowed;
+            box-shadow: none;
         }
         #benefitModal .close {
             position: absolute;
-            right: 18px;
-            top: 18px;
+            right: 16px;
+            top: 16px;
             z-index: 2;
+            float: none;
+            color: #64748b !important;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-size: 22px;
+            line-height: 1;
+            transition: background 0.2s ease, color 0.2s ease;
+        }
+        #benefitModal .close:hover {
+            color: #0f172a !important;
+            background: rgba(15, 23, 42, 0.06);
+        }
+
+        /* Keep benefit modal light and readable even in dark mode */
+        .dark-mode #benefitModal .modal-content,
+        .dark-mode #benefitModal .benefit-modal-body,
+        .dark-mode #benefitModal .benefit-modal-actions {
+            background: #ffffff !important;
+            color: #1e293b !important;
+        }
+        .dark-mode #benefitModal .benefit-modal-header h2 {
+            color: #0f172a !important;
+        }
+        .dark-mode #benefitModal .benefit-modal-header p {
+            color: #64748b !important;
+        }
+        .dark-mode #benefitModal .benefit-detail-list li {
+            color: #334155 !important;
+        }
+        .dark-mode #benefitModal .benefit-ack-row {
+            color: #92400e !important;
         }
     </style>
 </head>
@@ -1264,6 +1439,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             <strong id="bannerLabel"></strong>
                         </div>
                         <button type="button" class="btn-change-type" onclick="resetAppType()"><i class="fas fa-arrow-left"></i> Change</button>
+                    </div>
+
+                    <div class="form-top-nav">
+                        <button type="button" class="btn-form-back" onclick="goBackFromApplication()">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </button>
                     </div>
 
                 <form method="POST" action="new_application.php" enctype="multipart/form-data" id="mainAppForm">
@@ -1410,6 +1591,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     </div>
 
                     <div class="form-actions">
+                        <button type="button" class="btn-form-back" onclick="goBackFromApplication()">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </button>
                         <button type="submit" class="btn" style="background-color: var(--primary);"><i class="fas fa-save"></i> Submit Application</button>
                     </div>
                 </form>
@@ -1430,17 +1614,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 </div>
             </div>
             <div class="benefit-modal-body">
-                <div class="benefit-modal-section">
-                    <h3><i class="fas fa-star"></i> What You Get</h3>
-                    <ul class="benefit-list" id="benefitModalBenefits"></ul>
+                <div class="benefit-detail-block benefit-detail-block--benefits">
+                    <h3 class="benefit-detail-label"><i class="fas fa-star"></i> What You Get</h3>
+                    <ul class="benefit-detail-list" id="benefitModalBenefits"></ul>
                 </div>
-                <div class="benefit-modal-section">
-                    <h3><i class="fas fa-clipboard-check"></i> Requirements to Apply</h3>
-                    <ul class="benefit-list requirements" id="benefitModalRequirements"></ul>
+                <div class="benefit-detail-block benefit-detail-block--requirements">
+                    <h3 class="benefit-detail-label"><i class="fas fa-clipboard-check"></i> Requirements to Apply</h3>
+                    <ul class="benefit-detail-list" id="benefitModalRequirements"></ul>
                 </div>
-                <div class="benefit-modal-section">
-                    <h3><i class="fas fa-folder-open"></i> Documents Needed</h3>
-                    <ul class="benefit-list requirements" id="benefitModalDocuments"></ul>
+                <div class="benefit-detail-block benefit-detail-block--documents">
+                    <h3 class="benefit-detail-label"><i class="fas fa-folder-open"></i> Documents Needed</h3>
+                    <ul class="benefit-detail-list" id="benefitModalDocuments"></ul>
                 </div>
                 <label class="benefit-ack-row">
                     <input type="checkbox" id="benefitAckCheckbox" onchange="toggleProceedButton()">
@@ -1500,7 +1684,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             document.getElementById('benefitModalTitle').textContent = meta.label || value;
             document.getElementById('benefitModalSummary').textContent = details.summary || '';
             document.getElementById('benefitModalIcon').innerHTML = `<i class="${meta.icon || 'fas fa-file'}"></i>`;
-            document.getElementById('benefitModalIcon').style.background = meta.bg || 'linear-gradient(135deg,#3b82f6,#6366f1)';
+            document.getElementById('benefitModalIcon').style.background = meta.bg || 'linear-gradient(135deg,#3b82f6,#2563eb)';
+            document.querySelector('#benefitModal .modal-content').style.setProperty('--benefit-accent', meta.accent || '#3b82f6');
 
             const fillList = (id, items) => {
                 const el = document.getElementById(id);
@@ -1692,6 +1877,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             document.getElementById('cardSelectorSection').classList.remove('hidden');
 
             document.getElementById('cardSelectorSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function goBackFromApplication() {
+            const type = document.getElementById('applicationType').value;
+            document.getElementById('formBody').classList.remove('visible');
+            document.getElementById('selectedTypeBanner').style.display = 'none';
+            document.getElementById('cardSelectorSection').classList.remove('hidden');
+
+            if (type) {
+                openBenefitModal(type);
+            } else {
+                document.getElementById('cardSelectorSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         }
 
         function toggleFields() {
