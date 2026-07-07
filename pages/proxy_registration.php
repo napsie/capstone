@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/crypto.php';
 require_once '../includes/barangays_list.php';
+require_once '../includes/application_types.php';
 
 $qrCodeUrl = '';
 $encryptedToken = '';
@@ -337,9 +338,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="form-group">
                             <label for="applicationType">Application Type</label>
                             <select id="applicationType" name="applicationType" class="form-control" onchange="toggleFormFields()" required>
-                                <option value="senior">Senior Citizen ID Card</option>
-                                <option value="pension">Local Social Pension</option>
-                                <option value="burial">Burial Assistance</option>
+                                <?php foreach (getApplicationTypeOptions() as $val => $label): ?>
+                                <option value="<?php echo $val; ?>"><?php echo htmlspecialchars($label); ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
                     </div>
@@ -442,7 +443,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             document.getElementById('dateOfDeath').removeAttribute('required');
             document.getElementById('relationshipToDeceased').removeAttribute('required');
 
-            if (type === 'pension') {
+            if (type === 'pension' || type === 'national_pension') {
                 pensionFields.style.display = 'block';
                 document.getElementById('sssNumber').setAttribute('required', 'required');
             } else if (type === 'burial') {

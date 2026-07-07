@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../includes/db_connect.php';
+require_once '../includes/application_types.php';
 
 // Check if the user is logged in and has the correct role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'barangay_staff') {
@@ -198,6 +199,8 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
             grid-template-columns: 1.2fr 1fr;
             gap: 30px;
         }
+        .checkbox-group label { display: inline-block; margin-right: 12px; font-size: 0.85rem; }
+        #applicationModal .modal-body { max-height: 75vh; overflow-y: auto; }
     </style>
 </head>
 <body>
@@ -246,9 +249,9 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                         <input type="text" class="search-box" placeholder="Search applications...">
                         <select id="applicationTypeFilter" class="btn">
                             <option value="">All Types</option>
-                            <option value="senior">Senior</option>
-                            <option value="pension">Pension</option>
-                            <option value="burial">Burial</option>
+                            <?php foreach (getApplicationTypeOptions() as $val => $label): ?>
+                            <option value="<?php echo $val; ?>"><?php echo htmlspecialchars($label); ?></option>
+                            <?php endforeach; ?>
                         </select>
                         <select id="statusFilter" class="btn">
                             <option value="" selected>All States</option>
@@ -324,9 +327,9 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                                     <div class="form-group">
                                         <label for="applicationType">Application Type</label>
                                         <select id="applicationType" name="applicationType" required disabled>
-                                            <option value="senior">Senior Citizen</option>
-                                            <option value="pension">Local Social Pension</option>
-                                            <option value="burial">Burial Assistance</option>
+                                            <?php foreach (getApplicationTypeOptions() as $val => $label): ?>
+                                            <option value="<?php echo $val; ?>"><?php echo htmlspecialchars($label); ?></option>
+                                            <?php endforeach; ?>
                                         </select>
                                     </div>
                                 </div>
@@ -364,6 +367,46 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                                     <label for="completeAddress">Complete Address</label>
                                     <textarea id="completeAddress" name="completeAddress" required></textarea>
                                 </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="emergencyContactName">Emergency Contact Name</label>
+                                        <input type="text" id="emergencyContactName" name="emergencyContactName">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="emergencyContact">Emergency Contact Number</label>
+                                        <input type="text" id="emergencyContact" name="emergencyContact">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <?php $formFieldPrefix = ''; include '../partials/osca_form_sections.php'; ?>
+
+                            <div id="pension-fields-modal" class="form-section" style="display:none;">
+                                <h3><i class="fas fa-wallet"></i> Social Pension</h3>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="sssNumber">SSS Number</label>
+                                        <input type="text" id="sssNumber" name="sssNumber">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="pensionAmount">Verified Monthly Pension (PHP)</label>
+                                        <input type="number" step="0.01" id="pensionAmount" name="pensionAmount" readonly>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="burial-fields-modal" class="form-section" style="display:none;">
+                                <h3><i class="fas fa-ribbon"></i> Burial Assistance</h3>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="dateOfDeath">Date of Passing</label>
+                                        <input type="date" id="dateOfDeath" name="dateOfDeath">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="relationshipToDeceased">Relationship to Deceased</label>
+                                        <input type="text" id="relationshipToDeceased" name="relationshipToDeceased">
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="form-section">
@@ -382,7 +425,7 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
 
                             <div class="form-actions" id="modalFormActions">
                                 <button type="submit" class="btn"><i class="fas fa-save"></i> Save Changes</button>
-                                <button type="button" class="btn btn-accent" onclick="exportApplicationDetails(document.getElementById('applicationId').value)"><i class="fas fa-download"></i> Export</button>
+                                <button type="button" class="btn btn-accent" onclick="exportApplicationDetails(document.getElementById('applicationId').value)"><i class="fas fa-print"></i> Print Official Form</button>
                                 <button type="button" class="btn" style="background-color: #3b82f6;" id="btnForwardReview" onclick="forwardToReviewDesk()">Submit to Review Desk</button>
                             </div>
                         </form>
@@ -400,7 +443,9 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
 
     <script src="../assets/js/sidebar-toggle.js"></script>
     <script src="../assets/js/dark-mode.js"></script>
+    <script src="../assets/js/osca-form-fields.js"></script>
     <script>
+        const TYPE_LABELS = <?php echo json_encode(getApplicationTypeOptions()); ?>;
         document.addEventListener('DOMContentLoaded', function() {
             // Event delegation for View Details
             const tableBody = document.querySelector('#applicationsTableBody');
@@ -461,6 +506,26 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                     document.getElementById('birthDate').value = application.birth_date || '';
                     document.getElementById('contactNumber').value = application.contact_number || '';
                     document.getElementById('completeAddress').value = application.complete_address || '';
+                    document.getElementById('emergencyContactName').value = application.emergency_contact_name || '';
+                    document.getElementById('emergencyContact').value = application.emergency_contact || '';
+
+                    populateOscaFields(application, '');
+
+                    const pensionModal = document.getElementById('pension-fields-modal');
+                    const burialModal = document.getElementById('burial-fields-modal');
+                    pensionModal.style.display = 'none';
+                    burialModal.style.display = 'none';
+                    if (application.application_type === 'pension' || application.application_type === 'national_pension') {
+                        pensionModal.style.display = 'block';
+                        document.getElementById('sssNumber').value = application.sss_number || '';
+                        document.getElementById('pensionAmount').value = application.pension_amount || '';
+                    }
+                    if (application.application_type === 'burial') {
+                        burialModal.style.display = 'block';
+                        document.getElementById('dateOfDeath').value = application.date_of_death || '';
+                        document.getElementById('relationshipToDeceased').value = application.relationship_to_deceased || '';
+                    }
+                    toggleOscaFormFields(application.application_type, '');
 
                     // Display Stepper Progress
                     const steps = ['Received', 'For Review', 'Verified', 'Approved', 'Released'];
@@ -660,11 +725,7 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                             if (state === 'Approved') stateBadgeClass = 'badge-approved';
                             if (state === 'Released') stateBadgeClass = 'badge-released';
 
-                            let typeLabel = '';
-                            if (app.application_type === 'pwd') typeLabel = 'PWD';
-                            if (app.application_type === 'senior') typeLabel = 'Senior Citizen ID';
-                            if (app.application_type === 'pension') typeLabel = 'Local Social Pension';
-                            if (app.application_type === 'burial') typeLabel = 'Burial Assistance';
+                            let typeLabel = TYPE_LABELS[app.application_type] || app.application_type;
 
                             // Detect blurry scan returned reason
                             let blurryWarning = '';

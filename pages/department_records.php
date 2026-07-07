@@ -1,7 +1,8 @@
 <?php
 session_start();
 require_once '../includes/db_connect.php';
-require_once '../includes/barangays_list.php'; // Ensure barangays_list.php is included
+require_once '../includes/barangays_list.php';
+require_once '../includes/application_types.php';
 
 // --- BACKEND LOGIC ---
 // Authenticate and authorize
@@ -698,7 +699,9 @@ function getStatusClass($status) {
                                     <div class="form-group">
                                         <label for="applicationType">Application Type</label>
                                         <select id="applicationType" name="applicationType" required>
-                                            <option value="senior" ${application.application_type === 'senior' ? 'selected' : ''}>Senior Citizen</option>
+                                            <?php foreach (getApplicationTypeOptions() as $val => $label): ?>
+                                            <option value="<?php echo $val; ?>" ${application.application_type === '<?php echo $val; ?>' ? 'selected' : ''}><?php echo htmlspecialchars($label); ?></option>
+                                            <?php endforeach; ?>
                                         </select>
                                     </div>
                                 </div>

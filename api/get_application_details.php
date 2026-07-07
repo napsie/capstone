@@ -1,18 +1,28 @@
 <?php
 session_start();
 require_once '../includes/db_connect.php';
+require_once '../includes/application_types.php';
 
 header('Content-Type: application/json');
 
-// Auth check
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['barangay_staff', 'department_admin', 'super_admin'])) {
     http_response_code(401);
     echo json_encode(['error' => 'Unauthorized. Please log in.']);
     exit();
 }
 
-$userRole    = $_SESSION['role'];
+$userRole     = $_SESSION['role'];
 $userBarangay = $_SESSION['barangay'] ?? null;
+
+$oscaCols = implode(', ', array_map(fn($c) => "a.$c", getOscaExtraColumns()));
+$baseCols = "a.id_number, a.full_name, a.application_type, a.birth_date, a.contact_number, a.complete_address,
+             a.emergency_contact, a.emergency_contact_name, a.date_submitted, a.status, a.barangay, a.disability_type,
+             (a.proof_of_address IS NOT NULL) as has_proof_of_address, (a.id_image IS NOT NULL) as has_id_image,
+             a.lastName, a.firstName, a.middleName, a.suffix,
+             a.sss_number, a.pension_amount, a.date_of_death, a.relationship_to_deceased,
+             a.is_proxy_application, a.proxy_name, a.proxy_relationship, a.proxy_token,
+             a.priority_level, a.workflow_state, a.additional_notes, a.email_address,
+             $oscaCols";
 
 try {
     $appId = isset($_GET['id']) ? trim($_GET['id']) : '';
@@ -22,39 +32,22 @@ try {
         exit();
     }
 
-    // Barangay staff can only access their own barangay's records
     if ($userRole === 'barangay_staff' && $userBarangay) {
-        $sql = "SELECT a.id_number, a.full_name, a.application_type, a.birth_date, a.contact_number, a.complete_address,
-                       a.emergency_contact, a.emergency_contact_name, a.date_submitted, a.status, a.barangay, a.disability_type,
-                       (a.proof_of_address IS NOT NULL) as has_proof_of_address, (a.id_image IS NOT NULL) as has_id_image,
-                       a.lastName, a.firstName, a.middleName, a.suffix,
-                       a.sss_number, a.pension_amount, a.date_of_death, a.relationship_to_deceased,
-                       a.is_proxy_application, a.proxy_name, a.proxy_relationship, a.proxy_token,
-                       a.priority_level, a.workflow_state,
+        $sql = "SELECT $baseCols,
                        (SELECT h.comments FROM application_history h
-                        WHERE h.application_id = a.id_number
-                          AND h.new_state = 'Received'
+                        WHERE h.application_id = a.id_number AND h.new_state = 'Received'
                           AND h.previous_state != 'None'
                         ORDER BY h.changed_at DESC LIMIT 1) as return_comments
-                FROM applications a
-                WHERE a.id_number = ? AND a.barangay = ?";
+                FROM applications a WHERE a.id_number = ? AND a.barangay = ?";
         $stmt = $conn->prepare($sql);
         $stmt->execute([$appId, $userBarangay]);
     } else {
-        $sql = "SELECT a.id_number, a.full_name, a.application_type, a.birth_date, a.contact_number, a.complete_address,
-                       a.emergency_contact, a.emergency_contact_name, a.date_submitted, a.status, a.barangay, a.disability_type,
-                       (a.proof_of_address IS NOT NULL) as has_proof_of_address, (a.id_image IS NOT NULL) as has_id_image,
-                       a.lastName, a.firstName, a.middleName, a.suffix,
-                       a.sss_number, a.pension_amount, a.date_of_death, a.relationship_to_deceased,
-                       a.is_proxy_application, a.proxy_name, a.proxy_relationship, a.proxy_token,
-                       a.priority_level, a.workflow_state,
+        $sql = "SELECT $baseCols,
                        (SELECT h.comments FROM application_history h
-                        WHERE h.application_id = a.id_number
-                          AND h.new_state = 'Received'
+                        WHERE h.application_id = a.id_number AND h.new_state = 'Received'
                           AND h.previous_state != 'None'
                         ORDER BY h.changed_at DESC LIMIT 1) as return_comments
-                FROM applications a
-                WHERE a.id_number = ?";
+                FROM applications a WHERE a.id_number = ?";
         $stmt = $conn->prepare($sql);
         $stmt->execute([$appId]);
     }
@@ -66,12 +59,8 @@ try {
         exit();
     }
 
-    // Fetch FSM transition history for this application
-    $sqlHistory  = "SELECT previous_state, new_state, changed_by, changed_at, comments
-                    FROM application_history
-                    WHERE application_id = ?
-                    ORDER BY changed_at ASC";
-    $stmtHistory = $conn->prepare($sqlHistory);
+    $stmtHistory = $conn->prepare("SELECT previous_state, new_state, changed_by, changed_at, comments
+                                   FROM application_history WHERE application_id = ? ORDER BY changed_at ASC");
     $stmtHistory->execute([$appId]);
     $application['history'] = $stmtHistory->fetchAll(PDO::FETCH_ASSOC);
 
@@ -84,4 +73,3 @@ try {
 
 $stmt = null;
 $conn = null;
-?>

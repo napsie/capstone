@@ -2,6 +2,7 @@
 session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/crypto.php';
+require_once '../includes/application_types.php';
 
 // Helper function to calculate working days (excluding Sat/Sun)
 function getWorkingDays($startDate, $endDate) {
@@ -53,6 +54,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $emergencyContact = isset($_POST['emergencyContact']) ? trim(strip_tags($_POST['emergencyContact'])) : '';
     $emergencyContactName = isset($_POST['emergencyContactName']) ? trim(strip_tags($_POST['emergencyContactName'])) : '';
     $barangay = $_SESSION['barangay'] ?? ''; // Barangay from session
+    $oscaData = parseOscaFormPost($_POST);
 
     $idNumber = isset($_POST['idNumber']) ? trim(strip_tags($_POST['idNumber'])) : '';
     $disabilityType = null;
@@ -120,6 +122,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $proxyToken = isset($_POST['proxyToken']) ? trim(strip_tags($_POST['proxyToken'])) : null;
     $priorityLevel = ($isProxy && !empty($proxyToken)) ? 'high' : 'normal';
 
+    if (!empty($oscaData['house_no']) || !empty($oscaData['street'])) {
+        $parts = array_filter([
+            $oscaData['house_no'], $oscaData['street'], $barangay,
+            $oscaData['city'], $oscaData['province'], $oscaData['zip_code']
+        ]);
+        if ($parts) $completeAddress = implode(', ', $parts);
+    }
+
     if (empty($errorMessage)) {
         // Detect silent POST failure caused by upload exceeding post_max_size
         if (empty($_FILES) && $_SERVER['CONTENT_LENGTH'] > 0) {
@@ -166,25 +176,32 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if (empty($errorMessage)) {
             try {
                 // Prepare and bind - Including new columns
-                $stmt = $conn->prepare("INSERT INTO applications (
-                            id_number, full_name, application_type, birth_date, contact_number, complete_address,
+                $oscaCols = getOscaExtraColumns();
+                $colList = 'id_number, full_name, application_type, birth_date, contact_number, complete_address,
                             emergency_contact, emergency_contact_name, barangay,
                             proof_of_address, proof_of_address_type, id_image, id_image_type,
                             lastName, firstName, middleName, suffix, disability_type,
                             sss_number, pension_amount, date_of_death, relationship_to_deceased,
                             is_proxy_application, proxy_name, proxy_relationship, proxy_token,
-                            priority_level, workflow_state
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                            priority_level, workflow_state, ' . implode(', ', $oscaCols);
+                $placeholders = implode(', ', array_fill(0, 28 + count($oscaCols), '?'));
 
-                if ($stmt->execute([
+                $stmt = $conn->prepare("INSERT INTO applications ($colList) VALUES ($placeholders)");
+
+                $params = [
                     $idNumber, $fullName, $applicationType, $birthDate, $contactNumber, $completeAddress,
                     $emergencyContact, $emergencyContactName, $barangay,
                     $proofOfAddress, $proofOfAddressType, $idImage, $idImageType,
                     $lastName, $firstName, $middleName, $suffix, $disabilityType,
                     $sssNumber, $pensionAmount, $dateOfDeath, $relationshipToDeceased,
                     $isProxy, $proxyName, $proxyRelationship, $proxyToken,
-                    $priorityLevel, 'Received'
-                ])) {
+                    $priorityLevel, 'Received',
+                ];
+                foreach ($oscaCols as $col) {
+                    $params[] = $oscaData[$col];
+                }
+
+                if ($stmt->execute($params)) {
                     // Log history
                     $stmtHist = $conn->prepare("INSERT INTO application_history (application_id, previous_state, new_state, changed_by, comments) VALUES (?, ?, ?, ?, ?)");
                     $userName = $_SESSION['username'] ?? 'barangay_staff';
@@ -352,11 +369,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             <div class="form-group">
                                 <label for="applicationType">Application Type</label>
                                 <select id="applicationType" name="applicationType" required onchange="toggleFields()">
-                                    <option value="senior" <?php echo ($loadedProxyData['applicationType'] ?? '') === 'senior' ? 'selected' : ''; ?>>Senior Citizen ID & Booklet</option>
-                                    <option value="pension" <?php echo ($loadedProxyData['applicationType'] ?? '') === 'pension' ? 'selected' : ''; ?>>Local Social Pension (Ordinance 17-2025)</option>
-                                    <option value="national_pension" <?php echo ($loadedProxyData['applicationType'] ?? '') === 'national_pension' ? 'selected' : ''; ?>>National DSWD Pension (RA 11916)</option>
-                                    <option value="milestone_gift" <?php echo ($loadedProxyData['applicationType'] ?? '') === 'milestone_gift' ? 'selected' : ''; ?>>Milestone Cash Gift</option>
-                                    <option value="burial" <?php echo ($loadedProxyData['applicationType'] ?? '') === 'burial' ? 'selected' : ''; ?>>Burial Assistance (Ordinance 3-2026)</option>
+                                    <?php foreach (getApplicationTypeOptions() as $val => $label): ?>
+                                    <option value="<?php echo $val; ?>" <?php echo ($loadedProxyData['applicationType'] ?? '') === $val ? 'selected' : ''; ?>><?php echo htmlspecialchars($label); ?></option>
+                                    <?php endforeach; ?>
                                 </select>
                             </div>
                             <div class="form-group">
@@ -410,6 +425,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             </div>
                         </div>
                     </div>
+
+                    <?php $formFieldPrefix = ''; include '../partials/osca_form_sections.php'; ?>
 
                     <!-- Local Social Pension Fields -->
                     <div id="pension-fields" style="display: none;">
@@ -512,6 +529,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     <script src="../assets/js/sidebar-toggle.js"></script>
     <script src="../assets/js/dark-mode.js"></script>
+    <script src="../assets/js/osca-form-fields.js"></script>
     <script>
         function openProxyModal() {
             document.getElementById('proxyModal').style.display = "block";
@@ -611,45 +629,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         function toggleFields() {
             const type = document.getElementById('applicationType').value;
-            
-            // Hide all sub-sections
+
             document.getElementById('pension-fields').style.display = 'none';
             document.getElementById('burial-fields').style.display = 'none';
 
-            // Clear dynamic requirements
             document.getElementById('sssNumber').removeAttribute('required');
             document.getElementById('dateOfDeath').removeAttribute('required');
             document.getElementById('relationshipToDeceased').removeAttribute('required');
 
-            // Default document labels
-            const labelProof = document.getElementById('labelProofOfAddress');
-            const labelId = document.getElementById('labelIdImage');
-
-            if (type === 'senior') {
-                labelProof.textContent = "Proof of Address (Barangay Residency / Govt ID showing Pasig Address)";
-                labelId.textContent = "PSA Birth Certificate (Copy)";
-            } else if (type === 'pension') {
+            if (type === 'pension' || type === 'national_pension') {
                 document.getElementById('pension-fields').style.display = 'block';
                 document.getElementById('sssNumber').setAttribute('required', 'required');
-                labelProof.textContent = "Certificate of Barangay Indigency";
-                labelId.textContent = "Landbank ATM Card/Stub or Senior ID";
-            } else if (type === 'national_pension') {
-                document.getElementById('pension-fields').style.display = 'block';
-                document.getElementById('sssNumber').setAttribute('required', 'required');
-                labelProof.textContent = "Certificate of Indigency (City Urban Poor / CSWD)";
-                labelId.textContent = "DSWD Social Pension Application Form or Senior ID";
-            } else if (type === 'milestone_gift') {
-                labelProof.textContent = "PSA or LCR Birth Certificate (Certified True Copy)";
-                labelId.textContent = "Latest Whole-Body Picture of Senior (Printed on A4 bond paper)";
             } else if (type === 'burial') {
                 document.getElementById('burial-fields').style.display = 'block';
                 document.getElementById('dateOfDeath').setAttribute('required', 'required');
                 document.getElementById('relationshipToDeceased').setAttribute('required', 'required');
-                labelProof.textContent = "Certified True Copy of Death Certificate";
-                labelId.textContent = "Proof of Relationship (Marriage/Birth Certificate) and surrendering Deceased's IDs";
             }
-            
-            // Trigger checks
+
+            toggleOscaFormFields(type, '');
             checkAgeCompliance();
         }
 

@@ -157,10 +157,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
                 $typeMap = [
                     'senior'  => 'senior',
                     'senior citizen' => 'senior',
+                    'f1' => 'senior',
                     'pension' => 'pension',
                     'local social pension' => 'pension',
+                    'national pension' => 'national_pension',
+                    'national_pension' => 'national_pension',
+                    'milestone' => 'milestone_gift',
+                    'milestone_gift' => 'milestone_gift',
+                    'octogenarian' => 'milestone_gift',
+                    'f5' => 'milestone_gift',
                     'burial'  => 'burial',
                     'burial assistance' => 'burial',
+                    'f7' => 'burial',
+                    'landbank' => 'landbank',
+                    'f2' => 'landbank',
+                    'home visit' => 'home_visit',
+                    'home_visit' => 'home_visit',
+                    'f8' => 'home_visit',
                 ];
                 $normalised = strtolower(trim($value));
                 $value = $typeMap[$normalised] ?? $normalised;
