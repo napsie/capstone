@@ -20,6 +20,154 @@ function applicationTypeLabel(string $type): string {
     return $options[$type] ?? ucwords(str_replace('_', ' ', $type));
 }
 
+/**
+ * Benefit overview, eligibility, and document requirements per application type.
+ */
+function getApplicationBenefitDetails(): array {
+    return [
+        'senior' => [
+            'summary'      => 'Official registration for the Senior Citizens Identification Card issued by OSCA.',
+            'benefits'     => [
+                'Valid government-recognized senior ID for discounts and privileges',
+                'Access to local senior citizen programs and services',
+                'Required baseline document for other OSCA benefit applications',
+            ],
+            'requirements' => [
+                'Applicant must be at least 60 years old',
+                'Must be a resident of the barangay where application is filed',
+                'Valid proof of identity and proof of address',
+                'Personal appearance or authorized proxy with complete documents',
+            ],
+            'documents' => [
+                'Birth certificate or valid government-issued ID',
+                'Proof of address (utility bill, barangay certificate, etc.)',
+                '1×1 or 2×2 ID photo (if required by local OSCA)',
+            ],
+        ],
+        'landbank' => [
+            'summary'      => 'Enrollment for Land Bank cash card disbursement of senior citizen benefits.',
+            'benefits'     => [
+                'Direct crediting of approved cash benefits to a Land Bank account',
+                'Safer and faster release compared to over-the-counter claiming',
+                'Linked to OSCA senior records for recurring disbursements',
+            ],
+            'requirements' => [
+                'Must be a registered senior citizen (60+)',
+                'Active senior ID or pending senior ID application',
+                'Complete personal and address information',
+                'TIN and valid ID type for bank KYC compliance',
+            ],
+            'documents' => [
+                'Senior Citizens ID or proof of senior registration',
+                'Valid government-issued ID presented for verification',
+                'Proof of address',
+                'Completed Land Bank enrollment details (name on card, TIN, etc.)',
+            ],
+        ],
+        'pension' => [
+            'summary'      => 'Local social pension for indigent seniors with limited or no SSS/GSIS pension.',
+            'benefits'     => [
+                'Monthly local social pension assistance (subject to LGU allocation)',
+                'Support for seniors aged 65+ with verified low pension income',
+                'Priority for seniors without adequate retirement benefits',
+            ],
+            'requirements' => [
+                'Applicant must be at least 65 years old',
+                'Verified SSS pension must not exceed ₱4,000 per month',
+                'Must be a resident of the applying barangay',
+                'Complete SSS verification during application',
+            ],
+            'documents' => [
+                'Senior Citizens ID or valid government ID',
+                'SSS number for pension verification',
+                'Proof of address',
+                'Supporting documents for indigency assessment (if required)',
+            ],
+        ],
+        'national_pension' => [
+            'summary'      => 'National DSWD social pension under Republic Act 11916 for qualified indigent seniors.',
+            'benefits'     => [
+                'National government social pension for eligible seniors',
+                'Monthly assistance for seniors with no other pension benefits',
+                'Coordinated through OSCA and DSWD validation',
+            ],
+            'requirements' => [
+                'Applicant must be at least 65 years old',
+                'Must have no existing SSS/GSIS or other monthly pension (verified amount must be ₱0)',
+                'Must meet DSWD indigency and residency criteria',
+                'Complete assessment fields and supporting declarations',
+            ],
+            'documents' => [
+                'Senior Citizens ID or valid government ID',
+                'SSS number for zero-pension verification',
+                'Proof of address and residency',
+                'Income and household support declarations',
+            ],
+        ],
+        'milestone_gift' => [
+            'summary'      => 'Cash gift for seniors reaching milestone ages (octogenarian, nonagenarian, centenarian).',
+            'benefits'     => [
+                'One-time cash gift at ages 80, 85, 90, 95, or 100+',
+                'Recognition benefit for long-lived senior citizens',
+                'Processed through OSCA milestone verification',
+            ],
+            'requirements' => [
+                'Applicant age must match a milestone bracket (80, 85, 90, 95, or 100+)',
+                'Must be a registered senior citizen',
+                'Claimant details required if filed by a representative',
+                'Milestone age must match birth date on record',
+            ],
+            'documents' => [
+                'Senior Citizens ID',
+                'Birth certificate or valid ID showing date of birth',
+                'Proof of address',
+                'Claimant authorization documents (if applicable)',
+            ],
+        ],
+        'burial' => [
+            'summary'      => 'Financial assistance for burial expenses of a deceased senior citizen.',
+            'benefits'     => [
+                'Burial assistance for families of deceased seniors (60+)',
+                'Timely filing within the prescribed working-day window',
+                'Processed as an OSCA Form 7 claim',
+            ],
+            'requirements' => [
+                'Deceased must be at least 60 years old at time of passing',
+                'Application must be filed within 30 working days from date of death',
+                'Claimant must state relationship to the deceased',
+                'Complete deceased senior and claimant information',
+            ],
+            'documents' => [
+                'Death certificate of the deceased senior',
+                'Senior Citizens ID or proof senior status of deceased',
+                'Valid ID of claimant',
+                'Proof of relationship to deceased',
+                'Burial contract or funeral service documents (if available)',
+            ],
+        ],
+        'home_visit' => [
+            'summary'      => 'Home visitation and confirmation for bedridden, immobile, or hard-to-reach seniors.',
+            'benefits'     => [
+                'OSCA field validation without requiring personal appearance at office',
+                'Assessment of living arrangement, health, and support needs',
+                'Enables continued access to benefits for homebound seniors',
+            ],
+            'requirements' => [
+                'Senior must be 60+ and unable to visit OSCA in person',
+                'Complete visit purpose and living arrangement details',
+                'Health condition and maintenance medication information',
+                'Family or caregiver support details',
+            ],
+            'documents' => [
+                'Senior Citizens ID or valid ID',
+                'Medical certificate or doctor\'s recommendation (if available)',
+                'Proof of address',
+                'Caregiver or family contact information',
+            ],
+        ],
+    ];
+}
+
 function getOscaExtraColumns(): array {
     return [
         'place_of_birth', 'gender', 'civil_status', 'mothers_maiden_name',

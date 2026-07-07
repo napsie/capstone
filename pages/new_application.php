@@ -942,14 +942,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .app-type-card {
             transition: transform 260ms cubic-bezier(0.2,0.8,0.2,1), box-shadow 260ms ease, border-color 160ms ease;
             background: #ffffff !important;
-            border-radius: 12px !important;
+            border-radius: 14px !important;
             border: 1px solid rgba(15,23,42,0.06) !important;
             box-shadow: 0 14px 40px rgba(2,6,23,0.06) !important;
             display: flex;
             align-items: flex-start;
-            gap: 18px;
-            padding: 20px 22px;
-            min-height: 140px;
+            gap: 22px;
+            padding: 28px 26px;
+            min-height: 168px;
             position: relative;
             will-change: transform, box-shadow;
             transform-origin: center bottom;
@@ -979,8 +979,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .app-type-card .card-content { display:flex; flex-direction:column; gap:8px; flex:1; }
         .app-type-card .card-desc { margin-top:6px; }
         .app-type-card .card-code { font-size: 0.72rem; opacity: 0.7; color: #6b7280; }
-        .app-type-card .card-title { font-size: 1.06rem; font-weight: 800; color: #071727; }
-        .app-type-card .card-desc { font-size: 0.86rem; color: #475569; }
+        .app-type-card .card-title { font-size: 1.12rem; font-weight: 800; color: #071727; }
+        .app-type-card .card-desc { font-size: 0.92rem; color: #475569; line-height: 1.5; }
         .app-type-card .card-check { display: flex !important; opacity: 0; visibility: hidden; }
         .app-type-card.selected .card-check { opacity: 1; visibility: visible; }
         /* Arrow: right aligned vertically centered */
@@ -1012,20 +1012,179 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .app-type-card:hover { border-left-color: var(--card-accent, #60a5fa) !important; }
 
         .app-type-card .card-icon {
-            width: 64px !important; height: 64px !important; border-radius: 50% !important;
-            font-size: 1.4rem !important; box-shadow: 0 18px 36px rgba(2,6,23,0.10) !important;
+            width: 72px !important; height: 72px !important; border-radius: 50% !important;
+            font-size: 1.55rem !important; box-shadow: 0 18px 36px rgba(2,6,23,0.10) !important;
             display:flex; align-items:center; justify-content:center; color: #fff !important;
         }
 
         .app-type-card .card-title {
-            font-size: 1.06rem; font-weight: 800; color: #081022;
+            font-size: 1.14rem; font-weight: 800; color: #081022;
             display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;
         }
 
         .app-type-card:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(99,102,241,0.12); }
 
-        /* Slightly tighten grid spacing for nicer layout */
-        .app-type-grid { gap: 20px; }
+        .app-type-grid { gap: 24px; }
+
+        #cardSelectorSection.hidden { display: none; }
+
+        /* Benefit details modal */
+        #benefitModal {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            box-sizing: border-box;
+        }
+        #benefitModal .modal-content {
+            margin: 0;
+            width: 100%;
+            max-width: 720px;
+            max-height: calc(100vh - 48px);
+            border-radius: 16px;
+            padding: 0;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        .benefit-modal-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 18px;
+            padding: 28px 28px 22px;
+            background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(99,102,241,0.04));
+            border-bottom: 1px solid rgba(15,23,42,0.08);
+        }
+        .benefit-modal-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.45rem;
+            color: #fff;
+            flex-shrink: 0;
+            box-shadow: 0 12px 28px rgba(2,6,23,0.12);
+        }
+        .benefit-modal-header h2 {
+            margin: 0 0 6px;
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1.35;
+        }
+        .benefit-modal-header p {
+            margin: 0;
+            font-size: 0.92rem;
+            color: #475569;
+            line-height: 1.55;
+        }
+        .benefit-modal-body {
+            padding: 24px 28px 28px;
+            flex: 1;
+            overflow-y: auto;
+        }
+        .benefit-modal-section {
+            margin-bottom: 22px;
+        }
+        .benefit-modal-section:last-of-type { margin-bottom: 0; }
+        .benefit-modal-section h3 {
+            margin: 0 0 12px;
+            font-size: 0.82rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .benefit-modal-section h3 i { color: #3b82f6; }
+        .benefit-list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+        .benefit-list li {
+            position: relative;
+            padding: 10px 12px 10px 36px;
+            margin-bottom: 8px;
+            background: #f8fafc;
+            border: 1px solid rgba(15,23,42,0.06);
+            border-radius: 10px;
+            font-size: 0.9rem;
+            color: #334155;
+            line-height: 1.45;
+        }
+        .benefit-list li::before {
+            content: '\f00c';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            position: absolute;
+            left: 12px;
+            top: 12px;
+            color: #10b981;
+            font-size: 0.75rem;
+        }
+        .benefit-list.requirements li::before {
+            content: '\f15c';
+            color: #3b82f6;
+        }
+        .benefit-ack-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 14px 16px;
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            color: #78350f;
+            line-height: 1.45;
+        }
+        .benefit-ack-row input { margin-top: 3px; flex-shrink: 0; }
+        .benefit-modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            padding: 18px 28px 24px;
+            border-top: 1px solid rgba(15,23,42,0.08);
+            background: #fafafa;
+        }
+        .btn-benefit-cancel {
+            padding: 11px 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(15,23,42,0.12);
+            background: #fff;
+            color: #475569;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-benefit-proceed {
+            padding: 11px 22px;
+            border-radius: 10px;
+            border: none;
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            color: #fff;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-benefit-proceed:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+        #benefitModal .close {
+            position: absolute;
+            right: 18px;
+            top: 18px;
+            z-index: 2;
+        }
     </style>
 </head>
 <body>
@@ -1048,8 +1207,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 <!-- Application Type Cards — directly visible on load -->
                 <div id="cardSelectorSection">
-                    <p class="card-section-hint"><i class="fas fa-hand-pointer"></i> Select an application type to begin filling out the form.</p>
+                    <p class="card-section-hint"><i class="fas fa-hand-pointer"></i> Click a benefit below to view details and requirements before applying.</p>
                     <?php
+                    $benefitDetails = getApplicationBenefitDetails();
                     $typeIcons = [
                         'senior'           => ['icon' => 'fas fa-id-card',       'color' => '#60a5fa', 'grad' => 'linear-gradient(135deg,#1e3a8a,#1d4ed8)', 'desc' => 'Senior Citizens ID registration',    'code' => 'Form 1',    'accent' => '#3b82f6'],
                         'landbank'         => ['icon' => 'fas fa-credit-card',   'color' => '#34d399', 'grad' => 'linear-gradient(135deg,#064e3b,#059669)', 'desc' => 'Land Bank Cash Card enrollment',       'code' => 'Form 2',    'accent' => '#10b981'],
@@ -1072,11 +1232,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                              data-color="<?php echo $meta['color']; ?>"
                              data-bg="<?php echo $meta['grad']; ?>"
                              data-accent="<?php echo $meta['accent']; ?>"
-                             onclick="selectAppType('<?php echo $val; ?>')"
+                             onclick="openBenefitModal('<?php echo $val; ?>')"
                              role="button"
                              tabindex="0"
                              aria-pressed="false"
-                             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectAppType('<?php echo $val; ?>');}"
+                             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openBenefitModal('<?php echo $val; ?>');}"
                              title="<?php echo htmlspecialchars($label); ?>">
                             <div class="card-check"><i class="fas fa-check"></i></div>
                             <div class="card-arrow"><i class="fas fa-chevron-right"></i></div>
@@ -1258,6 +1418,44 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </div>
     </div>
 
+    <!-- Benefit Details Modal -->
+    <div id="benefitModal" class="modal" role="dialog" aria-labelledby="benefitModalTitle" aria-modal="true">
+        <div class="modal-content">
+            <span class="close" onclick="closeBenefitModal()" aria-label="Close">&times;</span>
+            <div class="benefit-modal-header">
+                <div class="benefit-modal-icon" id="benefitModalIcon"></div>
+                <div>
+                    <h2 id="benefitModalTitle"></h2>
+                    <p id="benefitModalSummary"></p>
+                </div>
+            </div>
+            <div class="benefit-modal-body">
+                <div class="benefit-modal-section">
+                    <h3><i class="fas fa-star"></i> What You Get</h3>
+                    <ul class="benefit-list" id="benefitModalBenefits"></ul>
+                </div>
+                <div class="benefit-modal-section">
+                    <h3><i class="fas fa-clipboard-check"></i> Requirements to Apply</h3>
+                    <ul class="benefit-list requirements" id="benefitModalRequirements"></ul>
+                </div>
+                <div class="benefit-modal-section">
+                    <h3><i class="fas fa-folder-open"></i> Documents Needed</h3>
+                    <ul class="benefit-list requirements" id="benefitModalDocuments"></ul>
+                </div>
+                <label class="benefit-ack-row">
+                    <input type="checkbox" id="benefitAckCheckbox" onchange="toggleProceedButton()">
+                    <span>I have read and understand the benefit details and requirements above. I confirm that I have the necessary documents ready to proceed.</span>
+                </label>
+            </div>
+            <div class="benefit-modal-actions">
+                <button type="button" class="btn-benefit-cancel" onclick="closeBenefitModal()">Cancel</button>
+                <button type="button" class="btn-benefit-proceed" id="btnProceedApplication" onclick="proceedWithApplication()" disabled>
+                    <i class="fas fa-arrow-right"></i> Proceed with Application
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scan Proxy QR Modal -->
     <div id="proxyModal" class="modal">
         <div class="modal-content">
@@ -1281,6 +1479,68 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <script src="../assets/js/dark-mode.js"></script>
     <script src="../assets/js/osca-form-fields.js"></script>
     <script>
+        const BENEFIT_DETAILS = <?php echo json_encode($benefitDetails, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
+        const TYPE_META = {};
+        document.querySelectorAll('#appTypeGrid .app-type-card').forEach(card => {
+            TYPE_META[card.dataset.value] = {
+                label:  card.dataset.label,
+                icon:   card.dataset.icon,
+                color:  card.dataset.color,
+                bg:     card.dataset.bg,
+                accent: card.dataset.accent,
+            };
+        });
+        let pendingBenefitType = '';
+
+        function openBenefitModal(value) {
+            pendingBenefitType = value;
+            const meta = TYPE_META[value] || {};
+            const details = BENEFIT_DETAILS[value] || {};
+
+            document.getElementById('benefitModalTitle').textContent = meta.label || value;
+            document.getElementById('benefitModalSummary').textContent = details.summary || '';
+            document.getElementById('benefitModalIcon').innerHTML = `<i class="${meta.icon || 'fas fa-file'}"></i>`;
+            document.getElementById('benefitModalIcon').style.background = meta.bg || 'linear-gradient(135deg,#3b82f6,#6366f1)';
+
+            const fillList = (id, items) => {
+                const el = document.getElementById(id);
+                el.innerHTML = '';
+                (items || []).forEach(text => {
+                    const li = document.createElement('li');
+                    li.textContent = text;
+                    el.appendChild(li);
+                });
+            };
+            fillList('benefitModalBenefits', details.benefits);
+            fillList('benefitModalRequirements', details.requirements);
+            fillList('benefitModalDocuments', details.documents);
+
+            const ack = document.getElementById('benefitAckCheckbox');
+            ack.checked = false;
+            toggleProceedButton();
+
+            document.getElementById('benefitModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeBenefitModal() {
+            document.getElementById('benefitModal').style.display = 'none';
+            document.body.style.overflow = '';
+            pendingBenefitType = '';
+        }
+
+        function toggleProceedButton() {
+            const ack = document.getElementById('benefitAckCheckbox').checked;
+            document.getElementById('btnProceedApplication').disabled = !ack;
+        }
+
+        function proceedWithApplication() {
+            if (!pendingBenefitType || !document.getElementById('benefitAckCheckbox').checked) return;
+            const type = pendingBenefitType;
+            closeBenefitModal();
+            selectAppType(type);
+        }
+
         function openProxyModal() {
             document.getElementById('proxyModal').style.display = "block";
             document.getElementById('modalError').textContent = "";
@@ -1291,11 +1551,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             document.getElementById('proxyModal').style.display = "none";
         }
 
-        // Close modal when clicking outside
+        // Close modals when clicking outside
         window.onclick = function(event) {
-            var modal = document.getElementById('proxyModal');
-            if (event.target == modal) {
-                modal.style.display = "none";
+            const proxyModal = document.getElementById('proxyModal');
+            const benefitModal = document.getElementById('benefitModal');
+            if (event.target === proxyModal) {
+                proxyModal.style.display = 'none';
+            }
+            if (event.target === benefitModal) {
+                closeBenefitModal();
             }
         }
 
@@ -1378,17 +1642,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
         }
 
-        const TYPE_META = {};
-        document.querySelectorAll('#appTypeGrid .app-type-card').forEach(card => {
-            TYPE_META[card.dataset.value] = {
-                label:  card.dataset.label,
-                icon:   card.dataset.icon,
-                color:  card.dataset.color,
-                bg:     card.dataset.bg,
-                accent: card.dataset.accent,
-            };
-        });
-
         function selectAppType(value) {
             // Update hidden input
             document.getElementById('applicationType').value = value;
@@ -1413,7 +1666,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
             banner.style.display = 'flex';
 
-            // Reveal full form
+            // Hide card selector and reveal application form
+            document.getElementById('cardSelectorSection').classList.add('hidden');
             const formBody = document.getElementById('formBody');
             formBody.classList.add('visible');
 
@@ -1435,6 +1689,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             const formBody = document.getElementById('formBody');
             formBody.classList.remove('visible');
             document.getElementById('selectedTypeBanner').style.display = 'none';
+            document.getElementById('cardSelectorSection').classList.remove('hidden');
 
             document.getElementById('cardSelectorSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
