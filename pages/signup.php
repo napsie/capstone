@@ -110,20 +110,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         body {
             background: linear-gradient(135deg, #1a4b8c 0%, #0d3a6e 100%);
-            color: white;
-            min-height: 100vh; /* Changed from height to min-height */
+            color: #0f1c2e;
+            min-height: 100dvh;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 20px 0; /* Add some padding for when content overflows viewport */
+            padding: 0;
+            overflow: hidden;
         }
 
         .background-image {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            inset: 0;
             z-index: -1;
             background-image: url('../images/system_background.png'); /* Adjusted path */
             background-size: cover;
@@ -148,35 +146,44 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         .signup-container {
-            padding: 20px;
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            overflow: hidden;
         }
 
         .signup-card {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(15px);
-            border-radius: 15px;
-            padding: 40px;
+            background: #ffffff;
+            border-radius: 24px;
+            padding: 28px;
             width: 100%;
-            max-width: 700px; /* Increased from 600px */
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 400px;
+            max-height: calc(100dvh - 24px);
+            box-shadow: 0 20px 60px rgba(8, 28, 58, 0.2);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
         .signup-header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 12px;
+            flex-shrink: 0;
         }
 
         .signup-header h1 {
-            font-size: 2rem;
-            color: #4CAF50;
-            margin-bottom: 10px;
+            font-size: 1.5rem;
+            color: #0f1c2e;
+            margin-bottom: 2px;
         }
 
         .form-row {
             display: flex;
-            gap: 20px;
-            margin-bottom: 20px;
+            gap: 10px;
+            margin-bottom: 10px;
         }
 
         .form-group {
@@ -185,60 +192,112 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         .form-group label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 3px;
             font-weight: 500;
+            font-size: 0.8rem;
+            color: #0f1c2e;
         }
 
         .form-control {
             width: 100%;
-            padding: 12px 15px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 6px 8px;
+            border: 1px solid #dde4ed;
             border-radius: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            color: black !important; /* Changed from white to black */
-            font-size: 1rem;
+            background: #f4f7fb;
+            color: #0f1c2e !important;
+            font-size: 0.85rem;
         }
 
         .btn {
-            padding: 12px 25px;
+            padding: 8px 16px;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             font-weight: 600;
-            font-size: 1rem;
+            font-size: 0.9rem;
             width: 100%;
-            background: #4CAF50;
+            background: #1b8a4a;
             color: white;
+            flex-shrink: 0;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: #157a40;
         }
 
         .message {
-            padding: 10px;
-            border-radius: 5px;
+            padding: 6px;
+            border-radius: 8px;
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
+            font-size: 0.8rem;
+            flex-shrink: 0;
         }
 
         .success {
-            background: rgba(76, 175, 80, 0.2);
-            border: 1px solid rgba(76, 175, 80, 0.5);
-            color: #a5d6a7;
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            color: #166534;
         }
 
         .error {
-            background: rgba(255, 77, 77, 0.1);
-            border: 1px solid rgba(255, 77, 77, 0.5);
-            color: #ff4d4d;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #b91c1c;
         }
 
         .error-message-inline {
-            color: #ff4d4d;
-            font-size: 0.8rem;
-            margin-top: 5px;
+            color: #b91c1c;
+            font-size: 0.7rem;
+            margin-top: 2px;
             display: none; /* Hidden by default */
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            color: white;
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.18);
+            transform: translateX(-3px);
+            color: white;
+        }
+
+        .back-btn:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.45);
         }
     </style>
 </head>
 <body>
+    <!-- Back Button -->
+    <a href="../index.php" class="back-btn">
+        <i class="fas fa-arrow-left"></i>
+        <span>Back to Home</span>
+    </a>
     <!-- Background Image -->
     <div class="background-image"></div>
     <div class="signup-container">
@@ -267,12 +326,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <span id="lastNameError" class="error-message-inline"></span>
                     </div>
                 </div>
-                <div class="form-group" style="margin-bottom: 20px;">
+                <div class="form-group" style="margin-bottom: 10px;">
                     <label for="email">Email</label>
                     <input type="email" id="email" name="email" class="form-control" required>
                     <span id="emailError" class="error-message-inline"></span>
                 </div>
-                <div class="form-group" style="margin-bottom: 20px;">
+                <div class="form-group" style="margin-bottom: 10px;">
                     <label for="username">Username</label>
                     <input type="text" id="username" name="username" class="form-control" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')" required>
                     <span id="usernameError" class="error-message-inline"></span>
@@ -289,14 +348,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <span id="confirmPasswordError" class="error-message-inline"></span>
                     </div>
                 </div>
-                <div class="form-group" style="margin-bottom: 20px;">
+                <div class="form-group" style="margin-bottom: 10px;">
                     <label for="role">Role</label>
                     <select id="role" name="role" class="form-control" onchange="toggleBarangayField()" required>
                         <option value="barangay_staff">Barangay Staff</option>
                         <option value="department_admin">Department Admin</option>
                     </select>
                 </div>
-                <div class="form-group" id="barangayField" style="margin-bottom: 20px;">
+                <div class="form-group" id="barangayField" style="margin-bottom: 10px;">
                     <label for="barangay">Barangay</label>
                     <select id="barangay" name="barangay" class="form-control">
                         <option value="">Select barangay</option>
@@ -306,7 +365,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     </select>
                     <span id="barangayError" class="error-message-inline"></span>
                 </div>
-                 <div class="form-group" style="margin-bottom: 20px;">
+                 <div class="form-group" style="margin-bottom: 10px;">
                     <label for="masterPassword">Master Password</label>
                     <input type="password" id="masterPassword" name="masterPassword" class="form-control" required>
                 </div>

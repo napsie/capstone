@@ -105,514 +105,139 @@ if (isset($_COOKIE['remember_user'])) {
 }
 */
 
+// Prevent browser from serving a cached version of the landing page
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <title>CARELINK - Centralized Profiling System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/loading-spinner.css">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        body {
-            background: linear-gradient(135deg, #1a4b8c 0%, #0d3a6e 100%);
-            color: white;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        .background-image {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            background-image: url('images/system_background.png');
-            background-size: cover;
-            background-position: center;
-            opacity: 0.3;
-            animation: kenburns 30s ease-in-out infinite;
-        }
-
-        @keyframes kenburns {
-            0% {
-                transform: scale(1) translate(0, 0);
-                opacity: 0.3;
-            }
-            50% {
-                transform: scale(1.2) translate(-5%, 5%);
-                opacity: 0.4;
-            }
-            100% {
-                transform: scale(1) translate(0, 0);
-                opacity: 0.3;
-            }
-        }
-
-        /* Menu Bar */
-        .menu-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 30px;
-            background: rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .logo-section {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .system-logo {
-            font-size: 2rem;
-            color: #4CAF50;
-        }
-
-        .logo-text h1 {
-            font-size: 1.5rem;
-            color: #4CAF50;
-        }
-
-        .logo-text p {
-            font-size: 0.8rem;
-            opacity: 0.8;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 25px;
-        }
-
-        .nav-links a {
-            color: white;
-            text-decoration: none;
-            font-weight: 500;
-            padding: 6px 12px;
-            border-radius: 5px;
-            transition: all 0.3s;
-            font-size: 0.9rem;
-        }
-
-        .nav-links a:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: #4CAF50;
-        }
-
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 20px;
-            height: calc(100vh - 65px);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-
-        /* Header Section */
-        .header-section {
-            text-align: center;
-            padding: 20px 0;
-            animation: fadeIn 1s ease-out;
-            margin-bottom: 40px;
-        }
-
-        .system-brand {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-
-        .brand-logo {
-            font-size: 3rem;
-            color: #4CAF50;
-        }
-
-        .system-name h1 {
-            font-size: 2.2rem;
-            margin-bottom: 8px;
-            color: #4CAF50;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-        }
-
-        .system-name p {
-            font-size: 1rem;
-            opacity: 0.9;
-        }
-
-        .municipality-info {
-            margin-top: 10px;
-        }
-
-        .municipality-info h2 {
-            font-size: 1.2rem;
-            font-weight: normal;
-            margin-bottom: 5px;
-            opacity: 0.9;
-        }
-
-        /* Role Selection */
-        .role-section {
-            animation: slideUp 1s ease-out 0.6s both;
-        }
-
-        .role-selection {
-            display: flex;
-            justify-content: center;
-            gap: 25px;
-            flex-wrap: wrap;
-        }
-
-        .role-card {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 12px;
-            padding: 20px;
-            width: 220px;
-            text-align: center;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-            text-decoration: none;
-            color: white;
-            display: block;
-        }
-
-        .role-card:hover {
-            transform: translateY(-5px);
-            background: rgba(255, 255, 255, 0.15);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-        }
-
-        .role-icon {
-            font-size: 2.5rem;
-            margin-bottom: 12px;
-            color: #4CAF50;
-        }
-
-        .role-card h4 {
-            font-size: 1.3rem;
-            margin-bottom: 10px;
-            color: #4CAF50;
-        }
-
-        .role-card p {
-            font-size: 0.8rem;
-            line-height: 1.4;
-            opacity: 0.9;
-        }
-
-        footer {
-            text-align: center;
-            padding: 20px 0;
-            font-size: 0.8rem;
-            opacity: 0.8;
-            animation: fadeIn 1s ease-out 1.2s both;
-            margin-top: 40px;
-        }
-
-        .pulse {
-            animation: pulse 2s infinite;
-        }
-
-        /* Animations */
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-            }
-            to {
-                opacity: 1;
-            }
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes pulse {
-            0% {
-                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4);
-            }
-            70% {
-                box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
-            }
-            100% {
-                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
-            }
-        }
-
-        /* About Modal */
-        .about-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-            animation: fadeIn 0.3s ease-out;
-        }
-
-        .about-content {
-            background: linear-gradient(135deg, #1a4b8c 0%, #0d3a6e 100%);
-            border-radius: 12px;
-            padding: 30px;
-            width: 90%;
-            max-width: 600px;
-            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            animation: slideUp 0.5s ease-out;
-        }
-
-        .about-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .about-header h3 {
-            font-size: 1.5rem;
-            color: #4CAF50;
-        }
-
-        .close-btn {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 1.3rem;
-            cursor: pointer;
-            transition: color 0.3s;
-        }
-
-        .close-btn:hover {
-            color: #4CAF50;
-        }
-
-        .about-body {
-            line-height: 1.5;
-            font-size: 0.9rem;
-        }
-
-        .about-body p {
-            margin-bottom: 12px;
-        }
-
-        .team-section {
-            margin-top: 25px;
-            text-align: center;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            padding-top: 20px;
-        }
-
-        .team-section h4 {
-            font-size: 1.2rem;
-            color: #4CAF50;
-            margin-bottom: 15px;
-        }
-
-        .team-members-container {
-            display: flex;
-            justify-content: center;
-            gap: 25px;
-            flex-wrap: wrap;
-        }
-
-        .team-member {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            color: white;
-        }
-
-        .team-member i {
-            font-size: 2.5rem;
-            color: #4CAF50;
-            margin-bottom: 8px;
-        }
-
-        .team-member p {
-            font-size: 0.85rem;
-            margin: 0;
-            opacity: 0.9;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .container {
-                padding: 15px;
-                max-width: 100%;
-            }
-            
-            .system-name h1 {
-                font-size: 1.8rem;
-            }
-            
-            .system-name p {
-                font-size: 0.9rem;
-            }
-            
-            .municipality-info h2 {
-                font-size: 1rem;
-            }
-            
-            .brand-logo {
-                font-size: 2.5rem;
-            }
-            
-            .role-selection {
-                gap: 20px;
-            }
-            
-            .role-card {
-                width: 100%;
-                max-width: 200px;
-                padding: 18px 15px;
-            }
-            
-            .role-icon {
-                font-size: 2.2rem;
-            }
-            
-            .logo-text h1 {
-                font-size: 1.3rem;
-            }
-            
-            .logo-text p {
-                display: none;
-            }
-            
-            .menu-bar {
-                padding: 10px 20px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .header-section {
-                padding: 15px 0;
-                margin-bottom: 30px;
-            }
-            
-            .system-brand {
-                flex-direction: column;
-                gap: 10px;
-            }
-            
-            .system-name h1 {
-                font-size: 1.6rem;
-            }
-            
-            .role-selection {
-                gap: 15px;
-            }
-            
-            .role-card {
-                padding: 15px 12px;
-            }
-            
-            footer {
-                margin-top: 30px;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="assets/css/carelink-theme.css?v=3">
+    <link rel="stylesheet" href="assets/css/landing.css?v=3">
 </head>
 <body>
-    <!-- Menu Bar -->
-    <div class="menu-bar">
-        <div class="logo-section">
-            <div class="system-logo">
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <div class="page-bg page-bg--root" aria-hidden="true"></div>
+
+    <header class="site-header">
+        <div class="brand">
+            <div class="brand-icon" aria-hidden="true">
                 <i class="fas fa-hands-helping"></i>
             </div>
-            <div class="logo-text">
+            <div class="brand-text">
                 <h1>CARELINK</h1>
                 <p>Centralized Profiling System</p>
             </div>
         </div>
-        <div class="nav-links">
-            <a href="#" id="aboutLink">About</a>
-            <a href="pages/signup.php">Sign Up</a>
-        </div>
-    </div>
+        <nav class="site-nav" aria-label="Main navigation">
+            <a href="pages/proxy_registration.php">Proxy Registration</a>
+            <a href="#" id="aboutLink" aria-haspopup="dialog">About</a>
+            <a href="pages/signup.php" class="btn-primary">Sign Up</a>
+        </nav>
+    </header>
 
-    <!-- Background Image -->
-    <div class="background-image"></div>
-    
-    <div class="container">
-        <!-- Header Section -->
-        <div class="header-section">
-            <div class="system-brand">
-                <div class="brand-logo">
-                    <i class="fas fa-hands-helping"></i>
+    <div class="landing-wrapper">
+        <div id="main-content" class="landing-main">
+        <section class="hero-content" aria-labelledby="hero-title">
+            <div class="hero-badge">
+                <i class="fas fa-shield-alt" aria-hidden="true"></i>
+                Government Services Portal
+            </div>
+            <h2 id="hero-title">Secure profiling for <span>Seniors &amp; PWD</span></h2>
+            <p class="hero-sub">CARELINK is a centralized profiling and record authentication system for efficient government service delivery.</p>
+            <p class="hero-audience">
+                <i class="fas fa-users" aria-hidden="true"></i>
+                Built for Senior Citizens and Persons with Disabilities
+            </p>
+            <div class="hero-stats" aria-hidden="true">
+                <div class="hero-stat">
+                    <strong>Secure</strong>
+                    <span>Identity Verification</span>
                 </div>
-                <div class="system-name">
-                    <h1>CARELINK</h1>
-                    <p>Centralized Profiling and Record Authentication System</p>
+                <div class="hero-stat">
+                    <strong>Fast</strong>
+                    <span>Record Access</span>
+                </div>
+                <div class="hero-stat">
+                    <strong>Trusted</strong>
+                    <span>Data Privacy</span>
                 </div>
             </div>
-            <div class="municipality-info">
-                <h2>For Senior Citizens and Persons with Disabilities (PWD)</h2>
-            </div>
-        </div>
+        </section>
 
-        <!-- Role Selection Section -->
-        <div class="role-section">
-            <div class="role-selection">
-                <a href="pages/Barangay_Staff_LogInPage.php" class="role-card pulse" id="staffCard">
-                    <div class="role-icon">
+        <section class="portal-panel" aria-labelledby="portal-heading">
+            <div class="portal-panel-header">
+                <h3 id="portal-heading">Select your portal</h3>
+                <p>Choose the login option that matches your role</p>
+            </div>
+            <div class="portal-cards">
+                <a href="pages/Barangay_Staff_LogInPage.php" class="portal-card" id="staffCard"
+                   aria-label="Barangay Staff login — register beneficiaries and manage local records">
+                    <div class="portal-card-icon staff" aria-hidden="true">
                         <i class="fas fa-user-shield"></i>
                     </div>
-                    <h4>BARANGAY STAFF</h4>
-                    <p>Register beneficiaries, capture facial data, and manage local records.</p>
+                    <div class="portal-card-body">
+                        <h4>Barangay Staff</h4>
+                        <p>Register beneficiaries, capture facial data, and manage local records.</p>
+                    </div>
+                    <span class="portal-card-arrow" aria-hidden="true">
+                        <i class="fas fa-arrow-right"></i>
+                    </span>
                 </a>
-                
-                <a href="pages/Department_Admin_LogIn_Page.php" class="role-card pulse" id="adminCard">
-                    <div class="role-icon">
+
+                <a href="pages/Department_Admin_LogIn_Page.php" class="portal-card" id="adminCard"
+                   aria-label="Department Admin login — oversee operations and monitor authentication">
+                    <div class="portal-card-icon admin" aria-hidden="true">
                         <i class="fas fa-user-cog"></i>
                     </div>
-                    <h4>DEPARTMENT ADMIN</h4>
-                    <p>Oversee system operations, generate reports, and monitor authentication activities.</p>
+                    <div class="portal-card-body">
+                        <h4>Department Admin</h4>
+                        <p>Oversee system operations, generate reports, and monitor authentication.</p>
+                    </div>
+                    <span class="portal-card-arrow" aria-hidden="true">
+                        <i class="fas fa-arrow-right"></i>
+                    </span>
+                </a>
+
+                <a href="pages/proxy_registration.php" class="portal-card" id="proxyCard"
+                   aria-label="Proxy pre-registration for bedridden seniors">
+                    <div class="portal-card-icon proxy" aria-hidden="true">
+                        <i class="fas fa-qrcode"></i>
+                    </div>
+                    <div class="portal-card-body">
+                        <h4>Proxy Pre-Registration</h4>
+                        <p>Pre-register for bedridden seniors and get a priority queue QR token.</p>
+                    </div>
+                    <span class="portal-card-arrow" aria-hidden="true">
+                        <i class="fas fa-arrow-right"></i>
+                    </span>
                 </a>
             </div>
+        </section>
         </div>
-        
-        <footer>
-            <p>&copy; 2025 CARELINK - Centralized Profiling System. All Rights Reserved.</p>
+
+        <footer class="site-footer">
+            <p>&copy; 2025 CARELINK — Centralized Profiling System. All Rights Reserved.</p>
         </footer>
     </div>
 
-
-    
-    <!-- About Modal -->
-    <div class="about-modal" id="aboutModal">
+    <div class="about-modal" id="aboutModal" role="dialog" aria-modal="true"
+         aria-labelledby="about-title" aria-hidden="true">
         <div class="about-content">
             <div class="about-header">
-                <h3>About CARELINK</h3>
-                <button class="close-btn">&times;
-                </button>
+                <h3 id="about-title">About CARELINK</h3>
+                <button class="close-btn" type="button" aria-label="Close about dialog">&times;</button>
             </div>
             <div class="about-body">
                 <p>CARELINK is a Centralized Profiling and Record Authentication System designed specifically for Senior Citizens and Persons with Disabilities (PWD).</p>
@@ -622,15 +247,15 @@ if (isset($_COOKIE['remember_user'])) {
                     <h4>Our Team</h4>
                     <div class="team-members-container">
                         <div class="team-member">
-                            <i class="fas fa-user-circle fa-3x"></i>
+                            <i class="fas fa-user-circle" aria-hidden="true"></i>
                             <p>Developer</p>
                         </div>
                         <div class="team-member">
-                            <i class="fas fa-user-tie fa-3x"></i>
+                            <i class="fas fa-user-tie" aria-hidden="true"></i>
                             <p>Front End</p>
                         </div>
                         <div class="team-member">
-                            <i class="fas fa-user-cog fa-3x"></i>
+                            <i class="fas fa-user-cog" aria-hidden="true"></i>
                             <p>Back End</p>
                         </div>
                     </div>
@@ -638,44 +263,41 @@ if (isset($_COOKIE['remember_user'])) {
             </div>
         </div>
     </div>
-    
+
     <script>
-        // DOM Elements
         const aboutLink = document.getElementById('aboutLink');
         const aboutModal = document.getElementById('aboutModal');
-        const closeButtons = document.querySelectorAll('.close-btn');
+        const closeBtn = aboutModal.querySelector('.close-btn');
+        let lastFocusedElement = null;
 
-        // Event Listeners
+        function openModal() {
+            lastFocusedElement = document.activeElement;
+            aboutModal.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+            closeBtn.focus();
+        }
+
+        function closeModal() {
+            aboutModal.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+            if (lastFocusedElement) lastFocusedElement.focus();
+        }
+
         aboutLink.addEventListener('click', (e) => {
             e.preventDefault();
-            aboutModal.style.display = 'flex';
+            openModal();
         });
 
-        closeButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                aboutModal.style.display = 'none';
-            });
+        closeBtn.addEventListener('click', closeModal);
+
+        aboutModal.addEventListener('click', (e) => {
+            if (e.target === aboutModal) closeModal();
         });
 
-        // Close modal when clicking outside
-        window.addEventListener('click', (e) => {
-            if (e.target === aboutModal) {
-                aboutModal.style.display = 'none';
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && aboutModal.getAttribute('aria-hidden') === 'false') {
+                closeModal();
             }
-        });
-
-        // Add hover effect to role cards
-        const roleCards = document.querySelectorAll('.role-card');
-        roleCards.forEach(card => {
-            card.addEventListener('mouseenter', () => {
-                card.classList.remove('pulse');
-            });
-            
-            card.addEventListener('mouseleave', () => {
-                setTimeout(() => {
-                    card.classList.add('pulse');
-                }, 1000);
-            });
         });
     </script>
     <script src="assets/js/dynamic-loader.js"></script>
