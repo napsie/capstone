@@ -20,7 +20,7 @@ $sidebarCss = ($role === 'barangay_staff') ? '../assets/css/barangay-sidebar.css
     <title>SENIORLINK — Legal Reference & Compliance</title>
     <meta name="description" content="Key Philippine Senior Citizen Laws: RA 9994, RA 11916, RA 11982 — Legal reference guide for SENIORLINK staff.">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="<?= $sidebarCss ?>">
+    <link rel="stylesheet" href="<?= $sidebarCss ?>?v=1.1">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }

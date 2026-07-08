@@ -119,7 +119,6 @@
 .main-content {
     margin-left: var(--sidebar-width);
     padding: 20px;
-    overflow-y: auto;
     min-height: 100vh;
     transition: margin-left 0.3s;
     flex: 1;
@@ -229,4 +228,12 @@
 .user-details p {
     color: var(--gray);
     font-size: 12px;
+}
+
+/* Sticky Header Styling */
+.header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background-color: #f5f7fa;
 }

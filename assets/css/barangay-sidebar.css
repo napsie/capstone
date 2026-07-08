@@ -125,12 +125,15 @@ body {
   margin-left: var(--sidebar-width);
   padding: 20px;
   flex: 1;
-  overflow-y: auto;
   min-height: 100vh;
   transition: margin-left 0.3s;
 }
 
 .header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background-color: #f5f7fa;
     display: flex;
     justify-content: space-between;
     align-items: center;

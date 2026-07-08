@@ -312,7 +312,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SENIORLINK — Edit User</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/department-sidebar.css">
+    <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=1.1">
     <style>
         * {
             margin: 0;
@@ -342,7 +342,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
 
         .main-content {
             padding: 20px;
-            overflow-y: auto;
         }
 
         .header {

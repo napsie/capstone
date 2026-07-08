@@ -18,8 +18,8 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CPRAS Dashboard - Barangay <?php echo $loggedInBarangay; ?></title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/barangay-sidebar.css">
-    <link rel="stylesheet" href="../assets/css/main-dark-mode.css">
+    <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=1.1">
+    <link rel="stylesheet" href="../assets/css/main-dark-mode.css?v=1.1">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .image-placeholder {
@@ -71,22 +71,21 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
         }
 
         .main-content {
-            padding: 20px 30px;
-            width: auto;
-            max-width: calc(100vw - var(--sidebar-width));
-            min-width: 0;
+            padding: 20px;
+            margin-left: var(--sidebar-width);
+            width: calc(100% - var(--sidebar-width));
             box-sizing: border-box;
+            min-width: 0;
         }
 
         .applications-table {
             width: 100%;
-            max-width: none;
             margin: 0 0 30px;
-            padding: 24px;
+            padding: 20px 18px;
             background: white;
-            border-radius: 16px;
-            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
-            overflow: hidden;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+            overflow: visible;
         }
 
         .table-header {
@@ -127,12 +126,12 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
         }
 
         .page-title {
-            max-width: 1200px;
-            margin: 0 auto 20px;
+            width: 100%;
+            margin: 0 0 20px;
         }
 
         .page-title p {
-            max-width: 100%;
+            max-width: none;
         }
 
         /* FSM Badges */
@@ -316,7 +315,7 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
             <div class="applications-table">
                 <div class="table-header">
                     <h2>Applications Queue</h2>
-                    <div class="table-controls" style="display: flex; gap: 10px; align-items: center; width: 100%; max-width: 750px;">
+                    <div class="table-controls" style="display: flex; gap: 10px; align-items: center; width: 100%;">
                         <input type="text" class="search-box" placeholder="Search applications..." style="flex: 1; margin: 0;">
                         <button class="btn btn-accent" id="scanQrBtn" onclick="openProxyModal()" style="display: flex; align-items: center; gap: 6px; white-space: nowrap;"><i class="fas fa-qrcode"></i> Scan Token</button>
                         <select id="applicationTypeFilter" class="btn" style="margin: 0;">

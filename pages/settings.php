@@ -91,8 +91,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updatePassword'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SENIORLINK — Settings</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/barangay-sidebar.css">
-    <link rel="stylesheet" href="../assets/css/main-dark-mode.css">
+    <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=1.1">
+    <link rel="stylesheet" href="../assets/css/main-dark-mode.css?v=1.1">
     <style>
         * {
             margin: 0;
@@ -136,7 +136,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updatePassword'])) {
         .main-content {
             flex: 1;
             padding: 20px;
+            height: 100vh;
             overflow-y: auto;
+            box-sizing: border-box;
+            -webkit-overflow-scrolling: touch;
         }
 
         .header {

@@ -39,6 +39,7 @@ body.dark-mode {
 
 .dark-mode .header {
     border-bottom: 1px solid var(--border-color);
+    background-color: var(--bg);
 }
 
 .dark-mode .welcome-message {
