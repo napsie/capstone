@@ -22,7 +22,7 @@
     top: 0;
     bottom: 0;
     width: var(--sidebar-width);
-    background: linear-gradient(135deg, #1a4b8c 0%, #0d3a6e 50%);
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
     color: #fff;
     padding: 20px 15px; /* Synced */
     display: flex;

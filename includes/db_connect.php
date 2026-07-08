@@ -145,6 +145,16 @@ try {
         'income_source'              => "VARCHAR(255) DEFAULT NULL",
         'owns_house'                 => "TINYINT(1) DEFAULT NULL",
         'is_renter'                  => "TINYINT(1) DEFAULT NULL",
+        'psa_birth_cert'             => "VARCHAR(255) DEFAULT NULL",
+        'barangay_residency'         => "VARCHAR(255) DEFAULT NULL",
+        'comelec_cert'               => "VARCHAR(255) DEFAULT NULL",
+        'proof_of_life'              => "VARCHAR(255) DEFAULT NULL",
+        'auth_letter'                => "VARCHAR(255) DEFAULT NULL",
+        'proxy_id'                   => "VARCHAR(255) DEFAULT NULL",
+        'proxy_birth_cert'           => "VARCHAR(255) DEFAULT NULL",
+        'home_visitation_form'       => "VARCHAR(255) DEFAULT NULL",
+        'landbank_enrollment_form'   => "VARCHAR(255) DEFAULT NULL",
+        'parent_senior_id'           => "VARCHAR(50) DEFAULT NULL",
     ];
 
     foreach ($columns_to_add as $column => $definition) {

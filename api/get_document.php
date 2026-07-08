@@ -27,6 +27,15 @@ $docType = trim($_GET['doc_type']);
 $allowed_doc_types = [
     'proof_of_address',
     'id_image',
+    'psa_birth_cert',
+    'barangay_residency',
+    'comelec_cert',
+    'proof_of_life',
+    'auth_letter',
+    'proxy_id',
+    'proxy_birth_cert',
+    'home_visitation_form',
+    'landbank_enrollment_form'
 ];
 
 if (!in_array($docType, $allowed_doc_types)) {
@@ -36,13 +45,13 @@ if (!in_array($docType, $allowed_doc_types)) {
 }
 
 try {
-    // Enforce barangay isolation for staff
+    // For whitelisted fields, select the column along with id_number and barangay
     if ($userRole === 'barangay_staff' && $userBarangay) {
-        $sql  = "SELECT {$docType}, {$docType}_type FROM applications WHERE id_number = ? AND barangay = ?";
+        $sql  = "SELECT {$docType}, id_number FROM applications WHERE id_number = ? AND barangay = ?";
         $stmt = $conn->prepare($sql);
         $stmt->execute([$appId, $userBarangay]);
     } else {
-        $sql  = "SELECT {$docType}, {$docType}_type FROM applications WHERE id_number = ?";
+        $sql  = "SELECT {$docType}, id_number FROM applications WHERE id_number = ?";
         $stmt = $conn->prepare($sql);
         $stmt->execute([$appId]);
     }
@@ -56,16 +65,42 @@ try {
         exit();
     }
 
-    $contentType = $result[$docType . '_type'] ?? '';
+    $docValue = $result[$docType];
 
-    // MIME validation — only allow safe types before serving
+    // Check if the value points to a file on disk in uploads/
+    $uploadDir = __DIR__ . '/../uploads/';
+    $filePath = $uploadDir . $docValue;
+    if (is_string($docValue) && strlen($docValue) < 255 && file_exists($filePath) && is_file($filePath)) {
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $contentType = $finfo->file($filePath);
+        header('Content-Type: ' . $contentType);
+        header('Cache-Control: private, max-age=3600');
+        readfile($filePath);
+        exit();
+    }
+
+    // Otherwise, treat as BLOB database storage (legacy/original)
+    // Fetch the mime type from the DB if available, or sniff it
+    $mimeCol = $docType . '_type';
+    $mimeType = '';
+    
+    // Fetch mime type column from DB if it exists
+    try {
+        $mimeSql = "SELECT {$mimeCol} FROM applications WHERE id_number = ?";
+        $mimeStmt = $conn->prepare($mimeSql);
+        $mimeStmt->execute([$appId]);
+        $mimeResult = $mimeStmt->fetch(PDO::FETCH_ASSOC);
+        $mimeType = $mimeResult[$mimeCol] ?? '';
+    } catch (Exception $e) {
+        // Mime column might not exist for some custom fields
+    }
+
     $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
-    if (!in_array($contentType, $allowedMimeTypes)) {
-        // Fallback: sniff actual MIME from binary content
+    if (!in_array($mimeType, $allowedMimeTypes)) {
         $finfo       = new finfo(FILEINFO_MIME_TYPE);
-        $sniffedMime = $finfo->buffer($result[$docType]);
+        $sniffedMime = $finfo->buffer($docValue);
         if (in_array($sniffedMime, $allowedMimeTypes)) {
-            $contentType = $sniffedMime;
+            $mimeType = $sniffedMime;
         } else {
             http_response_code(415);
             header('Content-Type: text/plain');
@@ -74,9 +109,9 @@ try {
         }
     }
 
-    header('Content-Type: ' . $contentType);
+    header('Content-Type: ' . $mimeType);
     header('Cache-Control: private, max-age=3600');
-    echo $result[$docType];
+    echo $docValue;
 
 } catch (PDOException $e) {
     http_response_code(500);

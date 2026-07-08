@@ -7,6 +7,8 @@ $proxyResult = processProxyRegistration();
 $proxySuccess = $proxyResult['success'];
 $proxyQrUrl = $proxyResult['qrCodeUrl'];
 $proxyTransactionId = $proxyResult['transactionId'];
+$proxyOption = $proxyResult['option'] ?? '';
+$proxyMessage = $proxyResult['message'] ?? '';
 $formAction = 'proxy_registration.php';
 $resetUrl = 'proxy_registration.php';
 ?>

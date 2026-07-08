@@ -15,6 +15,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <li class="<?php echo ($current_page == 'submit_application.php') ? 'active' : ''; ?>"><a href="submit_application.php" data-tooltip="Queue" aria-label="Queue"><i class="fas fa-clipboard-list"></i> <span class="link-text">Queue</span></a></li>
         <li class="<?php echo ($current_page == 'proxy_registration.php') ? 'active' : ''; ?>"><a href="proxy_registration.php" data-tooltip="Proxy QR" aria-label="Proxy QR"><i class="fas fa-qrcode"></i> <span class="link-text">Proxy QR</span></a></li>
         <li class="<?php echo ($current_page == 'barangay_records.php') ? 'active' : ''; ?>"><a href="barangay_records.php" data-tooltip="Records" aria-label="Records"><i class="fas fa-database"></i> <span class="link-text">Records</span></a></li>
+        <li class="<?php echo ($current_page == 'legal_reference.php') ? 'active' : ''; ?>"><a href="legal_reference.php" data-tooltip="Legal Reference" aria-label="Legal Reference"><i class="fas fa-balance-scale"></i> <span class="link-text">Legal Reference</span></a></li>
         <li class="<?php echo ($current_page == 'settings.php') ? 'active' : ''; ?>"><a href="settings.php" data-tooltip="Settings" aria-label="Settings"><i class="fas fa-cog"></i> <span class="link-text">Settings</span></a></li>
         <li class="logout-item"><a href="../index.php?logout=true" data-tooltip="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i> <span class="link-text">Logout</span></a></li>
     </ul>

@@ -16,6 +16,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <li class="<?php echo ($current_page == 'department_records.php') ? 'active' : ''; ?>"><a href="department_records.php" data-tooltip="Records" aria-label="Records"><i class="fas fa-database"></i> <span class="link-text">Records</span></a></li>
             <li class="<?php echo ($current_page == 'user_management.php' || $current_page == 'edit_user.php' || $current_page == 'signup.php') ? 'active' : ''; ?>"><a href="user_management.php" data-tooltip="User Management" aria-label="User Management"><i class="fas fa-user-cog"></i> <span class="link-text">User Management</span></a></li>
             <li class="<?php echo ($current_page == 'system_settings.php') ? 'active' : ''; ?>"><a href="system_settings.php" data-tooltip="System Settings" aria-label="System Settings"><i class="fas fa-cog"></i> <span class="link-text">System Settings</span></a></li>
+            <li class="<?php echo ($current_page == 'legal_reference.php') ? 'active' : ''; ?>"><a href="legal_reference.php" data-tooltip="Legal Reference" aria-label="Legal Reference"><i class="fas fa-balance-scale"></i> <span class="link-text">Legal Reference</span></a></li>
             <li class="logout-item"><a href="../index.php?logout=true" data-tooltip="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i> <span class="link-text">Logout</span></a></li>
         </ul>
     </div>

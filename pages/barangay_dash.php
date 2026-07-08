@@ -22,8 +22,29 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* Page-specific styles for dashboard */
-        .dashboard-panels { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 30px; }
-        .left-panel, .right-panel { display: flex; flex-direction: column; gap: 20px; }
+        .dashboard-panels {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .left-panel, .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        @media (min-width: 992px) {
+            .dashboard-panels {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .left-panel {
+                grid-column: span 2;
+            }
+            .right-panel {
+                grid-column: span 1;
+            }
+        }
         .chart-card, .calendar-card, .notifications-card { background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); padding: 20px; }
         .chart-card h3, .calendar-card h3, .notifications-card h3 { font-size: 18px; margin-bottom: 15px; color: var(--primary); display: flex; align-items: center; gap: 10px; }
         
@@ -40,8 +61,18 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
         .calendar-table td.today { background: var(--secondary); color: white; border-radius: 50%; font-weight: bold; }
         
         .charts-container { display: flex; flex-direction: column; gap: 20px; }
-        .chart-wrapper { position: relative; height: 250px; width: 100%; }
+        .chart-wrapper { position: relative; height: 260px; max-height: 260px; width: 100%; }
         .notifications-list { max-height: 450px; overflow-y: auto; }
+        .recent-apps-card {
+            max-height: 320px;
+            display: flex;
+            flex-direction: column;
+        }
+        .recent-apps-card .notifications-list {
+            overflow-y: auto;
+            flex: 1;
+            max-height: none;
+        }
         .notification-item { display: flex; align-items: center; padding: 15px 5px; border-bottom: 1px solid #eee; }
         .notification-item:last-child { border-bottom: none; }
         .notification-icon { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px; flex-shrink: 0; }
@@ -69,7 +100,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
         .priority-alert a { background: white; color: #d97706; padding: 8px 18px; border-radius: 6px; font-weight: 700; text-decoration: none; font-size: 0.9rem; }
         .priority-alert a:hover { background: #fef3c7; }
 
-        @media (max-width: 992px) { .dashboard-panels { grid-template-columns: 1fr; } }
+
     </style>
 </head>
 <body>
@@ -113,9 +144,9 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                 <div class="stat-card"><div class="stat-icon" style="color:#ec4899;"><i class="fas fa-gift"></i></div><div><div class="stat-label">Released</div><div class="stat-value" id="statReleased">—</div></div></div>
             </div>
 
+            <h2 style="color: var(--text); margin-bottom: 20px;">Application Statistics</h2>
             <div class="dashboard-panels">
                 <div class="left-panel">
-                    <h2 style="color: var(--text);">Application Statistics</h2>
                     <div class="charts-container">
                         <div class="chart-card">
                             <h3><i class="fas fa-chart-pie"></i> Status Distribution</h3>
@@ -148,10 +179,117 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                             </table>
                         </div>
                     </div>
-                    <div class="notifications-card">
+                    <div class="notifications-card recent-apps-card">
                         <h3><i class="fas fa-bell"></i> Recent Applications</h3>
                         <div class="notifications-list" id="realtime-notifications-list">
                             <p>Loading notifications...</p>
+                        </div>
+                    </div>
+
+                    <!-- Quick RA Reference Card -->
+                    <div class="notifications-card" id="raReferenceCard" style="padding:0; overflow:hidden; border-radius:12px;">
+                        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%); padding: 16px 20px; display:flex; align-items:center; gap:10px;">
+                            <div style="width:36px;height:36px;background:rgba(255,255,255,0.15);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-balance-scale" style="color:#f0c060;font-size:1rem;"></i>
+                            </div>
+                            <div>
+                                <div style="color:#fff;font-weight:700;font-size:.95rem;">Quick RA Reference</div>
+                                <div style="color:rgba(255,255,255,0.6);font-size:.72rem;margin-top:1px;">Legal Compliance Guide for Staff</div>
+                            </div>
+                            <a href="legal_reference.php" style="margin-left:auto;background:rgba(255,255,255,0.15);color:#fff;text-decoration:none;padding:5px 12px;border-radius:20px;font-size:.72rem;font-weight:600;white-space:nowrap;transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+                                Full Guide <i class="fas fa-arrow-right" style="font-size:.65rem;"></i>
+                            </a>
+                        </div>
+                        <div style="padding:6px 0;">
+                            <!-- RA 9994 -->
+                            <div class="ra-item" onclick="this.querySelector('.ra-body').style.display = this.querySelector('.ra-body').style.display==='none'?'block':'none'; this.querySelector('.ra-chevron').style.transform = this.querySelector('.ra-chevron').style.transform==='rotate(180deg)'?'rotate(0deg)':'rotate(180deg)';" style="cursor:pointer; border-bottom:1px solid #f1f5f9;">
+                                <div style="display:flex;align-items:center;gap:10px;padding:13px 18px;">
+                                    <div style="width:32px;height:32px;background:#dbeafe;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas fa-id-card" style="color:#2563eb;font-size:.8rem;"></i></div>
+                                    <div style="flex:1;">
+                                        <div style="font-weight:700;font-size:.82rem;color:#1e293b;">RA 9994</div>
+                                        <div style="font-size:.71rem;color:#64748b;">Expanded Senior Citizens Act of 2010</div>
+                                    </div>
+                                    <span style="background:#2563eb;color:#fff;padding:2px 7px;border-radius:10px;font-size:.68rem;font-weight:700;margin-right:6px;">Age 60+</span>
+                                    <i class="fas fa-chevron-down ra-chevron" style="color:#94a3b8;font-size:.75rem;transition:transform 0.3s;"></i>
+                                </div>
+                                <div class="ra-body" style="display:none;padding:4px 18px 14px 60px;font-size:.78rem;color:#475569;line-height:1.7;">
+                                    <p>Defines a <strong>Senior Citizen as 60 years or older</strong>. Key entitlements include:</p>
+                                    <ul style="margin-top:6px;padding-left:14px;">
+                                        <li><strong>20% discount</strong> on goods and services (medicine, restaurants, transport, etc.)</li>
+                                        <li><strong>VAT exemption</strong> on the 20% senior discount purchases</li>
+                                        <li>Free medical and dental services in government hospitals</li>
+                                        <li>Priority lanes in all government and private establishments</li>
+                                        <li>SSS/GSIS minimum monthly pension benefits</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <!-- RA 11916 -->
+                            <div class="ra-item" onclick="this.querySelector('.ra-body').style.display = this.querySelector('.ra-body').style.display==='none'?'block':'none'; this.querySelector('.ra-chevron').style.transform = this.querySelector('.ra-chevron').style.transform==='rotate(180deg)'?'rotate(0deg)':'rotate(180deg)';" style="cursor:pointer; border-bottom:1px solid #f1f5f9;">
+                                <div style="display:flex;align-items:center;gap:10px;padding:13px 18px;">
+                                    <div style="width:32px;height:32px;background:#dcfce7;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas fa-hand-holding-usd" style="color:#16a34a;font-size:.8rem;"></i></div>
+                                    <div style="flex:1;">
+                                        <div style="font-weight:700;font-size:.82rem;color:#1e293b;">RA 11916</div>
+                                        <div style="font-size:.71rem;color:#64748b;">Social Pension for Indigent Seniors</div>
+                                    </div>
+                                    <span style="background:#16a34a;color:#fff;padding:2px 7px;border-radius:10px;font-size:.68rem;font-weight:700;margin-right:6px;">₱1,000/mo</span>
+                                    <i class="fas fa-chevron-down ra-chevron" style="color:#94a3b8;font-size:.75rem;transition:transform 0.3s;"></i>
+                                </div>
+                                <div class="ra-body" style="display:none;padding:4px 18px 14px 60px;font-size:.78rem;color:#475569;line-height:1.7;">
+                                    <p>Mandates a <strong>100% increase</strong> in the monthly social pension for indigent senior citizens:</p>
+                                    <ul style="margin-top:6px;padding-left:14px;">
+                                        <li>From ₱500 → <strong>₱1,000 per month</strong></li>
+                                        <li>Beneficiaries must be <strong>60+</strong>, indigent, frail, sick, or with disability</li>
+                                        <li>Not a beneficiary of any other pension/retirement benefit from government</li>
+                                        <li>Must pass a <strong>means test</strong> to qualify as "indigent"</li>
+                                        <li>Administered by DSWD (Dept. of Social Welfare and Development)</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <!-- RA 11982 -->
+                            <div class="ra-item" onclick="this.querySelector('.ra-body').style.display = this.querySelector('.ra-body').style.display==='none'?'block':'none'; this.querySelector('.ra-chevron').style.transform = this.querySelector('.ra-chevron').style.transform==='rotate(180deg)'?'rotate(0deg)':'rotate(180deg)';" style="cursor:pointer; border-bottom:1px solid #f1f5f9;">
+                                <div style="display:flex;align-items:center;gap:10px;padding:13px 18px;">
+                                    <div style="width:32px;height:32px;background:#fef9c3;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas fa-birthday-cake" style="color:#ca8a04;font-size:.8rem;"></i></div>
+                                    <div style="flex:1;">
+                                        <div style="font-weight:700;font-size:.82rem;color:#1e293b;">RA 11982</div>
+                                        <div style="font-size:.71rem;color:#64748b;">Expanded Centenarian Act</div>
+                                    </div>
+                                    <span style="background:#ca8a04;color:#fff;padding:2px 7px;border-radius:10px;font-size:.68rem;font-weight:700;margin-right:6px;">Age 80+</span>
+                                    <i class="fas fa-chevron-down ra-chevron" style="color:#94a3b8;font-size:.75rem;transition:transform 0.3s;"></i>
+                                </div>
+                                <div class="ra-body" style="display:none;padding:4px 18px 14px 60px;font-size:.78rem;color:#475569;line-height:1.7;">
+                                    <p>Expands milestone <strong>cash gifts</strong> to elderly Filipinos at key ages:</p>
+                                    <ul style="margin-top:6px;padding-left:14px;">
+                                        <li>Age 80: <strong>₱10,000</strong></li>
+                                        <li>Age 85: <strong>₱10,000</strong></li>
+                                        <li>Age 90: <strong>₱10,000</strong></li>
+                                        <li>Age 95: <strong>₱10,000</strong></li>
+                                        <li>Age 100+: <strong>₱100,000</strong> (Centenarian Award)</li>
+                                    </ul>
+                                    <p style="margin-top:6px;color:#92400e;background:#fef9c3;padding:5px 8px;border-radius:5px;font-size:.74rem;"><i class="fas fa-info-circle"></i> Gifts granted by the Office of the President via OSCA endorsement.</p>
+                                </div>
+                            </div>
+                            <!-- Verified OSCA Contacts -->
+                            <div class="ra-item" onclick="this.querySelector('.ra-body').style.display = this.querySelector('.ra-body').style.display==='none'?'block':'none'; this.querySelector('.ra-chevron').style.transform = this.querySelector('.ra-chevron').style.transform==='rotate(180deg)'?'rotate(0deg)':'rotate(180deg)';" style="cursor:pointer;">
+                                <div style="display:flex;align-items:center;gap:10px;padding:13px 18px;">
+                                    <div style="width:32px;height:32px;background:#fee2e2;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas fa-phone-alt" style="color:#ef4444;font-size:.8rem;"></i></div>
+                                    <div style="flex:1;">
+                                        <div style="font-weight:700;font-size:.82rem;color:#1e293b;">Official Contacts</div>
+                                        <div style="font-size:.71rem;color:#64748b;">Verified Support Channels & Helpdesk</div>
+                                    </div>
+                                    <span style="background:#ef4444;color:#fff;padding:2px 7px;border-radius:10px;font-size:.68rem;font-weight:700;margin-right:6px;">OSCA</span>
+                                    <i class="fas fa-chevron-down ra-chevron" style="color:#94a3b8;font-size:.75rem;transition:transform 0.3s;"></i>
+                                </div>
+                                <div class="ra-body" style="display:none;padding:4px 18px 14px 60px;font-size:.78rem;color:#475569;line-height:1.7;">
+                                    <p>Official contacts for senior citizen inquiries and support:</p>
+                                    <ul style="margin-top:6px;padding-left:14px;list-style-type:none;">
+                                        <li style="margin-bottom:6px;"><i class="fas fa-globe" style="color:#3b82f6;margin-right:6px;"></i><strong>Web:</strong> <a href="https://www.pasigcity.gov.ph" target="_blank" style="color:#2563eb;text-decoration:none;">Pasig City Official Website</a></li>
+                                        <li style="margin-bottom:6px;"><i class="fas fa-envelope" style="color:#10b981;margin-right:6px;"></i><strong>Emails:</strong> <a href="mailto:osca@pasigcity.gov.ph" style="color:#2563eb;text-decoration:none;">osca@pasigcity.gov.ph</a> / <a href="mailto:OSCApasig@gmail.com" style="color:#2563eb;text-decoration:none;">OSCApasig@gmail.com</a></li>
+                                        <li style="margin-bottom:6px;"><i class="fab fa-facebook" style="color:#1877f2;margin-right:6px;"></i><strong>Facebook:</strong> <a href="https://www.facebook.com/search/top/?q=Pasig%20City%20OSCA" target="_blank" style="color:#2563eb;text-decoration:none;">Pasig City OSCA</a></li>
+                                        <li style="margin-bottom:6px;"><i class="fas fa-phone-alt" style="color:#f59e0b;margin-right:6px;"></i><strong>Helpdesk:</strong> 8-643-1111 Local 1152</li>
+                                        <li style="margin-bottom:6px;"><i class="fas fa-landmark" style="color:#8b5cf6;margin-right:6px;"></i><strong>Oversight:</strong> <a href="https://ncsc.gov.ph" target="_blank" style="color:#2563eb;text-decoration:none;">NCSC Portal</a></li>
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

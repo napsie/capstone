@@ -22,7 +22,7 @@ body.dark-mode {
 }
 
 .dark-mode .sidebar {
-    background: linear-gradient(135deg, #0d3a6e 0%, #1a4b8c 50%);
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
     border-top-right-radius: 15px;
     border-bottom-right-radius: 15px;

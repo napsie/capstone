@@ -245,9 +245,10 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
             <div class="applications-table">
                 <div class="table-header">
                     <h2>Applications Queue</h2>
-                    <div class="table-controls">
-                        <input type="text" class="search-box" placeholder="Search applications...">
-                        <select id="applicationTypeFilter" class="btn">
+                    <div class="table-controls" style="display: flex; gap: 10px; align-items: center; width: 100%; max-width: 750px;">
+                        <input type="text" class="search-box" placeholder="Search applications..." style="flex: 1; margin: 0;">
+                        <button class="btn btn-accent" id="scanQrBtn" onclick="openProxyModal()" style="display: flex; align-items: center; gap: 6px; white-space: nowrap;"><i class="fas fa-qrcode"></i> Scan Token</button>
+                        <select id="applicationTypeFilter" class="btn" style="margin: 0;">
                             <option value="">All Types</option>
                             <?php foreach (getApplicationTypeOptions() as $val => $label): ?>
                             <option value="<?php echo $val; ?>"><?php echo htmlspecialchars($label); ?></option>
@@ -423,6 +424,12 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                                 </div>
                             </div>
 
+                            <!-- Uploaded Proxy/Pension Documents section -->
+                            <div class="form-section" id="proxyDocumentsSection" style="display:none; margin-top:20px;">
+                                <h3><i class="fas fa-user-shield"></i> Uploaded Proxy/Pension Documents</h3>
+                                <div id="proxyDocumentsList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px;"></div>
+                            </div>
+
                             <div class="form-actions" id="modalFormActions">
                                 <button type="submit" class="btn"><i class="fas fa-save"></i> Save Changes</button>
                                 <button type="button" class="btn btn-accent" onclick="exportApplicationDetails(document.getElementById('applicationId').value)"><i class="fas fa-print"></i> Print Official Form</button>
@@ -558,31 +565,96 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                     // Set up Blur/Return alerts
                     const warningBox = document.getElementById('returnedWarningBox');
                     const reasonText = document.getElementById('returnedReasonText');
-                    if (currentState === 'Received' && application.return_comments) {
+                    if ((currentState === 'Received' || currentState === 'Submitted') && application.return_comments) {
                         warningBox.style.display = 'block';
                         reasonText.textContent = `"${application.return_comments}"`;
                     } else {
                         warningBox.style.display = 'none';
                     }
 
-                    // Render Actions - edit locked if state is past "Received"
-                    const inputs = document.querySelectorAll('#applicationDetailForm input, #applicationDetailForm textarea');
-                    const btnSave = document.querySelector('#applicationDetailForm button[type="submit"]');
-                    const btnForward = document.getElementById('btnForwardReview');
+                    // Render Proxy Documents if applicable
+                    const proxySec = document.getElementById('proxyDocumentsSection');
+                    const proxyList = document.getElementById('proxyDocumentsList');
+                    proxySec.style.display = 'none';
+                    proxyList.innerHTML = '';
+                    
+                    if (application.is_proxy_application == 1) {
+                        proxySec.style.display = 'block';
+                        const docs = [
+                            { key: 'psa_birth_cert', label: 'PSA Birth Cert' },
+                            { key: 'barangay_residency', label: 'Barangay Residency' },
+                            { key: 'comelec_cert', label: 'COMELEC Cert' },
+                            { key: 'proof_of_life', label: 'Proof of Life (In Bed)' },
+                            { key: 'auth_letter', label: 'Auth Letter' },
+                            { key: 'proxy_id', label: 'Proxy Gov ID' },
+                            { key: 'proxy_birth_cert', label: 'Proxy Birth Cert' },
+                            { key: 'home_visitation_form', label: 'Home Visitation Form' },
+                            { key: 'landbank_enrollment_form', label: 'Land Bank Card Form' }
+                        ];
+                        docs.forEach(doc => {
+                            if (application[doc.key]) {
+                                const docUrl = `../api/get_document.php?id=${encodeURIComponent(appId)}&doc_type=${doc.key}`;
+                                let previewHtml = '';
+                                if (application[doc.key].toLowerCase().endsWith('.pdf')) {
+                                    previewHtml = `<div class="pdf-preview-icon" style="font-size:3rem; text-align:center; padding:15px 0;"><i class="fas fa-file-pdf" style="color:#ef4444;"></i></div>`;
+                                } else {
+                                    previewHtml = `<img src="${docUrl}" style="max-height:100%; max-width:100%; object-fit:contain; border-radius:4px;">`;
+                                }
+                                proxyList.innerHTML += `
+                                    <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; background: #fff; text-align: center;">
+                                        <span style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:5px; height: 32px; overflow: hidden; line-height: 1.2;">${doc.label}</span>
+                                        <div class="image-placeholder" style="height:120px; display:flex; align-items:center; justify-content:center; background:#f8fafc; overflow:hidden; border:1px dashed #cbd5e1; border-radius:6px; margin-bottom:8px;">
+                                            ${previewHtml}
+                                        </div>
+                                        <a href="${docUrl}" target="_blank" class="btn btn-small" style="font-size:0.72rem; padding: 4px 8px; width:100%; display:block; text-align:center; box-sizing:border-box;"><i class="fas fa-eye"></i> View Original</a>
+                                    </div>
+                                `;
+                            }
+                        });
+                    }
 
-                    if (currentState !== 'Received') {
+                    // Render Actions - edit locked if state is past "Received" / "Submitted"
+                    const inputs = document.querySelectorAll('#applicationDetailForm input, #applicationDetailForm textarea');
+                    const formActions = document.getElementById('modalFormActions');
+
+                    const isEditable = (currentState === 'Received' || currentState === 'Submitted');
+                    if (!isEditable) {
                         inputs.forEach(inp => inp.setAttribute('disabled', 'disabled'));
-                        btnSave.style.display = 'none';
-                        btnForward.style.display = 'none';
                     } else {
                         inputs.forEach(inp => {
-                            if (inp.id !== 'applicationType') {
+                            if (inp.id !== 'applicationType' && inp.id !== 'applicationId') {
                                 inp.removeAttribute('disabled');
                             }
                         });
-                        btnSave.style.display = 'inline-block';
-                        btnForward.style.display = 'inline-block';
                     }
+
+                    // Dynamic FSM transition action buttons
+                    let actionsHtml = '';
+                    if (isEditable) {
+                        actionsHtml += `<button type="submit" class="btn" style="background:#0f172a; border-color:#0f172a;"><i class="fas fa-save"></i> Save Changes</button>`;
+                    }
+                    actionsHtml += `<button type="button" class="btn btn-accent" onclick="exportApplicationDetails('${application.id_number}')"><i class="fas fa-print"></i> Print Official Form</button>`;
+                    
+                    if (currentState === 'Submitted' || currentState === 'Received') {
+                        actionsHtml += `
+                            <button type="button" class="btn" style="background-color: #3b82f6; border-color: #3b82f6;" onclick="transitionApplicationState('next', 'File marked as Under Review after Proof of Life verification.')">
+                                <i class="fas fa-search"></i> Mark Under Review
+                            </button>
+                        `;
+                    } else if (currentState === 'For Review') {
+                        actionsHtml += `
+                            <button type="button" class="btn" style="background-color: #10b981; border-color: #10b981;" onclick="transitionApplicationState('next', 'Counter verification successful. Original physical documents match uploaded records.')">
+                                <i class="fas fa-check-circle"></i> Verify and Approve
+                            </button>
+                        `;
+                    } else {
+                        actionsHtml += `
+                            <span style="color:#64748b; font-size:0.82rem; font-style:italic; font-weight:600; display:inline-flex; align-items:center; gap:5px; margin-left:10px;">
+                                <i class="fas fa-lock"></i> FSM State: [${currentState}]
+                            </span>
+                        `;
+                    }
+                    formActions.innerHTML = actionsHtml;
 
                     // Render Timeline Audit Trail
                     let timelineHtml = "";
@@ -770,6 +842,131 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
         applyFilterBtn.addEventListener('click', fetchApplications);
 
         fetchApplications();
+
+        // FSM Transition Function
+        async function transitionApplicationState(action, defaultComment) {
+            let comment = prompt("Enter FSM transition remarks/comments:", defaultComment);
+            if (comment === null) return; // cancel
+            
+            try {
+                const formData = new FormData();
+                formData.append('applicationId', currentAppId);
+                formData.append('action', action);
+                formData.append('comments', comment);
+
+                const response = await fetch('../api/update_fsm_state.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(result.message);
+                    document.getElementById('applicationModal').style.display = 'none';
+                    fetchApplications();
+                } else {
+                    alert("State Transition Error: " + result.message);
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Connection error occurred during state transition.");
+            }
+        }
+
+        // QR Scanner Modal Helpers
+        function openProxyModal() {
+            document.getElementById('proxyModal').style.display = 'block';
+            document.getElementById('modalToken').value = '';
+            document.getElementById('modalError').textContent = '';
+        }
+
+        function closeProxyModal() {
+            document.getElementById('proxyModal').style.display = 'none';
+        }
+
+        async function searchByQrToken() {
+            const tokenInput = document.getElementById('modalToken').value.trim();
+            const modalError = document.getElementById('modalError');
+            
+            if (!tokenInput) {
+                modalError.textContent = 'Token input cannot be empty.';
+                return;
+            }
+
+            modalError.innerHTML = '<span style="color:#2563eb;"><i class="fas fa-spinner fa-spin"></i> Parsing token...</span>';
+            let token = tokenInput;
+            
+            // Extract token if they pasted a full redirect URL
+            if (tokenInput.includes('token=')) {
+                try {
+                    const url = new URL(tokenInput);
+                    token = url.searchParams.get('token');
+                } catch(e) {}
+            }
+
+            try {
+                let transactionId = token;
+                
+                // If it looks like an encrypted token, decrypt it first via API
+                if (token.length > 50) {
+                    const response = await fetch(`../api/scan_proxy_qr.php?token=${encodeURIComponent(token)}`);
+                    const result = await response.json();
+                    
+                    if (result.success && result.data && result.data.transactionId) {
+                        transactionId = result.data.transactionId;
+                    } else {
+                        modalError.textContent = 'Failed to decrypt token. Please try again.';
+                        return;
+                    }
+                }
+                
+                // Search database or list to verify if the application ID exists
+                const verifyResponse = await fetch(`../api/get_application_details.php?id=${encodeURIComponent(transactionId)}`);
+                const verifyResult = await verifyResponse.json();
+                
+                if (verifyResult && !verifyResult.error) {
+                    // Close QR modal and open details
+                    closeProxyModal();
+                    openApplicationModal(transactionId);
+                } else {
+                    modalError.textContent = `Application ID: [${transactionId}] not found in your database or barangay isolation.`;
+                }
+            } catch (err) {
+                console.error(err);
+                modalError.textContent = 'Connection error occurred during verification.';
+            }
+        }
+
+        // Close scan modal when clicking outside
+        window.addEventListener('click', function(event) {
+            const proxyModal = document.getElementById('proxyModal');
+            if (event.target === proxyModal) {
+                closeProxyModal();
+            }
+        });
     </script>
+
+    <!-- Scan Proxy QR Modal -->
+    <div id="proxyModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 style="display: flex; align-items: center; gap: 8px; color: #0f172a;"><i class="fas fa-qrcode"></i> Scan Proxy QR Token</h2>
+                <button class="close-modal" onclick="closeProxyModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+            </div>
+            <div class="modal-body" style="padding-top: 15px;">
+                <p style="margin-bottom: 15px; font-size: 0.88rem; color: #64748b;">
+                    Paste the encrypted QR token link or type the unique transaction priority token (e.g., PRX-XXXXXX) to instantly display the senior's profile details.
+                </p>
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label for="modalToken" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 6px;">QR Code Redirect Link or Token ID</label>
+                    <textarea id="modalToken" class="form-control" rows="3" placeholder="Paste scan payload here (e.g. PRX-XXXXXX)..." style="width: 100%; border-radius: 6px; padding: 10px; border: 1px solid #cbd5e1; font-family: monospace;"></textarea>
+                </div>
+                <button type="button" class="btn" style="background-color: #10b981; color: white; width: 100%; padding: 12px; font-weight: 600; border: none; border-radius: 6px; cursor: pointer;" onclick="searchByQrToken()">
+                    <i class="fas fa-search"></i> Search and Open Profile
+                </button>
+                <div id="modalError" style="color: #e74c3c; font-size: 0.82rem; margin-top: 10px; font-weight: 500;"></div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

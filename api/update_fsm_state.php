@@ -64,14 +64,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         // FSM Transition Logic
         if ($action === 'next') {
-            // Staff can ONLY move Received → For Review
-            if ($isStaff && $currentState !== 'Received') {
-                echo json_encode(['success' => false, 'message' => 'Barangay staff can only submit applications that are in the Received state.']);
+            // Staff can move Received/Submitted to For Review, and For Review to Verified
+            if ($isStaff && !in_array($currentState, ['Received', 'Submitted', 'For Review'])) {
+                echo json_encode(['success' => false, 'message' => 'Barangay staff can only transition applications that are in Received, Submitted, or For Review states.']);
                 exit();
             }
 
             switch ($currentState) {
-                case 'Received':  $nextState = 'For Review'; break;
+                case 'Submitted':
+                case 'Received':   $nextState = 'For Review'; break;
                 case 'For Review': $nextState = 'Verified';  break;
                 case 'Verified':   $nextState = 'Approved';  break;
                 case 'Approved':   $nextState = 'Released';  break;
