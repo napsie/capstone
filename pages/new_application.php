@@ -2856,109 +2856,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         </div>
                     </div><!-- /#oscaOfficialFormCard -->
 
-                    <!-- Basic Information -->
-                    <div class="form-section">
-                        <div class="step-heading">
-                            <div class="step-number">2</div>
-                            <div>
-                                <h3>Basic Information</h3>
-                                <p>Fill in the applicant's personal details below.</p>
-                            </div>
-                        </div>
+                    <!-- Hidden backing fields — values are synced from the official form preview cards above via syncField() -->
+                    <input type="hidden" id="idNumber" name="idNumber" value="<?php echo htmlspecialchars($loadedProxyData['transactionId'] ?? uniqid('APP-')); ?>">
+                    <input type="hidden" id="lastName"             name="lastName"             value="<?php echo htmlspecialchars($loadedProxyData['lastName'] ?? ''); ?>">
+                    <input type="hidden" id="firstName"            name="firstName"            value="<?php echo htmlspecialchars($loadedProxyData['firstName'] ?? ''); ?>">
+                    <input type="hidden" id="middleName"           name="middleName"           value="<?php echo htmlspecialchars($loadedProxyData['middleName'] ?? ''); ?>">
+                    <input type="hidden" id="suffix"               name="suffix"               value="<?php echo htmlspecialchars($loadedProxyData['suffix'] ?? ''); ?>">
+                    <input type="hidden" id="birthDate"            name="birthDate"            value="<?php echo htmlspecialchars($loadedProxyData['birthDate'] ?? ''); ?>">
+                    <input type="hidden" id="contactNumber"        name="contactNumber"        value="<?php echo htmlspecialchars($loadedProxyData['contactNumber'] ?? ''); ?>">
+                    <input type="hidden" id="completeAddress"      name="completeAddress"      value="<?php echo htmlspecialchars($loadedProxyData['completeAddress'] ?? ''); ?>">
+                    <input type="hidden" id="emergencyContactName" name="emergencyContactName" value="">
+                    <input type="hidden" id="emergencyContact"     name="emergencyContact"     value="">
+                    <!-- Pension/Burial hidden fields — synced from official form preview cards -->
+                    <input type="hidden" id="sssNumber"              name="sssNumber"              value="<?php echo htmlspecialchars($loadedProxyData['sssNumber'] ?? ''); ?>">
+                    <input type="hidden" id="pensionAmount"          name="pensionAmount"          value="<?php echo htmlspecialchars($loadedProxyData['pensionAmount'] ?? ''); ?>">
+                    <input type="hidden" id="dateOfDeath"            name="dateOfDeath"            value="<?php echo htmlspecialchars($loadedProxyData['dateOfDeath'] ?? ''); ?>">
+                    <input type="hidden" id="relationshipToDeceased" name="relationshipToDeceased" value="<?php echo htmlspecialchars($loadedProxyData['relationshipToDeceased'] ?? ''); ?>">
+                    <div id="ageComplianceResult" style="display:none;"></div>
+                    <div id="burialComplianceResult" style="display:none;"></div>
+                    <div id="pensionComplianceResult" style="display:none;"></div>
 
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="idNumber">ID Number / Reference ID</label>
-                                <input type="text" id="idNumber" name="idNumber" value="<?php echo htmlspecialchars($loadedProxyData['transactionId'] ?? uniqid('APP-')); ?>" oninput="this.value = this.value.replace(/[^a-zA-Z0-9-]/g, '')" required>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="lastName">Last Name</label>
-                                <input type="text" id="lastName" name="lastName" value="<?php echo htmlspecialchars($loadedProxyData['lastName'] ?? ''); ?>" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="firstName">First Name</label>
-                                <input type="text" id="firstName" name="firstName" value="<?php echo htmlspecialchars($loadedProxyData['firstName'] ?? ''); ?>" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')" required>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="middleName">Middle Name</label>
-                                <input type="text" id="middleName" name="middleName" value="<?php echo htmlspecialchars($loadedProxyData['middleName'] ?? ''); ?>" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
-                            </div>
-                            <div class="form-group">
-                                <label for="suffix">Suffix</label>
-                                <input type="text" id="suffix" name="suffix" value="<?php echo htmlspecialchars($loadedProxyData['suffix'] ?? ''); ?>" oninput="this.value = this.value.replace(/[^a-zA-Z\s.]/g, '')">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="birthDate">Birth Date</label>
-                                <input type="date" id="birthDate" name="birthDate" value="<?php echo htmlspecialchars($loadedProxyData['birthDate'] ?? ''); ?>" required onchange="checkAgeCompliance()">
-                                <div id="ageComplianceResult"></div>
-                            </div>
-                            <div class="form-group">
-                                <label for="contactNumber">Contact Number</label>
-                                <input type="text" id="contactNumber" name="contactNumber" value="<?php echo htmlspecialchars($loadedProxyData['contactNumber'] ?? ''); ?>" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="completeAddress">Complete Address</label>
-                            <textarea id="completeAddress" name="completeAddress" required><?php echo htmlspecialchars($loadedProxyData['completeAddress'] ?? ''); ?></textarea>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="emergencyContactName">Emergency Contact Name</label>
-                                <input type="text" id="emergencyContactName" name="emergencyContactName" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
-                            </div>
-                            <div class="form-group">
-                                <label for="emergencyContact">Emergency Contact Number</label>
-                                <input type="text" id="emergencyContact" name="emergencyContact" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
-                            </div>
-                        </div>
-                    </div>
-
-                    <?php $formFieldPrefix = ''; include '../partials/osca_form_sections.php'; ?>
-
-                    <!-- Local Social Pension Fields -->
-                    <div id="pension-fields" style="display: none;">
-                        <div class="form-section">
-                            <h3><i class="fas fa-wallet"></i> Social Pension Verification</h3>
-                            <div class="form-row">
-                                <div class="form-group" style="display: flex; flex-direction: column;">
-                                    <label for="sssNumber">SSS Number</label>
-                                    <div style="display: flex;">
-                                        <input type="text" id="sssNumber" name="sssNumber" value="<?php echo htmlspecialchars($loadedProxyData['sssNumber'] ?? ''); ?>" placeholder="e.g. 33-1234567-8" style="flex: 1;">
-                                        <button type="button" class="btn-verify-sss" onclick="verifySssPension()"><i class="fas fa-search"></i> Verify SSS</button>
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="pensionAmount">Verified Monthly Pension (PHP)</label>
-                                    <input type="number" step="0.01" id="pensionAmount" name="pensionAmount" value="<?php echo htmlspecialchars($loadedProxyData['pensionAmount'] ?? ''); ?>" readonly>
-                                    <div id="pensionComplianceResult"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Burial Assistance Fields -->
-                    <div id="burial-fields" style="display: none;">
-                        <div class="form-section">
-                            <h3><i class="fas fa-ribbon"></i> Burial Assistance Details</h3>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="dateOfDeath">Date of Death (Deceased Senior)</label>
-                                    <input type="date" id="dateOfDeath" name="dateOfDeath" value="<?php echo htmlspecialchars($loadedProxyData['dateOfDeath'] ?? ''); ?>" onchange="checkBurialDeadlineCompliance();syncBurialDeath(this);">
-                                    <div id="burialComplianceResult"></div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="relationshipToDeceased">Relationship of Claimant to Deceased</label>
-                                    <input type="text" id="relationshipToDeceased" name="relationshipToDeceased" value="<?php echo htmlspecialchars($loadedProxyData['relationshipToDeceased'] ?? ''); ?>" placeholder="e.g. Spouse, Son, Daughter">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
 
                     <!-- Proxy Representative Information (Visual validation block) -->
                     <div id="proxy-details-section" style="<?php echo $loadedProxyData ? 'display: block;' : 'display: none;'; ?>">
