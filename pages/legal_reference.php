@@ -32,7 +32,12 @@ $sidebarCss = ($role === 'barangay_staff') ? '../assets/css/barangay-sidebar.css
             line-height: 1.6;
         }
 
-        .main-content { padding: 30px; max-width: 1200px; }
+        .main-content {
+            padding: 30px;
+            width: 100%;
+            max-width: none;
+            min-width: 0;
+        }
 
         /* Page Header */
         .page-hero {

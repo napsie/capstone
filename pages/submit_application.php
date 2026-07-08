@@ -64,6 +64,77 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
             font-weight: 600;
         }
 
+        /* Layout fixes for submit application page */
+        .container {
+            width: 100%;
+            min-width: 0;
+        }
+
+        .main-content {
+            padding: 20px 30px;
+            width: auto;
+            max-width: calc(100vw - var(--sidebar-width));
+            min-width: 0;
+            box-sizing: border-box;
+        }
+
+        .applications-table {
+            width: 100%;
+            max-width: none;
+            margin: 0 0 30px;
+            padding: 24px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+            overflow: hidden;
+        }
+
+        .table-header {
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: space-between;
+        }
+
+        .table-controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 10px;
+            width: 100%;
+            max-width: none;
+        }
+
+        .table-controls > * {
+            min-width: 140px;
+        }
+
+        .applications-table-header {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: 12px;
+            margin-top: 10px;
+        }
+
+        .applications-table-header table {
+            min-width: 100%;
+            width: 100%;
+            border-spacing: 0;
+        }
+
+        .applications-table-header th,
+        .applications-table-header td {
+            white-space: nowrap;
+        }
+
+        .page-title {
+            max-width: 1200px;
+            margin: 0 auto 20px;
+        }
+
+        .page-title p {
+            max-width: 100%;
+        }
+
         /* FSM Badges */
         .badge-received { background-color: #e2e8f0; color: #475569; }
         .badge-review { background-color: #dbeafe; color: #1d4ed8; }
