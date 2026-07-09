@@ -1675,6 +1675,62 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     </div>
                                 </div>
 
+                                <!-- Required Documents (Burial) -->
+                                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px 16px;margin-top:14px;margin-bottom:10px;">
+                                    <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#166534;margin-bottom:4px;display:flex;align-items:center;gap:6px;">
+                                        <i class="fas fa-file-alt" style="color:#16a34a;"></i> Required Documents
+                                        <span style="font-size:0.65rem;font-weight:600;color:#16a34a;background:#dcfce7;border-radius:20px;padding:2px 8px;margin-left:4px;">4 Required &nbsp;·&nbsp; 1 Optional</span>
+                                    </div>
+                                    <p style="font-size:0.72rem;color:#4b7c5e;margin-bottom:12px;display:flex;align-items:center;gap:5px;margin-top:6px;">
+                                        <i class="fas fa-info-circle" style="color:#16a34a;"></i>
+                                        Accepted formats: JPEG, PNG, PDF &mdash; Max 8MB per file.
+                                    </p>
+                                    <!-- Row 1 -->
+                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                                        <div>
+                                            <label for="burialDoc1" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-certificate" style="margin-right:4px;color:#16a34a;"></i> Death Certificate <span style="color:#e74c3c;">*</span>
+                                            </label>
+                                            <input type="file" id="burialDoc1" name="doc_death_certificate" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)" style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <div id="burialDoc1SizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;"><i class="fas fa-exclamation-triangle"></i> File exceeds 8MB.</div>
+                                        </div>
+                                        <div>
+                                            <label for="burialDoc2" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-users" style="margin-right:4px;color:#16a34a;"></i> Proof of Relationship to Deceased <span style="color:#e74c3c;">*</span>
+                                            </label>
+                                            <input type="file" id="burialDoc2" name="doc_relationship_proof" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)" style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <div id="burialDoc2SizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;"><i class="fas fa-exclamation-triangle"></i> File exceeds 8MB.</div>
+                                        </div>
+                                    </div>
+                                    <!-- Row 2 -->
+                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                                        <div>
+                                            <label for="burialDoc3" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-home" style="margin-right:4px;color:#16a34a;"></i> Barangay Residency Certificate <span style="color:#e74c3c;">*</span>
+                                            </label>
+                                            <input type="file" id="burialDoc3" name="doc_barangay_cert" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)" style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <div id="burialDoc3SizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;"><i class="fas fa-exclamation-triangle"></i> File exceeds 8MB.</div>
+                                        </div>
+                                        <div>
+                                            <label for="burialDoc4" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-id-card" style="margin-right:4px;color:#16a34a;"></i> Valid ID of Claimant <span style="color:#e74c3c;">*</span>
+                                            </label>
+                                            <input type="file" id="burialDoc4" name="doc_claimant_id" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)" style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <div id="burialDoc4SizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;"><i class="fas fa-exclamation-triangle"></i> File exceeds 8MB.</div>
+                                        </div>
+                                    </div>
+                                    <!-- Row 3 – Optional -->
+                                    <div style="display:grid;grid-template-columns:1fr;gap:12px;">
+                                        <div style="background:#fffbeb;border:1px dashed #fde68a;border-radius:8px;padding:10px 12px;">
+                                            <label for="burialDoc5" style="font-size:0.68rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-file-signature" style="margin-right:4px;color:#d97706;"></i> Affidavit of Loss <span style="font-size:0.65rem;font-weight:500;color:#92400e;background:#fef3c7;border-radius:12px;padding:1px 7px;margin-left:4px;">Optional — Lost ID Only</span>
+                                            </label>
+                                            <input type="file" id="burialDoc5" name="doc_affidavit_loss" accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)" style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #fde68a;border-radius:7px;background:#fff;color:#92400e;cursor:pointer;">
+                                            <div id="burialDoc5SizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;"><i class="fas fa-exclamation-triangle"></i> File exceeds 8MB.</div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <p style="font-size:0.67rem;color:#94a3b8;text-align:center;margin-top:10px;margin-bottom:0;">
                                     <i class="fas fa-info-circle" style="margin-right:4px;"></i>
                                     This official form preview mirrors the physical OSCA Burial Assistance form. All fields entered here are automatically carried over to the main form below.
@@ -1921,6 +1977,39 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                             <label style="font-size:0.64rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:18px;">Evaluated by (Signature over Printed Name)</label>
                                             <div style="border-top:1px solid #cbd5e1;padding-top:4px;display:flex;justify-content:space-between;align-items:center;">
                                                 <div style="font-size:0.68rem;color:#94a3b8;">Date and time: <input type="datetime-local" style="border:none;border-bottom:1px solid #cbd5e1;outline:none;font-size:0.78rem;"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Required Documents (Home Visit) -->
+                                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px 16px;margin-top:14px;margin-bottom:10px;">
+                                    <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#166534;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                                        <i class="fas fa-file-alt" style="color:#16a34a;"></i> Required Documents
+                                    </div>
+                                    <p style="font-size:0.72rem;color:#4b7c5e;margin-bottom:10px;display:flex;align-items:center;gap:5px;">
+                                        <i class="fas fa-info-circle" style="color:#16a34a;"></i>
+                                        Accepted formats: JPEG, PNG, PDF &mdash; Max 8MB per file.
+                                    </p>
+                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                        <div>
+                                            <label for="proofOfAddressHomeVisit" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-home" style="margin-right:4px;color:#16a34a;"></i> Proof of Address
+                                            </label>
+                                            <input type="file" id="proofOfAddressHomeVisit" name="proofOfAddress" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)"
+                                                style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <div id="proofOfAddressHomeVisitSizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;">
+                                                <i class="fas fa-exclamation-triangle"></i> File is large (&gt;8MB). Consider compressing it first.
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label for="idImageHomeVisit" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-id-card" style="margin-right:4px;color:#16a34a;"></i> ID Image / Supporting Document Photo
+                                            </label>
+                                            <input type="file" id="idImageHomeVisit" name="idImage" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)"
+                                                style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <div id="idImageHomeVisitSizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;">
+                                                <i class="fas fa-exclamation-triangle"></i> File is large (&gt;8MB). Consider compressing it first.
                                             </div>
                                         </div>
                                     </div>
@@ -2200,6 +2289,45 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     </div>
                                 </div>
 
+                                <!-- Required Documents (Milestone) -->
+                                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px 16px;margin-top:14px;margin-bottom:10px;">
+                                    <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#166534;margin-bottom:4px;display:flex;align-items:center;gap:6px;">
+                                        <i class="fas fa-file-alt" style="color:#16a34a;"></i> Required Documents
+                                        <span style="font-size:0.65rem;font-weight:600;color:#16a34a;background:#dcfce7;border-radius:20px;padding:2px 8px;margin-left:4px;">3 Required</span>
+                                    </div>
+                                    <p style="font-size:0.72rem;color:#4b7c5e;margin-bottom:12px;display:flex;align-items:center;gap:5px;margin-top:6px;">
+                                        <i class="fas fa-info-circle" style="color:#16a34a;"></i>
+                                        Accepted formats: JPEG, PNG, PDF &mdash; Max 8MB per file.
+                                    </p>
+                                    <!-- Row 1 -->
+                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                                        <div>
+                                            <label for="msDoc1" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-scroll" style="margin-right:4px;color:#16a34a;"></i> Birth Certificate (PSA / NSO) <span style="color:#e74c3c;">*</span>
+                                            </label>
+                                            <input type="file" id="msDoc1" name="doc_birth_certificate" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)" style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <div id="msDoc1SizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;"><i class="fas fa-exclamation-triangle"></i> File exceeds 8MB.</div>
+                                        </div>
+                                        <div>
+                                            <label for="msDoc2" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-home" style="margin-right:4px;color:#16a34a;"></i> Barangay Residency Certificate <span style="color:#e74c3c;">*</span>
+                                            </label>
+                                            <input type="file" id="msDoc2" name="doc_barangay_cert" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)" style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <div id="msDoc2SizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;"><i class="fas fa-exclamation-triangle"></i> File exceeds 8MB.</div>
+                                        </div>
+                                    </div>
+                                    <!-- Row 2 -->
+                                    <div style="display:grid;grid-template-columns:1fr;gap:12px;">
+                                        <div>
+                                            <label for="msDoc3" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-id-card" style="margin-right:4px;color:#16a34a;"></i> Valid ID / Senior Citizen ID <span style="color:#e74c3c;">*</span>
+                                            </label>
+                                            <input type="file" id="msDoc3" name="doc_valid_id" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)" style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <div id="msDoc3SizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;"><i class="fas fa-exclamation-triangle"></i> File exceeds 8MB.</div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <p style="font-size:0.67rem;color:#94a3b8;text-align:center;margin-top:10px;margin-bottom:0;">
                                     <i class="fas fa-info-circle" style="margin-right:4px;"></i>
                                     This official form preview mirrors the physical OSCA F5 Milestone Cash Gift form. All fields entered here are automatically carried over to the main form below.
@@ -2412,6 +2540,52 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     </div>
                                 </div>
 
+                                <!-- Required Documents (Local Pension) -->
+                                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px 16px;margin-top:14px;margin-bottom:10px;">
+                                    <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#166534;margin-bottom:4px;display:flex;align-items:center;gap:6px;">
+                                        <i class="fas fa-file-alt" style="color:#16a34a;"></i> Required Documents
+                                        <span style="font-size:0.65rem;font-weight:600;color:#16a34a;background:#dcfce7;border-radius:20px;padding:2px 8px;margin-left:4px;">4 Required</span>
+                                    </div>
+                                    <p style="font-size:0.72rem;color:#4b7c5e;margin-bottom:12px;display:flex;align-items:center;gap:5px;margin-top:6px;">
+                                        <i class="fas fa-info-circle" style="color:#16a34a;"></i>
+                                        Accepted formats: JPEG, PNG, PDF &mdash; Max 8MB per file.
+                                    </p>
+                                    <!-- Row 1 -->
+                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                                        <div>
+                                            <label for="penDoc1" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-scroll" style="margin-right:4px;color:#16a34a;"></i> Birth Certificate (PSA / NSO) <span style="color:#e74c3c;">*</span>
+                                            </label>
+                                            <input type="file" id="penDoc1" name="doc_birth_certificate" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)" style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <div id="penDoc1SizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;"><i class="fas fa-exclamation-triangle"></i> File exceeds 8MB.</div>
+                                        </div>
+                                        <div>
+                                            <label for="penDoc2" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-home" style="margin-right:4px;color:#16a34a;"></i> Barangay Residency Certificate <span style="color:#e74c3c;">*</span>
+                                            </label>
+                                            <input type="file" id="penDoc2" name="doc_barangay_cert" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)" style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <div id="penDoc2SizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;"><i class="fas fa-exclamation-triangle"></i> File exceeds 8MB.</div>
+                                        </div>
+                                    </div>
+                                    <!-- Row 2 -->
+                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                        <div>
+                                            <label for="penDoc3" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-ban" style="margin-right:4px;color:#16a34a;"></i> Certificate of Indigency / No Pension Cert. <span style="color:#e74c3c;">*</span>
+                                            </label>
+                                            <input type="file" id="penDoc3" name="doc_indigency_cert" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)" style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <div id="penDoc3SizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;"><i class="fas fa-exclamation-triangle"></i> File exceeds 8MB.</div>
+                                        </div>
+                                        <div>
+                                            <label for="penDoc4" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-id-card" style="margin-right:4px;color:#16a34a;"></i> Valid ID / Senior Citizen ID <span style="color:#e74c3c;">*</span>
+                                            </label>
+                                            <input type="file" id="penDoc4" name="doc_valid_id" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)" style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <div id="penDoc4SizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;"><i class="fas fa-exclamation-triangle"></i> File exceeds 8MB.</div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <p style="font-size:0.67rem;color:#94a3b8;text-align:center;margin-top:10px;margin-bottom:0;">
                                     <i class="fas fa-info-circle" style="margin-right:4px;"></i>
                                     This official form preview mirrors the physical OSCA Local Senior Pension form. All fields entered here are automatically carried over to the main form below.
@@ -2589,6 +2763,45 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed #bbf7d0; padding-top:10px; font-size:0.7rem; color:#15803d; font-weight:700; text-transform:uppercase;">
                                         <div>Applicant Signature: <span style="font-weight:400; font-family:'Courier New', monospace; font-size:0.85rem; text-transform:none;">/s/ Signed Digitally</span></div>
                                         <div>Barangay: <span style="color:#0f172a;"><?php echo htmlspecialchars($barangay); ?></span></div>
+                                    </div>
+                                </div>
+
+                                <!-- Required Documents (Land Bank) -->
+                                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px 16px;margin-top:14px;margin-bottom:10px;">
+                                    <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#166534;margin-bottom:4px;display:flex;align-items:center;gap:6px;">
+                                        <i class="fas fa-file-alt" style="color:#16a34a;"></i> Required Documents
+                                        <span style="font-size:0.65rem;font-weight:600;color:#16a34a;background:#dcfce7;border-radius:20px;padding:2px 8px;margin-left:4px;">3 Required</span>
+                                    </div>
+                                    <p style="font-size:0.72rem;color:#4b7c5e;margin-bottom:12px;display:flex;align-items:center;gap:5px;margin-top:6px;">
+                                        <i class="fas fa-info-circle" style="color:#16a34a;"></i>
+                                        Accepted formats: JPEG, PNG, PDF &mdash; Max 8MB per file.
+                                    </p>
+                                    <!-- Row 1 -->
+                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                                        <div>
+                                            <label for="lbDoc1" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-home" style="margin-right:4px;color:#16a34a;"></i> Barangay Residency Certificate <span style="color:#e74c3c;">*</span>
+                                            </label>
+                                            <input type="file" id="lbDoc1" name="doc_barangay_cert" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)" style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <div id="lbDoc1SizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;"><i class="fas fa-exclamation-triangle"></i> File exceeds 8MB.</div>
+                                        </div>
+                                        <div>
+                                            <label for="lbDoc2" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-id-card" style="margin-right:4px;color:#16a34a;"></i> Valid ID / Senior Citizen ID <span style="color:#e74c3c;">*</span>
+                                            </label>
+                                            <input type="file" id="lbDoc2" name="doc_valid_id" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)" style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <div id="lbDoc2SizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;"><i class="fas fa-exclamation-triangle"></i> File exceeds 8MB.</div>
+                                        </div>
+                                    </div>
+                                    <!-- Row 2 -->
+                                    <div style="display:grid;grid-template-columns:1fr;gap:12px;">
+                                        <div>
+                                            <label for="lbDoc3" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-credit-card" style="margin-right:4px;color:#16a34a;"></i> OSCA / Senior Citizen ID (for card enrollment) <span style="color:#e74c3c;">*</span>
+                                            </label>
+                                            <input type="file" id="lbDoc3" name="doc_osca_id" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)" style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <div id="lbDoc3SizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;"><i class="fas fa-exclamation-triangle"></i> File exceeds 8MB.</div>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -2849,6 +3062,39 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     </div>
                                 </div>
 
+                                <!-- Required Documents (inside form card) -->
+                                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px 16px;margin-top:14px;margin-bottom:4px;">
+                                    <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#166534;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                                        <i class="fas fa-file-alt" style="color:#16a34a;"></i> Required Documents
+                                    </div>
+                                    <p style="font-size:0.72rem;color:#4b7c5e;margin-bottom:10px;display:flex;align-items:center;gap:5px;">
+                                        <i class="fas fa-info-circle" style="color:#16a34a;"></i>
+                                        Accepted formats: JPEG, PNG, PDF &mdash; Max 8MB per file.
+                                    </p>
+                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                        <div>
+                                            <label for="proofOfAddress" id="labelProofOfAddress" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-home" style="margin-right:4px;color:#16a34a;"></i> Proof of Address
+                                            </label>
+                                            <input type="file" id="proofOfAddress" name="proofOfAddress" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)"
+                                                style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <div id="proofOfAddressSizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;">
+                                                <i class="fas fa-exclamation-triangle"></i> File is large (&gt;8MB). Consider compressing it first.
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label for="idImage" id="labelIdImage" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-id-card" style="margin-right:4px;color:#16a34a;"></i> ID Image / Supporting Document Photo
+                                            </label>
+                                            <input type="file" id="idImage" name="idImage" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)"
+                                                style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <div id="idImageSizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;">
+                                                <i class="fas fa-exclamation-triangle"></i> File is large (&gt;8MB). Consider compressing it first.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <p style="font-size:0.67rem;color:#94a3b8;text-align:center;margin-top:8px;margin-bottom:0;">
                                     <i class="fas fa-info-circle" style="margin-right:4px;"></i>
                                     This official form preview mirrors the physical OSCA ID Application form. All fields entered here are automatically carried over to the main form below.
@@ -2892,22 +3138,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <input type="text" id="proxyRelationship" name="proxyRelationship" value="<?php echo htmlspecialchars($loadedProxyData['proxyRelationship'] ?? ''); ?>" readonly>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- Required Documents -->
-                    <div class="form-section">
-                        <h3><i class="fas fa-file-alt"></i> Required Documents</h3>
-                        <p style="font-size:0.82rem; color:#94a3b8; margin-bottom:10px;"><i class="fas fa-info-circle"></i> Accepted formats: JPEG, PNG, PDF &mdash; Max 8MB per file.</p>
-                        <div class="form-group">
-                            <label for="proofOfAddress" id="labelProofOfAddress">Proof of Address</label>
-                            <input type="file" id="proofOfAddress" name="proofOfAddress" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)">
-                            <div id="proofOfAddressSizeWarn" style="display:none; color:#e74c3c; font-size:0.8rem; margin-top:4px;"><i class="fas fa-exclamation-triangle"></i> File is large (&gt;8MB). It may fail to upload. Consider compressing it first.</div>
-                        </div>
-                        <div class="form-group">
-                            <label for="idImage" id="labelIdImage">ID Image / Supporting Document Photo</label>
-                            <input type="file" id="idImage" name="idImage" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)">
-                            <div id="idImageSizeWarn" style="display:none; color:#e74c3c; font-size:0.8rem; margin-top:4px;"><i class="fas fa-exclamation-triangle"></i> File is large (&gt;8MB). It may fail to upload. Consider compressing it first.</div>
                         </div>
                     </div>
 
@@ -3053,6 +3283,27 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             document.getElementById('modalToken').value = "";
         }
 
+        function setCardSectionInputsState(cardId, enabled) {
+            const card = document.getElementById(cardId);
+            if (!card) return;
+            card.querySelectorAll('input, select, textarea').forEach(el => {
+                if (el.type === 'button' || el.type === 'submit' || el.type === 'reset' || el.type === 'image') return;
+                if (!enabled) {
+                    if (el.required) {
+                        el.dataset.wasRequired = '1';
+                    }
+                    el.required = false;
+                    el.disabled = true;
+                } else {
+                    if (el.dataset.wasRequired === '1') {
+                        el.required = true;
+                        delete el.dataset.wasRequired;
+                    }
+                    el.disabled = false;
+                }
+            });
+        }
+
         function closeProxyModal() {
             document.getElementById('proxyModal').style.display = "none";
         }
@@ -3193,6 +3444,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             if (msCard)    msCard.style.display    = (value === 'milestone_gift') ? 'block' : 'none';
             if (penCard)   penCard.style.display   = (value === 'pension' || value === 'national_pension') ? 'block' : 'none';
             if (lbCard)    lbCard.style.display    = (value === 'landbank')       ? 'block' : 'none';
+
+            setCardSectionInputsState('oscaOfficialFormCard',  value === 'senior');
+            setCardSectionInputsState('burialOfficialFormCard', value === 'burial');
+            setCardSectionInputsState('homeVisitOfficialFormCard', value === 'home_visit');
+            setCardSectionInputsState('milestoneOfficialFormCard', value === 'milestone_gift');
+            setCardSectionInputsState('pensionOfficialFormCard', value === 'pension' || value === 'national_pension');
+            setCardSectionInputsState('landbankOfficialFormCard', value === 'landbank');
+
             // Update pension form title for national pension
             const penTitle = document.getElementById('pensionFormTitle');
             if (penTitle) penTitle.textContent = (value === 'national_pension') ? 'NATIONAL DSWD SOCIAL PENSION FORM' : 'LOCAL SENIOR PENSION FORM';
@@ -3220,60 +3479,63 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             document.getElementById('selectedTypeBanner').style.display = 'none';
             document.getElementById('cardSelectorSection').classList.remove('hidden');
 
-            // Hide OSCA form cards
-            const oscaCard = document.getElementById('oscaOfficialFormCard');
-            if (oscaCard) oscaCard.style.display = 'none';
-            const lbCard = document.getElementById('landbankOfficialFormCard');
-            if (lbCard) lbCard.style.display = 'none';
+            ['oscaOfficialFormCard','burialOfficialFormCard','homeVisitOfficialFormCard','milestoneOfficialFormCard','pensionOfficialFormCard','landbankOfficialFormCard'].forEach(id => {
+                const card = document.getElementById(id);
+                if (card) {
+                    card.style.display = 'none';
+                    setCardSectionInputsState(id, false);
+                }
+            });
 
             document.getElementById('cardSelectorSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function goBackFromApplication() {
-            const type = document.getElementById('applicationType').value;
             document.getElementById('formBody').classList.remove('visible');
             document.getElementById('selectedTypeBanner').style.display = 'none';
             document.getElementById('cardSelectorSection').classList.remove('hidden');
-
-            if (type) {
-                openBenefitModal(type);
-            } else {
-                document.getElementById('cardSelectorSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
+            document.getElementById('cardSelectorSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function toggleFields() {
             const type = document.getElementById('applicationType').value;
 
-            document.getElementById('pension-fields').style.display = 'none';
-            document.getElementById('burial-fields').style.display = 'none';
-
-            document.getElementById('sssNumber').removeAttribute('required');
-            document.getElementById('dateOfDeath').removeAttribute('required');
-            document.getElementById('relationshipToDeceased').removeAttribute('required');
+            document.getElementById('sssNumber')?.removeAttribute('required');
+            document.getElementById('dateOfDeath')?.removeAttribute('required');
+            document.getElementById('relationshipToDeceased')?.removeAttribute('required');
 
             if (type === 'pension' || type === 'national_pension') {
-                document.getElementById('pension-fields').style.display = 'block';
-                document.getElementById('sssNumber').setAttribute('required', 'required');
+                document.getElementById('sssNumber')?.setAttribute('required', 'required');
             } else if (type === 'burial') {
-                document.getElementById('burial-fields').style.display = 'block';
-                document.getElementById('dateOfDeath').setAttribute('required', 'required');
-                document.getElementById('relationshipToDeceased').setAttribute('required', 'required');
+                document.getElementById('dateOfDeath')?.setAttribute('required', 'required');
+                document.getElementById('relationshipToDeceased')?.setAttribute('required', 'required');
             }
 
-            // Show/hide OSCA official form cards
-            const oscaCard2 = document.getElementById('oscaOfficialFormCard');
-            const burialCard2 = document.getElementById('burialOfficialFormCard');
-            const hvCard2 = document.getElementById('homeVisitOfficialFormCard');
-            const msCard2 = document.getElementById('milestoneOfficialFormCard');
-            const penCard2 = document.getElementById('pensionOfficialFormCard');
-            const lbCard2 = document.getElementById('landbankOfficialFormCard');
-            if (oscaCard2)   oscaCard2.style.display   = (type === 'senior')         ? 'block' : 'none';
-            if (burialCard2) burialCard2.style.display  = (type === 'burial')         ? 'block' : 'none';
-            if (hvCard2)     hvCard2.style.display     = (type === 'home_visit')     ? 'block' : 'none';
-            if (msCard2)     msCard2.style.display     = (type === 'milestone_gift') ? 'block' : 'none';
-            if (penCard2)    penCard2.style.display    = (type === 'pension' || type === 'national_pension') ? 'block' : 'none';
-            if (lbCard2)     lbCard2.style.display     = (type === 'landbank')       ? 'block' : 'none';
+            const cardIds = {
+                senior: 'oscaOfficialFormCard',
+                burial: 'burialOfficialFormCard',
+                home_visit: 'homeVisitOfficialFormCard',
+                milestone_gift: 'milestoneOfficialFormCard',
+                pension: 'pensionOfficialFormCard',
+                national_pension: 'pensionOfficialFormCard',
+                landbank: 'landbankOfficialFormCard'
+            };
+            Object.values(cardIds).forEach(id => {
+                const card = document.getElementById(id);
+                if (card) card.style.display = 'none';
+            });
+            const activeCard = cardIds[type];
+            if (activeCard) {
+                const card = document.getElementById(activeCard);
+                if (card) card.style.display = 'block';
+            }
+
+            setCardSectionInputsState('oscaOfficialFormCard', type === 'senior');
+            setCardSectionInputsState('burialOfficialFormCard', type === 'burial');
+            setCardSectionInputsState('homeVisitOfficialFormCard', type === 'home_visit');
+            setCardSectionInputsState('milestoneOfficialFormCard', type === 'milestone_gift');
+            setCardSectionInputsState('pensionOfficialFormCard', type === 'pension' || type === 'national_pension');
+            setCardSectionInputsState('landbankOfficialFormCard', type === 'landbank');
 
             toggleOscaFormFields(type, '');
             checkAgeCompliance();
@@ -3755,8 +4017,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
         });
 
-        // Auto-init: if an application type is already set (proxy load, POST error re-render), show form
+        // Auto-init: disable all hidden official form card inputs, then restore if a type is preset
         (function() {
+            ['oscaOfficialFormCard','burialOfficialFormCard','homeVisitOfficialFormCard','milestoneOfficialFormCard','pensionOfficialFormCard','landbankOfficialFormCard']
+                .forEach(id => setCardSectionInputsState(id, false));
+
             const presetType = document.getElementById('applicationType').value;
             if (presetType) {
                 selectAppType(presetType);
