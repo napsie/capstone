@@ -191,6 +191,45 @@
     margin-left: 80px;
 }
 
+.btn {
+    display: inline-block;
+    background: var(--secondary);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 6px;
+    text-decoration: none;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s, transform 0.2s, opacity 0.2s;
+}
+
+.btn:hover {
+    background: #153860;
+    opacity: 0.95;
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: var(--secondary);
+    color: white;
+    border-color: transparent;
+}
+
+.card h3 {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+    color: white;
+    padding: 14px 18px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.card h3 i {
+    color: inherit;
+}
+
 /* These user styles are duplicated from barangay, can be extracted to a common file later */
 .user-info {
     display: flex;

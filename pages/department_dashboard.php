@@ -12,15 +12,17 @@ require_once '../includes/db_connect.php';
     <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=1.1">
     <style>
         :root {
-            --primary: #2c3e50;
-            --secondary: #3498db;
-            --success: #27ae60;
-            --warning: #f39c12;
-            --danger: #e74c3c;
-            --light: #ecf0f1;
-            --dark: #2c3e50;
-            --gray: #95a5a6;
-            --light-gray: #f8f9fa;
+            --primary: #0f172a;
+            --secondary: #1e3a5f;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --light: #f8fafc;
+            --dark: #020617;
+            --gray: #94a3b8;
+            --light-gray: #e2e8f0;
+            --bg: #f1f5f9;
+            --text: #0f172a;
         }
         
         * {
@@ -31,8 +33,8 @@ require_once '../includes/db_connect.php';
         }
         
         body {
-            background-color: #f5f7fa;
-            color: #333;
+            background-color: var(--bg);
+            color: var(--text);
             line-height: 1.6;
             height: 100vh;
             overflow: auto;
@@ -344,8 +346,13 @@ require_once '../includes/db_connect.php';
         }
         
         .section-header h2 {
-            color: var(--primary);
+            color: white;
             font-size: 1.4rem;
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+            padding: 14px 18px;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
         }
         
         .section-actions {
@@ -386,8 +393,9 @@ require_once '../includes/db_connect.php';
         }
         
         .btn:hover {
-            opacity: 0.9;
-            transform: translateY(-2px);
+            background: #153860;
+            opacity: 0.95;
+            transform: translateY(-1px);
         }
         
         /* Table Styles */

@@ -27,6 +27,7 @@ function getWorkingDays($startDate, $endDate) {
 
 $errorMessage = "";
 $successMessage = "";
+$barangay = $_SESSION['barangay'] ?? '';
 
 // Check if loaded with a Proxy Token from scanning the QR
 $loadedProxyData = null;

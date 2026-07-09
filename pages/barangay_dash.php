@@ -46,7 +46,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
             }
         }
         .chart-card, .calendar-card, .notifications-card { background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); padding: 20px; }
-        .chart-card h3, .calendar-card h3, .notifications-card h3 { font-size: 18px; margin-bottom: 15px; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+        .chart-card h3, .calendar-card h3, .notifications-card h3 { font-size: 18px; margin-bottom: 15px; color: white; background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%); display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-radius: 10px; }
         
         #current-time { font-size: 1.5rem; font-weight: 600; color: var(--primary); text-align: center; margin-bottom: 10px; }
         .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }

@@ -25,15 +25,15 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['department_ad
         }
 
         :root {
-            --primary: #1e293b;
-            --secondary: #3b82f6;
-            --accent: #ef4444;
+            --primary: #0f172a;
+            --secondary: #1e3a5f;
+            --accent: #2563eb;
             --success: #10b981;
             --warning: #f59e0b;
             --light: #f8fafc;
-            --dark: #0f172a;
-            --border: #cbd5e1;
-            --gray: #64748b;
+            --dark: #020617;
+            --border: #374151;
+            --gray: #94a3b8;
         }
 
         body {
@@ -107,14 +107,18 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['department_ad
         .card h3 {
             font-size: 1.2rem;
             margin-bottom: 20px;
-            color: var(--primary);
+            color: #fff;
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
             display: flex;
             align-items: center;
             gap: 10px;
+            padding: 14px 18px;
+            border-radius: 10px;
+            width: 100%;
         }
 
         .card h3 i {
-            color: var(--secondary);
+            color: #fff;
         }
 
         /* Priority Queue badge */
@@ -184,14 +188,22 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['department_ad
             border-radius: 6px;
             text-decoration: none;
             font-weight: 600;
-            border: none;
+            border: 1px solid transparent;
             cursor: pointer;
             font-size: 0.85rem;
-            transition: opacity 0.2s;
+            transition: background-color 0.2s, transform 0.2s, opacity 0.2s;
         }
 
         .btn:hover {
-            opacity: 0.9;
+            background-color: #153860;
+            opacity: 0.95;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--secondary);
+            color: white;
+            border-color: transparent;
         }
 
         .btn-small {
@@ -632,7 +644,7 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['department_ad
                             
                             <div style="display: flex; gap: 10px;">
                                 <button type="button" class="btn" id="btnNextState" onclick="submitFsmTransition('next')">Advance State</button>
-                                <button type="button" class="btn" id="btnReturnState" style="background-color: var(--accent);" onclick="submitFsmTransition('return')">Return to Barangay</button>
+                                <button type="button" class="btn btn-secondary" id="btnReturnState" onclick="submitFsmTransition('return')">Return to Barangay</button>
                             </div>
                         </div>
 
@@ -647,6 +659,7 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['department_ad
         </div>
     </div>
 
+    <script src="../assets/js/sidebar-toggle.js"></script>
     <script>
         let currentAppId = null;
         let currentWorkflowState = 'Received';

@@ -201,7 +201,13 @@ body {
 }
 
 .btn:hover {
-    background: #2980b9;
+    background: #153860;
+}
+
+.btn-secondary {
+    background: var(--secondary);
+    color: white;
+    border: 1px solid transparent;
 }
 
 .btn-accent {

@@ -322,19 +322,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
         }
 
         :root {
-            --primary: #2c3e50;
-            --secondary: #3498db;
-            --accent: #e74c3c;
-            --success: #2ecc71;
-            --warning: #f39c12;
-            --light: #ecf0f1;
-            --dark: #34495e;
-            --gray: #95a5a6;
+            --primary: #0f172a;
+            --secondary: #1e3a5f;
+            --accent: #2563eb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --light: #f8fafc;
+            --dark: #020617;
+            --gray: #94a3b8;
+            --bg: #f1f5f9;
+            --text: #0f172a;
         }
 
         body {
-            background-color: #f5f7fa;
-            color: #333;
+            background-color: var(--bg);
+            color: var(--text);
             line-height: 1.6;
             height: 100vh;
             overflow: auto;
@@ -398,14 +400,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
         .card h3 {
             font-size: 18px;
             margin-bottom: 15px;
-            color: var(--primary);
+            color: white;
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
             display: flex;
             align-items: center;
+            gap: 10px;
+            padding: 14px 18px;
+            border-radius: 10px;
         }
 
         .card h3 i {
             margin-right: 10px;
-            color: var(--secondary);
+            color: inherit;
         }
 
         .btn {
@@ -420,6 +426,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
             border: none;
             cursor: pointer;
             font-size: 14px;
+        }
+
+        .btn:hover {
+            background: #153860;
         }
 
         .btn-success {

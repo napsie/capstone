@@ -102,19 +102,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updatePassword'])) {
         }
 
         :root {
-            --primary: #2c3e50;
-            --secondary: #3498db;
-            --accent: #e74c3c;
-            --success: #2ecc71;
-            --warning: #f39c12;
-            --light: #ecf0f1;
-            --dark: #34495e;
-            --gray: #95a5a6;
+            --primary: #0f172a;
+            --secondary: #1e3a5f;
+            --accent: #2563eb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --light: #f8fafc;
+            --dark: #020617;
+            --gray: #94a3b8;
 
             /* background & card */
-            --bg: #f5f7fa;
+            --bg: #f1f5f9;
             --card-bg: #ffffff;
-            --text: #222;
+            --text: #0f172a;
         }
         body {
             background-color: var(--bg);
@@ -232,14 +232,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updatePassword'])) {
         .settings-card h3 {
             font-size: 18px;
             margin-bottom: 15px;
-            color: var(--primary);
+            color: white;
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
             display: flex;
             align-items: center;
+            gap: 10px;
+            padding: 14px 18px;
+            border-radius: 10px;
         }
 
         .settings-card h3 i {
             margin-right: 10px;
-            color: var(--secondary);
+            color: inherit;
         }
 
         .form-group {
@@ -279,8 +283,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updatePassword'])) {
         }
 
         .dark-mode .form-group input:disabled {
-            background-color: #2c3e50;
-            color: #95a5a6;
+            background-color: var(--primary);
+            color: var(--gray);
         }
 
         .btn {
@@ -298,7 +302,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updatePassword'])) {
         }
 
         .btn:hover {
-            background: #2980b9;
+            background: #153860;
         }
 
         .btn-secondary {

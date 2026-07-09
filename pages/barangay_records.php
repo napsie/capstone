@@ -123,6 +123,9 @@ function getStatusClass($status) {
             <div class="records-section">
                 <div class="records-header">
                     <h2>Application Records</h2>
+                    <div class="records-actions">
+                        <button type="button" class="btn" onclick="exportDisplayedRecords()"><i class="fas fa-file-export"></i> Export</button>
+                    </div>
                 </div>
                 
                 <!-- Filter Section -->
@@ -737,6 +740,40 @@ function getStatusClass($status) {
                     noResultsDiv.style.display = 'block';
                 }
             }
+        }
+
+        function exportDisplayedRecords() {
+            const rows = Array.from(document.querySelectorAll('.table-data .table-row'))
+                .filter(row => row.style.display !== 'none');
+
+            if (!rows.length) {
+                alert('No visible records to export.');
+                return;
+            }
+
+            const csvRows = [
+                ['Applicant Name', 'Application Type', 'Date Submitted', 'Status']
+            ];
+
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('div');
+                const name = cells[0]?.textContent.trim() || '';
+                const type = cells[1]?.textContent.trim() || '';
+                const date = cells[2]?.textContent.trim() || '';
+                const status = cells[3]?.textContent.trim() || '';
+                csvRows.push([name, type, date, status]);
+            });
+
+            const csvContent = csvRows.map(r => r.map(cell => '"' + cell.replace(/"/g, '""') + '"').join(',')).join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'barangay_records.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
         }
     </script>
 </body>

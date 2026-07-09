@@ -47,6 +47,27 @@ if (!empty($whereClauses)) {
     $whereSql = " WHERE " . implode(' AND ', $whereClauses);
 }
 
+// Export CSV if requested
+if (isset($_GET['export']) && $_GET['export'] === '1') {
+    $exportQuery = "SELECT id_number as id, full_name, application_type, barangay, date_submitted, status " . $baseQuery . $whereSql . " ORDER BY date_submitted DESC";
+    $exportStmt = $conn->prepare($exportQuery);
+    foreach ($params as $key => &$val) {
+        $exportStmt->bindParam($key, $val);
+    }
+    $exportStmt->execute();
+    $exportData = $exportStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    header('Content-Type: text/csv');
+    header('Content-Disposition: attachment; filename="department_records.csv"');
+    $output = fopen('php://output', 'w');
+    fputcsv($output, ['ID Number', 'Applicant Name', 'Application Type', 'Barangay', 'Date Submitted', 'Status']);
+    foreach ($exportData as $row) {
+        fputcsv($output, [$row['id'], $row['full_name'], $row['application_type'], $row['barangay'], $row['date_submitted'], $row['status']]);
+    }
+    fclose($output);
+    exit;
+}
+
 // 3. Get total number of records for pagination
 $totalQuery = "SELECT COUNT(*) " . $baseQuery . $whereSql;
 $totalStmt = $conn->prepare($totalQuery);
@@ -99,19 +120,21 @@ function getStatusClass($status) {
         }
 
         :root {
-            --primary: #2c3e50;
-            --secondary: #3498db;
-            --accent: #e74c3c;
-            --success: #2ecc71;
-            --warning: #f39c12;
-            --light: #ecf0f1;
-            --dark: #34495e;
-            --gray: #95a5a6;
+            --primary: #0f172a;
+            --secondary: #1e3a5f;
+            --accent: #2563eb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --light: #f8fafc;
+            --dark: #020617;
+            --gray: #94a3b8;
+            --bg: #f1f5f9;
+            --text: #0f172a;
         }
 
         body {
-            background-color: #f5f7fa;
-            color: #333;
+            background-color: var(--bg);
+            color: var(--text);
             line-height: 1.6;
             height: 100vh;
             overflow: auto;
@@ -188,7 +211,7 @@ function getStatusClass($status) {
         }
 
         .btn:hover {
-            background: #2980b9;
+            background: #153860;
         }
 
         .btn-accent {
@@ -209,6 +232,17 @@ function getStatusClass($status) {
             justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
+        }
+
+        .records-header h2 {
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+            color: white;
+            padding: 14px 18px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0;
         }
 
         .records-actions {
@@ -268,7 +302,7 @@ function getStatusClass($status) {
         }
 
         .table-row:hover {
-            background-color: #f5f7fa;
+            background: var(--light);
         }
 
         .filter-section {
@@ -542,6 +576,7 @@ function getStatusClass($status) {
                                 <i class="fas fa-search"></i>
                                 <input type="text" id="searchInput" name="search" placeholder="Search records..." value="<?php echo htmlspecialchars($search); ?>">
                             </div>
+                            <button type="submit" name="export" value="1" class="btn"><i class="fas fa-file-export"></i> Export</button>
                         </div>
                     </div>
                     
