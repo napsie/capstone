@@ -85,6 +85,7 @@ try {
         'is_proxy_application'       => "INT DEFAULT 0",
         'proxy_name'                 => "VARCHAR(255) DEFAULT NULL",
         'proxy_relationship'         => "VARCHAR(100) DEFAULT NULL",
+        'proxy_contact_number'       => "VARCHAR(20) DEFAULT NULL",
         'proxy_token'                => "VARCHAR(255) DEFAULT NULL",
         'priority_level'             => "VARCHAR(20) DEFAULT 'normal'",
         'workflow_state'             => "VARCHAR(50) DEFAULT 'Received'",
@@ -155,6 +156,8 @@ try {
         'home_visitation_form'       => "VARCHAR(255) DEFAULT NULL",
         'landbank_enrollment_form'   => "VARCHAR(255) DEFAULT NULL",
         'parent_senior_id'           => "VARCHAR(50) DEFAULT NULL",
+        'ai_status'                  => "VARCHAR(50) DEFAULT 'AI-VERIFIED'",
+        'ai_confidence_score'        => "DECIMAL(5,2) DEFAULT 95.00",
     ];
 
     foreach ($columns_to_add as $column => $definition) {

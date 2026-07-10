@@ -391,33 +391,55 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
     function renderNotifications(notifications) {
         const listEl = document.getElementById('realtime-notifications-list');
         if (!listEl) return;
-        if (notifications.length === 0) {
-            listEl.innerHTML = '<p style="text-align: center; padding: 20px; color: var(--gray);">No recent applications.</p>';
+        if (!notifications || notifications.length === 0) {
+            listEl.innerHTML = '<p style="text-align:center;padding:20px;color:var(--gray);font-size:0.85rem;">No recent applications.</p>';
             return;
         }
+
+        // FSM workflow state → icon + color mapping
+        const stateConfig = {
+            'received':   { icon: 'fa-inbox',        color: '#94a3b8', bg: 'rgba(148,163,184,0.15)', label: 'Received'   },
+            'for review': { icon: 'fa-search',        color: '#3b82f6', bg: 'rgba(59,130,246,0.12)',  label: 'For Review' },
+            'verified':   { icon: 'fa-check',         color: '#14b8a6', bg: 'rgba(20,184,166,0.12)',  label: 'Verified'   },
+            'approved':   { icon: 'fa-check-double',  color: '#22c55e', bg: 'rgba(34,197,94,0.12)',   label: 'Approved'   },
+            'released':   { icon: 'fa-gift',          color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)',  label: 'Released'   },
+            'deceased':   { icon: 'fa-cross',         color: '#64748b', bg: 'rgba(100,116,139,0.12)', label: 'Deceased'   },
+        };
+
+        const appTypeLabels = {
+            'senior': 'Senior ID', 'pension': 'Local Pension', 'burial': 'Burial Assistance',
+            'national_pension': 'DSWD Pension', 'milestone_gift': 'Milestone Cash Gift',
+            'landbank': 'Landbank Card', 'home_visit': 'Home Visit', 'pwd': 'PWD Support',
+        };
+
         listEl.innerHTML = '';
         notifications.forEach(notif => {
+            const stateKey = (notif.workflow_state || 'received').toLowerCase();
+            const cfg = stateConfig[stateKey] || { icon: 'fa-info-circle', color: '#94a3b8', bg: 'rgba(148,163,184,0.15)', label: notif.workflow_state };
+            const typeLabel = appTypeLabels[notif.application_type] || notif.application_type;
+            const isHighPriority = notif.priority_level === 'high';
+
+            const dateObj = new Date((notif.date_submitted || '').replace(' ', 'T'));
+            const timeAgo = getTimeAgo(dateObj);
+
             const item = document.createElement('div');
-            const statusClass = notif.status.toLowerCase().replace(' ', '-');
-            const iconClass = { pending: 'fa-clock', verified: 'fa-check', rejected: 'fa-times', approved: 'fa-check-double' }[statusClass] || 'fa-info-circle';
-            
-            const dateObj = new Date(notif.date_submitted.replace(' ', 'T')); // Parse with 'T' for reliability
-            const year = dateObj.getFullYear();
-            const month = (dateObj.getMonth() + 1).toString().padStart(2, '0'); // Months are 0-indexed
-            const day = dateObj.getDate().toString().padStart(2, '0');
-            const hours = dateObj.getHours().toString().padStart(2, '0');
-            const minutes = dateObj.getMinutes().toString().padStart(2, '0');
-            const seconds = dateObj.getSeconds().toString().padStart(2, '0');
-
-            const formattedDateTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-
-            item.className = `notification-item status-${statusClass}`;
+            item.className = 'notification-item';
+            item.style.cssText = 'display:flex;align-items:flex-start;padding:11px 5px;border-bottom:1px solid #f1f5f9;gap:12px;cursor:pointer;transition:background 0.15s;';
+            item.onmouseenter = () => item.style.background = '#f8fafc';
+            item.onmouseleave = () => item.style.background = '';
             item.innerHTML = `
-                <div class="notification-icon"><i class="fas ${iconClass}"></i></div>
-                <div class="notification-info">
-                    <div class="notification-title">${notif.full_name}</div>
-                    <div class="notification-message">${notif.application_type} - Status: ${notif.status}</div>
-                    <div class="notification-time">${formattedDateTime}</div>
+                <div style="width:38px;height:38px;border-radius:50%;background:${cfg.bg};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas ${cfg.icon}" style="color:${cfg.color};font-size:0.9rem;"></i>
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-weight:700;font-size:0.84rem;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                        ${notif.full_name}${isHighPriority ? ' <span style="background:#f59e0b;color:#fff;font-size:0.62rem;font-weight:800;padding:1px 6px;border-radius:10px;vertical-align:middle;">★ PRIORITY</span>' : ''}
+                    </div>
+                    <div style="font-size:0.76rem;color:#475569;margin-top:2px;">${typeLabel}</div>
+                    <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+                        <span style="font-size:0.7rem;font-weight:700;color:${cfg.color};background:${cfg.bg};padding:1px 7px;border-radius:10px;">${cfg.label}</span>
+                        <span style="font-size:0.7rem;color:#94a3b8;">${timeAgo}</span>
+                    </div>
                 </div>
             `;
             listEl.appendChild(item);

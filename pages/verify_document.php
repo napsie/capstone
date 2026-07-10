@@ -1,180 +1,160 @@
 <?php
 session_start();
 require_once '../includes/db_connect.php';
+require_once '../includes/application_types.php';
 
 // Check if user is logged in and authorized
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['department_admin', 'super_admin'])) {
     header("Location: ../index.php");
     exit();
 }
+
+// Fetch stats for the queue counters
+$statsQuery = "SELECT 
+    COUNT(*) as total_queue,
+    SUM(CASE WHEN priority_level = 'high' THEN 1 ELSE 0 END) as high_priority_count,
+    SUM(CASE WHEN COALESCE(workflow_state, 'Received') = 'For Review' THEN 1 ELSE 0 END) as for_review,
+    SUM(CASE WHEN COALESCE(workflow_state, 'Received') = 'Verified' THEN 1 ELSE 0 END) as verified
+    FROM applications WHERE COALESCE(workflow_state, status) NOT IN ('Approved', 'Released')";
+$statsStmt = $conn->prepare($statsQuery);
+$statsStmt->execute();
+$queueStats = $statsStmt->fetch(PDO::FETCH_ASSOC);
+
+$totalQCount   = $queueStats['total_queue'] ?? 0;
+$highPCount    = $queueStats['high_priority_count'] ?? 0;
+$forReviewC    = $queueStats['for_review'] ?? 0;
+$verifiedC     = $queueStats['verified'] ?? 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SENIORLINK — Verify Documents</title>
+    <title>SENIORLINK — Document Verification Terminal</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=1.1">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
+        /* ─── Variables ─────────────────────────────────────────────────── */
         :root {
-            --primary: #0f172a;
+            --primary:   #0f172a;
             --secondary: #1e3a5f;
-            --accent: #2563eb;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --light: #f8fafc;
-            --dark: #020617;
-            --border: #374151;
-            --gray: #94a3b8;
+            --accent:    #2563eb;
+            --success:   #10b981;
+            --warning:   #f59e0b;
+            --danger:    #ef4444;
+            --purple:    #8b5cf6;
+            --gray:      #94a3b8;
+            --border:    #e2e8f0;
+            --bg:        #f1f5f9;
+            --card:      #ffffff;
+            --text:      #0f172a;
         }
 
-        body {
-            background-color: #f1f5f9;
-            color: #334155;
-            line-height: 1.6;
-            height: 100vh;
-            overflow: auto;
-        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
 
-        .container {
-            display: flex;
-            min-height: 100vh;
-        }
+        /* ─── Layout ─────────────────────────────────────────────────────── */
+        .container { display: flex; min-height: 100vh; }
+        .main-content { flex: 1; padding: 28px; overflow-y: auto; }
 
-        .main-content {
-            flex: 1;
-            padding: 30px;
-        }
-
-        .header {
+        /* ─── Page Header ────────────────────────────────────────────────── */
+        .page-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 30px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid var(--border);
+            margin-bottom: 28px;
         }
-
-        .header h1 {
-            color: var(--primary);
-            font-size: 1.8rem;
-        }
-
-        .user-info {
+        .page-header-left h1 { font-size: 1.7rem; font-weight: 800; color: var(--primary); margin: 0; }
+        .page-header-left h1 span { color: var(--accent); }
+        .header-user {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 8px 15px;
-            background: white;
-            border-radius: 25px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        }
-
-        .user-avatar img {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            object-fit: cover;
-        }
-
-        .user-details h2 {
-            font-size: 14px;
-            color: var(--primary);
-        }
-
-        .user-details p {
-            color: var(--gray);
-            font-size: 12px;
-        }
-
-        /* Queue sorting styling */
-        .card {
-            background: white;
+            gap: 12px;
+            background: var(--card);
             border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            padding: 25px;
-            margin-bottom: 30px;
+            padding: 10px 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border: 1px solid var(--border);
         }
+        .header-user img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); }
+        .header-user-info h3 { font-size: 0.9rem; font-weight: 700; color: var(--primary); margin: 0; }
+        .header-user-info p  { font-size: 0.75rem; color: var(--gray); margin: 0; }
 
-        .card h3 {
-            font-size: 1.2rem;
-            margin-bottom: 20px;
-            color: #fff;
-            background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+        /* ─── Stats ──────────────────────────────────────────────────────── */
+        .stats-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+        .stat-card {
+            background: var(--card);
+            border-radius: 14px;
+            padding: 18px 22px;
+            border: 1px solid var(--border);
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 14px 18px;
-            border-radius: 10px;
-            width: 100%;
+            gap: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            transition: transform 0.2s, box-shadow 0.2s;
         }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.07); }
+        .stat-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
+        .stat-icon.green  { background: rgba(16,185,129,0.12); color: var(--success); }
+        .stat-icon.blue   { background: rgba(37,99,235,0.12);  color: var(--accent); }
+        .stat-icon.purple { background: rgba(139,92,246,0.12); color: var(--purple); }
+        .stat-icon.amber  { background: rgba(245,158,11,0.12); color: var(--warning); }
+        .stat-label { font-size: 0.75rem; color: var(--gray); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+        .stat-value { font-size: 1.7rem; font-weight: 800; color: var(--primary); line-height: 1; }
 
-        .card h3 i {
-            color: #fff;
+        /* ─── Queue Card ─────────────────────────────────────────────────── */
+        .queue-card { background: var(--card); border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 16px rgba(0,0,0,0.05); overflow: hidden; }
+        .queue-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 28px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);
         }
+        .queue-card-header h2 { color: #fff; font-size: 1.05rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 10px; }
+        .queue-card-header h2 i { color: #60a5fa; }
 
-        /* Priority Queue badge */
+        /* Priority badge */
         .priority-badge {
-            background-color: #fef3c7;
+            background-color: rgba(245,158,11,0.12);
             color: #d97706;
-            border: 1px solid #fcd34d;
+            border: 1px solid rgba(245,158,11,0.25);
             padding: 3px 8px;
             border-radius: 12px;
-            font-size: 0.75rem;
+            font-size: 0.72rem;
             font-weight: 700;
             display: inline-flex;
             align-items: center;
             gap: 4px;
         }
-
-        .priority-high-row {
-            background-color: rgba(245, 158, 11, 0.04);
-            border-left: 4px solid var(--warning) !important;
-        }
+        .priority-high-row { background-color: rgba(245,158,11,0.03); border-left: 4px solid var(--warning) !important; }
 
         /* Table */
-        .table-container {
-            overflow-x: auto;
-        }
+        .table-wrap { overflow-x: auto; }
+        .records-tbl { width: 100%; border-collapse: collapse; }
+        .records-tbl thead tr { background: #f8fafc; border-bottom: 2px solid var(--border); }
+        .records-tbl th { padding: 12px 18px; text-align: left; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gray); white-space: nowrap; }
+        .records-tbl td { padding: 13px 18px; font-size: 0.86rem; color: var(--primary); border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+        .records-tbl tbody tr { transition: background 0.15s; }
+        .records-tbl tbody tr:hover { background: #f8fafc; }
+        .records-tbl tbody tr:last-child td { border-bottom: none; }
 
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+        .name-cell .full-name { font-weight: 700; }
+        .name-cell .app-id    { font-size: 0.73rem; color: var(--gray); margin-top: 2px; font-family: monospace; }
 
-        .table th, .table td {
-            padding: 14px;
-            text-align: left;
-            border-bottom: 1px solid #e2e8f0;
-            font-size: 0.9rem;
-        }
-
-        .table th {
-            background: #f8fafc;
-            color: var(--primary);
-            font-weight: 600;
-        }
-
-        .table tr:hover {
-            background: #f1f5f9;
-        }
-
-        .status-badge {
+        /* Stepper states */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.71rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
             padding: 4px 10px;
             border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
         }
-
-        /* FSM Badges */
         .badge-received { background-color: #e2e8f0; color: #475569; }
         .badge-review { background-color: #dbeafe; color: #1d4ed8; }
         .badge-verified { background-color: #ccfbf1; color: #0f766e; }
@@ -182,366 +162,269 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['department_ad
         .badge-released { background-color: #f3e8ff; color: #6b21a8; }
 
         .btn {
-            background: var(--secondary);
-            color: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
             padding: 8px 16px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: 600;
-            border: 1px solid transparent;
-            cursor: pointer;
-            font-size: 0.85rem;
-            transition: background-color 0.2s, transform 0.2s, opacity 0.2s;
-        }
-
-        .btn:hover {
-            background-color: #153860;
-            opacity: 0.95;
-            transform: translateY(-1px);
-        }
-
-        .btn-secondary {
-            background: var(--secondary);
-            color: white;
-            border-color: transparent;
-        }
-
-        .btn-small {
-            padding: 6px 12px;
-            font-size: 0.8rem;
-        }
-
-        /* Stepper progress */
-        .stepper {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 30px;
-            padding: 20px 0;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        .step {
-            flex: 1;
-            text-align: center;
-            position: relative;
-        }
-
-        .step::after {
-            content: '';
-            position: absolute;
-            top: 15px;
-            left: 50%;
-            width: 100%;
-            height: 3px;
-            background-color: #cbd5e1;
-            z-index: 1;
-        }
-
-        .step:last-child::after {
-            display: none;
-        }
-
-        .step-circle {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background-color: #cbd5e1;
-            color: #64748b;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 8px;
-            font-weight: bold;
-            position: relative;
-            z-index: 2;
-        }
-
-        .step-label {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: var(--gray);
-        }
-
-        .step.active .step-circle {
-            background-color: var(--secondary);
-            color: white;
-        }
-
-        .step.active .step-label {
-            color: var(--secondary);
-        }
-
-        .step.completed .step-circle {
-            background-color: var(--success);
-            color: white;
-        }
-
-        .step.completed .step-label {
-            color: var(--success);
-        }
-
-        /* Compliance engine results */
-        .compliance-card {
-            background-color: #f8fafc;
-            border: 1px solid #e2e8f0;
             border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 25px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
         }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-secondary { background: #64748b; color: white; }
+        .btn-secondary:hover { background: #475569; }
 
-        .compliance-title {
+        .btn-view {
+            background: #fff;
+            border: 1.5px solid var(--border);
+            border-radius: 7px;
+            padding: 6px 14px;
+            font-size: 0.78rem;
             font-weight: 700;
             color: var(--primary);
-            margin-bottom: 12px;
-            font-size: 0.95rem;
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
         }
+        .btn-view:hover { background: var(--primary); color: #fff; border-color: var(--primary); transform: translateY(-1px); }
 
-        .compliance-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 0;
-            border-bottom: 1px dashed #e2e8f0;
-            font-size: 0.9rem;
-        }
-
-        .compliance-item:last-child {
-            border-bottom: none;
-        }
-
-        .pass-tag {
-            color: var(--success);
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .fail-tag {
-            color: var(--accent);
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        /* Audit history log */
-        .timeline {
-            margin-top: 20px;
-            padding-left: 10px;
-            border-left: 2px solid #e2e8f0;
-        }
-
-        .timeline-event {
-            position: relative;
-            padding-bottom: 20px;
-            padding-left: 20px;
-        }
-
-        .timeline-event::before {
-            content: '';
-            position: absolute;
-            left: -17px;
-            top: 5px;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background-color: var(--secondary);
-            border: 2px solid white;
-        }
-
-        .timeline-time {
-            font-size: 0.75rem;
-            color: var(--gray);
-            margin-bottom: 4px;
-        }
-
-        .timeline-title {
-            font-size: 0.85rem;
-            font-weight: 700;
-            color: var(--primary);
-        }
-
-        .timeline-desc {
-            font-size: 0.85rem;
-            color: #475569;
-            margin-top: 4px;
-            font-style: italic;
-        }
-
-        /* Modal Styles */
-        .modal {
+        /* ─── Modal ──────────────────────────────────────────────────────── */
+        .modal-overlay {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
+            inset: 0;
+            background: rgba(15,23,42,0.55);
             z-index: 1000;
-            overflow-y: auto;
             backdrop-filter: blur(4px);
+            overflow-y: auto;
+            padding: 30px 16px;
         }
-
-        .modal-content {
-            background-color: white;
-            margin: 40px auto;
-            width: 95%;
-            max-width: 950px;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        .modal-box {
+            background: #fff;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 980px;
+            margin: 0 auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
             overflow: hidden;
         }
-
-        .modal-header {
+        .modal-head {
+            background: linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);
+            padding: 20px 28px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 20px 30px;
-            background-color: var(--light);
-            border-bottom: 1px solid var(--border);
         }
-
-        .modal-header h2 {
-            color: var(--primary);
-            font-size: 1.3rem;
-        }
-
-        .close-modal {
-            background: none;
+        .modal-head h2 { color: #fff; font-size: 1rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 10px; }
+        .modal-head h2 i { color: #60a5fa; }
+        .modal-close {
+            background: rgba(255,255,255,0.15);
             border: none;
-            font-size: 24px;
+            border-radius: 8px;
+            color: #fff;
+            width: 34px; height: 34px;
+            font-size: 1.2rem;
             cursor: pointer;
-            color: var(--gray);
-        }
-
-        .close-modal:hover {
-            color: var(--accent);
-        }
-
-        .modal-body {
-            padding: 30px;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
-        .grid-modal {
-            display: grid;
-            grid-template-columns: 1.2fr 1fr;
-            gap: 30px;
-        }
-
-        @media (max-width: 768px) {
-            .grid-modal {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .image-placeholder {
-            margin-top: 10px;
-            width: 100%;
-            height: 250px;
-            border: 2px dashed var(--border);
-            border-radius: 8px;
             display: flex;
-            justify-content: center;
             align-items: center;
-            overflow: hidden;
-            background-color: #f8fafc;
+            justify-content: center;
+            transition: background 0.2s;
         }
+        .modal-close:hover { background: rgba(255,255,255,0.3); }
+        .modal-scroller { max-height: 80vh; overflow-y: auto; padding: 28px; }
 
-        .image-placeholder img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
+        /* Stepper */
+        .stepper { display: flex; justify-content: space-between; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+        .step { flex: 1; text-align: center; position: relative; }
+        .step::after { content:''; position:absolute; top:15px; left:50%; width:100%; height:3px; background:var(--border); z-index:1; }
+        .step:last-child::after { display: none; }
+        .step-circle {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: var(--border); color: #64748b;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 7px; font-weight: 800; font-size: 0.8rem;
+            position: relative; z-index: 2; transition: background 0.3s;
         }
+        .step-label { font-size: 0.72rem; font-weight: 600; color: var(--gray); }
+        .step.active .step-circle  { background: var(--accent); color:#fff; box-shadow:0 0 0 4px rgba(37,99,235,0.2); }
+        .step.active .step-label   { color: var(--accent); font-weight: 700; }
+        .step.completed .step-circle { background: var(--success); color:#fff; }
+        .step.completed .step-label  { color: var(--success); font-weight: 700; }
+        .step.completed::after       { background: var(--success); }
 
-        .fsm-actions {
-            background-color: #f8fafc;
-            padding: 20px;
-            border-radius: 8px;
-            border: 1px solid #e2e8f0;
-            margin-bottom: 25px;
+        /* Compliance */
+        .compliance-card { background:#f8fafc; border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:22px; }
+        .compliance-title { font-weight:700; font-size:0.88rem; color:var(--primary); margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+        .compliance-title i { color:var(--accent); }
+        .compliance-item { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px dashed var(--border); font-size:0.85rem; gap:10px; }
+        .compliance-item:last-child { border-bottom: none; }
+        .pass-tag { color:var(--success); font-weight:700; display:flex; align-items:center; gap:5px; white-space:nowrap; }
+        .fail-tag { color:var(--danger);  font-weight:700; display:flex; align-items:center; gap:5px; white-space:nowrap; }
+
+        /* Modal grid */
+        .modal-grid { display:grid; grid-template-columns:1.2fr 1fr; gap:28px; }
+        @media(max-width:760px) { .modal-grid { grid-template-columns:1fr; } }
+
+        .section-title { font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--gray); margin-bottom:14px; display:flex; align-items:center; gap:7px; }
+        .section-title i { color:var(--accent); }
+
+        .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px 16px; margin-bottom:20px; }
+        .info-item label { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--gray); display:block; margin-bottom:2px; }
+        .info-item span  { font-size:0.88rem; font-weight:600; color:var(--primary); }
+        .info-item.wide  { grid-column: 1 / -1; }
+
+        .doc-preview-title { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--gray); margin-bottom:8px; }
+        .doc-preview-box {
+            width:100%; height:180px;
+            border:2px dashed var(--border); border-radius:10px;
+            display:flex; align-items:center; justify-content:center;
+            overflow:hidden; background:#f8fafc; margin-bottom:14px;
         }
+        .doc-preview-box img { max-width:100%; max-height:100%; object-fit:contain; }
 
-        .comment-box {
-            width: 100%;
-            padding: 10px;
+        .timeline { border-left:2px solid var(--border); padding-left:18px; margin-top:10px; }
+        .timeline-event { position:relative; padding-bottom:18px; }
+        .timeline-event::before { content:''; position:absolute; left:-25px; top:5px; width:12px; height:12px; border-radius:50%; background:var(--accent); border:2px solid #fff; box-shadow:0 0 0 2px var(--border); }
+        .timeline-time  { font-size:0.72rem; color:var(--gray); margin-bottom:3px; }
+        .timeline-title { font-size:0.85rem; font-weight:700; color:var(--primary); }
+        .timeline-by    { font-size:0.75rem; color:#64748b; margin-top:2px; }
+        .timeline-note  { font-size:0.82rem; color:#475569; margin-top:4px; font-style:italic; }
+
+        /* Workflow control */
+        .workflow-control {
+            background: #f8fafc;
             border: 1px solid var(--border);
-            border-radius: 6px;
-            margin-top: 10px;
-            margin-bottom: 15px;
-            font-size: 0.85rem;
-            resize: vertical;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
         }
+        .workflow-control h3 { font-size: 0.88rem; font-weight: 700; color: var(--primary); margin-bottom: 12px; }
+        .workflow-instructions { font-size: 0.82rem; color: #475569; margin-bottom: 14px; line-height: 1.5; }
+        .workflow-comment {
+            width: 100%; height: 80px;
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 0.85rem;
+            color: var(--primary);
+            resize: none;
+            outline: none;
+            margin-bottom: 14px;
+            transition: border-color 0.2s;
+        }
+        .workflow-comment:focus { border-color: var(--accent); }
+        .workflow-buttons { display: flex; gap: 10px; }
+        .workflow-buttons button { flex: 1; justify-content: center; }
+
+        /* Footer */
+        .page-footer { text-align:center; padding:24px; font-size:0.78rem; color:var(--gray); }
     </style>
 </head>
 <body>
-    <div class="container">
-        <?php include '../partials/department_sidebar.php'; ?>
+<div class="container">
+    <?php include '../partials/department_sidebar.php'; ?>
 
-        <!-- Main Content -->
-        <div class="main-content">
-            <!-- Header -->
-            <div class="header">
-                <div class="header-content">
-                    <h1>Document Verification Terminal</h1>
-                </div>
-                <div class="header-actions">
-                    <div class="user-info">
-                        <div class="user-avatar">
-                            <?php
-                                $profilePic = isset($_SESSION['profile_picture']) ? $_SESSION['profile_picture'] : 'default.jpg';
-                                $profilePicPath = '../images/profile_pictures/' . $profilePic;
-                                if (!file_exists($profilePicPath) || is_dir($profilePicPath)) {
-                                    $profilePicPath = '../images/profile_pictures/default.jpg';
-                                }
-                            ?>
-                            <img src="<?php echo $profilePicPath; ?>" alt="Profile Picture">
-                        </div>
-                        <div class="user-details">
-                            <h2><?php echo htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']); ?></h2>
-                            <p><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $_SESSION['role']))); ?></p>
-                        </div>
-                    </div>
+    <div class="main-content">
+
+        <!-- Page Header -->
+        <div class="page-header">
+            <div class="page-header-left">
+                <div class="greeting" id="greetingMsg">Welcome back!</div>
+                <h1>Document <span>Verification Terminal</span></h1>
+            </div>
+            <div class="header-user">
+                <?php
+                    $profilePic = isset($_SESSION['profile_picture']) ? $_SESSION['profile_picture'] : 'default.jpg';
+                    $profilePicPath = '../images/profile_pictures/' . $profilePic;
+                    if (!file_exists($profilePicPath) || is_dir($profilePicPath)) {
+                        $profilePicPath = '../images/profile_pictures/default.jpg';
+                    }
+                ?>
+                <img src="<?php echo $profilePicPath; ?>" alt="Profile">
+                <div class="header-user-info">
+                    <h3><?php echo htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']); ?></h3>
+                    <p><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $_SESSION['role']))); ?> · Pasig City</p>
                 </div>
             </div>
+        </div>
 
-            <!-- Documents List (Prioritizing High Priority Queue) -->
-            <div class="card">
-                <h3><i class="fas fa-list-ol"></i> Application Review Queue</h3>
-                <div class="table-container">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Priority</th>
-                                <th>ID Number</th>
-                                <th>Applicant Name</th>
-                                <th>Type</th>
-                                <th>Barangay</th>
-                                <th>Date Submitted</th>
-                                <th>Workflow State</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php
-                            // Priority sorting: high priority first, then normal. Ordered by date_submitted.
-                            $sql = "SELECT id_number as id, full_name, application_type, barangay, date_submitted, status, workflow_state, priority_level 
-                                    FROM applications 
-                                    ORDER BY CASE WHEN priority_level = 'high' THEN 0 ELSE 1 END, date_submitted DESC";
-                            $stmt = $conn->prepare($sql);
-                            $stmt->execute();
-                            $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                            
-                            if (count($result) === 0) {
-                                echo "<tr><td colspan='8' style='text-align: center;'>No applications in the queue.</td></tr>";
-                            }
-                            
-                            foreach ($result as $row) {
+        <!-- Stats Strip -->
+        <div class="stats-strip">
+            <div class="stat-card">
+                <div class="stat-icon blue"><i class="fas fa-list-check"></i></div>
+                <div>
+                    <div class="stat-label">Active Queue</div>
+                    <div class="stat-value"><?php echo $totalQCount; ?></div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon amber"><i class="fas fa-star"></i></div>
+                <div>
+                    <div class="stat-label">High Priority (Bedridden)</div>
+                    <div class="stat-value"><?php echo $highPCount; ?></div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon purple"><i class="fas fa-search"></i></div>
+                <div>
+                    <div class="stat-label">For evaluation</div>
+                    <div class="stat-value"><?php echo $forReviewC; ?></div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="fas fa-file-signature"></i></div>
+                <div>
+                    <div class="stat-label">Verified (Sign-off)</div>
+                    <div class="stat-value"><?php echo $verifiedC; ?></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Review Queue Card -->
+        <div class="queue-card">
+            <div class="queue-card-header">
+                <h2><i class="fas fa-list-ol"></i> Evaluation Review Queue</h2>
+            </div>
+
+            <!-- Table -->
+            <div class="table-wrap">
+                <table class="records-tbl">
+                    <thead>
+                        <tr>
+                            <th>Priority</th>
+                            <th>Applicant Name</th>
+                            <th>Application Type</th>
+                            <th>Barangay</th>
+                            <th>Date Submitted</th>
+                            <th>Workflow State</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        $sql = "SELECT id_number as id, full_name, application_type, barangay, date_submitted, status, workflow_state, priority_level 
+                                FROM applications 
+                                ORDER BY CASE WHEN priority_level = 'high' THEN 0 ELSE 1 END, date_submitted DESC";
+                        $stmt = $conn->prepare($sql);
+                        $stmt->execute();
+                        $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                        
+                        if (count($result) === 0): ?>
+                            <tr><td colspan="7">
+                                <div class="empty-state">
+                                    <i class="fas fa-folder-open"></i>
+                                    <p>No active applications in the review queue</p>
+                                </div>
+                            </td></tr>
+                        <?php else:
+                            foreach ($result as $row):
                                 $isHigh = ($row['priority_level'] === 'high');
                                 $rowClass = $isHigh ? 'priority-high-row' : '';
                                 
@@ -552,343 +435,399 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['department_ad
                                 if ($state === 'Approved') $stateBadgeClass = 'badge-approved';
                                 if ($state === 'Released') $stateBadgeClass = 'badge-released';
 
-                                $typeLabel = '';
-                                if ($row['application_type'] === 'pwd') $typeLabel = 'Disability Support';
-                                if ($row['application_type'] === 'senior') $typeLabel = 'Senior Citizen ID';
-                                if ($row['application_type'] === 'pension') $typeLabel = 'Local Social Pension';
-                                if ($row['application_type'] === 'burial') $typeLabel = 'Burial Assistance';
-
-                                echo "<tr class='$rowClass'>";
-                                echo "<td>" . ($isHigh ? "<span class='priority-badge'><i class='fas fa-star'></i> HIGH</span>" : "<span style='color: #94a3b8; font-size: 0.8rem;'>Normal</span>") . "</td>";
-                                echo "<td>" . htmlspecialchars($row['id']) . "</td>";
-                                echo "<td>" . htmlspecialchars($row['full_name']) . "</td>";
-                                echo "<td>" . htmlspecialchars($typeLabel) . "</td>";
-                                echo "<td>" . htmlspecialchars($row['barangay']) . "</td>";
-                                echo "<td>" . htmlspecialchars($row['date_submitted']) . "</td>";
-                                echo "<td><span class='status-badge $stateBadgeClass'>" . htmlspecialchars($state) . "</span></td>";
-                                echo "<td><button class='btn btn-small view-details-btn' data-id='" . htmlspecialchars($row['id']) . "'><i class='fas fa-folder-open'></i> Open Review</button></td>";
-                                echo "</tr>";
-                            }
+                                $typeLabel = applicationTypeLabel($row['application_type']);
                             ?>
-                        </tbody>
-                    </table>
-                </div>
+                            <tr class="<?php echo $rowClass; ?>">
+                                <td>
+                                    <?php if ($isHigh): ?>
+                                        <span class="priority-badge"><i class="fas fa-star"></i> HIGH</span>
+                                    <?php else: ?>
+                                        <span style="color:#94a3b8; font-size:0.8rem;">Normal</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <div class="name-cell">
+                                        <div class="full-name"><?php echo htmlspecialchars($row['full_name']); ?></div>
+                                        <div class="app-id"><?php echo htmlspecialchars($row['id']); ?></div>
+                                    </div>
+                                </td>
+                                <td><?php echo htmlspecialchars($typeLabel); ?></td>
+                                <td><?php echo htmlspecialchars($row['barangay']); ?></td>
+                                <td><?php echo date('M d, Y', strtotime($row['date_submitted'])); ?></td>
+                                <td><span class="badge <?php echo $stateBadgeClass; ?>"><?php echo htmlspecialchars($state); ?></span></td>
+                                <td>
+                                    <button class="btn-view view-details-btn" data-id="<?php echo htmlspecialchars($row['id']); ?>">
+                                        <i class="fas fa-folder-open"></i> Open Review
+                                    </button>
+                                </td>
+                            </tr>
+                            <?php endforeach;
+                        endif; ?>
+                    </tbody>
+                </table>
             </div>
         </div>
+
+        <div class="page-footer">Centralized Profiling and Record Authentication System &bull; Pasig City Department &copy; <?php echo date('Y'); ?></div>
     </div>
+</div>
 
-    <!-- Application Detail Modal -->
-    <div id="applicationModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modalAppTitle">Application Details</h2>
-                <button class="close-modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <!-- FSM Stepper -->
-                <div class="stepper" id="fsmStepper">
-                    <div class="step" id="step-Received"><div class="step-circle">1</div><div class="step-label">Received</div></div>
-                    <div class="step" id="step-For-Review"><div class="step-circle">2</div><div class="step-label">For Review</div></div>
-                    <div class="step" id="step-Verified"><div class="step-circle">3</div><div class="step-label">Verified</div></div>
-                    <div class="step" id="step-Approved"><div class="step-circle">4</div><div class="step-label">Approved</div></div>
-                    <div class="step" id="step-Released"><div class="step-circle">5</div><div class="step-label">Released</div></div>
+<!-- ──────────────────────────────────────────────────────────────────── -->
+<!-- Application Detail Modal                                             -->
+<!-- ──────────────────────────────────────────────────────────────────── -->
+<div id="applicationModal" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-head">
+            <h2><i class="fas fa-file-shield"></i> <span id="modalAppTitle">Review Application Profile</span></h2>
+            <button class="modal-close" id="closeModalBtn">&times;</button>
+        </div>
+        <div class="modal-scroller">
+
+            <!-- FSM Stepper -->
+            <div class="stepper">
+                <div class="step" id="step-Received">
+                    <div class="step-circle">1</div>
+                    <div class="step-label">Received</div>
                 </div>
+                <div class="step" id="step-For-Review">
+                    <div class="step-circle">2</div>
+                    <div class="step-label">For Review</div>
+                </div>
+                <div class="step" id="step-Verified">
+                    <div class="step-circle">3</div>
+                    <div class="step-label">Verified</div>
+                </div>
+                <div class="step" id="step-Approved">
+                    <div class="step-circle">4</div>
+                    <div class="step-label">Approved</div>
+                </div>
+                <div class="step" id="step-Released">
+                    <div class="step-circle">5</div>
+                    <div class="step-label">Released</div>
+                </div>
+            </div>
 
-                <div class="grid-modal">
-                    <!-- Left: Details & Documents -->
-                    <div>
-                        <!-- Compliance Card -->
-                        <div class="compliance-card" id="complianceCard">
-                            <div class="compliance-title"><i class="fas fa-shield-halved"></i> Localized Compliance Engine Audit</div>
-                            <div id="complianceList"></div>
+            <!-- Compliance Engine -->
+            <div class="compliance-card">
+                <div class="compliance-title"><i class="fas fa-shield-halved"></i> Compliance & AI Verification Engine</div>
+                <div id="complianceList">
+                    <p style="color:var(--gray);font-size:0.85rem;">Loading compliance checks…</p>
+                </div>
+            </div>
+
+            <!-- Two-column grid -->
+            <div class="modal-grid">
+                <!-- LEFT: Details -->
+                <div>
+                    <div class="section-title"><i class="fas fa-user"></i> Applicant Information</div>
+                    <div class="info-grid">
+                        <div class="info-item wide">
+                            <label>Full Name</label>
+                            <span id="infoName">—</span>
                         </div>
-
-                        <!-- Info Sections -->
-                        <div style="margin-bottom: 25px;">
-                            <h3 style="font-size: 1rem; color: var(--primary); margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">Applicant Basic Details</h3>
-                            <p style="font-size: 0.9rem; margin-bottom: 5px;"><strong>Full Name:</strong> <span id="infoName"></span></p>
-                            <p style="font-size: 0.9rem; margin-bottom: 5px;"><strong>Birth Date / Age:</strong> <span id="infoBirth"></span></p>
-                            <p style="font-size: 0.9rem; margin-bottom: 5px;"><strong>Contact Number:</strong> <span id="infoContact"></span></p>
-                            <p style="font-size: 0.9rem; margin-bottom: 5px;"><strong>Home Address:</strong> <span id="infoAddress"></span></p>
-                            <p style="font-size: 0.9rem; margin-bottom: 5px;"><strong>Barangay:</strong> <span id="infoBarangay"></span></p>
+                        <div class="info-item">
+                            <label>Date of Birth / Age</label>
+                            <span id="infoBirth">—</span>
                         </div>
-
-                        <div id="dynamicDetailsSection" style="margin-bottom: 25px;">
-                            <!-- Will be filled dynamically -->
+                        <div class="info-item">
+                            <label>Contact Number</label>
+                            <span id="infoContact">—</span>
                         </div>
-
-                        <div style="margin-bottom: 25px;">
-                            <h3 style="font-size: 1rem; color: var(--primary); margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">Required Documents Scans</h3>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                                <div>
-                                    <p style="font-size: 0.85rem; font-weight: 600;">Proof of Address</p>
-                                    <div class="image-placeholder" id="previewProof"></div>
-                                </div>
-                                <div>
-                                    <p style="font-size: 0.85rem; font-weight: 600;">ID Image / Support Photo</p>
-                                    <div class="image-placeholder" id="previewIdImage"></div>
-                                </div>
-                            </div>
+                        <div class="info-item">
+                            <label>Barangay</label>
+                            <span id="infoBarangay">—</span>
+                        </div>
+                        <div class="info-item wide">
+                            <label>Complete Address</label>
+                            <span id="infoAddress">—</span>
                         </div>
                     </div>
 
-                    <!-- Right: FSM Actions & History Trail -->
-                    <div>
-                        <!-- FSM Operations -->
-                        <div class="fsm-actions">
-                            <h4 style="font-size: 0.95rem; margin-bottom: 15px; color: var(--primary);"><i class="fas fa-sliders"></i> Workflow Control Actions</h4>
-                            
-                            <div id="fsmInstructions" style="font-size: 0.85rem; margin-bottom: 12px; color: var(--gray);"></div>
+                    <!-- Dynamic (type-specific) section -->
+                    <div id="dynamicDetailsSection"></div>
 
-                            <textarea id="fsmComment" class="comment-box" placeholder="Write transition details or reason for return/blurry scan here..."></textarea>
-                            
-                            <div style="display: flex; gap: 10px;">
-                                <button type="button" class="btn" id="btnNextState" onclick="submitFsmTransition('next')">Advance State</button>
-                                <button type="button" class="btn btn-secondary" id="btnReturnState" onclick="submitFsmTransition('return')">Return to Barangay</button>
-                            </div>
-                        </div>
+                    <!-- Document previews -->
+                    <div class="section-title" style="margin-top:20px;"><i class="fas fa-file-image"></i> Submitted Documents</div>
+                    <div class="doc-preview-title">Proof of Address</div>
+                    <div class="doc-preview-box" id="previewProof">
+                        <span style="color:var(--gray);font-size:0.8rem;">Loading…</span>
+                    </div>
+                    <div class="doc-preview-title">ID / Identification Photo</div>
+                    <div class="doc-preview-box" id="previewIdImage">
+                        <span style="color:var(--gray);font-size:0.8rem;">Loading…</span>
+                    </div>
+                </div>
 
-                        <!-- History Timeline -->
-                        <div>
-                            <h4 style="font-size: 0.95rem; margin-bottom: 15px; color: var(--primary);"><i class="fas fa-history"></i> Audit Trail History Log</h4>
-                            <div class="timeline" id="timelineList"></div>
+                <!-- RIGHT: Workflow actions + Audit timeline -->
+                <div>
+                    <!-- FSM Control Actions -->
+                    <div class="workflow-control">
+                        <h3><i class="fas fa-sliders-h" style="color:var(--accent); margin-right:5px;"></i> Workflow Control Actions</h3>
+                        <div class="workflow-instructions" id="fsmInstructions">Loading instructions…</div>
+                        <textarea id="fsmComment" class="workflow-comment" placeholder="Write transition details or reason for return/blurry scan here…"></textarea>
+                        
+                        <div class="workflow-buttons">
+                            <button type="button" class="btn btn-primary" id="btnNextState" onclick="submitFsmTransition('next')">Advance State</button>
+                            <button type="button" class="btn btn-secondary" id="btnReturnState" onclick="submitFsmTransition('return')">Return to Barangay</button>
                         </div>
+                    </div>
+
+                    <div class="section-title"><i class="fas fa-clock-rotate-left"></i> Audit History</div>
+                    <div class="timeline" id="timelineList">
+                        <p style="color:var(--gray);font-size:0.85rem;">Loading history…</p>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <script src="../assets/js/sidebar-toggle.js"></script>
-    <script>
-        let currentAppId = null;
-        let currentWorkflowState = 'Received';
+        </div><!-- /.modal-scroller -->
+    </div><!-- /.modal-box -->
+</div><!-- /#applicationModal -->
 
-        document.addEventListener('DOMContentLoaded', function() {
-            // Setup View Details button event listeners
-            document.querySelectorAll('.view-details-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const appId = this.dataset.id;
-                    openApplicationModal(appId);
-                });
-            });
+<script src="../assets/js/sidebar-toggle.js"></script>
+<script>
+    /* ─── Greeting ──────────────────────────────────────────── */
+    (function(){
+        const h = new Date().getHours();
+        const g = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+        document.getElementById('greetingMsg').innerHTML = `${g}, <strong><?php echo htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']); ?></strong>!`;
+    })();
 
-            // Modal Close Handler
-            document.querySelector('.close-modal').addEventListener('click', () => {
-                document.getElementById('applicationModal').style.display = 'none';
-            });
+    /* ─── Modal open/close ──────────────────────────────────── */
+    let currentAppId = null;
+    let currentWorkflowState = 'Received';
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelector('.records-tbl').addEventListener('click', function(e) {
+            const btn = e.target.closest('.view-details-btn');
+            if (btn) openApplicationModal(btn.dataset.id);
         });
 
-        // Helper: Calculate working days (excluding Saturdays and Sundays)
-        function calculateWorkingDays(startDateVal) {
-            if (!startDateVal) return 0;
-            const start = new Date(startDateVal);
-            const end = new Date();
-            if (start > end) return 0;
-            
-            let workingDays = 0;
-            let curDate = new Date(start.getTime());
-            while (curDate < end) {
-                const day = curDate.getDay();
-                if (day !== 0 && day !== 6) { // Exclude Sat/Sun
-                    workingDays++;
-                }
-                curDate.setDate(curDate.getDate() + 1);
-            }
-            return workingDays;
+        document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+        document.getElementById('applicationModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+    });
+
+    function closeModal() {
+        document.getElementById('applicationModal').style.display = 'none';
+    }
+
+    /* ─── Helpers ───────────────────────────────────────────── */
+    function calculateWorkingDays(startDateVal) {
+        if (!startDateVal) return 0;
+        const start = new Date(startDateVal);
+        const end   = new Date();
+        if (start > end) return 0;
+        let days = 0, cur = new Date(start);
+        while (cur < end) {
+            const d = cur.getDay();
+            if (d !== 0 && d !== 6) days++;
+            cur.setDate(cur.getDate() + 1);
         }
+        return days;
+    }
 
-        async function openApplicationModal(appId) {
-            currentAppId = appId;
-            document.getElementById('applicationModal').style.display = 'block';
-            
-            // Clean modal
-            document.getElementById('fsmComment').value = "";
-            document.getElementById('complianceList').innerHTML = "";
-            document.getElementById('dynamicDetailsSection').innerHTML = "";
-            document.getElementById('timelineList').innerHTML = "";
+    /* ─── Open modal and populate ───────────────────────────── */
+    function openApplicationModal(appId) {
+        currentAppId = appId;
 
-            try {
-                const response = await fetch(`../api/get_application_details.php?id=${encodeURIComponent(appId)}`);
-                const app = await response.json();
+        // Reset placeholders
+        document.getElementById('modalAppTitle').textContent  = 'Loading…';
+        document.getElementById('fsmComment').value = "";
+        document.getElementById('complianceList').innerHTML   = '<p style="color:var(--gray);font-size:0.85rem;">Loading compliance checks…</p>';
+        document.getElementById('dynamicDetailsSection').innerHTML = '';
+        document.getElementById('timelineList').innerHTML     = '<p style="color:var(--gray);font-size:0.85rem;">Loading history…</p>';
+        document.getElementById('previewProof').innerHTML     = '<span style="color:var(--gray);font-size:0.8rem;">Loading…</span>';
+        document.getElementById('previewIdImage').innerHTML   = '<span style="color:var(--gray);font-size:0.8rem;">Loading…</span>';
 
+        // Reset stepper
+        ['step-Received','step-For-Review','step-Verified','step-Approved','step-Released'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.className = 'step';
+        });
+
+        document.getElementById('applicationModal').style.display = 'block';
+
+        fetch(`../api/get_application_details.php?id=${encodeURIComponent(appId)}`)
+            .then(r => r.json())
+            .then(app => {
                 if (app.error) {
-                    alert("Error: " + app.error);
+                    document.getElementById('complianceList').innerHTML = `<p style="color:red;">${app.error}</p>`;
                     return;
                 }
 
                 currentWorkflowState = app.workflow_state || 'Received';
+
+                /* ── Title ── */
                 document.getElementById('modalAppTitle').textContent = `Reviewing: ${app.full_name} (${app.id_number})`;
 
-                // Render stepper
-                const steps = ['Received', 'For Review', 'Verified', 'Approved', 'Released'];
-                let currentStepIndex = steps.indexOf(currentWorkflowState);
-                if (currentStepIndex === -1) currentStepIndex = 0;
-
-                steps.forEach((step, idx) => {
-                    const stepId = 'step-' + step.replace(' ', '-');
-                    const element = document.getElementById(stepId);
-                    if (element) {
-                        element.className = 'step';
-                        if (idx < currentStepIndex) {
-                            element.classList.add('completed');
-                        } else if (idx === currentStepIndex) {
-                            element.classList.add('active');
-                        }
-                    }
+                /* ── Stepper ── */
+                const steps = ['Received','For Review','Verified','Approved','Released'];
+                let idx = steps.indexOf(currentWorkflowState);
+                if (idx === -1) idx = 0;
+                steps.forEach((s, i) => {
+                    const el = document.getElementById('step-' + s.replace(' ','-'));
+                    if (!el) return;
+                    el.classList.add(i < idx ? 'completed' : i === idx ? 'active' : '');
                 });
 
-                // Populate Basic Info
-                document.getElementById('infoName').innerHTML = `<strong>${app.lastName}, ${app.firstName} ${app.middleName || ''} ${app.suffix || ''}</strong>`;
-                
-                // Calculate Age
+                /* ── Basic Info ── */
+                document.getElementById('infoName').innerHTML    = `<strong>${app.lastName}, ${app.firstName} ${app.middleName||''} ${app.suffix||''}</strong>`;
                 const birth = new Date(app.birth_date);
                 const today = new Date();
                 let age = today.getFullYear() - birth.getFullYear();
-                const m = today.getMonth() - birth.getMonth();
-                if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-                    age--;
-                }
-                document.getElementById('infoBirth').textContent = `${app.birth_date} (${age} years old)`;
-                document.getElementById('infoContact').textContent = app.contact_number;
-                document.getElementById('infoAddress').textContent = app.complete_address;
-                document.getElementById('infoBarangay').textContent = app.barangay;
+                if (today.getMonth() < birth.getMonth() || (today.getMonth()===birth.getMonth() && today.getDate()<birth.getDate())) age--;
+                document.getElementById('infoBirth').textContent    = `${app.birth_date} (${age} years old)`;
+                document.getElementById('infoContact').textContent  = app.contact_number || '—';
+                document.getElementById('infoAddress').textContent  = app.complete_address || '—';
+                document.getElementById('infoBarangay').textContent = app.barangay || '—';
 
-                // Compliance Checks
-                let complianceHtml = "";
-                
-                // 1. Age Check (All types except PWD)
+                /* ── Compliance Checks ── */
+                let ch = '';
+                let approvalBlocked = false;
+                let approvalBlockReason = "";
+
+                const aiScore  = parseFloat(app.ai_confidence_score || 95);
+                const aiFlag   = (app.ai_status || '') === 'FLAGGED_ANOMALY';
+                if (aiScore >= 90 && !aiFlag) {
+                    ch += `<div class="compliance-item" style="background:rgba(16,185,129,0.06);border-left:3px solid var(--success);padding:6px 8px;border-radius:5px;">
+                        <span style="font-weight:600;"><i class="fas fa-robot" style="color:var(--success)"></i> CNN AI Document Verification</span>
+                        <span class="pass-tag"><i class="fas fa-shield-halved"></i> AI-VERIFIED — ${aiScore.toFixed(1)}% Authenticity Score</span>
+                    </div>`;
+                } else {
+                    ch += `<div class="compliance-item" style="background:rgba(239,68,68,0.08);border-left:3px solid var(--danger);padding:6px 8px;border-radius:5px;">
+                        <span style="font-weight:600;"><i class="fas fa-robot" style="color:var(--danger)"></i> CNN AI Document Verification</span>
+                        <span class="fail-tag"><i class="fas fa-triangle-exclamation"></i> ANOMALY DETECTED IN BARANGAY SUBMISSION — ${aiScore.toFixed(1)}% Authenticity Score</span>
+                    </div>`;
+                }
+
                 if (app.application_type !== 'pwd') {
                     if (age >= 60) {
-                        complianceHtml += `
-                            <div class="compliance-item">
-                                <span>Age Compliance (Senior citizen check)</span>
-                                <span class="pass-tag"><i class="fas fa-circle-check"></i> PASS: Age ${age} >= 60</span>
-                            </div>`;
+                        ch += `<div class="compliance-item"><span>Age Compliance (Senior citizen check)</span><span class="pass-tag"><i class="fas fa-circle-check"></i> PASS: Age ${age} >= 60</span></div>`;
                     } else {
-                        complianceHtml += `
-                            <div class="compliance-item">
-                                <span>Age Compliance (Senior citizen check)</span>
-                                <span class="fail-tag"><i class="fas fa-circle-xmark"></i> FAIL: Age ${age} is under 60</span>
-                            </div>`;
+                        ch += `<div class="compliance-item"><span>Age Compliance (Senior citizen check)</span><span class="fail-tag"><i class="fas fa-circle-xmark"></i> FAIL: Age ${age} is under 60</span></div>`;
                     }
                 } else {
-                    complianceHtml += `
-                        <div class="compliance-item">
-                            <span>Age Compliance (Disability support check)</span>
-                            <span class="pass-tag" style="color: #3498db;"><i class="fas fa-info-circle"></i> No senior restriction</span>
-                        </div>`;
+                    ch += `<div class="compliance-item"><span>Age Compliance (Disability support check)</span><span class="pass-tag" style="color:#3498db;"><i class="fas fa-info-circle"></i> No senior restriction</span></div>`;
                 }
 
-                // 2. Pension checks
                 if (app.application_type === 'pension') {
-                    const pAmount = parseFloat(app.pension_amount);
-                    if (pAmount <= 4000) {
-                        complianceHtml += `
-                            <div class="compliance-item">
-                                <span>SSS Pension Limit Check (Pasig Ord. 17/2025)</span>
-                                <span class="pass-tag"><i class="fas fa-circle-check"></i> PASS: Pension P${pAmount.toFixed(2)} <= P4,000</span>
-                            </div>`;
+                    const pa = parseFloat(app.pension_amount || 0);
+                    if (pa <= 4000) {
+                        ch += `<div class="compliance-item"><span>SSS Pension Limit Check (Pasig Ord. 17/2025)</span><span class="pass-tag"><i class="fas fa-circle-check"></i> PASS: Pension ₱${pa.toFixed(2)} ≤ ₱4,000</span></div>`;
                     } else {
-                        complianceHtml += `
-                            <div class="compliance-item">
-                                <span>SSS Pension Limit Check (Pasig Ord. 17/2025)</span>
-                                <span class="fail-tag"><i class="fas fa-circle-xmark"></i> FAIL: Pension P${pAmount.toFixed(2)} exceeds P4,000</span>
-                            </div>`;
+                        approvalBlocked = true;
+                        approvalBlockReason = `APPLICATION BLOCKED: SSS pension of ₱${pa.toFixed(2)} exceeds the ₱4,000 limit (Pasig Ord. 17/2025).`;
+                        ch += `<div class="compliance-item"><span>SSS Pension Limit Check (Pasig Ord. 17/2025)</span><span class="fail-tag"><i class="fas fa-circle-xmark"></i> FAIL: Pension ₱${pa.toFixed(2)} exceeds ₱4,000</span></div>`;
                     }
                 }
 
-                // 3. Burial Check
                 if (app.application_type === 'burial') {
-                    const elapsedDays = calculateWorkingDays(app.date_of_death);
-                    if (elapsedDays <= 30) {
-                        complianceHtml += `
-                            <div class="compliance-item">
-                                <span>Filing Deadline Check (Pasig Ord. 3/2026)</span>
-                                <span class="pass-tag"><i class="fas fa-circle-check"></i> PASS: Filed in ${elapsedDays} working days</span>
-                            </div>`;
+                    const ed = calculateWorkingDays(app.date_of_death);
+                    if (ed <= 30) {
+                        ch += `<div class="compliance-item"><span>Filing Deadline Check (Pasig Ord. 3/2026)</span><span class="pass-tag"><i class="fas fa-circle-check"></i> PASS: Filed in ${ed} working days</span></div>`;
                     } else {
-                        complianceHtml += `
-                            <div class="compliance-item">
-                                <span>Filing Deadline Check (Pasig Ord. 3/2026)</span>
-                                <span class="fail-tag"><i class="fas fa-circle-xmark"></i> FAIL: Outside 30-working-day limit (${elapsedDays} days elapsed)</span>
-                            </div>`;
+                        approvalBlocked = true;
+                        approvalBlockReason = `POLICY VIOLATION: Submitted beyond the 30-working-day limit. Days elapsed: ${ed} (Pasig Ord. 3/2026).`;
+                        ch += `<div class="compliance-item"><span>Filing Deadline Check (Pasig Ord. 3/2026)</span><span class="fail-tag"><i class="fas fa-circle-xmark"></i> FAIL: Outside 30-working-day limit (${ed} days elapsed)</span></div>`;
                     }
                 }
 
-                // 4. Priority status display
                 if (app.priority_level === 'high') {
-                    complianceHtml += `
-                        <div class="compliance-item" style="background-color: rgba(245, 158, 11, 0.08); padding: 5px; border-radius: 4px;">
-                            <span>Priority Queue Placement</span>
-                            <span style="color: #d97706; font-weight: 700;"><i class="fas fa-star"></i> High-Priority (Bedridden Senior)</span>
-                        </div>`;
+                    ch += `<div class="compliance-item" style="background:rgba(245,158,11,0.08);padding:5px;border-radius:4px;">
+                        <span>Priority Queue Placement</span>
+                        <span style="color:#d97706;font-weight:700;"><i class="fas fa-star"></i> High-Priority (Bedridden Senior)</span>
+                    </div>`;
                 }
+                document.getElementById('complianceList').innerHTML = ch;
 
-                document.getElementById('complianceList').innerHTML = complianceHtml;
-
-                // Dynamic type details section
-                let dynamicHtml = "";
+                /* ── Dynamic Details ── */
+                let dh = '';
                 if (app.application_type === 'pwd') {
-                    dynamicHtml = `
-                        <h3 style="font-size: 1rem; color: var(--primary); margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">Disability Support Details</h3>
-                        <p style="font-size: 0.9rem; margin-bottom: 5px;"><strong>Disability Type:</strong> ${app.disability_type || 'None selected'}</p>
-                    `;
+                    dh = `<div class="section-title" style="margin-top:14px;"><i class="fas fa-wheelchair"></i> Disability support Details</div>
+                          <div class="info-grid"><div class="info-item wide"><label>Disability Type</label><span>${app.disability_type||'—'}</span></div></div>`;
                 } else if (app.application_type === 'pension') {
-                    dynamicHtml = `
-                        <h3 style="font-size: 1rem; color: var(--primary); margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">Social Pension Information</h3>
-                        <p style="font-size: 0.9rem; margin-bottom: 5px;"><strong>SSS Number:</strong> ${app.sss_number || 'N/A'}</p>
-                        <p style="font-size: 0.9rem; margin-bottom: 5px;"><strong>Monthly SSS Pension:</strong> PHP ${parseFloat(app.pension_amount || 0).toFixed(2)}</p>
-                    `;
+                    dh = `<div class="section-title" style="margin-top:14px;"><i class="fas fa-coins"></i> Social Pension Information</div>
+                          <div class="info-grid">
+                            <div class="info-item"><label>SSS Number</label><span>${app.sss_number||'—'}</span></div>
+                            <div class="info-item"><label>Verified Monthly Pension</label><span>₱${parseFloat(app.pension_amount||0).toFixed(2)}</span></div>
+                          </div>`;
                 } else if (app.application_type === 'burial') {
-                    dynamicHtml = `
-                        <h3 style="font-size: 1rem; color: var(--primary); margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">Burial Assistance Details</h3>
-                        <p style="font-size: 0.9rem; margin-bottom: 5px;"><strong>Date of Passing:</strong> ${app.date_of_death || 'N/A'}</p>
-                        <p style="font-size: 0.9rem; margin-bottom: 5px;"><strong>Relationship to Deceased:</strong> ${app.relationship_to_deceased || 'N/A'}</p>
-                    `;
+                    dh = `<div class="section-title" style="margin-top:14px;"><i class="fas fa-cross"></i> Burial Assistance Details</div>
+                          <div class="info-grid">
+                            <div class="info-item"><label>Date of Passing</label><span>${app.date_of_death||'—'}</span></div>
+                            <div class="info-item"><label>Relationship to Deceased</label><span>${app.relationship_to_deceased||'—'}</span></div>
+                          </div>`;
                 }
-                
                 if (app.is_proxy_application == 1) {
-                    dynamicHtml += `
-                        <div style="margin-top: 15px; border-top: 1px dashed var(--border); padding-top: 10px;">
-                            <p style="font-size: 0.9rem; margin-bottom: 5px;"><strong>Proxy pre-registration Token:</strong> ${app.proxy_token || 'N/A'}</p>
-                            <p style="font-size: 0.9rem; margin-bottom: 5px;"><strong>Proxy Relative's Name:</strong> ${app.proxy_name || 'N/A'}</p>
-                            <p style="font-size: 0.9rem; margin-bottom: 5px;"><strong>Proxy Relationship:</strong> ${app.proxy_relationship || 'N/A'}</p>
-                        </div>
-                    `;
+                    dh += `<div class="section-title" style="margin-top:14px;"><i class="fas fa-user-clock"></i> Proxy Relative Pre-registration</div>
+                           <div class="info-grid">
+                             <div class="info-item"><label>Proxy Relative Name</label><span>${app.proxy_name||'—'}</span></div>
+                             <div class="info-item"><label>Relationship</label><span>${app.proxy_relationship||'—'}</span></div>
+                             <div class="info-item"><label>Proxy Contact Number</label><span>${app.proxy_contact_number||'—'}</span></div>
+                             <div class="info-item"><label>Proxy pre-registration Token</label><span>${app.proxy_token||'—'}</span></div>
+                           </div>`;
                 }
-                document.getElementById('dynamicDetailsSection').innerHTML = dynamicHtml;
+                document.getElementById('dynamicDetailsSection').innerHTML = dh;
 
-                // Setup Document Image Previews
-                document.getElementById('previewProof').innerHTML = app.has_proof_of_address 
-                    ? `<img src="../api/get_document.php?id=${appId}&doc_type=proof_of_address" alt="Proof of Address">` 
-                    : '<p style="color: var(--gray); font-size: 0.8rem;">No file uploaded.</p>';
-                
-                document.getElementById('previewIdImage').innerHTML = app.has_id_image 
-                    ? `<img src="../api/get_document.php?id=${appId}&doc_type=id_image" alt="ID Document Photo">` 
-                    : '<p style="color: var(--gray); font-size: 0.8rem;">No file uploaded.</p>';
+                /* ── Document Previews ── */
+                document.getElementById('previewProof').innerHTML = app.has_proof_of_address
+                    ? `<img src="../api/get_document.php?id=${appId}&doc_type=proof_of_address" alt="Proof of Address">`
+                    : '<span style="color:var(--gray);font-size:0.8rem;"><i class="fas fa-file-slash"></i> No document uploaded</span>';
 
-                // FSM Operation controls
+                document.getElementById('previewIdImage').innerHTML = app.has_id_image
+                    ? `<img src="../api/get_document.php?id=${appId}&doc_type=id_image" alt="ID Document Photo">`
+                    : '<span style="color:var(--gray);font-size:0.8rem;"><i class="fas fa-file-slash"></i> No document uploaded</span>';
+
+                /* ── FSM Operations ── */
                 const btnNext = document.getElementById('btnNextState');
                 const btnReturn = document.getElementById('btnReturnState');
                 const instruction = document.getElementById('fsmInstructions');
 
-                // Toggle actions based on current FSM State
-                btnReturn.style.display = 'block'; // standard display
+                btnReturn.style.display = 'block';
                 btnNext.style.display = 'block';
+
+                const existingBlockBanner = document.getElementById('policyBlockBanner');
+                if (existingBlockBanner) existingBlockBanner.remove();
 
                 if (currentWorkflowState === 'Received') {
                     instruction.innerHTML = "<strong>State Action:</strong> Forward this application to the department desk for detailed evaluation.";
                     btnNext.textContent = "Forward to Review Desk";
-                    btnReturn.style.display = 'none'; // cannot return from initial
+                    btnReturn.style.display = 'none';
                 } else if (currentWorkflowState === 'For Review') {
                     instruction.innerHTML = "<strong>State Action:</strong> Mark document audits as Verified and lock the compliance records.";
                     btnNext.textContent = "Verify Application";
                 } else if (currentWorkflowState === 'Verified') {
-                    instruction.innerHTML = "<strong>State Action:</strong> Authorize senior credentials and approve for payroll distribution.";
+                    instruction.innerHTML = "<strong>State Action:</strong> Authorize senior credentials and approve for payroll benefits distribution.";
                     btnNext.textContent = "Approve for Payroll";
+
+                    if (approvalBlocked) {
+                        btnNext.disabled = true;
+                        btnNext.style.opacity = '0.4';
+                        btnNext.style.cursor  = 'not-allowed';
+                        
+                        const blockBanner = document.createElement('div');
+                        blockBanner.id = 'policyBlockBanner';
+                        blockBanner.style.cssText = `
+                            background: rgba(239,68,68,0.1);
+                            border: 1.5px solid #ef4444;
+                            border-radius: 8px;
+                            padding: 10px 14px;
+                            margin-bottom: 12px;
+                            font-size: 0.82rem;
+                            color: #b91c1c;
+                            font-weight: 600;
+                            line-height: 1.5;
+                        `;
+                        blockBanner.innerHTML = `<i class="fas fa-ban" style="margin-right:6px;"></i> ${approvalBlockReason}`;
+                        btnNext.parentElement.insertBefore(blockBanner, btnNext);
+                    } else {
+                        btnNext.disabled = false;
+                        btnNext.style.opacity = '';
+                        btnNext.style.cursor  = '';
+                    }
                 } else if (currentWorkflowState === 'Approved') {
-                    instruction.innerHTML = "<strong>State Action:</strong> Finalize payroll check and mark credentials as Released.";
+                    instruction.innerHTML = "<strong>State Action:</strong> Finalize benefits check and mark credentials as Released.";
                     btnNext.textContent = "Release Benefits";
                 } else if (currentWorkflowState === 'Released') {
                     instruction.innerHTML = "<strong>State Action:</strong> The workflow has completed. Benefits are released to the citizen.";
@@ -896,68 +835,65 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['department_ad
                     btnReturn.style.display = 'none';
                 }
 
-                // Render Timeline Audit Trail
-                let timelineHtml = "";
+                /* ── Timeline ── */
+                let th = '';
                 if (app.history && app.history.length > 0) {
                     app.history.forEach(log => {
-                        timelineHtml += `
-                            <div class="timeline-event">
-                                <div class="timeline-time">${log.changed_at}</div>
-                                <div class="timeline-title">${log.previous_state} &rarr; ${log.new_state} (by ${log.changed_by})</div>
-                                <div class="timeline-desc">${log.comments || 'No comments.'}</div>
-                            </div>`;
+                        const t = new Date(log.changed_at.replace(' ','T')).toLocaleString();
+                        th += `<div class="timeline-event">
+                            <div class="timeline-time">${t}</div>
+                            <div class="timeline-title">${log.previous_state} &rarr; ${log.new_state}</div>
+                            <div class="timeline-by">By: ${log.changed_by}</div>
+                            ${log.comments ? `<div class="timeline-note">&ldquo;${log.comments}&rdquo;</div>` : ''}
+                        </div>`;
                     });
                 } else {
-                    timelineHtml = "<p style='color: var(--gray); font-size: 0.85rem; font-style: italic;'>No transitions logged.</p>";
+                    th = '<p style="color:var(--gray);font-size:0.85rem;">No transition history logged.</p>';
                 }
-                document.getElementById('timelineList').innerHTML = timelineHtml;
+                document.getElementById('timelineList').innerHTML = th;
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Failed to load application profile.");
+            });
+    }
 
-            } catch (error) {
-                console.error("Error opening modal:", error);
-                alert("Failed to load application details.");
-            }
+    async function submitFsmTransition(action) {
+        const comment = document.getElementById('fsmComment').value.trim();
+
+        if (action === 'return' && !comment) {
+            alert("Please input comment remarks explaining why this application is being returned to the Barangay (e.g. Blurry Documents / Missing IDs).");
+            return;
         }
 
-        async function submitFsmTransition(action) {
-            const comment = document.getElementById('fsmComment').value.trim();
-
-            if (action === 'return' && !comment) {
-                alert("Please add comment details explaining why this application is being returned to the Barangay (e.g. Blurry Documents).");
-                return;
-            }
-
-            if (!confirm(`Are you sure you want to trigger this transition?`)) {
-                return;
-            }
-
-            try {
-                const formData = new FormData();
-                formData.append('applicationId', currentAppId);
-                formData.append('action', action);
-                formData.append('comments', comment);
-
-                const response = await fetch('../api/update_fsm_state.php', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const result = await response.json();
-
-                if (result.success) {
-                    alert(result.message);
-                    // Reload modal with new details
-                    openApplicationModal(currentAppId);
-                    
-                    // Reload table queue in background
-                    location.reload();
-                } else {
-                    alert("Transition Error: " + result.message);
-                }
-            } catch (error) {
-                console.error(error);
-                alert("Connection error during state transition.");
-            }
+        if (!confirm(`Confirm triggering workflow state transition?`)) {
+            return;
         }
-    </script>
+
+        try {
+            const formData = new FormData();
+            formData.append('applicationId', currentAppId);
+            formData.append('action', action);
+            formData.append('comments', comment);
+
+            const response = await fetch('../api/update_fsm_state.php', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                alert(result.message);
+                closeModal();
+                location.reload();
+            } else {
+                alert("Workflow State Transition Error: " + result.message);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Connection error during state transition.");
+        }
+    }
+</script>
 </body>
 </html>

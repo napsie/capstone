@@ -120,6 +120,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $isProxy = isset($_POST['isProxy']) ? intval($_POST['isProxy']) : 0;
     $proxyName = isset($_POST['proxyName']) ? trim(strip_tags($_POST['proxyName'])) : null;
     $proxyRelationship = isset($_POST['proxyRelationship']) ? trim(strip_tags($_POST['proxyRelationship'])) : null;
+    $proxyContactNumber = isset($_POST['proxyContactNumber']) ? trim(strip_tags($_POST['proxyContactNumber'])) : null;
     $proxyToken = isset($_POST['proxyToken']) ? trim(strip_tags($_POST['proxyToken'])) : null;
     $priorityLevel = ($isProxy && !empty($proxyToken)) ? 'high' : 'normal';
 
@@ -183,9 +184,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             proof_of_address, proof_of_address_type, id_image, id_image_type,
                             lastName, firstName, middleName, suffix, disability_type,
                             sss_number, pension_amount, date_of_death, relationship_to_deceased,
-                            is_proxy_application, proxy_name, proxy_relationship, proxy_token,
+                            is_proxy_application, proxy_name, proxy_relationship, proxy_contact_number, proxy_token,
                             priority_level, workflow_state, ' . implode(', ', $oscaCols);
-                $placeholders = implode(', ', array_fill(0, 28 + count($oscaCols), '?'));
+                $placeholders = implode(', ', array_fill(0, 29 + count($oscaCols), '?'));
 
                 $stmt = $conn->prepare("INSERT INTO applications ($colList) VALUES ($placeholders)");
 
@@ -195,7 +196,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $proofOfAddress, $proofOfAddressType, $idImage, $idImageType,
                     $lastName, $firstName, $middleName, $suffix, $disabilityType,
                     $sssNumber, $pensionAmount, $dateOfDeath, $relationshipToDeceased,
-                    $isProxy, $proxyName, $proxyRelationship, $proxyToken,
+                    $isProxy, $proxyName, $proxyRelationship, $proxyContactNumber, $proxyToken,
                     $priorityLevel, 'Received',
                 ];
                 foreach ($oscaCols as $col) {
@@ -1452,6 +1453,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <!-- Hidden Proxy Fields -->
                     <input type="hidden" name="isProxy" id="isProxy" value="<?php echo $loadedProxyData ? 1 : 0; ?>">
                     <input type="hidden" name="proxyToken" id="proxyToken" value="<?php echo htmlspecialchars($loadedProxyData['transactionId'] ?? ''); ?>">
+                    <input type="hidden" name="proxyContactNumber" id="proxyContactNumber" value="<?php echo htmlspecialchars($loadedProxyData['proxyContactNumber'] ?? ''); ?>">
                     <input type="hidden" id="applicationType" name="applicationType" value="" required>
 
                     <!-- ================================================================
@@ -3050,10 +3052,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         <i class="fas fa-gavel" style="color:#92400e;margin-right:5px;"></i>
                                         I hereby certify under law on perjury that the information provided in this form is <strong>complete, true, correct, and of my own knowledge</strong>. I further authorize the City Government of Pasig to process my data, validate, and confirm the answers herein with third parties such as the GSIS, SSS, DSWD and other Government/Private Agencies.
                                     </p>
-                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
                                         <div>
                                             <label style="font-size:0.67rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;"><i class="fas fa-user-check" style="color:#1e3a5f;margin-right:4px;"></i>Emergency Contact Name</label>
-                                            <input type="text" style="width:100%;padding:6px 10px;border:1.5px solid #fde68a;border-radius:7px;font-size:0.85rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'emergencyContactName')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#fde68a';" placeholder="Name & Contact No.">
+                                            <input type="text" style="width:100%;padding:6px 10px;border:1.5px solid #fde68a;border-radius:7px;font-size:0.85rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'emergencyContactName')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#fde68a';" placeholder="Full Name">
+                                        </div>
+                                        <div>
+                                            <label style="font-size:0.67rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;"><i class="fas fa-phone" style="color:#1e3a5f;margin-right:4px;"></i>Emergency Contact No.</label>
+                                            <input type="tel" style="width:100%;padding:6px 10px;border:1.5px solid #fde68a;border-radius:7px;font-size:0.85rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'emergencyContact')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#fde68a';" placeholder="09XX-XXX-XXXX">
                                         </div>
                                         <div>
                                             <label style="font-size:0.67rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;"><i class="fas fa-people-arrows" style="color:#1e3a5f;margin-right:4px;"></i>Relationship to Applicant</label>
@@ -3128,7 +3134,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <div id="proxy-details-section" style="<?php echo $loadedProxyData ? 'display: block;' : 'display: none;'; ?>">
                         <div class="form-section" style="border: 1px dashed #2980b9; padding: 15px; border-radius: 8px; background-color: rgba(41, 128, 185, 0.05);">
                             <h3 style="color: #2980b9;"><i class="fas fa-id-card-alt"></i> Proxy Registration Active (High-Priority Line)</h3>
-                            <div class="form-row">
+                            <div class="form-row" style="grid-template-columns: 1fr 1fr 1fr;">
                                 <div class="form-group">
                                     <label for="proxyName">Proxy Representative Name</label>
                                     <input type="text" id="proxyName" name="proxyName" value="<?php echo htmlspecialchars($loadedProxyData['proxyName'] ?? ''); ?>" readonly>
@@ -3136,6 +3142,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 <div class="form-group">
                                     <label for="proxyRelationship">Proxy Relationship</label>
                                     <input type="text" id="proxyRelationship" name="proxyRelationship" value="<?php echo htmlspecialchars($loadedProxyData['proxyRelationship'] ?? ''); ?>" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label for="proxyDisplayContact">Proxy Contact Number</label>
+                                    <input type="text" id="proxyDisplayContact" value="<?php echo htmlspecialchars($loadedProxyData['proxyContactNumber'] ?? ''); ?>" readonly>
                                 </div>
                             </div>
                         </div>
@@ -3364,6 +3374,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     document.getElementById('proxyToken').value = data.transactionId || '';
                     document.getElementById('proxyName').value = data.proxyName || '';
                     document.getElementById('proxyRelationship').value = data.proxyRelationship || '';
+                    document.getElementById('proxyContactNumber').value = data.proxyContactNumber || '';
+                    document.getElementById('proxyDisplayContact').value = data.proxyContactNumber || '';
                     document.getElementById('proxy-details-section').style.display = 'block';
 
                     // Optional fields

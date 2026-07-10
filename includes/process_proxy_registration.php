@@ -89,6 +89,7 @@ function processProxyRegistration(): array
         
         $proxyName = trim($_POST['proxyName'] ?? '');
         $proxyRelationship = trim($_POST['proxyRelationship'] ?? '');
+        $proxyContactNumber = trim($_POST['proxyContactNumber'] ?? '');
 
         // Validation: age check in 2026
         if (!empty($birthDate)) {
@@ -125,18 +126,18 @@ function processProxyRegistration(): array
                         id_number, full_name, lastName, firstName, middleName, suffix,
                         birth_date, contact_number, complete_address, barangay,
                         status, workflow_state, is_proxy_application, proxy_name,
-                        proxy_relationship, proxy_token, priority_level, application_type,
+                        proxy_relationship, proxy_contact_number, proxy_token, priority_level, application_type,
                         sss_number, pension_amount, date_of_death, relationship_to_deceased,
                         psa_birth_cert, barangay_residency, comelec_cert, proof_of_life,
                         auth_letter, proxy_id, proxy_birth_cert
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
             $stmt = $conn->prepare($sql);
             $stmt->execute([
                 $transactionId, $fullName, $lastName, $firstName, $middleName, $suffix,
                 $birthDate, $contactNumber, $completeAddress, $barangay,
                 'pending', 'Submitted', 1, $proxyName,
-                $proxyRelationship, $transactionId, 'high', $applicationType,
+                $proxyRelationship, $proxyContactNumber, $transactionId, 'high', $applicationType,
                 $sssNumber, $pensionAmount, !empty($dateOfDeath) ? $dateOfDeath : null, !empty($relationshipToDeceased) ? $relationshipToDeceased : null,
                 $psaBirthCert, $barangayResidency, $comelecCert, $proofOfLife,
                 $authLetter, $proxyId, $proxyBirthCert
@@ -167,6 +168,7 @@ function processProxyRegistration(): array
                 'relationshipToDeceased' => $relationshipToDeceased,
                 'proxyName' => $proxyName,
                 'proxyRelationship' => $proxyRelationship,
+                'proxyContactNumber' => $proxyContactNumber,
                 'created_at' => date('Y-m-d H:i:s'),
             ];
             $encryptedToken = ProxyCrypto::encrypt($payload);
@@ -232,16 +234,16 @@ function processProxyRegistration(): array
                         id_number, full_name, lastName, firstName, middleName, suffix,
                         birth_date, contact_number, complete_address, barangay,
                         status, workflow_state, is_proxy_application, proxy_name,
-                        proxy_relationship, proxy_token, priority_level, application_type,
+                        proxy_relationship, proxy_contact_number, proxy_token, priority_level, application_type,
                         parent_senior_id, home_visitation_form, landbank_enrollment_form
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             
             $stmtPension = $conn->prepare($sql);
             $stmtPension->execute([
                 $pensionTransactionId, $senior['full_name'], $senior['lastName'], $senior['firstName'], $senior['middleName'], $senior['suffix'],
                 $senior['birth_date'], $senior['contact_number'], $senior['complete_address'], $senior['barangay'],
                 'pending', 'Pension Benefit - Submitted', 1, $senior['proxy_name'],
-                $senior['proxy_relationship'], $senior['proxy_token'], 'high', 'pension',
+                $senior['proxy_relationship'], $senior['proxy_contact_number'], $senior['proxy_token'], 'high', 'pension',
                 $seniorCitizenId, $homeVisitationForm, $landbankForm
             ]);
 

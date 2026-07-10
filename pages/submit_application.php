@@ -16,801 +16,859 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CPRAS Dashboard - Barangay <?php echo $loggedInBarangay; ?></title>
+    <title>Queue – Barangay <?php echo $loggedInBarangay; ?></title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=1.1">
     <link rel="stylesheet" href="../assets/css/main-dark-mode.css?v=1.1">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        .image-placeholder {
-            margin-top: 10px;
-            width: 100%;
-            height: 200px;
-            border: 2px dashed #ccc;
+        /* ─── Variables ─────────────────────────────────────────────────── */
+        :root {
+            --primary:   #0f172a;
+            --secondary: #1e3a5f;
+            --accent:    #2563eb;
+            --success:   #10b981;
+            --warning:   #f59e0b;
+            --danger:    #ef4444;
+            --purple:    #8b5cf6;
+            --gray:      #94a3b8;
+            --border:    #e2e8f0;
+            --bg:        #f1f5f9;
+            --card:      #ffffff;
+            --text:      #0f172a;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+
+        /* ─── Layout ─────────────────────────────────────────────────────── */
+        .container { display: flex; min-height: 100vh; }
+        .main-content { flex: 1; padding: 28px; overflow-y: auto; }
+
+        /* ─── Page Header ────────────────────────────────────────────────── */
+        .page-header {
             display: flex;
-            justify-content: center;
+            justify-content: space-between;
             align-items: center;
-            overflow: hidden;
+            margin-bottom: 28px;
         }
-
-        .image-placeholder img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
+        .page-header-left .greeting { font-size: 0.88rem; color: var(--gray); margin-bottom: 4px; }
+        .page-header-left h1 { font-size: 1.7rem; font-weight: 800; color: var(--primary); margin: 0; }
+        .page-header-left h1 span { color: var(--accent); }
+        
+        .header-actions { display: flex; align-items: center; gap: 14px; }
+        .header-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--card);
+            border-radius: 12px;
+            padding: 10px 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border: 1px solid var(--border);
         }
+        .header-user img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); }
+        .header-user-info h3 { font-size: 0.9rem; font-weight: 700; color: var(--primary); margin: 0; }
+        .header-user-info p  { font-size: 0.75rem; color: var(--gray); margin: 0; }
 
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 9px 18px;
+            border-radius: 8px;
+            font-size: 0.84rem;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .btn-primary { background: var(--secondary); color: white; }
+        .btn-primary:hover { background: #153860; transform: translateY(-1px); }
+        .btn-accent { background: var(--success); color: white; }
+        .btn-accent:hover { background: #059669; transform: translateY(-1px); }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-small { padding: 5px 12px; font-size: 0.76rem; border-radius: 6px; }
+
+        /* ─── Queue Card ─────────────────────────────────────────────────── */
+        .queue-card { background: var(--card); border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 16px rgba(0,0,0,0.05); overflow: hidden; }
+        .queue-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 28px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);
+        }
+        .queue-card-header h2 { color: #fff; font-size: 1.05rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 10px; }
+        .queue-card-header h2 i { color: #60a5fa; }
+
+        /* Filter Controls */
+        .filter-bar {
+            display: flex;
+            align-items: flex-end;
+            gap: 12px;
+            padding: 18px 28px;
+            border-bottom: 1px solid var(--border);
+            background: #f8fafc;
+            flex-wrap: wrap;
+        }
+        .filter-group { display: flex; flex-direction: column; gap: 5px; }
+        .filter-group label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gray); }
+        .filter-group select,
+        .search-wrap input {
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 0.86rem;
+            color: var(--primary);
+            background: #fff;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .filter-group select:focus, .search-wrap input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+        .search-wrap { position: relative; }
+        .search-wrap i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--gray); font-size: 0.85rem; }
+        .search-wrap input { padding-left: 32px; min-width: 200px; }
+
+        /* Priority badge */
         .priority-badge {
-            background-color: #fef3c7;
+            background-color: rgba(245,158,11,0.12);
             color: #d97706;
-            border: 1px solid #fcd34d;
+            border: 1px solid rgba(245,158,11,0.25);
             padding: 3px 8px;
             border-radius: 12px;
-            font-size: 0.75rem;
+            font-size: 0.72rem;
             font-weight: 700;
             display: inline-flex;
             align-items: center;
             gap: 4px;
         }
+        .priority-high-row { background-color: rgba(245,158,11,0.03); border-left: 4px solid var(--warning) !important; }
 
-        .priority-high-row {
-            background-color: rgba(245, 158, 11, 0.04);
-            border-left: 4px solid #f59e0b !important;
-        }
+        /* Table */
+        .table-wrap { overflow-x: auto; }
+        .records-tbl { width: 100%; border-collapse: collapse; }
+        .records-tbl thead tr { background: #f8fafc; border-bottom: 2px solid var(--border); }
+        .records-tbl th { padding: 12px 18px; text-align: left; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gray); white-space: nowrap; }
+        .records-tbl td { padding: 13px 18px; font-size: 0.86rem; color: var(--primary); border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+        .records-tbl tbody tr { transition: background 0.15s; }
+        .records-tbl tbody tr:hover { background: #f8fafc; }
+        .records-tbl tbody tr:last-child td { border-bottom: none; }
 
-        .status-badge {
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
+        .name-cell .name-link { font-weight: 700; color: var(--accent); text-decoration: none; }
+        .name-cell .name-link:hover { text-decoration: underline; }
+        .name-cell .app-id    { font-size: 0.73rem; color: var(--gray); margin-top: 2px; font-family: monospace; }
 
-        /* Layout fixes for submit application page */
-        .container {
-            width: 100%;
-            min-width: 0;
-        }
-
-        .main-content {
-            padding: 20px;
-            margin-left: var(--sidebar-width);
-            width: calc(100% - var(--sidebar-width));
-            box-sizing: border-box;
-            min-width: 0;
-        }
-
-        .applications-table {
-            width: 100%;
-            margin: 0 0 30px;
-            padding: 20px 18px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
-            overflow: visible;
-        }
-
-        .table-header {
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: space-between;
-        }
-
-        .table-controls {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: flex-end;
-            gap: 10px;
-            width: 100%;
-            max-width: none;
-        }
-
-        .table-controls > * {
-            min-width: 140px;
-        }
-
-        .applications-table-header {
-            width: 100%;
-            overflow-x: auto;
-            border-radius: 12px;
-            margin-top: 10px;
-        }
-
-        .applications-table-header table {
-            min-width: 100%;
-            width: 100%;
-            border-spacing: 0;
-        }
-
-        .applications-table-header th,
-        .applications-table-header td {
-            white-space: nowrap;
-        }
-
-        .page-title {
-            width: 100%;
-            margin: 0 0 20px;
-        }
-
-        .page-title p {
-            max-width: none;
-        }
-
-        /* FSM Badges */
-        .badge-received { background-color: #e2e8f0; color: #475569; }
-        .badge-review { background-color: #dbeafe; color: #1d4ed8; }
-        .badge-verified { background-color: #ccfbf1; color: #0f766e; }
-        .badge-approved { background-color: #dcfce7; color: #15803d; }
-        .badge-released { background-color: #f3e8ff; color: #6b21a8; }
-
-        /* Warning alert for blurry documents */
         .alert-blurry {
-            color: #e74c3c;
-            font-size: 0.8rem;
-            font-weight: 600;
+            color: var(--danger);
+            font-size: 0.75rem;
+            font-weight: 700;
             margin-top: 5px;
             display: flex;
             align-items: center;
             gap: 5px;
         }
 
-        /* Stepper progress */
-        .stepper {
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.71rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+        .badge-received { background-color: #e2e8f0; color: #475569; }
+        .badge-review { background-color: #dbeafe; color: #1d4ed8; }
+        .badge-verified { background-color: #ccfbf1; color: #0f766e; }
+        .badge-approved { background-color: #dcfce7; color: #15803d; }
+        .badge-released { background-color: #f3e8ff; color: #6b21a8; }
+
+        /* ─── Modal ──────────────────────────────────────────────────────── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15,23,42,0.55);
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+            overflow-y: auto;
+            padding: 30px 16px;
+        }
+        .modal-box {
+            background: #fff;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 980px;
+            margin: 0 auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        .modal-head {
+            background: linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);
+            padding: 20px 28px;
             display: flex;
             justify-content: space-between;
-            margin-bottom: 30px;
-            padding: 20px 0;
-            border-bottom: 1px solid #e2e8f0;
+            align-items: center;
         }
-
-        .step {
-            flex: 1;
-            text-align: center;
-            position: relative;
-        }
-
-        .step::after {
-            content: '';
-            position: absolute;
-            top: 15px;
-            left: 50%;
-            width: 100%;
-            height: 3px;
-            background-color: #cbd5e1;
-            z-index: 1;
-        }
-
-        .step:last-child::after {
-            display: none;
-        }
-
-        .step-circle {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background-color: #cbd5e1;
-            color: #64748b;
+        .modal-head h2 { color: #fff; font-size: 1rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 10px; }
+        .modal-head h2 i { color: #60a5fa; }
+        .modal-close {
+            background: rgba(255,255,255,0.15);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            width: 34px; height: 34px;
+            font-size: 1.2rem;
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 8px;
-            font-weight: bold;
-            position: relative;
-            z-index: 2;
+            transition: background 0.2s;
+        }
+        .modal-close:hover { background: rgba(255,255,255,0.3); }
+        .modal-scroller { max-height: 80vh; overflow-y: auto; padding: 28px; }
+
+        /* Stepper */
+        .stepper { display: flex; justify-content: space-between; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+        .step { flex: 1; text-align: center; position: relative; }
+        .step::after { content:''; position:absolute; top:15px; left:50%; width:100%; height:3px; background:var(--border); z-index:1; }
+        .step:last-child::after { display: none; }
+        .step-circle {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: var(--border); color: #64748b;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 7px; font-weight: 800; font-size: 0.8rem;
+            position: relative; z-index: 2; transition: background 0.3s;
+        }
+        .step-label { font-size: 0.72rem; font-weight: 600; color: var(--gray); }
+        .step.active .step-circle  { background: var(--accent); color:#fff; box-shadow:0 0 0 4px rgba(37,99,235,0.2); }
+        .step.active .step-label   { color: var(--accent); font-weight: 700; }
+        .step.completed .step-circle { background: var(--success); color:#fff; }
+        .step.completed .step-label  { color: var(--success); font-weight: 700; }
+        .step.completed::after       { background: var(--success); }
+
+        /* Form elements */
+        .form-section { margin-bottom: 28px; }
+        .form-section h3 { font-size: 0.95rem; color: var(--primary); margin-bottom: 15px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+        .form-section h3 i { color: var(--accent); }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 14px; }
+        @media(max-width:600px) { .form-row { grid-template-columns: 1fr; } }
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        .form-group label { font-size: 0.78rem; font-weight: 700; color: var(--gray); text-transform: uppercase; letter-spacing: 0.05em; }
+        .form-group input, .form-group select, .form-group textarea {
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 0.88rem;
+            color: var(--primary);
+            background: #fff;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); }
+        .form-group input[disabled], .form-group select[disabled], .form-group textarea[disabled] { background: #f1f5f9; cursor: not-allowed; }
+
+        .image-placeholder {
+            margin-top: 10px; width: 100%; height: 180px;
+            border: 2px dashed var(--border); border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden; background: #f8fafc;
+        }
+        .image-placeholder img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+        /* Modal grid */
+        .modal-grid { display:grid; grid-template-columns:1.2fr 1fr; gap:28px; }
+        @media(max-width:760px) { .modal-grid { grid-template-columns:1fr; } }
+
+        /* Timeline */
+        .timeline { border-left:2px solid var(--border); padding-left:18px; margin-top:10px; }
+        .timeline-event { position:relative; padding-bottom:18px; }
+        .timeline-event::before { content:''; position:absolute; left:-25px; top:5px; width:12px; height:12px; border-radius:50%; background:var(--accent); border:2px solid #fff; box-shadow:0 0 0 2px var(--border); }
+        .timeline-time  { font-size:0.72rem; color:var(--gray); margin-bottom:3px; }
+        .timeline-title { font-size:0.85rem; font-weight:700; color:var(--primary); }
+        .timeline-by    { font-size:0.75rem; color:#64748b; margin-top:2px; }
+        .timeline-note  { font-size:0.82rem; color:#475569; margin-top:4px; font-style:italic; }
+
+        /* Proxy document items */
+        .proxy-doc-card {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px;
+            background: #fff;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        }
+        .proxy-doc-card label {
+            font-size: 0.72rem; font-weight: 700; color: var(--gray);
+            display: block; margin-bottom: 6px; height: 32px; overflow: hidden; line-height: 1.2;
         }
 
-        .step-label {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: #64748b;
-        }
-
-        .step.active .step-circle {
-            background-color: #3b82f6;
-            color: white;
-        }
-
-        .step.active .step-label {
-            color: #3b82f6;
-        }
-
-        .step.completed .step-circle {
-            background-color: #10b981;
-            color: white;
-        }
-
-        .step.completed .step-label {
-            color: #10b981;
-        }
-
-        /* Audit history log */
-        .timeline {
-            margin-top: 20px;
-            padding-left: 10px;
-            border-left: 2px solid #e2e8f0;
-        }
-
-        .timeline-event {
-            position: relative;
-            padding-bottom: 20px;
-            padding-left: 20px;
-        }
-
-        .timeline-event::before {
-            content: '';
-            position: absolute;
-            left: -17px;
-            top: 5px;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background-color: #3b82f6;
-            border: 2px solid white;
-        }
-
-        .timeline-time {
-            font-size: 0.75rem;
-            color: #64748b;
-            margin-bottom: 4px;
-        }
-
-        .timeline-title {
-            font-size: 0.85rem;
-            font-weight: 700;
-            color: var(--text, #333);
-        }
-
-        .timeline-desc {
-            font-size: 0.85rem;
-            color: #475569;
-            margin-top: 4px;
-            font-style: italic;
-        }
-        .grid-modal {
-            display: grid;
-            grid-template-columns: 1.2fr 1fr;
-            gap: 30px;
-        }
-        .checkbox-group label { display: inline-block; margin-right: 12px; font-size: 0.85rem; }
-        #applicationModal .modal-body { max-height: 75vh; overflow-y: auto; }
+        /* Footer */
+        .page-footer { text-align:center; padding:24px; font-size:0.78rem; color:var(--gray); }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Sidebar -->
-        <?php include '../partials/barangay_sidebar.php'; ?>
+<div class="container">
+    <?php include '../partials/barangay_sidebar.php'; ?>
 
-        <!-- Main Content -->
-        <div class="main-content">
-            <!-- Header -->
-            <div class="header">
-                <div class="header-content">
-                    <div class="welcome-message" data-first-name="<?php echo htmlspecialchars($_SESSION['first_name']); ?>" data-last-name="<?php echo htmlspecialchars($_SESSION['last_name']); ?>"></div>
-                </div>
-                <div class="header-actions">
-                    <a href="new_application.php" class="btn"><i class="fas fa-plus"></i> Add Application</a>
-                    <div class="user-info">
-                        <div class="user-avatar">
-                            <?php
-                                $profilePic = isset($_SESSION['profile_picture']) ? $_SESSION['profile_picture'] : 'default.jpg';
-                                $profilePicPath = '../images/profile_pictures/' . $profilePic;
-                                if (!file_exists($profilePicPath) || is_dir($profilePicPath)) {
-                                    $profilePicPath = '../images/profile_pictures/default.jpg';
-                                }
-                            ?>
-                            <img src="<?php echo $profilePicPath; ?>" alt="Profile Picture" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
-                        </div>
-                        <div class="user-details">
-                            <h2><?php echo htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']); ?></h2>
-                            <p><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $_SESSION['role']))) . ' • ' . htmlspecialchars($_SESSION['barangay']); ?></p>
-                        </div>
+    <div class="main-content">
+
+        <!-- Page Header -->
+        <div class="page-header">
+            <div class="page-header-left">
+                <div class="greeting" id="greetingMsg">Welcome back!</div>
+                <h1>Barangay <span>Queue Terminal</span></h1>
+            </div>
+            <div class="header-actions">
+                <a href="new_application.php" class="btn btn-primary"><i class="fas fa-plus"></i> Add Application</a>
+                <div class="header-user">
+                    <?php
+                        $profilePic = isset($_SESSION['profile_picture']) ? $_SESSION['profile_picture'] : 'default.jpg';
+                        $profilePicPath = '../images/profile_pictures/' . $profilePic;
+                        if (!file_exists($profilePicPath) || is_dir($profilePicPath)) {
+                            $profilePicPath = '../images/profile_pictures/default.jpg';
+                        }
+                    ?>
+                    <img src="<?php echo $profilePicPath; ?>" alt="Profile">
+                    <div class="header-user-info">
+                        <h3><?php echo htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']); ?></h3>
+                        <p><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $_SESSION['role']))); ?> · <?php echo $loggedInBarangay; ?></p>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Page Title -->
-            <div class="page-title">
-                <p style="color: var(--text);">Manage applications for your barangay. View, track the status of applications, and resubmit files rejected for blurry scans.</p>
+        <!-- Page subtitle / instructions -->
+        <p style="color:var(--gray); margin-bottom: 24px; font-size: 0.9rem;">
+            Manage and track active citizen profiles for your barangay. Click the applicant's name to open their review, transition state, or upload blurry scan replacements.
+        </p>
+
+        <!-- Queue Card -->
+        <div class="queue-card">
+            <div class="queue-card-header">
+                <h2><i class="fas fa-clipboard-list"></i> Applications Queue</h2>
             </div>
 
-            <!-- Applications Table -->
-            <div class="applications-table">
-                <div class="table-header">
-                    <h2>Applications Queue</h2>
-                    <div class="table-controls" style="display: flex; gap: 10px; align-items: center; width: 100%;">
-                        <input type="text" class="search-box" placeholder="Search applications..." style="flex: 1; margin: 0;">
-                        <button class="btn btn-accent" id="scanQrBtn" onclick="openProxyModal()" style="display: flex; align-items: center; gap: 6px; white-space: nowrap;"><i class="fas fa-qrcode"></i> Scan Token</button>
-                        <select id="applicationTypeFilter" class="btn" style="margin: 0;">
-                            <option value="">All Types</option>
-                            <?php foreach (getApplicationTypeOptions() as $val => $label): ?>
+            <!-- Filter Controls -->
+            <div class="filter-bar">
+                <div class="filter-group">
+                    <label>Search</label>
+                    <div class="search-wrap">
+                        <i class="fas fa-search"></i>
+                        <input type="text" class="search-box" id="searchInput" placeholder="Search name or ID…">
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label>Application Type</label>
+                    <select id="applicationTypeFilter">
+                        <option value="">All Types</option>
+                        <?php foreach (getApplicationTypeOptions() as $val => $label): ?>
                             <option value="<?php echo $val; ?>"><?php echo htmlspecialchars($label); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <select id="statusFilter" class="btn">
-                            <option value="" selected>All States</option>
-                            <option value="Received">Received</option>
-                            <option value="For Review">For Review</option>
-                            <option value="Verified">Verified</option>
-                            <option value="Approved">Approved</option>
-                            <option value="Released">Released</option>
-                        </select>
-                        <button class="btn" id="applyFilterBtn"><i class="fas fa-filter"></i> Filter</button>
-                    </div>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
-               
-                <table class="applications-table-header">
+                <div class="filter-group">
+                    <label>FSM State</label>
+                    <select id="statusFilter">
+                        <option value="">All States</option>
+                        <option value="Received">Received</option>
+                        <option value="For Review">For Review</option>
+                        <option value="Verified">Verified</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Released">Released</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" id="applyFilterBtn"><i class="fas fa-filter"></i> Apply</button>
+                <button class="btn btn-accent" id="scanQrBtn" onclick="openProxyModal()"><i class="fas fa-qrcode"></i> Scan Token</button>
+            </div>
+
+            <!-- Table -->
+            <div class="table-wrap">
+                <table class="records-tbl">
                     <thead>
                         <tr>
                             <th>Priority</th>
-                            <th>Name</th>
+                            <th>Applicant</th>
                             <th>Application Type</th>
                             <th>Birth Date</th>
-                            <th>Contact Number</th>
+                            <th>Contact</th>
                             <th>Date Submitted</th>
-                            <th>FSM State</th>
-                            <th>Complete Address</th>
-                            <th>Actions</th>
+                            <th>State</th>
+                            <th>Address</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody id="applicationsTableBody">
-                        <tr><td colspan="9">Loading applications...</td></tr>
+                        <tr><td colspan="9" style="text-align:center; padding: 20px; color:var(--gray);">Loading applications…</td></tr>
                     </tbody>
                 </table>
             </div>
-
-            <!-- Footer -->
-            <div class="footer">
-                <p>Centralized Profiling and Record Authentication System | Barangay <?php echo $loggedInBarangay; ?> &copy; 2024</p>
-            </div>
         </div>
+
+        <div class="page-footer">Centralized Profiling and Record Authentication System &bull; Barangay <?php echo $loggedInBarangay; ?> &copy; <?php echo date('Y'); ?></div>
     </div>
+</div>
 
-    <!-- Application Detail Modal -->
-    <div id="applicationModal" class="modal">
-        <div class="modal-content" style="max-width: 950px;">
-            <div class="modal-header">
-                <h2 id="modalAppTitle">Application Details</h2>
-                <button class="close-modal">&times;</button>
+<!-- ──────────────────────────────────────────────────────────────────── -->
+<!-- Application Detail Modal                                             -->
+<!-- ──────────────────────────────────────────────────────────────────── -->
+<div id="applicationModal" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-head">
+            <h2><i class="fas fa-file-invoice"></i> <span id="modalAppTitle">Application Profile Details</span></h2>
+            <button class="modal-close" id="closeModalBtn">&times;</button>
+        </div>
+        <div class="modal-scroller">
+
+            <!-- FSM Stepper -->
+            <div class="stepper">
+                <div class="step" id="step-Received"><div class="step-circle">1</div><div class="step-label">Received</div></div>
+                <div class="step" id="step-For-Review"><div class="step-circle">2</div><div class="step-label">For Review</div></div>
+                <div class="step" id="step-Verified"><div class="step-circle">3</div><div class="step-label">Verified</div></div>
+                <div class="step" id="step-Approved"><div class="step-circle">4</div><div class="step-label">Approved</div></div>
+                <div class="step" id="step-Released"><div class="step-circle">5</div><div class="step-label">Released</div></div>
             </div>
-            <div class="modal-body">
-                <!-- FSM Stepper -->
-                <div class="stepper" id="fsmStepper">
-                    <div class="step" id="step-Received"><div class="step-circle">1</div><div class="step-label">Received</div></div>
-                    <div class="step" id="step-For-Review"><div class="step-circle">2</div><div class="step-label">For Review</div></div>
-                    <div class="step" id="step-Verified"><div class="step-circle">3</div><div class="step-label">Verified</div></div>
-                    <div class="step" id="step-Approved"><div class="step-circle">4</div><div class="step-label">Approved</div></div>
-                    <div class="step" id="step-Released"><div class="step-circle">5</div><div class="step-label">Released</div></div>
-                </div>
 
-                <div class="grid-modal">
-                    <!-- Left: Details Forms -->
-                    <div>
-                        <div id="returnedWarningBox" style="display:none; background-color: rgba(231, 76, 60, 0.1); border: 1px solid #e74c3c; padding: 15px; border-radius: 8px; margin-bottom: 20px; color: #ff6b6b; font-size: 0.9rem;">
-                            <strong><i class="fas fa-exclamation-triangle"></i> SCANS REJECTED BY OFFICE REVIEWER:</strong>
-                            <p id="returnedReasonText" style="margin-top: 5px; font-style: italic;"></p>
-                            <p style="margin-top: 10px; font-weight: bold; text-decoration: underline;">Please upload clean, high-resolution scans below and save changes to update.</p>
+            <!-- Return Warning Box -->
+            <div id="returnedWarningBox" style="display:none; background-color: rgba(239, 68, 68, 0.08); border: 1.5px solid var(--danger); padding: 14px; border-radius: 10px; margin-bottom: 22px; color: #b91c1c; font-size: 0.88rem;">
+                <strong><i class="fas fa-exclamation-triangle"></i> SCANS REJECTED BY OFFICE REVIEWER:</strong>
+                <p id="returnedReasonText" style="margin-top: 5px; font-style: italic;"></p>
+                <p style="margin-top: 10px; font-weight: bold; text-decoration: underline;">Please upload clean, high-resolution scans below and save changes to update.</p>
+            </div>
+
+            <div class="modal-grid">
+                <!-- LEFT: Details Form -->
+                <div>
+                    <form id="applicationDetailForm" method="POST" action="../api/update_application.php" enctype="multipart/form-data">
+                        <input type="hidden" id="applicationId" name="applicationId">
+
+                        <div class="form-section">
+                            <h3><i class="fas fa-user"></i> Basic Information</h3>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="applicationType">Application Type</label>
+                                    <select id="applicationType" name="applicationType" required disabled>
+                                        <?php foreach (getApplicationTypeOptions() as $val => $label): ?>
+                                            <option value="<?php echo $val; ?>"><?php echo htmlspecialchars($label); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="lastName">Last Name</label>
+                                    <input type="text" id="lastName" name="lastName" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="firstName">First Name</label>
+                                    <input type="text" id="firstName" name="firstName" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="middleName">Middle Name</label>
+                                    <input type="text" id="middleName" name="middleName">
+                                </div>
+                                <div class="form-group">
+                                    <label for="suffix">Suffix</label>
+                                    <input type="text" id="suffix" name="suffix">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="birthDate">Birth Date</label>
+                                    <input type="date" id="birthDate" name="birthDate" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="contactNumber">Contact Number</label>
+                                    <input type="text" id="contactNumber" name="contactNumber" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="completeAddress">Complete Address</label>
+                                <textarea id="completeAddress" name="completeAddress" rows="2" required></textarea>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="emergencyContactName">Emergency Contact Name</label>
+                                    <input type="text" id="emergencyContactName" name="emergencyContactName">
+                                </div>
+                                <div class="form-group">
+                                    <label for="emergencyContact">Emergency Contact Number</label>
+                                    <input type="text" id="emergencyContact" name="emergencyContact">
+                                </div>
+                            </div>
                         </div>
 
-                        <form id="applicationDetailForm" method="POST" action="../api/update_application.php" enctype="multipart/form-data">
-                            <input type="hidden" id="applicationId" name="applicationId">
-                            
-                            <div class="form-section">
-                                <h3><i class="fas fa-user"></i> Basic Information</h3>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="applicationType">Application Type</label>
-                                        <select id="applicationType" name="applicationType" required disabled>
-                                            <?php foreach (getApplicationTypeOptions() as $val => $label): ?>
-                                            <option value="<?php echo $val; ?>"><?php echo htmlspecialchars($label); ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="lastName">Last Name</label>
-                                        <input type="text" id="lastName" name="lastName" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="firstName">First Name</label>
-                                        <input type="text" id="firstName" name="firstName" required>
-                                    </div>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="middleName">Middle Name</label>
-                                        <input type="text" id="middleName" name="middleName">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="suffix">Suffix</label>
-                                        <input type="text" id="suffix" name="suffix">
-                                    </div>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="birthDate">Birth Date</label>
-                                        <input type="date" id="birthDate" name="birthDate" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="contactNumber">Contact Number</label>
-                                        <input type="text" id="contactNumber" name="contactNumber" required>
-                                    </div>
+                        <?php $formFieldPrefix = ''; include '../partials/osca_form_sections.php'; ?>
+
+                        <div id="pension-fields-modal" class="form-section" style="display:none;">
+                            <h3><i class="fas fa-wallet"></i> Social Pension Details</h3>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="sssNumber">SSS Number</label>
+                                    <input type="text" id="sssNumber" name="sssNumber">
                                 </div>
                                 <div class="form-group">
-                                    <label for="completeAddress">Complete Address</label>
-                                    <textarea id="completeAddress" name="completeAddress" required></textarea>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="emergencyContactName">Emergency Contact Name</label>
-                                        <input type="text" id="emergencyContactName" name="emergencyContactName">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="emergencyContact">Emergency Contact Number</label>
-                                        <input type="text" id="emergencyContact" name="emergencyContact">
-                                    </div>
+                                    <label for="pensionAmount">Verified Monthly Pension (PHP)</label>
+                                    <input type="number" step="0.01" id="pensionAmount" name="pensionAmount" readonly>
                                 </div>
                             </div>
+                        </div>
 
-                            <?php $formFieldPrefix = ''; include '../partials/osca_form_sections.php'; ?>
-
-                            <div id="pension-fields-modal" class="form-section" style="display:none;">
-                                <h3><i class="fas fa-wallet"></i> Social Pension</h3>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="sssNumber">SSS Number</label>
-                                        <input type="text" id="sssNumber" name="sssNumber">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="pensionAmount">Verified Monthly Pension (PHP)</label>
-                                        <input type="number" step="0.01" id="pensionAmount" name="pensionAmount" readonly>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div id="burial-fields-modal" class="form-section" style="display:none;">
-                                <h3><i class="fas fa-ribbon"></i> Burial Assistance</h3>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="dateOfDeath">Date of Passing</label>
-                                        <input type="date" id="dateOfDeath" name="dateOfDeath">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="relationshipToDeceased">Relationship to Deceased</label>
-                                        <input type="text" id="relationshipToDeceased" name="relationshipToDeceased">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="form-section">
-                                <h3><i class="fas fa-file-alt"></i> Required Documents</h3>
+                        <div id="burial-fields-modal" class="form-section" style="display:none;">
+                            <h3><i class="fas fa-ribbon"></i> Burial Assistance Details</h3>
+                            <div class="form-row">
                                 <div class="form-group">
-                                    <label for="proofOfAddress">Proof of Address</label>
-                                    <input type="file" id="proofOfAddress" name="proofOfAddress">
-                                    <div class="image-placeholder" id="proofOfAddressPreview"></div>
+                                    <label for="dateOfDeath">Date of Passing</label>
+                                    <input type="date" id="dateOfDeath" name="dateOfDeath">
                                 </div>
                                 <div class="form-group">
-                                    <label for="idImage">ID Image</label>
-                                    <input type="file" id="idImage" name="idImage">
-                                    <div class="image-placeholder" id="idImagePreview"></div>
+                                    <label for="relationshipToDeceased">Relationship to Deceased</label>
+                                    <input type="text" id="relationshipToDeceased" name="relationshipToDeceased">
                                 </div>
                             </div>
+                        </div>
 
-                            <!-- Uploaded Proxy/Pension Documents section -->
-                            <div class="form-section" id="proxyDocumentsSection" style="display:none; margin-top:20px;">
-                                <h3><i class="fas fa-user-shield"></i> Uploaded Proxy/Pension Documents</h3>
-                                <div id="proxyDocumentsList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px;"></div>
+                        <div class="form-section">
+                            <h3><i class="fas fa-file-alt"></i> Required Documents upload</h3>
+                            <div class="form-group" style="margin-bottom:14px;">
+                                <label for="proofOfAddress">Proof of Address</label>
+                                <input type="file" id="proofOfAddress" name="proofOfAddress">
+                                <div class="image-placeholder" id="proofOfAddressPreview"></div>
                             </div>
-
-                            <div class="form-actions" id="modalFormActions">
-                                <button type="submit" class="btn"><i class="fas fa-save"></i> Save Changes</button>
-                                <button type="button" class="btn btn-accent" onclick="exportApplicationDetails(document.getElementById('applicationId').value)"><i class="fas fa-print"></i> Print Official Form</button>
-                                <button type="button" class="btn" style="background-color: #3b82f6;" id="btnForwardReview" onclick="forwardToReviewDesk()">Submit to Review Desk</button>
+                            <div class="form-group">
+                                <label for="idImage">ID Image</label>
+                                <input type="file" id="idImage" name="idImage">
+                                <div class="image-placeholder" id="idImagePreview"></div>
                             </div>
-                        </form>
-                    </div>
+                        </div>
 
-                    <!-- Right: FSM Audit Trail history log -->
-                    <div>
-                        <h4 style="font-size: 0.95rem; margin-bottom: 15px; color: var(--text); border-bottom: 1px solid #cbd5e1; padding-bottom: 5px;"><i class="fas fa-history"></i> Audit Trail History Log</h4>
-                        <div class="timeline" id="timelineList"></div>
-                    </div>
+                        <!-- Proxy Documents -->
+                        <div class="form-section" id="proxyDocumentsSection" style="display:none;">
+                            <h3><i class="fas fa-user-shield"></i> Submitted Proxy Documents</h3>
+                            <div id="proxyDocumentsList" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;"></div>
+                        </div>
+
+                        <div class="form-actions" id="modalFormActions" style="display:flex; gap:10px; margin-top:20px;"></div>
+                    </form>
+                </div>
+
+                <!-- RIGHT: Audit Trail Timeline -->
+                <div>
+                    <div class="section-title"><i class="fas fa-clock-rotate-left"></i> Audit Trail History Log</div>
+                    <div class="timeline" id="timelineList"></div>
                 </div>
             </div>
+
+        </div><!-- /.modal-scroller -->
+    </div><!-- /.modal-box -->
+</div><!-- /#applicationModal -->
+
+<!-- QR scan Modal -->
+<div id="proxyModal" class="modal-overlay">
+    <div class="modal-box" style="max-width:500px; margin: 10% auto;">
+        <div class="modal-head">
+            <h2><i class="fas fa-qrcode"></i> Scan Proxy QR Token</h2>
+            <button class="modal-close" onclick="closeProxyModal()">&times;</button>
+        </div>
+        <div class="modal-scroller" style="padding:20px;">
+            <p style="font-size:0.82rem; color:var(--gray); margin-bottom:14px;">
+                Paste the encrypted QR token link or type the unique transaction priority token (e.g. PRX-XXXXXX) to load profiles.
+            </p>
+            <div class="form-group" style="margin-bottom:14px;">
+                <label style="font-weight:700; font-size:0.75rem;">Token Payload</label>
+                <textarea id="modalToken" class="form-control" rows="3" placeholder="Paste scan payload here…" style="width:100%; border:1px solid var(--border); border-radius:8px; padding:10px; font-family:monospace; resize:none; outline:none;"></textarea>
+            </div>
+            <button type="button" class="btn btn-accent" style="width:100%; justify-content:center;" onclick="searchByQrToken()">
+                <i class="fas fa-search"></i> Search and Open Profile
+            </button>
+            <div id="modalError" style="color:var(--danger); font-size:0.8rem; margin-top:10px; font-weight:600; text-align:center;"></div>
         </div>
     </div>
+</div>
 
-    <script src="../assets/js/sidebar-toggle.js"></script>
-    <script src="../assets/js/dark-mode.js"></script>
-    <script src="../assets/js/osca-form-fields.js"></script>
-    <script>
-        const TYPE_LABELS = <?php echo json_encode(getApplicationTypeOptions()); ?>;
-        document.addEventListener('DOMContentLoaded', function() {
-            // Event delegation for View Details
-            const tableBody = document.querySelector('#applicationsTableBody');
-            tableBody.addEventListener('click', function(event) {
-                const clickedElement = event.target.closest('.name-link');
-                if (clickedElement) {
-                    const appId = clickedElement.dataset.id;
-                    openApplicationModal(appId);
+<script src="../assets/js/sidebar-toggle.js"></script>
+<script src="../assets/js/dark-mode.js"></script>
+<script src="../assets/js/osca-form-fields.js"></script>
+<script>
+    const TYPE_LABELS = <?php echo json_encode(getApplicationTypeOptions()); ?>;
+    
+    /* ─── Greeting ──────────────────────────────────────────── */
+    (function(){
+        const h = new Date().getHours();
+        const g = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+        document.getElementById('greetingMsg').innerHTML = `${g}, <strong><?php echo htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']); ?></strong>!`;
+    })();
+
+    /* ─── Modal Close ───────────────────────────────────────── */
+    document.getElementById('closeModalBtn').addEventListener('click', () => {
+        document.getElementById('applicationModal').style.display = 'none';
+    });
+
+    document.getElementById('applicationModal').addEventListener('click', function(e) {
+        if (e.target === this) this.style.display = 'none';
+    });
+
+    /* ─── Search and Filters ────────────────────────────────── */
+    const searchInput           = document.getElementById('searchInput');
+    const applicationTypeFilter = document.getElementById('applicationTypeFilter');
+    const statusFilter          = document.getElementById('statusFilter');
+    const applyFilterBtn        = document.getElementById('applyFilterBtn');
+    const tableBody             = document.getElementById('applicationsTableBody');
+    const userBarangay          = "<?php echo $loggedInBarangay; ?>";
+
+    function fetchApplications() {
+        tableBody.innerHTML = '<tr><td colspan="9" style="text-align:center;">Loading applications…</td></tr>';
+        
+        let url = `../api/search_applications.php?query=${encodeURIComponent(searchInput.value)}`;
+        if (applicationTypeFilter.value) url += `&type=${encodeURIComponent(applicationTypeFilter.value)}`;
+        if (statusFilter.value)          url += `&status=${encodeURIComponent(statusFilter.value)}`;
+        if (userBarangay)                url += `&barangay=${encodeURIComponent(userBarangay)}`;
+
+        fetch(url)
+            .then(r => r.json())
+            .then(apps => {
+                tableBody.innerHTML = '';
+                if (!apps.length) {
+                    tableBody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray);">No applications found.</td></tr>';
+                    return;
                 }
-            });
 
-            const closeModalBtn = document.querySelector('#applicationModal .close-modal');
-            closeModalBtn.addEventListener('click', () => {
-                document.getElementById('applicationModal').style.display = 'none';
-            });
+                apps.forEach(app => {
+                    const isHigh = app.priority_level === 'high';
+                    const state  = app.workflow_state || 'Received';
+                    
+                    let stateBadge = 'badge-received';
+                    if (state === 'For Review') stateBadge = 'badge-review';
+                    if (state === 'Verified')   stateBadge = 'badge-verified';
+                    if (state === 'Approved')   stateBadge = 'badge-approved';
+                    if (state === 'Released')   stateBadge = 'badge-released';
 
-            // Update welcome message based on time of day
-            const welcomeMessage = document.querySelector('.welcome-message');
-            if (welcomeMessage) {
-                const firstName = welcomeMessage.dataset.firstName;
-                const lastName = welcomeMessage.dataset.lastName;
-                const hour = new Date().getHours();
-                let greeting;
-                
-                if (hour < 12) {
-                    greeting = "Good morning";
-                } else if (hour < 18) {
-                    greeting = "Good afternoon";
-                } else {
-                    greeting = "Good evening";
-                }
-                
-                welcomeMessage.innerHTML = `${greeting}, <strong>${firstName} ${lastName}</strong>!`;
-            }
+                    let blurryWarning = '';
+                    if (state === 'Received' && app.return_comments) {
+                        blurryWarning = `<div class="alert-blurry"><i class="fas fa-exclamation-triangle"></i> Resubmit scans: "${app.return_comments}"</div>`;
+                    }
+
+                    const typeLabel = TYPE_LABELS[app.application_type] || app.application_type;
+
+                    tableBody.innerHTML += `
+                        <tr class="${isHigh ? 'priority-high-row' : ''}">
+                            <td>${isHigh ? '<span class="priority-badge"><i class="fas fa-star"></i> HIGH</span>' : '<span style="color:var(--gray);font-size:0.75rem;">Normal</span>'}</td>
+                            <td>
+                                <div class="name-cell">
+                                    <a href="#" class="name-link" data-id="${app.id}">${app.full_name}</a>
+                                    ${blurryWarning}
+                                </div>
+                            </td>
+                            <td>${typeLabel}</td>
+                            <td>${app.birth_date}</td>
+                            <td>${app.contact_number}</td>
+                            <td>${new Date(app.date_submitted).toLocaleDateString()}</td>
+                            <td><span class="badge ${stateBadge}">${state}</span></td>
+                            <td style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${app.complete_address}</td>
+                            <td>
+                                ${state === 'Received' 
+                                    ? `<button class="btn btn-danger btn-small" onclick="deleteApplication(${app.id})"><i class="fas fa-trash"></i> Delete</button>`
+                                    : '<span style="color:var(--gray);font-size:0.75rem;font-style:italic;">Locked</span>'
+                                }
+                            </td>
+                        </tr>`;
+                });
+            })
+            .catch(err => {
+                console.error(err);
+                tableBody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--danger);">Error loading applications.</td></tr>';
+            });
+    }
+
+    applyFilterBtn.addEventListener('click', fetchApplications);
+    statusFilter.addEventListener('change', fetchApplications);
+    applicationTypeFilter.addEventListener('change', fetchApplications);
+    searchInput.addEventListener('keyup', e => { if (e.key === 'Enter') fetchApplications(); });
+
+    // Table Event delegation for clicking Name links
+    tableBody.addEventListener('click', e => {
+        const lnk = e.target.closest('.name-link');
+        if (lnk) { e.preventDefault(); openApplicationModal(lnk.dataset.id); }
+    });
+
+    fetchApplications();
+
+    /* ─── Open Details Modal ────────────────────────────────── */
+    let currentAppId = null;
+
+    function openApplicationModal(appId) {
+        currentAppId = appId;
+        document.getElementById('applicationModal').style.display = 'block';
+
+        // Clear previews / warning
+        document.getElementById('proofOfAddressPreview').innerHTML = '';
+        document.getElementById('idImagePreview').innerHTML = '';
+        document.getElementById('returnedWarningBox').style.display = 'none';
+        document.getElementById('proxyDocumentsSection').style.display = 'none';
+        document.getElementById('proxyDocumentsList').innerHTML = '';
+
+        // Reset stepper
+        ['step-Received','step-For-Review','step-Verified','step-Approved','step-Released'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.className = 'step';
         });
 
-        let currentAppId = null;
+        fetch(`../api/get_application_details.php?id=${encodeURIComponent(appId)}`)
+            .then(r => r.json())
+            .then(app => {
+                if (app.error) { alert(app.error); return; }
 
-        function openApplicationModal(appId) {
-            currentAppId = appId;
-            document.getElementById('applicationModal').style.display = 'block';
+                document.getElementById('modalAppTitle').textContent = `Reviewing: ${app.full_name} (${app.id_number})`;
+                document.getElementById('applicationId').value       = app.id_number;
+                document.getElementById('applicationType').value     = app.application_type;
+                document.getElementById('lastName').value            = app.lastName || '';
+                document.getElementById('firstName').value           = app.firstName || '';
+                document.getElementById('middleName').value          = app.middleName || '';
+                document.getElementById('suffix').value              = app.suffix || '';
+                document.getElementById('birthDate').value           = app.birth_date || '';
+                document.getElementById('contactNumber').value       = app.contact_number || '';
+                document.getElementById('completeAddress').value     = app.complete_address || '';
+                document.getElementById('emergencyContactName').value = app.emergency_contact_name || '';
+                document.getElementById('emergencyContact').value     = app.emergency_contact || '';
 
-            fetch(`../api/get_application_details.php?id=${appId}`)
-                .then(response => response.json())
-                .then(application => {
-                    if (application.error) {
-                        alert(application.error);
-                        return;
-                    }
+                populateOscaFields(app, '');
 
-                    document.getElementById('modalAppTitle').textContent = `Reviewing: ${application.full_name} (${application.id_number})`;
-                    document.getElementById('applicationId').value = application.id_number;
-                    document.getElementById('applicationType').value = application.application_type;
-                    document.getElementById('lastName').value = application.lastName || '';
-                    document.getElementById('firstName').value = application.firstName || '';
-                    document.getElementById('middleName').value = application.middleName || '';
-                    document.getElementById('suffix').value = application.suffix || '';
-                    document.getElementById('birthDate').value = application.birth_date || '';
-                    document.getElementById('contactNumber').value = application.contact_number || '';
-                    document.getElementById('completeAddress').value = application.complete_address || '';
-                    document.getElementById('emergencyContactName').value = application.emergency_contact_name || '';
-                    document.getElementById('emergencyContact').value = application.emergency_contact || '';
+                // Toggle type-specific sections
+                const pm = document.getElementById('pension-fields-modal');
+                const bm = document.getElementById('burial-fields-modal');
+                pm.style.display = 'none';
+                bm.style.display = 'none';
 
-                    populateOscaFields(application, '');
+                if (app.application_type === 'pension' || app.application_type === 'national_pension') {
+                    pm.style.display = 'block';
+                    document.getElementById('sssNumber').value = app.sss_number || '';
+                    document.getElementById('pensionAmount').value = app.pension_amount || '';
+                }
+                if (app.application_type === 'burial') {
+                    bm.style.display = 'block';
+                    document.getElementById('dateOfDeath').value = app.date_of_death || '';
+                    document.getElementById('relationshipToDeceased').value = app.relationship_to_deceased || '';
+                }
+                toggleOscaFormFields(app.application_type, '');
 
-                    const pensionModal = document.getElementById('pension-fields-modal');
-                    const burialModal = document.getElementById('burial-fields-modal');
-                    pensionModal.style.display = 'none';
-                    burialModal.style.display = 'none';
-                    if (application.application_type === 'pension' || application.application_type === 'national_pension') {
-                        pensionModal.style.display = 'block';
-                        document.getElementById('sssNumber').value = application.sss_number || '';
-                        document.getElementById('pensionAmount').value = application.pension_amount || '';
-                    }
-                    if (application.application_type === 'burial') {
-                        burialModal.style.display = 'block';
-                        document.getElementById('dateOfDeath').value = application.date_of_death || '';
-                        document.getElementById('relationshipToDeceased').value = application.relationship_to_deceased || '';
-                    }
-                    toggleOscaFormFields(application.application_type, '');
+                // Stepper state highlighting
+                const steps = ['Received','For Review','Verified','Approved','Released'];
+                const currentState = app.workflow_state || 'Received';
+                let idx = steps.indexOf(currentState);
+                if (idx === -1) idx = 0;
+                steps.forEach((s, i) => {
+                    const el = document.getElementById('step-' + s.replace(' ','-'));
+                    if (el) el.classList.add(i < idx ? 'completed' : i === idx ? 'active' : '');
+                });
 
-                    // Display Stepper Progress
-                    const steps = ['Received', 'For Review', 'Verified', 'Approved', 'Released'];
-                    const currentState = application.workflow_state || 'Received';
-                    let currentStepIndex = steps.indexOf(currentState);
-                    if (currentStepIndex === -1) currentStepIndex = 0;
+                // File previews
+                document.getElementById('proofOfAddressPreview').innerHTML = app.has_proof_of_address
+                    ? `<img src="../api/get_document.php?id=${appId}&doc_type=proof_of_address" alt="Proof of Address">`
+                    : '<span style="color:var(--gray);font-size:0.8rem;">No file uploaded</span>';
+                
+                document.getElementById('idImagePreview').innerHTML = app.has_id_image
+                    ? `<img src="../api/get_document.php?id=${appId}&doc_type=id_image" alt="ID Image">`
+                    : '<span style="color:var(--gray);font-size:0.8rem;">No file uploaded</span>';
 
-                    steps.forEach((step, idx) => {
-                        const stepId = 'step-' + step.replace(' ', '-');
-                        const element = document.getElementById(stepId);
-                        if (element) {
-                            element.className = 'step';
-                            if (idx < currentStepIndex) {
-                                element.classList.add('completed');
-                            } else if (idx === currentStepIndex) {
-                                element.classList.add('active');
-                            }
+                // Rejected Warning Banner
+                if ((currentState === 'Received' || currentState === 'Submitted') && app.return_comments) {
+                    document.getElementById('returnedWarningBox').style.display = 'block';
+                    document.getElementById('returnedReasonText').textContent = `"${app.return_comments}"`;
+                }
+
+                // Render Proxy Docs
+                if (app.is_proxy_application == 1) {
+                    const proxySec  = document.getElementById('proxyDocumentsSection');
+                    const proxyList = document.getElementById('proxyDocumentsList');
+                    proxySec.style.display = 'block';
+                    proxyList.innerHTML    = '';
+                    const docs = [
+                        { key: 'psa_birth_cert', label: 'PSA Birth Certificate' },
+                        { key: 'barangay_residency', label: 'Barangay Residency' },
+                        { key: 'comelec_cert', label: 'COMELEC Certificate' },
+                        { key: 'proof_of_life', label: 'Proof of Life (In Bed)' },
+                        { key: 'auth_letter', label: 'Auth Letter' },
+                        { key: 'proxy_id', label: 'Proxy Government ID' },
+                        { key: 'proxy_birth_cert', label: 'Proxy Birth Cert' },
+                        { key: 'home_visitation_form', label: 'Home Visitation Form' },
+                        { key: 'landbank_enrollment_form', label: 'Landbank Form' }
+                    ];
+                    docs.forEach(doc => {
+                        if (app[doc.key]) {
+                            const docUrl = `../api/get_document.php?id=${encodeURIComponent(appId)}&doc_type=${doc.key}`;
+                            let ph = app[doc.key].toLowerCase().endsWith('.pdf')
+                                ? `<div style="font-size:2.5rem; color:#ef4444;"><i class="fas fa-file-pdf"></i></div>`
+                                : `<img src="${docUrl}" style="max-height:100%; max-width:100%; object-fit:contain;">`;
+                            
+                            proxyList.innerHTML += `
+                                <div class="proxy-doc-card">
+                                    <label>${doc.label}</label>
+                                    <div class="image-placeholder" style="height:110px;">${ph}</div>
+                                    <a href="${docUrl}" target="_blank" class="btn btn-primary btn-small" style="width:100%; justify-content:center; margin-top:8px;"><i class="fas fa-eye"></i> View</a>
+                                </div>`;
                         }
                     });
-
-                    // Render Document Previews
-                    document.getElementById('proofOfAddressPreview').innerHTML = application.has_proof_of_address 
-                        ? `<img src="../api/get_document.php?id=${appId}&doc_type=proof_of_address" alt="Proof of Address">` 
-                        : '<p>No document uploaded.</p>';
-                    
-                    document.getElementById('idImagePreview').innerHTML = application.has_id_image 
-                        ? `<img src="../api/get_document.php?id=${appId}&doc_type=id_image" alt="ID Image">` 
-                        : '<p>No document uploaded.</p>';
-
-                    // Set up Blur/Return alerts
-                    const warningBox = document.getElementById('returnedWarningBox');
-                    const reasonText = document.getElementById('returnedReasonText');
-                    if ((currentState === 'Received' || currentState === 'Submitted') && application.return_comments) {
-                        warningBox.style.display = 'block';
-                        reasonText.textContent = `"${application.return_comments}"`;
-                    } else {
-                        warningBox.style.display = 'none';
-                    }
-
-                    // Render Proxy Documents if applicable
-                    const proxySec = document.getElementById('proxyDocumentsSection');
-                    const proxyList = document.getElementById('proxyDocumentsList');
-                    proxySec.style.display = 'none';
-                    proxyList.innerHTML = '';
-                    
-                    if (application.is_proxy_application == 1) {
-                        proxySec.style.display = 'block';
-                        const docs = [
-                            { key: 'psa_birth_cert', label: 'PSA Birth Cert' },
-                            { key: 'barangay_residency', label: 'Barangay Residency' },
-                            { key: 'comelec_cert', label: 'COMELEC Cert' },
-                            { key: 'proof_of_life', label: 'Proof of Life (In Bed)' },
-                            { key: 'auth_letter', label: 'Auth Letter' },
-                            { key: 'proxy_id', label: 'Proxy Gov ID' },
-                            { key: 'proxy_birth_cert', label: 'Proxy Birth Cert' },
-                            { key: 'home_visitation_form', label: 'Home Visitation Form' },
-                            { key: 'landbank_enrollment_form', label: 'Land Bank Card Form' }
-                        ];
-                        docs.forEach(doc => {
-                            if (application[doc.key]) {
-                                const docUrl = `../api/get_document.php?id=${encodeURIComponent(appId)}&doc_type=${doc.key}`;
-                                let previewHtml = '';
-                                if (application[doc.key].toLowerCase().endsWith('.pdf')) {
-                                    previewHtml = `<div class="pdf-preview-icon" style="font-size:3rem; text-align:center; padding:15px 0;"><i class="fas fa-file-pdf" style="color:#ef4444;"></i></div>`;
-                                } else {
-                                    previewHtml = `<img src="${docUrl}" style="max-height:100%; max-width:100%; object-fit:contain; border-radius:4px;">`;
-                                }
-                                proxyList.innerHTML += `
-                                    <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; background: #fff; text-align: center;">
-                                        <span style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:5px; height: 32px; overflow: hidden; line-height: 1.2;">${doc.label}</span>
-                                        <div class="image-placeholder" style="height:120px; display:flex; align-items:center; justify-content:center; background:#f8fafc; overflow:hidden; border:1px dashed #cbd5e1; border-radius:6px; margin-bottom:8px;">
-                                            ${previewHtml}
-                                        </div>
-                                        <a href="${docUrl}" target="_blank" class="btn btn-small" style="font-size:0.72rem; padding: 4px 8px; width:100%; display:block; text-align:center; box-sizing:border-box;"><i class="fas fa-eye"></i> View Original</a>
-                                    </div>
-                                `;
-                            }
-                        });
-                    }
-
-                    // Render Actions - edit locked if state is past "Received" / "Submitted"
-                    const inputs = document.querySelectorAll('#applicationDetailForm input, #applicationDetailForm textarea');
-                    const formActions = document.getElementById('modalFormActions');
-
-                    const isEditable = (currentState === 'Received' || currentState === 'Submitted');
-                    if (!isEditable) {
-                        inputs.forEach(inp => inp.setAttribute('disabled', 'disabled'));
-                    } else {
-                        inputs.forEach(inp => {
-                            if (inp.id !== 'applicationType' && inp.id !== 'applicationId') {
-                                inp.removeAttribute('disabled');
-                            }
-                        });
-                    }
-
-                    // Dynamic FSM transition action buttons
-                    let actionsHtml = '';
-                    if (isEditable) {
-                        actionsHtml += `<button type="submit" class="btn" style="background:#0f172a; border-color:#0f172a;"><i class="fas fa-save"></i> Save Changes</button>`;
-                    }
-                    actionsHtml += `<button type="button" class="btn btn-accent" onclick="exportApplicationDetails('${application.id_number}')"><i class="fas fa-print"></i> Print Official Form</button>`;
-                    
-                    if (currentState === 'Submitted' || currentState === 'Received') {
-                        actionsHtml += `
-                            <button type="button" class="btn" style="background-color: #3b82f6; border-color: #3b82f6;" onclick="transitionApplicationState('next', 'File marked as Under Review after Proof of Life verification.')">
-                                <i class="fas fa-search"></i> Mark Under Review
-                            </button>
-                        `;
-                    } else if (currentState === 'For Review') {
-                        actionsHtml += `
-                            <button type="button" class="btn" style="background-color: #10b981; border-color: #10b981;" onclick="transitionApplicationState('next', 'Counter verification successful. Original physical documents match uploaded records.')">
-                                <i class="fas fa-check-circle"></i> Verify and Approve
-                            </button>
-                        `;
-                    } else {
-                        actionsHtml += `
-                            <span style="color:#64748b; font-size:0.82rem; font-style:italic; font-weight:600; display:inline-flex; align-items:center; gap:5px; margin-left:10px;">
-                                <i class="fas fa-lock"></i> FSM State: [${currentState}]
-                            </span>
-                        `;
-                    }
-                    formActions.innerHTML = actionsHtml;
-
-                    // Render Timeline Audit Trail
-                    let timelineHtml = "";
-                    if (application.history && application.history.length > 0) {
-                        application.history.forEach(log => {
-                            timelineHtml += `
-                                <div class="timeline-event">
-                                    <div class="timeline-time">${log.changed_at}</div>
-                                    <div class="timeline-title">${log.previous_state} &rarr; ${log.new_state} (by ${log.changed_by})</div>
-                                    <div class="timeline-desc">${log.comments || 'No comments.'}</div>
-                                </div>`;
-                        });
-                    } else {
-                        timelineHtml = "<p style='color: #64748b; font-size: 0.85rem; font-style: italic;'>No transitions logged.</p>";
-                    }
-                    document.getElementById('timelineList').innerHTML = timelineHtml;
-                });
-        }
-
-        async function forwardToReviewDesk() {
-            if (!confirm("Are you sure you want to submit this application to the department desk for review?")) {
-                return;
-            }
-
-            try {
-                const formData = new FormData();
-                formData.append('applicationId', currentAppId);
-                formData.append('action', 'next');
-                formData.append('comments', 'Forwarded to the review queue by Barangay Staff.');
-
-                const response = await fetch('../api/update_fsm_state.php', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const result = await response.json();
-
-                if (result.success) {
-                    alert(result.message);
-                    document.getElementById('applicationModal').style.display = 'none';
-                    fetchApplications();
-                } else {
-                    alert("Submission Error: " + result.message);
                 }
-            } catch (err) {
-                console.error(err);
-                alert("Failed to submit to review desk due to a connection issue.");
-            }
-        }
 
-        function deleteApplication(appId) {
-            if (confirm('Are you sure you want to delete this application?')) {
-                fetch('../api/delete_application.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: `id=${appId}`,
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Application deleted successfully!');
-                        fetchApplications();
-                    } else {
-                        alert(data.message);
+                // Edit state toggling
+                const isEditable = (currentState === 'Received' || currentState === 'Submitted');
+                const inputs = document.querySelectorAll('#applicationDetailForm input, #applicationDetailForm textarea, #applicationDetailForm select');
+                inputs.forEach(inp => {
+                    if (inp.id !== 'applicationType' && inp.id !== 'applicationId' && inp.id !== 'pensionAmount') {
+                        if (isEditable) inp.removeAttribute('disabled');
+                        else            inp.setAttribute('disabled', 'disabled');
                     }
                 });
-            }
-        }
 
-        function exportApplicationDetails(appId) {
-            window.open(`../api/export_application_pdf.php?id=${appId}`, '_blank');
-        }
+                // Action Buttons
+                let btns = '';
+                if (isEditable) {
+                    btns += `<button type="submit" class="btn btn-accent"><i class="fas fa-save"></i> Save Changes</button>`;
+                }
+                btns += `<button type="button" class="btn btn-primary" onclick="exportApplicationDetails('${app.id_number}')"><i class="fas fa-print"></i> Print Official Form</button>`;
+                
+                if (currentState === 'Received' || currentState === 'Submitted') {
+                    btns += `<button type="button" class="btn" style="background:#3b82f6; color:#fff;" onclick="forwardToReviewDesk()"><i class="fas fa-paper-plane"></i> Submit to Review Desk</button>`;
+                } else {
+                    btns += `<span style="color:var(--gray);font-style:italic;font-size:0.84rem;margin-left:10px;"><i class="fas fa-lock"></i> Locked State: [${currentState}]</span>`;
+                }
+                document.getElementById('modalFormActions').innerHTML = btns;
 
-        // Form Submit handler
-        document.getElementById('applicationDetailForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const form = e.target;
-            const formData = new FormData(form);
-
-            fetch(form.action, {
-                method: 'POST',
-                body: formData
+                // Audit History
+                let th = '';
+                if (app.history && app.history.length > 0) {
+                    app.history.forEach(log => {
+                        const t = new Date(log.changed_at.replace(' ','T')).toLocaleString();
+                        th += `<div class="timeline-event">
+                            <div class="timeline-time">${t}</div>
+                            <div class="timeline-title">${log.previous_state} &rarr; ${log.new_state}</div>
+                            <div class="timeline-by">By: ${log.changed_by}</div>
+                            ${log.comments ? `<div class="timeline-note">&ldquo;${log.comments}&rdquo;</div>` : ''}
+                        </div>`;
+                    });
+                } else {
+                    th = '<p style="color:var(--gray);font-size:0.85rem;font-style:italic;">No transition records logged.</p>';
+                }
+                document.getElementById('timelineList').innerHTML = th;
             })
-            .then(response => response.json())
+            .catch(err => { console.error(err); alert("Failed to fetch application profile details."); });
+    }
+
+    /* ─── Form submit handler ─── */
+    document.getElementById('applicationDetailForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const fd = new FormData(this);
+        fetch(this.action, { method: 'POST', body: fd })
+            .then(r => r.json())
             .then(data => {
                 if (data.success) {
                     alert(data.message);
@@ -820,223 +878,102 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                     alert(data.message);
                 }
             })
-            .catch(error => {
-                console.error('Error updating application:', error);
-                alert('An error occurred while updating the application.');
-            });
-        });
+            .catch(err => { console.error(err); alert("An error occurred during updating."); });
+    });
 
-        const searchInput = document.querySelector('.search-box');
-        const applicationTypeFilter = document.querySelector('#applicationTypeFilter');
-        const statusFilter = document.querySelector('#statusFilter');
-        const applyFilterBtn = document.querySelector('#applyFilterBtn');
+    /* ─── Action Functions ─── */
+    function forwardToReviewDesk() {
+        if (!confirm("Forward this application to the department reviewer queue?")) return;
+        
+        const fd = new FormData();
+        fd.append('applicationId', currentAppId);
+        fd.append('action', 'next');
+        fd.append('comments', 'Submitted by Barangay Staff for review evaluation.');
 
-        const userBarangay = "<?php echo $loggedInBarangay; ?>";
-
-        function fetchApplications() {
-            const query = searchInput.value;
-            const type = applicationTypeFilter.value;
-            const status = statusFilter.value;
-
-            let url = `../api/search_applications.php?query=${query}`;
-            if (type) {
-                url += `&type=${type}`;
-            }
-            if (status) {
-                url += `&status=${status}`;
-            }
-            if (userBarangay) {
-                url += `&barangay=${userBarangay}`;
-            }
-
-            fetch(url)
-                .then(response => response.json())
-                .then(applications => {
-                    const tableBody = document.querySelector('#applicationsTableBody');
-                    tableBody.innerHTML = '';
-
-                    if (applications.length > 0) {
-                        applications.forEach(app => {
-                            const isHigh = (app.priority_level === 'high');
-                            const rowClass = isHigh ? 'priority-high-row' : '';
-                            
-                            const state = app.workflow_state || 'Received';
-                            let stateBadgeClass = 'badge-received';
-                            if (state === 'For Review') stateBadgeClass = 'badge-review';
-                            if (state === 'Verified') stateBadgeClass = 'badge-verified';
-                            if (state === 'Approved') stateBadgeClass = 'badge-approved';
-                            if (state === 'Released') stateBadgeClass = 'badge-released';
-
-                            let typeLabel = TYPE_LABELS[app.application_type] || app.application_type;
-
-                            // Detect blurry scan returned reason
-                            let blurryWarning = '';
-                            if (state === 'Received' && app.return_comments) {
-                                blurryWarning = `<div class="alert-blurry"><i class="fas fa-triangle-exclamation"></i> Resubmit scans: ${app.return_comments}</div>`;
-                            }
-
-                            const row = `
-                                <tr class="${rowClass}">
-                                    <td>${isHigh ? "<span class='priority-badge'><i class='fas fa-star'></i> HIGH</span>" : "<span style='color: #94a3b8; font-size: 0.8rem;'>Normal</span>"}</td>
-                                    <td>
-                                        <a href="#" class="name-link" data-id="${app.id}" style="font-weight: 700;">${app.full_name}</a>
-                                        ${blurryWarning}
-                                    </td>
-                                    <td>${typeLabel}</td>
-                                    <td>${app.birth_date}</td>
-                                    <td>${app.contact_number}</td>
-                                    <td>${app.date_submitted}</td>
-                                    <td><span class="status-badge ${stateBadgeClass}">${state}</span></td>
-                                    <td>${app.complete_address}</td>
-                                    <td>
-                                        ${state === 'Received' ? `<button class="btn btn-danger btn-small" onclick="deleteApplication(${app.id})"><i class="fas fa-trash"></i> Delete</button>` : `<span style="color:#64748b; font-size:0.8rem; font-style:italic;">Locked</span>`}
-                                    </td>
-                                </tr>
-                            `;
-                            tableBody.innerHTML += row;
-                        });
-                    } else {
-                        tableBody.innerHTML = '<tr><td colspan="9">No applications found.</td></tr>';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching applications:', error);
-                    const tableBody = document.querySelector('#applicationsTableBody');
-                    tableBody.innerHTML = '<tr><td colspan="9">Error loading applications.</td></tr>';
-                });
-        }
-
-        searchInput.addEventListener('keyup', fetchApplications);
-        applicationTypeFilter.addEventListener('change', fetchApplications);
-        statusFilter.addEventListener('change', fetchApplications);
-        applyFilterBtn.addEventListener('click', fetchApplications);
-
-        fetchApplications();
-
-        // FSM Transition Function
-        async function transitionApplicationState(action, defaultComment) {
-            let comment = prompt("Enter FSM transition remarks/comments:", defaultComment);
-            if (comment === null) return; // cancel
-            
-            try {
-                const formData = new FormData();
-                formData.append('applicationId', currentAppId);
-                formData.append('action', action);
-                formData.append('comments', comment);
-
-                const response = await fetch('../api/update_fsm_state.php', {
-                    method: 'POST',
-                    body: formData
-                });
-                const result = await response.json();
-
-                if (result.success) {
-                    alert(result.message);
+        fetch('../api/update_fsm_state.php', { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    alert(res.message);
                     document.getElementById('applicationModal').style.display = 'none';
                     fetchApplications();
                 } else {
-                    alert("State Transition Error: " + result.message);
+                    alert("Submission Error: " + res.message);
                 }
-            } catch (err) {
-                console.error(err);
-                alert("Connection error occurred during state transition.");
-            }
-        }
+            })
+            .catch(err => { console.error(err); alert("Connection error during submission."); });
+    }
 
-        // QR Scanner Modal Helpers
-        function openProxyModal() {
-            document.getElementById('proxyModal').style.display = 'block';
-            document.getElementById('modalToken').value = '';
-            document.getElementById('modalError').textContent = '';
-        }
-
-        function closeProxyModal() {
-            document.getElementById('proxyModal').style.display = 'none';
-        }
-
-        async function searchByQrToken() {
-            const tokenInput = document.getElementById('modalToken').value.trim();
-            const modalError = document.getElementById('modalError');
-            
-            if (!tokenInput) {
-                modalError.textContent = 'Token input cannot be empty.';
-                return;
-            }
-
-            modalError.innerHTML = '<span style="color:#2563eb;"><i class="fas fa-spinner fa-spin"></i> Parsing token...</span>';
-            let token = tokenInput;
-            
-            // Extract token if they pasted a full redirect URL
-            if (tokenInput.includes('token=')) {
-                try {
-                    const url = new URL(tokenInput);
-                    token = url.searchParams.get('token');
-                } catch(e) {}
-            }
-
-            try {
-                let transactionId = token;
-                
-                // If it looks like an encrypted token, decrypt it first via API
-                if (token.length > 50) {
-                    const response = await fetch(`../api/scan_proxy_qr.php?token=${encodeURIComponent(token)}`);
-                    const result = await response.json();
-                    
-                    if (result.success && result.data && result.data.transactionId) {
-                        transactionId = result.data.transactionId;
-                    } else {
-                        modalError.textContent = 'Failed to decrypt token. Please try again.';
-                        return;
-                    }
-                }
-                
-                // Search database or list to verify if the application ID exists
-                const verifyResponse = await fetch(`../api/get_application_details.php?id=${encodeURIComponent(transactionId)}`);
-                const verifyResult = await verifyResponse.json();
-                
-                if (verifyResult && !verifyResult.error) {
-                    // Close QR modal and open details
-                    closeProxyModal();
-                    openApplicationModal(transactionId);
-                } else {
-                    modalError.textContent = `Application ID: [${transactionId}] not found in your database or barangay isolation.`;
-                }
-            } catch (err) {
-                console.error(err);
-                modalError.textContent = 'Connection error occurred during verification.';
-            }
-        }
-
-        // Close scan modal when clicking outside
-        window.addEventListener('click', function(event) {
-            const proxyModal = document.getElementById('proxyModal');
-            if (event.target === proxyModal) {
-                closeProxyModal();
+    function deleteApplication(appId) {
+        if (!confirm('Are you sure you want to delete this application? This action is permanent.')) return;
+        
+        fetch('../api/delete_application.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `id=${encodeURIComponent(appId)}`
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('Application deleted successfully.');
+                fetchApplications();
+            } else {
+                alert(data.message);
             }
         });
-    </script>
+    }
 
-    <!-- Scan Proxy QR Modal -->
-    <div id="proxyModal" class="modal">
-        <div class="modal-content" style="max-width: 500px;">
-            <div class="modal-header">
-                <h2 style="display: flex; align-items: center; gap: 8px; color: #0f172a;"><i class="fas fa-qrcode"></i> Scan Proxy QR Token</h2>
-                <button class="close-modal" onclick="closeProxyModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
-            </div>
-            <div class="modal-body" style="padding-top: 15px;">
-                <p style="margin-bottom: 15px; font-size: 0.88rem; color: #64748b;">
-                    Paste the encrypted QR token link or type the unique transaction priority token (e.g., PRX-XXXXXX) to instantly display the senior's profile details.
-                </p>
-                <div class="form-group" style="margin-bottom: 15px;">
-                    <label for="modalToken" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 6px;">QR Code Redirect Link or Token ID</label>
-                    <textarea id="modalToken" class="form-control" rows="3" placeholder="Paste scan payload here (e.g. PRX-XXXXXX)..." style="width: 100%; border-radius: 6px; padding: 10px; border: 1px solid #cbd5e1; font-family: monospace;"></textarea>
-                </div>
-                <button type="button" class="btn" style="background-color: #10b981; color: white; width: 100%; padding: 12px; font-weight: 600; border: none; border-radius: 6px; cursor: pointer;" onclick="searchByQrToken()">
-                    <i class="fas fa-search"></i> Search and Open Profile
-                </button>
-                <div id="modalError" style="color: #e74c3c; font-size: 0.82rem; margin-top: 10px; font-weight: 500;"></div>
-            </div>
-        </div>
-    </div>
+    function exportApplicationDetails(idNo) {
+        window.open(`../api/export_application_pdf.php?id=${encodeURIComponent(idNo)}`, '_blank');
+    }
+
+    /* ─── Proxy QR Scanner Modals ─── */
+    function openProxyModal() {
+        document.getElementById('proxyModal').style.display = 'block';
+        document.getElementById('modalToken').value = '';
+        document.getElementById('modalError').textContent = '';
+    }
+
+    function closeProxyModal() {
+        document.getElementById('proxyModal').style.display = 'none';
+    }
+
+    async function searchByQrToken() {
+        const tokenInput = document.getElementById('modalToken').value.trim();
+        const errDiv     = document.getElementById('modalError');
+        if (!tokenInput) { errDiv.textContent = 'Token payload cannot be empty.'; return; }
+
+        errDiv.innerHTML = '<span style="color:#2563eb;"><i class="fas fa-spinner fa-spin"></i> Parsing token…</span>';
+        let token = tokenInput;
+
+        if (tokenInput.includes('token=')) {
+            try { token = new URL(tokenInput).searchParams.get('token') || tokenInput; } catch(e) {}
+        }
+
+        try {
+            let txId = token;
+            if (token.length > 50) {
+                const r = await (await fetch(`../api/scan_proxy_qr.php?token=${encodeURIComponent(token)}`)).json();
+                if (r.success && r.data && r.data.transactionId) {
+                    txId = r.data.transactionId;
+                } else {
+                    errDiv.textContent = 'Failed to decrypt proxy token.';
+                    return;
+                }
+            }
+
+            const check = await (await fetch(`../api/get_application_details.php?id=${encodeURIComponent(txId)}`)).json();
+            if (check && !check.error) {
+                closeProxyModal();
+                openApplicationModal(txId);
+            } else {
+                errDiv.textContent = `Application ID: [${txId}] not found in records queue.`;
+            }
+        } catch(err) {
+            console.error(err);
+            errDiv.textContent = 'Connection error during QR token retrieval.';
+        }
+    }
+</script>
 </body>
 </html>

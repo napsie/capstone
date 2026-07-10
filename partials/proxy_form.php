@@ -307,6 +307,17 @@ $resetUrl = $resetUrl ?? $formAction;
         border: 1px solid #6ee7b7;
         color: #065f46;
     }
+
+    .form-row-names {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 0.5fr;
+        gap: 16px;
+    }
+    @media (max-width: 600px) {
+        .form-row-names {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
 
 <?php if (!$proxySuccess): ?>
@@ -371,7 +382,7 @@ $resetUrl = $resetUrl ?? $formAction;
 
             <div class="form-section">
                 <!-- Name Row -->
-                <div class="form-row">
+                <div class="form-row-names">
                     <div class="form-group">
                         <label for="lastName">Last Name <span style="color:#b91c1c;">*</span></label>
                         <input type="text" id="lastName" name="lastName" class="form-control" placeholder="e.g. Dela Cruz" required>
@@ -380,8 +391,6 @@ $resetUrl = $resetUrl ?? $formAction;
                         <label for="firstName">First Name <span style="color:#b91c1c;">*</span></label>
                         <input type="text" id="firstName" name="firstName" class="form-control" placeholder="e.g. Tomas" required>
                     </div>
-                </div>
-                <div class="form-row">
                     <div class="form-group">
                         <label for="middleName">Middle Name</label>
                         <input type="text" id="middleName" name="middleName" class="form-control" placeholder="e.g. Santos">
@@ -513,6 +522,15 @@ $resetUrl = $resetUrl ?? $formAction;
                             <option value="Sibling">Sibling</option>
                             <option value="Caregiver">Caregiver</option>
                         </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="proxyContactNumber">Proxy Contact Number <span style="color:#b91c1c;">*</span></label>
+                        <input type="text" id="proxyContactNumber" name="proxyContactNumber" class="form-control" placeholder="e.g. 09123456789" maxlength="11" required>
+                    </div>
+                    <div class="form-group">
+                        <!-- Spacer -->
                     </div>
                 </div>
 

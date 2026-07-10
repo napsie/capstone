@@ -4,25 +4,24 @@ require_once '../includes/db_connect.php';
 require_once '../includes/barangays_list.php';
 require_once '../includes/application_types.php';
 
-// --- BACKEND LOGIC ---
-// Authenticate and authorize
+// Auth check
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'department_admin') {
     header('Location: ../index.php');
     exit;
 }
 
-// 1. Get filter, search, and pagination parameters from URL
-$search = $_GET['search'] ?? '';
-$barangayFilter = $_GET['barangay'] ?? 'all';
-$typeFilter = $_GET['type'] ?? 'all';
-$page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
-$recordsPerPage = 15; // Number of records to display per page
-$offset = ($page - 1) * $recordsPerPage;
+// Filter params
+$search          = $_GET['search'] ?? '';
+$barangayFilter  = $_GET['barangay'] ?? 'all';
+$typeFilter      = $_GET['type'] ?? 'all';
+$page            = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
+$recordsPerPage  = 15;
+$offset          = ($page - 1) * $recordsPerPage;
 
-// 2. Build the database query dynamically
-$baseQuery = "FROM applications";
-$whereClauses = [];
-$params = [];
+// Build dynamic query
+$baseQuery    = "FROM applications";
+$whereClauses = ["(workflow_state IN ('Approved', 'Released') OR status = 'Approved')"];
+$params       = [];
 
 if (!empty($search)) {
     $whereClauses[] = "(full_name LIKE :search OR id_number LIKE :search)";
@@ -33,73 +32,47 @@ if ($barangayFilter !== 'all') {
     $params[':barangay'] = $barangayFilter;
 }
 if ($typeFilter !== 'all') {
-    $whereClauses[] = "application_type = :type"; // Match the column name
+    $whereClauses[] = "application_type = :type";
     $params[':type'] = $typeFilter;
 }
 
-// Always filter by status = 'Approved'
-$whereClauses[] = "status = :status_approved";
-$params[':status_approved'] = 'Approved';
+$whereSql = " WHERE " . implode(' AND ', $whereClauses);
 
-
-$whereSql = '';
-if (!empty($whereClauses)) {
-    $whereSql = " WHERE " . implode(' AND ', $whereClauses);
-}
-
-// Export CSV if requested
+// CSV export
 if (isset($_GET['export']) && $_GET['export'] === '1') {
-    $exportQuery = "SELECT id_number as id, full_name, application_type, barangay, date_submitted, status " . $baseQuery . $whereSql . " ORDER BY date_submitted DESC";
-    $exportStmt = $conn->prepare($exportQuery);
-    foreach ($params as $key => &$val) {
-        $exportStmt->bindParam($key, $val);
-    }
+    $exportStmt = $conn->prepare("SELECT id_number, full_name, application_type, barangay, date_submitted, COALESCE(workflow_state, status) as status " . $baseQuery . $whereSql . " ORDER BY date_submitted DESC");
+    foreach ($params as $k => &$v) $exportStmt->bindParam($k, $v);
     $exportStmt->execute();
     $exportData = $exportStmt->fetchAll(PDO::FETCH_ASSOC);
 
     header('Content-Type: text/csv');
-    header('Content-Disposition: attachment; filename="department_records.csv"');
-    $output = fopen('php://output', 'w');
-    fputcsv($output, ['ID Number', 'Applicant Name', 'Application Type', 'Barangay', 'Date Submitted', 'Status']);
-    foreach ($exportData as $row) {
-        fputcsv($output, [$row['id'], $row['full_name'], $row['application_type'], $row['barangay'], $row['date_submitted'], $row['status']]);
-    }
-    fclose($output);
+    header('Content-Disposition: attachment; filename="department_records_' . date('Ymd') . '.csv"');
+    $out = fopen('php://output', 'w');
+    fputcsv($out, ['ID Number', 'Applicant Name', 'Application Type', 'Barangay', 'Date Submitted', 'Status']);
+    foreach ($exportData as $row) fputcsv($out, [$row['id_number'], $row['full_name'], applicationTypeLabel($row['application_type']), $row['barangay'], $row['date_submitted'], $row['status']]);
+    fclose($out);
     exit;
 }
 
-// 3. Get total number of records for pagination
-$totalQuery = "SELECT COUNT(*) " . $baseQuery . $whereSql;
-$totalStmt = $conn->prepare($totalQuery);
+// Total count
+$totalStmt = $conn->prepare("SELECT COUNT(*) " . $baseQuery . $whereSql);
 $totalStmt->execute($params);
 $totalRecords = $totalStmt->fetchColumn();
-$totalPages = ceil($totalRecords / $recordsPerPage);
+$totalPages   = ceil($totalRecords / $recordsPerPage);
 
-// 4. Get the records for the current page
-$recordsQuery = "SELECT id_number as id, full_name, application_type, barangay, date_submitted, status " . $baseQuery . $whereSql . " ORDER BY date_submitted DESC LIMIT :limit OFFSET :offset";
-$recordsStmt = $conn->prepare($recordsQuery);
-
-// Bind all parameters including limit and offset
-foreach ($params as $key => &$val) {
-    if (strpos($key, ':limit') === false && strpos($key, ':offset') === false) { // Don't bind limit/offset with foreach
-        $recordsStmt->bindParam($key, $val);
-    }
-}
-$recordsStmt->bindParam(':limit', $recordsPerPage, PDO::PARAM_INT);
-$recordsStmt->bindParam(':offset', $offset, PDO::PARAM_INT);
-
+// Paginated records
+$recordsStmt = $conn->prepare("SELECT id_number as id, full_name, application_type, barangay, date_submitted, COALESCE(workflow_state, status) as status " . $baseQuery . $whereSql . " ORDER BY date_submitted DESC LIMIT :limit OFFSET :offset");
+foreach ($params as $k => &$v) $recordsStmt->bindParam($k, $v);
+$recordsStmt->bindParam(':limit',  $recordsPerPage, PDO::PARAM_INT);
+$recordsStmt->bindParam(':offset', $offset,         PDO::PARAM_INT);
 $recordsStmt->execute();
 $applications = $recordsStmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Helper function to get status class for styling
-function getStatusClass($status) {
+function getStatusBadge($status) {
     switch (strtolower($status)) {
-        case 'pending': return 'status-pending';
-        case 'verified': return 'status-verified';
-        case 'rejected': return 'status-rejected';
-        case 'approved': return 'status-approved';
-        case 'sent to city hall': return 'status-sent'; // Add this if 'sent' is a status
-        default: return 'status-default';
+        case 'released': return ['badge-released', 'fa-box-archive'];
+        case 'approved': return ['badge-approved', 'fa-circle-check'];
+        default:         return ['badge-default',  'fa-circle'];
     }
 }
 ?>
@@ -108,780 +81,836 @@ function getStatusClass($status) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Department Records - SENIORLINK</title>
+    <title>Department Records – SENIORLINK</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=1.1">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
+        /* ─── Variables ─────────────────────────────────────────────────── */
         :root {
-            --primary: #0f172a;
+            --primary:   #0f172a;
             --secondary: #1e3a5f;
-            --accent: #2563eb;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --light: #f8fafc;
-            --dark: #020617;
-            --gray: #94a3b8;
-            --bg: #f1f5f9;
-            --text: #0f172a;
+            --accent:    #2563eb;
+            --success:   #10b981;
+            --warning:   #f59e0b;
+            --danger:    #ef4444;
+            --purple:    #8b5cf6;
+            --gray:      #94a3b8;
+            --border:    #e2e8f0;
+            --bg:        #f1f5f9;
+            --card:      #ffffff;
+            --text:      #0f172a;
         }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
 
-        body {
-            background-color: var(--bg);
-            color: var(--text);
-            line-height: 1.6;
-            height: 100vh;
-            overflow: auto;
-        }
+        /* ─── Layout ─────────────────────────────────────────────────────── */
+        .container { display: flex; min-height: 100vh; }
+        .main-content { flex: 1; padding: 28px; overflow-y: auto; }
 
-        .main-content {
-            flex: 1;
-            padding: 20px;
-        }
-
-        .header {
+        /* ─── Page Header ────────────────────────────────────────────────── */
+        .page-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 30px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #e0e0e0;
+            margin-bottom: 28px;
         }
-
-        .header-content {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .welcome-message {
-            font-size: 1.2rem;
-            color: var(--gray);
-            margin-bottom: 5px;
-        }
-
-        .header h1 {
-            color: var(--primary);
-            font-size: 1.8rem;
-        }
-
-        .user-info {
+        .page-header-left .greeting { font-size: 0.88rem; color: var(--gray); margin-bottom: 4px; }
+        .page-header-left h1 { font-size: 1.7rem; font-weight: 800; color: var(--primary); margin: 0; }
+        .page-header-left h1 span { color: var(--accent); }
+        .header-user {
             display: flex;
             align-items: center;
-            gap: 10px;
-        }
-
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: var(--secondary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-        }
-
-
-        .records-section {
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            padding: 30px;
-            margin-bottom: 30px;
-        }
-
-        .btn {
-            display: inline-block;
-            background: var(--secondary);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 5px;
-            text-decoration: none;
-            font-weight: 500;
-            transition: background 0.3s;
-            border: none;
-            cursor: pointer;
-        }
-
-        .btn:hover {
-            background: #153860;
-        }
-
-        .btn-accent {
-            background: var(--accent);
-        }
-
-        .btn-accent:hover {
-            background: #c0392b;
-        }
-
-        .btn-small {
-            padding: 5px 10px;
-            font-size: 12px;
-        }
-
-        .records-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .records-header h2 {
-            background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
-            color: white;
-            padding: 14px 18px;
+            gap: 12px;
+            background: var(--card);
             border-radius: 12px;
+            padding: 10px 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border: 1px solid var(--border);
+        }
+        .header-user img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); }
+        .header-user-info h3 { font-size: 0.9rem; font-weight: 700; color: var(--primary); margin: 0; }
+        .header-user-info p  { font-size: 0.75rem; color: var(--gray); margin: 0; }
+
+        /* ─── Stats ──────────────────────────────────────────────────────── */
+        .stats-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+        .stat-card {
+            background: var(--card);
+            border-radius: 14px;
+            padding: 18px 22px;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.07); }
+        .stat-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
+        .stat-icon.green  { background: rgba(16,185,129,0.12); color: var(--success); }
+        .stat-icon.blue   { background: rgba(37,99,235,0.12);  color: var(--accent); }
+        .stat-icon.purple { background: rgba(139,92,246,0.12); color: var(--purple); }
+        .stat-icon.amber  { background: rgba(245,158,11,0.12); color: var(--warning); }
+        .stat-label { font-size: 0.75rem; color: var(--gray); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+        .stat-value { font-size: 1.7rem; font-weight: 800; color: var(--primary); line-height: 1; }
+
+        /* ─── Records Card ───────────────────────────────────────────────── */
+        .records-card { background: var(--card); border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 16px rgba(0,0,0,0.05); overflow: hidden; }
+        .records-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 28px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);
+        }
+        .records-card-header h2 { color: #fff; font-size: 1.05rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 10px; }
+        .records-card-header h2 i { color: #60a5fa; }
+        .header-actions { display: flex; gap: 10px; }
+
+        /* Buttons */
+        .btn {
             display: inline-flex;
             align-items: center;
-            gap: 10px;
-            margin: 0;
-        }
-
-        .records-actions {
-            display: flex;
-            gap: 10px;
-        }
-
-        .search-box {
-            display: flex;
-            align-items: center;
-            background: white;
-            border-radius: 5px;
-            padding: 8px 15px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        }
-
-        .search-box input {
+            gap: 7px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
             border: none;
-            outline: none;
-            padding: 5px;
-            width: 200px;
+            transition: all 0.2s;
         }
+        .btn-ghost { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.25); }
+        .btn-ghost:hover { background: rgba(255,255,255,0.28); }
 
-        .records-table {
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-        }
-
-        .table-container {
-            max-height: 500px;
-            overflow-y: auto;
-        }
-
-        .table-header {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr; /* Adjusted for ID Number */
-            padding: 15px 20px;
-            background: var(--primary);
-            color: white;
-            font-weight: 600;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-
-        .table-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr; /* Adjusted for ID Number */
-            padding: 15px 20px;
-            border-bottom: 1px solid #e0e0e0;
-            transition: background 0.3s;
-            font-size: 14px; /* Increased font size */
-            font-weight: 500; /* Made text bolder */
-            color: #212529; /* Darker color for better contrast */
-        }
-
-        .table-row:hover {
-            background: var(--light);
-        }
-
-        .filter-section {
-            background: white;
-            border-radius: 10px;
-            padding: 15px 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        /* ─── Filter Bar ─────────────────────────────────────────────────── */
+        .filter-bar {
             display: flex;
-            gap: 15px;
-            align-items: center;
+            align-items: flex-end;
+            gap: 16px;
+            padding: 18px 28px;
+            border-bottom: 1px solid var(--border);
+            background: #f8fafc;
             flex-wrap: wrap;
         }
-
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-
-        .filter-group label {
-            font-size: 14px;
-            color: var(--dark);
-            font-weight: 500;
-        }
-
-        .filter-group select, .filter-group input {
+        .filter-group { display: flex; flex-direction: column; gap: 5px; }
+        .filter-group label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gray); }
+        .filter-group select,
+        .search-wrap input {
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
             padding: 8px 12px;
-            border: 1px solid #e0e0e0;
-            border-radius: 5px;
-            font-size: 14px;
+            font-size: 0.86rem;
+            color: var(--primary);
+            background: #fff;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
             min-width: 150px;
         }
-
-        /* Pagination styles */
-        .pagination {
-            display: flex;
-            justify-content: center; /* Center pagination */
-            padding: 20px;
-            gap: 10px;
+        .filter-group select:focus, .search-wrap input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+        .search-wrap { position: relative; }
+        .search-wrap i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--gray); font-size: 0.85rem; }
+        .search-wrap input { padding-left: 32px; min-width: 230px; }
+        .btn-apply {
+            display: inline-flex;
             align-items: center;
+            gap: 6px;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 9px 18px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+            align-self: flex-end;
         }
+        .btn-apply:hover { background: #1d4ed8; transform: translateY(-1px); }
 
-        .pagination-links a,
-        .pagination-links span {
-            padding: 8px 12px;
-            border: 1px solid var(--gray);
-            border-radius: 5px;
-            text-decoration: none;
+        /* ─── Table ──────────────────────────────────────────────────────── */
+        .table-wrap { overflow-x: auto; }
+        .records-tbl { width: 100%; border-collapse: collapse; }
+        .records-tbl thead tr { background: #f8fafc; border-bottom: 2px solid var(--border); }
+        .records-tbl th { padding: 12px 18px; text-align: left; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gray); white-space: nowrap; }
+        .records-tbl td { padding: 13px 18px; font-size: 0.86rem; color: var(--primary); border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+        .records-tbl tbody tr { transition: background 0.15s; }
+        .records-tbl tbody tr:hover { background: #f8fafc; }
+        .records-tbl tbody tr:last-child td { border-bottom: none; }
+
+        .name-cell .full-name { font-weight: 700; }
+        .name-cell .app-id    { font-size: 0.73rem; color: var(--gray); margin-top: 2px; font-family: monospace; }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.71rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+        .badge-approved { background: rgba(16,185,129,0.12); color: #15803d; border: 1px solid rgba(16,185,129,0.25); }
+        .badge-released { background: rgba(139,92,246,0.12); color: #6d28d9; border: 1px solid rgba(139,92,246,0.25); }
+        .badge-default  { background: rgba(148,163,184,0.15); color: #475569; }
+
+        .btn-view {
+            background: #fff;
+            border: 1.5px solid var(--border);
+            border-radius: 7px;
+            padding: 6px 14px;
+            font-size: 0.78rem;
+            font-weight: 700;
             color: var(--primary);
-            transition: background-color 0.3s, color 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
         }
+        .btn-view:hover { background: var(--primary); color: #fff; border-color: var(--primary); transform: translateY(-1px); }
 
-        .pagination-links a:hover {
-            background-color: var(--secondary);
-            color: white;
-            border-color: var(--secondary);
-        }
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--gray); }
+        .empty-state i { font-size: 3rem; margin-bottom: 16px; opacity: 0.4; display: block; }
 
-        .pagination-links .current-page {
-            background-color: var(--secondary);
-            color: white;
-            border-color: var(--secondary);
-        }
-
-        .pagination-links .disabled {
-            color: var(--gray);
-            cursor: not-allowed;
-        }
-        .no-records { padding: 20px; text-align: center; color: var(--gray); }
-
-        /* Modal Styles */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            overflow-y: auto;
-        }
-
-        .modal-content {
-            background-color: white;
-            margin: 50px auto;
-            width: 90%;
-            max-width: 900px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-            position: relative;
-        }
-
-        .modal-header {
+        /* ─── Pagination ─────────────────────────────────────────────────── */
+        .pagination-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 20px 30px;
-            border-bottom: 1px solid #e0e0e0;
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            background: #f8fafc;
+            flex-wrap: wrap;
+            gap: 10px;
         }
-
-        .modal-header h2 {
-            color: var(--primary);
-        }
-
-        .close-modal {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: var(--gray);
-        }
-
-        .close-modal:hover {
-            color: var(--accent);
-        }
-
-        .modal-body {
-            padding: 30px;
-            max-height: 70vh;
-            overflow-y: auto;
-        }
-
-        /* Form Styles */
-        .form-section {
-            margin-bottom: 30px;
-        }
-
-        .form-section h3 {
-            font-size: 20px;
-            color: var(--primary);
-            margin-bottom: 20px;
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: var(--primary);
-        }
-
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            width: 100%;
-            padding: 12px 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 16px;
-        }
-
-        .form-actions {
-            display: flex;
-            justify-content: flex-end;
-            margin-top: 30px;
-        }
-
-        .table-row.status-pending {
-            background-color: #fef9e7; /* Light yellow */
-        }
-
-        .table-row.status-verified {
-            background-color: #eaf2f8; /* Light blue */
-        }
-
-        .table-row.status-rejected {
-            background-color: #fdedec; /* Light red */
-        }
-
-        .table-row.status-approved {
-            background-color: #e8f8f5; /* Light green */
-        }
-
-        .application-status {
-            display: inline-block;
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-weight: 600;
-            font-size: 0.85em;
-            text-transform: capitalize;
-            color: white; /* Default text color for status */
-        }
-
-        .status-pending .application-status {
-            background-color: var(--warning); /* Orange/Yellow */
-        }
-
-        .status-verified .application-status {
-            background-color: var(--secondary); /* Blue */
-        }
-
-        .status-rejected .application-status {
-            background-color: var(--accent); /* Red */
-        }
-
-        .status-approved .application-status {
-            background-color: var(--success); /* Green */
-        }
-
-        .status-default .application-status {
-            background-color: var(--gray); /* Gray fallback */
-        }
-        .image-placeholder {
-            margin-top: 10px;
-            width: 100%;
-            height: 200px; /* Or any other desired height */
-            border: 2px dashed #ccc;
-            display: flex;
-            justify-content: center;
+        .pagination-info { font-size: 0.82rem; color: var(--gray); font-weight: 600; }
+        .pagination-links { display: flex; gap: 6px; flex-wrap: wrap; }
+        .pagination-links a,
+        .pagination-links span {
+            display: inline-flex;
             align-items: center;
+            justify-content: center;
+            min-width: 34px;
+            height: 34px;
+            padding: 0 10px;
+            border: 1.5px solid var(--border);
+            border-radius: 7px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--primary);
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .pagination-links a:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .pagination-links .current { background: var(--accent); color: #fff; border-color: var(--accent); }
+        .pagination-links .disabled { color: var(--gray); cursor: not-allowed; opacity: 0.5; }
+
+        /* ─── Modal ──────────────────────────────────────────────────────── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15,23,42,0.55);
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+            overflow-y: auto;
+            padding: 30px 16px;
+        }
+        .modal-box {
+            background: #fff;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 980px;
+            margin: 0 auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
             overflow: hidden;
         }
-
-        .image-placeholder img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
+        .modal-head {
+            background: linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);
+            padding: 20px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
+        .modal-head h2 { color: #fff; font-size: 1rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 10px; }
+        .modal-head h2 i { color: #60a5fa; }
+        .modal-close {
+            background: rgba(255,255,255,0.15);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            width: 34px; height: 34px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        .modal-close:hover { background: rgba(255,255,255,0.3); }
+        .modal-scroller { max-height: 80vh; overflow-y: auto; padding: 28px; }
+
+        /* Stepper */
+        .stepper { display: flex; justify-content: space-between; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+        .step { flex: 1; text-align: center; position: relative; }
+        .step::after { content:''; position:absolute; top:15px; left:50%; width:100%; height:3px; background:var(--border); z-index:1; }
+        .step:last-child::after { display: none; }
+        .step-circle {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: var(--border); color: #64748b;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 7px; font-weight: 800; font-size: 0.8rem;
+            position: relative; z-index: 2; transition: background 0.3s;
+        }
+        .step-label { font-size: 0.72rem; font-weight: 600; color: var(--gray); }
+        .step.active .step-circle  { background: var(--accent); color:#fff; box-shadow:0 0 0 4px rgba(37,99,235,0.2); }
+        .step.active .step-label   { color: var(--accent); font-weight: 700; }
+        .step.completed .step-circle { background: var(--success); color:#fff; }
+        .step.completed .step-label  { color: var(--success); font-weight: 700; }
+        .step.completed::after       { background: var(--success); }
+
+        /* Compliance */
+        .compliance-card { background:#f8fafc; border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:22px; }
+        .compliance-title { font-weight:700; font-size:0.88rem; color:var(--primary); margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+        .compliance-title i { color:var(--accent); }
+        .compliance-item { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px dashed var(--border); font-size:0.85rem; gap:10px; }
+        .compliance-item:last-child { border-bottom: none; }
+        .pass-tag { color:var(--success); font-weight:700; display:flex; align-items:center; gap:5px; white-space:nowrap; }
+        .fail-tag { color:var(--danger);  font-weight:700; display:flex; align-items:center; gap:5px; white-space:nowrap; }
+
+        /* Modal grid */
+        .modal-grid { display:grid; grid-template-columns:1.2fr 1fr; gap:28px; }
+        @media(max-width:760px) { .modal-grid { grid-template-columns:1fr; } }
+
+        .section-title { font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--gray); margin-bottom:14px; display:flex; align-items:center; gap:7px; }
+        .section-title i { color:var(--accent); }
+
+        .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px 16px; margin-bottom:20px; }
+        .info-item label { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--gray); display:block; margin-bottom:2px; }
+        .info-item span  { font-size:0.88rem; font-weight:600; color:var(--primary); }
+        .info-item.wide  { grid-column: 1 / -1; }
+
+        .doc-preview-title { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--gray); margin-bottom:8px; }
+        .doc-preview-box {
+            width:100%; height:180px;
+            border:2px dashed var(--border); border-radius:10px;
+            display:flex; align-items:center; justify-content:center;
+            overflow:hidden; background:#f8fafc; margin-bottom:14px;
+        }
+        .doc-preview-box img { max-width:100%; max-height:100%; object-fit:contain; }
+
+        .timeline { border-left:2px solid var(--border); padding-left:18px; margin-top:10px; }
+        .timeline-event { position:relative; padding-bottom:18px; }
+        .timeline-event::before { content:''; position:absolute; left:-25px; top:5px; width:12px; height:12px; border-radius:50%; background:var(--accent); border:2px solid #fff; box-shadow:0 0 0 2px var(--border); }
+        .timeline-time  { font-size:0.72rem; color:var(--gray); margin-bottom:3px; }
+        .timeline-title { font-size:0.85rem; font-weight:700; color:var(--primary); }
+        .timeline-by    { font-size:0.75rem; color:#64748b; margin-top:2px; }
+        .timeline-note  { font-size:0.82rem; color:#475569; margin-top:4px; font-style:italic; }
+
+        /* Footer */
+        .page-footer { text-align:center; padding:24px; font-size:0.78rem; color:var(--gray); }
     </style>
 </head>
 <body>
-   <div class="container">
-        <?php include '../partials/department_sidebar.php'; ?>
+<div class="container">
+    <?php include '../partials/department_sidebar.php'; ?>
 
-        <!-- Main Content -->
-        <div class="main-content">
-            <!-- Header -->
-            <div class="header">
-                <div class="header-content">
-                    <div class="welcome-message" data-first-name="<?php echo htmlspecialchars($_SESSION['first_name']); ?>" data-last-name="<?php echo htmlspecialchars($_SESSION['last_name']); ?>" data-role="<?php echo htmlspecialchars($_SESSION['role']); ?>"></div>
-                    <h1>Department Records</h1>
+    <div class="main-content">
+
+        <!-- Page Header -->
+        <div class="page-header">
+            <div class="page-header-left">
+                <div class="greeting" id="greetingMsg"></div>
+                <h1>Department <span>Records</span></h1>
+            </div>
+            <div class="header-user">
+                <?php
+                    $profilePic = isset($_SESSION['profile_picture']) ? $_SESSION['profile_picture'] : 'default.jpg';
+                    $profilePicPath = '../images/profile_pictures/' . $profilePic;
+                    if (!file_exists($profilePicPath) || is_dir($profilePicPath)) {
+                        $profilePicPath = '../images/profile_pictures/default.jpg';
+                    }
+                ?>
+                <img src="<?php echo $profilePicPath; ?>" alt="Profile">
+                <div class="header-user-info">
+                    <h3><?php echo htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']); ?></h3>
+                    <p><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $_SESSION['role']))); ?> · Pasig City</p>
                 </div>
+            </div>
+        </div>
+
+        <!-- Stats Strip -->
+        <div class="stats-strip">
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+                <div>
+                    <div class="stat-label">Total on Page</div>
+                    <div class="stat-value"><?php echo $totalRecords; ?></div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon blue"><i class="fas fa-city"></i></div>
+                <div>
+                    <div class="stat-label">Coverage</div>
+                    <div class="stat-value" style="font-size:1rem;padding-top:4px;">Pasig City</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon purple"><i class="fas fa-filter"></i></div>
+                <div>
+                    <div class="stat-label">Current Page</div>
+                    <div class="stat-value"><?php echo $page; ?> / <?php echo max($totalPages, 1); ?></div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon amber"><i class="fas fa-database"></i></div>
+                <div>
+                    <div class="stat-label">All Records</div>
+                    <div class="stat-value"><?php echo number_format($totalRecords); ?></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Records Card -->
+        <div class="records-card">
+            <div class="records-card-header">
+                <h2><i class="fas fa-folder-open"></i> All Approved Records – Pasig City</h2>
                 <div class="header-actions">
-                    <div class="user-info">
-                                            <div class="user-avatar">
-                                                <?php
-                                                    $profilePic = isset($_SESSION['profile_picture']) ? $_SESSION['profile_picture'] : 'default.jpg';
-                                                    $profilePicPath = '../images/profile_pictures/' . $profilePic;
-                                                    if (!file_exists($profilePicPath) || is_dir($profilePicPath)) {
-                                                        $profilePicPath = '../images/profile_pictures/default.jpg'; // Fallback to default if file doesn't exist
-                                                    }
-                                                ?>
-                                                <img src="<?php echo $profilePicPath; ?>" alt="Profile Picture" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
-                                            </div>                        <div class="user-details">
-                            <h2><?php echo htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']); ?></h2>
-                            <p><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $_SESSION['role']))); ?></p>
-                        </div>
-                    </div>
+                    <a href="?<?php echo http_build_query(array_merge($_GET, ['export'=>'1'])); ?>" class="btn btn-ghost">
+                        <i class="fas fa-file-csv"></i> Export CSV
+                    </a>
                 </div>
             </div>
 
-            <!-- Records Section -->
-            <div class="records-section">
-                <form id="filterForm" method="GET" action="department_records.php">
-                    <div class="records-header">
-                        <h2>All Records for Pasig City</h2>
-                        <div class="records-actions">
-                            <div class="search-box">
-                                <i class="fas fa-search"></i>
-                                <input type="text" id="searchInput" name="search" placeholder="Search records..." value="<?php echo htmlspecialchars($search); ?>">
+            <!-- Filter Bar -->
+            <form method="GET" action="department_records.php">
+                <div class="filter-bar">
+                    <div class="filter-group">
+                        <label for="searchInput">Search</label>
+                        <div class="search-wrap">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="searchInput" name="search" placeholder="Name or ID…" value="<?php echo htmlspecialchars($search); ?>">
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label for="barangayFilter">Barangay</label>
+                        <select id="barangayFilter" name="barangay">
+                            <option value="all">All Barangays</option>
+                            <?php foreach ($barangays_list as $b): ?>
+                                <option value="<?php echo htmlspecialchars($b); ?>" <?php echo ($barangayFilter === $b) ? 'selected' : ''; ?>><?php echo htmlspecialchars($b); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="typeFilter">Application Type</label>
+                        <select id="typeFilter" name="type">
+                            <option value="all">All Types</option>
+                            <?php foreach (getApplicationTypeOptions() as $val => $label): ?>
+                                <option value="<?php echo htmlspecialchars($val); ?>" <?php echo ($typeFilter === $val) ? 'selected' : ''; ?>><?php echo htmlspecialchars(applicationTypeLabel($val)); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn-apply"><i class="fas fa-search"></i> Apply Filters</button>
+                    <?php if (!empty($search) || $barangayFilter !== 'all' || $typeFilter !== 'all'): ?>
+                        <a href="department_records.php" class="btn-apply" style="background:#64748b;text-decoration:none;"><i class="fas fa-times"></i> Clear</a>
+                    <?php endif; ?>
+                </div>
+            </form>
+
+            <!-- Table -->
+            <div class="table-wrap">
+                <table class="records-tbl">
+                    <thead>
+                        <tr>
+                            <th>Applicant</th>
+                            <th>Application Type</th>
+                            <th>Barangay</th>
+                            <th>Date Submitted</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php if (empty($applications)): ?>
+                        <tr><td colspan="6">
+                            <div class="empty-state">
+                                <i class="fas fa-folder-open"></i>
+                                <p>No approved records found</p>
+                                <small>Try adjusting your filters or search query.</small>
                             </div>
-                            <button type="submit" name="export" value="1" class="btn"><i class="fas fa-file-export"></i> Export</button>
+                        </td></tr>
+                    <?php else: ?>
+                        <?php foreach ($applications as $app):
+                            [$badgeClass, $badgeIcon] = getStatusBadge($app['status']);
+                        ?>
+                        <tr>
+                            <td>
+                                <div class="name-cell">
+                                    <div class="full-name"><?php echo htmlspecialchars($app['full_name']); ?></div>
+                                    <div class="app-id"><?php echo htmlspecialchars($app['id']); ?></div>
+                                </div>
+                            </td>
+                            <td><?php echo htmlspecialchars(applicationTypeLabel($app['application_type'])); ?></td>
+                            <td><?php echo htmlspecialchars($app['barangay']); ?></td>
+                            <td><?php echo date('M d, Y', strtotime($app['date_submitted'])); ?></td>
+                            <td>
+                                <span class="badge <?php echo $badgeClass; ?>">
+                                    <i class="fas <?php echo $badgeIcon; ?>"></i>
+                                    <?php echo htmlspecialchars(ucfirst($app['status'])); ?>
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn-view view-details-btn" data-id="<?php echo htmlspecialchars($app['id']); ?>">
+                                    <i class="fas fa-eye"></i> View
+                                </button>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <?php if ($totalPages > 1): ?>
+            <?php
+                $qs = http_build_query(array_filter(['search' => $search, 'barangay' => ($barangayFilter !== 'all' ? $barangayFilter : ''), 'type' => ($typeFilter !== 'all' ? $typeFilter : '')]));
+            ?>
+            <div class="pagination-bar">
+                <div class="pagination-info">
+                    Page <?php echo $page; ?> of <?php echo $totalPages; ?> &bull; <?php echo number_format($totalRecords); ?> total records
+                </div>
+                <div class="pagination-links">
+                    <?php if ($page > 1): ?>
+                        <a href="?page=<?php echo $page-1; ?>&<?php echo $qs; ?>"><i class="fas fa-chevron-left"></i></a>
+                    <?php else: ?>
+                        <span class="disabled"><i class="fas fa-chevron-left"></i></span>
+                    <?php endif; ?>
+
+                    <?php
+                    $start = max(1, $page - 2);
+                    $end   = min($totalPages, $page + 2);
+                    if ($start > 1) echo '<span>…</span>';
+                    for ($i = $start; $i <= $end; $i++) {
+                        if ($i == $page) echo "<span class=\"current\">$i</span>";
+                        else echo "<a href=\"?page=$i&$qs\">$i</a>";
+                    }
+                    if ($end < $totalPages) echo '<span>…</span>';
+                    ?>
+
+                    <?php if ($page < $totalPages): ?>
+                        <a href="?page=<?php echo $page+1; ?>&<?php echo $qs; ?>"><i class="fas fa-chevron-right"></i></a>
+                    <?php else: ?>
+                        <span class="disabled"><i class="fas fa-chevron-right"></i></span>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <div class="page-footer">Centralized Profiling and Record Authentication System &bull; Pasig City Department &copy; <?php echo date('Y'); ?></div>
+    </div>
+</div>
+
+<!-- ──────────────────────────────────────────────────────────────────── -->
+<!-- Application Detail Modal                                             -->
+<!-- ──────────────────────────────────────────────────────────────────── -->
+<div id="applicationModal" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-head">
+            <h2><i class="fas fa-file-shield"></i> <span id="modalAppTitle">Application Details</span></h2>
+            <button class="modal-close" id="closeModalBtn">&times;</button>
+        </div>
+        <div class="modal-scroller">
+
+            <!-- FSM Stepper -->
+            <div class="stepper">
+                <div class="step" id="step-Received">
+                    <div class="step-circle">1</div>
+                    <div class="step-label">Received</div>
+                </div>
+                <div class="step" id="step-For-Review">
+                    <div class="step-circle">2</div>
+                    <div class="step-label">For Review</div>
+                </div>
+                <div class="step" id="step-Verified">
+                    <div class="step-circle">3</div>
+                    <div class="step-label">Verified</div>
+                </div>
+                <div class="step" id="step-Approved">
+                    <div class="step-circle">4</div>
+                    <div class="step-label">Approved</div>
+                </div>
+                <div class="step" id="step-Released">
+                    <div class="step-circle">5</div>
+                    <div class="step-label">Released</div>
+                </div>
+            </div>
+
+            <!-- Compliance Engine -->
+            <div class="compliance-card">
+                <div class="compliance-title"><i class="fas fa-shield-halved"></i> Compliance & AI Verification Engine</div>
+                <div id="complianceList">
+                    <p style="color:var(--gray);font-size:0.85rem;">Loading compliance checks…</p>
+                </div>
+            </div>
+
+            <!-- Two-column grid -->
+            <div class="modal-grid">
+                <!-- LEFT: Details -->
+                <div>
+                    <div class="section-title"><i class="fas fa-user"></i> Applicant Information</div>
+                    <div class="info-grid">
+                        <div class="info-item wide">
+                            <label>Full Name</label>
+                            <span id="infoName">—</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Date of Birth</label>
+                            <span id="infoBirth">—</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Contact Number</label>
+                            <span id="infoContact">—</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Barangay</label>
+                            <span id="infoBarangay">—</span>
+                        </div>
+                        <div class="info-item wide">
+                            <label>Complete Address</label>
+                            <span id="infoAddress">—</span>
                         </div>
                     </div>
-                    
-                    <!-- Filter Section -->
-                    <div class="filter-section">
-                        <div class="filter-group">
-                            <label for="barangay-filter">Barangay</label>
-                            <select id="barangayFilter" name="barangay">
-                                <option value="all">All Barangays</option>
-                                <?php foreach ($barangays_list as $b): ?>
-                                    <option value="<?php echo htmlspecialchars($b); ?>" <?php echo ($barangayFilter === $b) ? 'selected' : ''; ?>><?php echo htmlspecialchars($b); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="filter-group">
-                            <label for="type-filter">Application Type</label>
-                            <select id="typeFilter" name="type">
-                                <option value="all">All Types</option>
-                                <option value="Senior Citizen" <?php echo ($typeFilter === 'Senior Citizen') ? 'selected' : ''; ?>>Senior Citizen</option>
-                            </select>
-                        </div>
+
+                    <!-- Dynamic (type-specific) section -->
+                    <div id="dynamicDetailsSection"></div>
+
+                    <!-- Document previews -->
+                    <div class="section-title" style="margin-top:20px;"><i class="fas fa-file-image"></i> Submitted Documents</div>
+                    <div class="doc-preview-title">Proof of Address</div>
+                    <div class="doc-preview-box" id="previewProof">
+                        <span style="color:var(--gray);font-size:0.8rem;">Loading…</span>
                     </div>
-                </form>
-                
-                <div class="records-table">
-                    <div class="table-container">
-                        <div class="table-header">
-                            <div>Applicant Name</div>
-                            <div>Application Type</div>
-                            <div>Barangay</div>
-                            <div>Date Submitted</div>
-                            <div>Status</div>
-                            <div>ID Number</div>
-                            <div>Actions</div>
-                        </div>
-                        
-                        <div class="table-data">
-                            <?php if (empty($applications)): ?>
-                                <div class="no-records">No records found matching your criteria.</div>
-                            <?php else: ?>
-                                <?php foreach ($applications as $app): ?>
-                                    <div class="table-row <?php echo getStatusClass($app['status']); ?>">
-                                        <div><?php echo htmlspecialchars($app['full_name']); ?></div>
-                                        <div><?php echo htmlspecialchars($app['application_type']); ?></div>
-                                        <div><?php echo htmlspecialchars($app['barangay']); ?></div>
-                                        <div><?php echo date("M d, Y", strtotime($app['date_submitted'])); ?></div>
-                                        <div><span class="application-status <?php echo getStatusClass($app['status']); ?>"><?php echo htmlspecialchars($app['status']); ?></span></div>
-                                        <div><?php echo htmlspecialchars($app['id']); ?></div> <?php // Assuming ID Number refers to application ID ?>
-                                        <div><button class="btn btn-small view-details-btn" data-id="<?php echo $app['id']; ?>"><i class="fas fa-eye"></i> View</button></div>
-                                    </div>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </div>
+                    <div class="doc-preview-title">ID / Identification Photo</div>
+                    <div class="doc-preview-box" id="previewIdImage">
+                        <span style="color:var(--gray);font-size:0.8rem;">Loading…</span>
                     </div>
                 </div>
-                
-                <?php if ($totalPages > 1): ?>
-                    <div class="pagination">
-                        <div class="pagination-info">
-                            Page <?php echo $page; ?> of <?php echo $totalPages; ?> &bull; Total: <?php echo $totalRecords; ?> records
-                        </div>
-                        <div class="pagination-links">
-                            <?php
-                            $queryString = http_build_query(array_filter(['search' => $search, 'barangay' => $barangayFilter, 'type' => $typeFilter]));
-                            
-                            if ($page > 1) { echo '<a href="?page=' . ($page - 1) . '&' . $queryString . '">Previous</a>'; } else { echo '<span class="disabled">Previous</span>'; }
 
-                            for ($i = 1; $i <= $totalPages; $i++) {
-                                if ($i == $page) { echo '<span class="current-page">' . $i . '</span>'; }
-                                else { echo '<a href="?page=' . $i . '&' . $queryString . '">' . $i . '</a>'; }
-                            }
-
-                            if ($page < $totalPages) { echo '<a href="?page=' . ($page + 1) . '&' . $queryString . '">Next</a>'; } else { echo '<span class="disabled">Next</span>'; }
-                            ?>
-                        </div>
+                <!-- RIGHT: Audit timeline -->
+                <div>
+                    <div class="section-title"><i class="fas fa-clock-rotate-left"></i> Audit History</div>
+                    <div class="timeline" id="timelineList">
+                        <p style="color:var(--gray);font-size:0.85rem;">Loading history…</p>
                     </div>
-                <?php endif; ?>
+                </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Application Detail Modal -->
-    <div id="applicationModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Application Details</h2>
-                <button class="close-modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                
-            </div>
-        </div>
-    </div>
+        </div><!-- /.modal-scroller -->
+    </div><!-- /.modal-box -->
+</div><!-- /#applicationModal -->
 
-    <script src="../assets/js/sidebar-toggle.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const welcomeMessage = document.querySelector('.welcome-message');
-            const firstName = welcomeMessage.dataset.firstName;
-            const lastName = welcomeMessage.dataset.lastName;
-            const role = welcomeMessage.dataset.role;
-            const hour = new Date().getHours();
-            let greeting;
-            
-            if (hour < 12) {
-                greeting = "Good morning";
-            } else if (hour < 18) {
-                greeting = "Good afternoon";
-            } else {
-                greeting = "Good evening";
-            }
-            
-            welcomeMessage.innerHTML = `${greeting}, <strong>${firstName} ${lastName}</strong>!`;
+<script src="../assets/js/sidebar-toggle.js"></script>
+<script>
+    /* ─── Greeting ──────────────────────────────────────────── */
+    (function(){
+        const h = new Date().getHours();
+        const g = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+        const fn = <?php echo json_encode($_SESSION['first_name']); ?>;
+        const ln = <?php echo json_encode($_SESSION['last_name']); ?>;
+        document.getElementById('greetingMsg').innerHTML = `${g}, <strong>${fn} ${ln}</strong>!`;
+    })();
 
-            // Event delegation for View Details buttons
-            const tableBody = document.querySelector('.table-data');
-            tableBody.addEventListener('click', function(event) {
-                const clickedElement = event.target.closest('.view-details-btn');
-                if (clickedElement) {
-                    const appId = clickedElement.dataset.id;
-                    openApplicationModal(appId);
-                }
-            });
-
-            const closeModalBtn = document.querySelector('#applicationModal .close-modal');
-            closeModalBtn.addEventListener('click', () => {
-                document.getElementById('applicationModal').style.display = 'none';
-            });
+    /* ─── Modal open/close ──────────────────────────────────── */
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelector('.table-wrap').addEventListener('click', function(e) {
+            const btn = e.target.closest('.view-details-btn');
+            if (btn) openApplicationModal(btn.dataset.id);
         });
 
-        function openApplicationModal(appId) {
-            const modalBody = document.querySelector('#applicationModal .modal-body');
-            modalBody.innerHTML = '<p>Loading...</p>';
-            document.getElementById('applicationModal').style.display = 'block';
+        document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+        document.getElementById('applicationModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+    });
 
-            fetch(`../api/get_application_details.php?id=${appId}`)
-                .then(response => response.json())
-                .then(application => {
-                    if (application.error) {
-                        modalBody.innerHTML = `<p>Error: ${application.error}</p>`;
-                        return;
-                    }
+    function closeModal() {
+        document.getElementById('applicationModal').style.display = 'none';
+    }
 
-                    if (!application) {
-                        modalBody.innerHTML = '<p>Error loading application details.</p>';
-                        return;
-                    }
-
-                    modalBody.innerHTML = `
-                        <form id="applicationDetailForm" method="POST" action="../api/update_application.php" enctype="multipart/form-data">
-                            <input type="hidden" id="applicationId" name="applicationId" value="${application.id}">
-                            <div class="form-section">
-                                <h3><i class="fas fa-user"></i> Basic Information</h3>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="applicationType">Application Type</label>
-                                        <select id="applicationType" name="applicationType" required>
-                                            <?php foreach (getApplicationTypeOptions() as $val => $label): ?>
-                                            <option value="<?php echo $val; ?>" ${application.application_type === '<?php echo $val; ?>' ? 'selected' : ''}><?php echo htmlspecialchars($label); ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="lastName">Last Name</label>
-                                        <input type="text" id="lastName" name="lastName" value="${application.lastName || ''}" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="firstName">First Name</label>
-                                        <input type="text" id="firstName" name="firstName" value="${application.firstName || ''}" required>
-                                    </div>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="middleName">Middle Name</label>
-                                        <input type="text" id="middleName" name="middleName" value="${application.middleName || ''}">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="suffix">Suffix</label>
-                                        <input type="text" id="suffix" name="suffix" value="${application.suffix || ''}">
-                                    </div>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="birthDate">Birth Date</label>
-                                        <input type="date" id="birthDate" name="birthDate" value="${application.birth_date || ''}" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="contactNumber">Contact Number</label>
-                                        <input type="text" id="contactNumber" name="contactNumber" value="${application.contact_number || ''}" required>
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="completeAddress">Complete Address</label>
-                                    <textarea id="completeAddress" name="completeAddress" required>${application.complete_address || ''}</textarea>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="emergencyContactName">Emergency Contact Name</label>
-                                        <input type="text" id="emergencyContactName" name="emergencyContactName" value="${application.emergency_contact_name || ''}">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="emergencyContact">Emergency Contact Number</label>
-                                        <input type="text" id="emergencyContact" name="emergencyContact" value="${application.emergency_contact || ''}">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div id="senior-fields-modal" style="display: ${application.application_type === 'senior' ? 'block' : 'none'}">
-                                <div class="form-section">
-                                    <h3><i class="fas fa-user-friends"></i> Senior Citizen Specific Information</h3>
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label for="seniorIdNumber">ID Number</label>
-                                            <input type="text" id="seniorIdNumber" name="idNumber" value="${application.id_number || ''}">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="form-section">
-                                <h3><i class="fas fa-file-alt"></i> Required Documents</h3>
-                                <div class="form-group">
-                                    <label for="proofOfAddress">Proof of Address</label>
-                                    <input type="file" id="proofOfAddress" name="proofOfAddress">
-                                     <div class="image-placeholder" id="proofOfAddressPreview">
-                                         ${application.has_proof_of_address ? `<img src="../api/get_document.php?id=${appId}&doc_type=proof_of_address" alt="Proof of Address">` : '<p>No document uploaded.</p>'}
-                                     </div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="idImage">ID Image</label>
-                                    <input type="file" id="idImage" name="idImage">
-                                    <div class="image-placeholder" id="idImagePreview">
-                                        ${application.has_id_image ? `<img src="../api/get_document.php?id=${appId}&doc_type=id_image" alt="ID Image">` : '<p>No document uploaded.</p>'}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="form-section">
-                                <h3><i class="fas fa-info-circle"></i> Additional Information</h3>
-                                <div class="form-group">
-                                    <label for="additionalNotes">Additional Notes</label>
-                                    <textarea id="additionalNotes" name="additionalNotes">${application.additional_notes || ''}</textarea>
-                                </div>
-                            </div>
-                            <div class="form-actions">
-                                <button type="submit" class="btn"><i class="fas fa-save"></i> Save Changes</button>
-                                <button type="button" class="btn btn-accent" onclick="exportApplicationDetails(${appId})"><i class="fas fa-download"></i> Export</button>
-                            </div>
-                        </form>
-                    `;
-
-                    // Handle form submission for updating application
-                    document.getElementById('applicationDetailForm').addEventListener('submit', function(e) {
-                        e.preventDefault();
-                        const form = e.target;
-                        const formData = new FormData(form);
-
-                        fetch(form.action, {
-                            method: 'POST',
-                            body: formData
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                alert(data.message);
-                                document.getElementById('applicationModal').style.display = 'none';
-                                // Optionally refresh the table or update the specific row
-                                location.reload(); // Reload the page to reflect changes
-                            } else {
-                                alert(data.message);
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error updating application:', error);
-                            alert('An error occurred while updating the application.');
-                        });
-                    });
-                })
-                .catch(error => {
-                    console.error('Fetch error:', error);
-                    modalBody.innerHTML = '<p>Error loading application details. Please check the console for more information.</p>';
-                });
+    /* ─── Helpers ───────────────────────────────────────────── */
+    function calculateWorkingDays(startDateVal) {
+        if (!startDateVal) return 0;
+        const start = new Date(startDateVal);
+        const end   = new Date();
+        if (start > end) return 0;
+        let days = 0, cur = new Date(start);
+        while (cur < end) {
+            const d = cur.getDay();
+            if (d !== 0 && d !== 6) days++;
+            cur.setDate(cur.getDate() + 1);
         }
+        return days;
+    }
 
-        // Real-time filtering logic
-        document.addEventListener('DOMContentLoaded', function() {
-            const filterForm = document.getElementById('filterForm');
-            const searchInput = document.getElementById('searchInput');
-            const barangayFilter = document.getElementById('barangayFilter');
-            const typeFilter = document.getElementById('typeFilter');
+    /* ─── Open modal and populate ───────────────────────────── */
+    function openApplicationModal(appId) {
+        // Reset placeholders
+        document.getElementById('modalAppTitle').textContent  = 'Loading…';
+        document.getElementById('complianceList').innerHTML   = '<p style="color:var(--gray);font-size:0.85rem;">Loading compliance checks…</p>';
+        document.getElementById('dynamicDetailsSection').innerHTML = '';
+        document.getElementById('timelineList').innerHTML     = '<p style="color:var(--gray);font-size:0.85rem;">Loading history…</p>';
+        document.getElementById('previewProof').innerHTML     = '<span style="color:var(--gray);font-size:0.8rem;">Loading…</span>';
+        document.getElementById('previewIdImage').innerHTML   = '<span style="color:var(--gray);font-size:0.8rem;">Loading…</span>';
 
-            function applyFilters() {
-                const currentUrl = new URL(window.location.href);
-                currentUrl.searchParams.set('search', searchInput.value);
-                currentUrl.searchParams.set('barangay', barangayFilter.value);
-                currentUrl.searchParams.set('type', typeFilter.value);
-                currentUrl.searchParams.set('page', 1); // Reset to first page on filter change
-                window.location.href = currentUrl.toString();
-            }
-
-            searchInput.addEventListener('input', applyFilters);
-            barangayFilter.addEventListener('change', applyFilters);
-            typeFilter.addEventListener('change', applyFilters);
+        // Reset stepper
+        ['step-Received','step-For-Review','step-Verified','step-Approved','step-Released'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.className = 'step';
         });
-    </script>
+
+        document.getElementById('applicationModal').style.display = 'block';
+
+        fetch(`../api/get_application_details.php?id=${encodeURIComponent(appId)}`)
+            .then(r => r.json())
+            .then(app => {
+                if (app.error) {
+                    document.getElementById('complianceList').innerHTML = `<p style="color:red;">${app.error}</p>`;
+                    return;
+                }
+
+                /* ── Title ── */
+                document.getElementById('modalAppTitle').textContent = `${app.full_name} — ${app.id_number}`;
+
+                /* ── Stepper ── */
+                const steps = ['Received','For Review','Verified','Approved','Released'];
+                const state = app.workflow_state || 'Received';
+                let idx = steps.indexOf(state);
+                if (idx === -1) idx = 0;
+                steps.forEach((s, i) => {
+                    const el = document.getElementById('step-' + s.replace(' ','-'));
+                    if (!el) return;
+                    el.classList.add(i < idx ? 'completed' : i === idx ? 'active' : '');
+                });
+
+                /* ── Basic Info ── */
+                document.getElementById('infoName').innerHTML    = `<strong>${app.lastName}, ${app.firstName} ${app.middleName||''} ${app.suffix||''}</strong>`;
+                const birth = new Date(app.birth_date);
+                const today = new Date();
+                let age = today.getFullYear() - birth.getFullYear();
+                if (today.getMonth() < birth.getMonth() || (today.getMonth()===birth.getMonth() && today.getDate()<birth.getDate())) age--;
+                document.getElementById('infoBirth').textContent    = `${app.birth_date} (${age} yrs)`;
+                document.getElementById('infoContact').textContent  = app.contact_number || '—';
+                document.getElementById('infoAddress').textContent  = app.complete_address || '—';
+                document.getElementById('infoBarangay').textContent = app.barangay || '—';
+
+                /* ── Compliance ── */
+                let ch = '';
+                const aiScore  = parseFloat(app.ai_confidence_score || 95);
+                const aiFlag   = (app.ai_status || '') === 'FLAGGED_ANOMALY';
+                if (aiScore >= 90 && !aiFlag) {
+                    ch += `<div class="compliance-item" style="background:rgba(16,185,129,0.06);border-left:3px solid var(--success);padding:6px 8px;border-radius:5px;">
+                        <span style="font-weight:600;"><i class="fas fa-robot" style="color:var(--success)"></i> CNN AI Document Verification</span>
+                        <span class="pass-tag"><i class="fas fa-shield-halved"></i> AI-VERIFIED — ${aiScore.toFixed(1)}%</span>
+                    </div>`;
+                } else {
+                    ch += `<div class="compliance-item" style="background:rgba(239,68,68,0.08);border-left:3px solid var(--danger);padding:6px 8px;border-radius:5px;">
+                        <span style="font-weight:600;"><i class="fas fa-robot" style="color:var(--danger)"></i> CNN AI Document Verification</span>
+                        <span class="fail-tag"><i class="fas fa-triangle-exclamation"></i> ANOMALY DETECTED — ${aiScore.toFixed(1)}%</span>
+                    </div>`;
+                }
+                if (app.application_type !== 'pwd') {
+                    ch += age >= 60
+                        ? `<div class="compliance-item"><span>Age Compliance (60+ Check)</span><span class="pass-tag"><i class="fas fa-circle-check"></i> PASS — Age ${age}</span></div>`
+                        : `<div class="compliance-item"><span>Age Compliance (60+ Check)</span><span class="fail-tag"><i class="fas fa-circle-xmark"></i> FAIL — Age ${age} (under 60)</span></div>`;
+                } else {
+                    ch += `<div class="compliance-item"><span>Age Compliance (PWD)</span><span class="pass-tag" style="color:#3498db;"><i class="fas fa-info-circle"></i> No senior restriction</span></div>`;
+                }
+                if (app.application_type === 'pension') {
+                    const pa = parseFloat(app.pension_amount || 0);
+                    ch += pa <= 4000
+                        ? `<div class="compliance-item"><span>SSS Pension Limit (Pasig Ord. 17/2025)</span><span class="pass-tag"><i class="fas fa-circle-check"></i> PASS — ₱${pa.toFixed(2)} ≤ ₱4,000</span></div>`
+                        : `<div class="compliance-item"><span>SSS Pension Limit (Pasig Ord. 17/2025)</span><span class="fail-tag"><i class="fas fa-circle-xmark"></i> FAIL — ₱${pa.toFixed(2)} exceeds ₱4,000</span></div>`;
+                }
+                if (app.application_type === 'burial') {
+                    const ed = calculateWorkingDays(app.date_of_death);
+                    ch += ed <= 30
+                        ? `<div class="compliance-item"><span>Filing Deadline (Pasig Ord. 3/2026)</span><span class="pass-tag"><i class="fas fa-circle-check"></i> PASS — ${ed} working days</span></div>`
+                        : `<div class="compliance-item"><span>Filing Deadline (Pasig Ord. 3/2026)</span><span class="fail-tag"><i class="fas fa-circle-xmark"></i> FAIL — ${ed} days elapsed</span></div>`;
+                }
+                if (app.priority_level === 'high') {
+                    ch += `<div class="compliance-item" style="background:rgba(245,158,11,0.08);padding:5px;border-radius:4px;">
+                        <span>Priority Queue</span>
+                        <span style="color:#d97706;font-weight:700;"><i class="fas fa-star"></i> High-Priority (Bedridden)</span>
+                    </div>`;
+                }
+                document.getElementById('complianceList').innerHTML = ch;
+
+                /* ── Dynamic Details ── */
+                let dh = '';
+                if (app.application_type === 'pwd') {
+                    dh = `<div class="section-title" style="margin-top:14px;"><i class="fas fa-wheelchair"></i> Disability Details</div>
+                          <div class="info-grid"><div class="info-item wide"><label>Disability Type</label><span>${app.disability_type||'—'}</span></div></div>`;
+                } else if (app.application_type === 'pension') {
+                    dh = `<div class="section-title" style="margin-top:14px;"><i class="fas fa-coins"></i> Social Pension</div>
+                          <div class="info-grid">
+                            <div class="info-item"><label>SSS Number</label><span>${app.sss_number||'—'}</span></div>
+                            <div class="info-item"><label>Monthly Pension</label><span>₱${parseFloat(app.pension_amount||0).toFixed(2)}</span></div>
+                          </div>`;
+                } else if (app.application_type === 'burial') {
+                    dh = `<div class="section-title" style="margin-top:14px;"><i class="fas fa-cross"></i> Burial Assistance</div>
+                          <div class="info-grid">
+                            <div class="info-item"><label>Date of Passing</label><span>${app.date_of_death||'—'}</span></div>
+                            <div class="info-item"><label>Relationship</label><span>${app.relationship_to_deceased||'—'}</span></div>
+                          </div>`;
+                }
+                if (app.is_proxy_application == 1) {
+                    dh += `<div class="section-title" style="margin-top:14px;"><i class="fas fa-user-clock"></i> Proxy Representative</div>
+                           <div class="info-grid">
+                             <div class="info-item"><label>Proxy Name</label><span>${app.proxy_name||'—'}</span></div>
+                             <div class="info-item"><label>Relationship</label><span>${app.proxy_relationship||'—'}</span></div>
+                             <div class="info-item"><label>Contact</label><span>${app.proxy_contact_number||'—'}</span></div>
+                             <div class="info-item"><label>Token</label><span>${app.proxy_token||'—'}</span></div>
+                           </div>`;
+                }
+                document.getElementById('dynamicDetailsSection').innerHTML = dh;
+
+                /* ── Document Previews ── */
+                document.getElementById('previewProof').innerHTML = app.has_proof_of_address
+                    ? `<img src="../api/get_document.php?id=${appId}&doc_type=proof_of_address" alt="Proof of Address">`
+                    : '<span style="color:var(--gray);font-size:0.8rem;"><i class="fas fa-file-slash"></i> No file uploaded</span>';
+
+                document.getElementById('previewIdImage').innerHTML = app.has_id_image
+                    ? `<img src="../api/get_document.php?id=${appId}&doc_type=id_image" alt="ID Photo">`
+                    : '<span style="color:var(--gray);font-size:0.8rem;"><i class="fas fa-file-slash"></i> No file uploaded</span>';
+
+                /* ── Timeline ── */
+                let th = '';
+                if (app.history && app.history.length > 0) {
+                    app.history.forEach(log => {
+                        const t = new Date(log.changed_at.replace(' ','T')).toLocaleString();
+                        th += `<div class="timeline-event">
+                            <div class="timeline-time">${t}</div>
+                            <div class="timeline-title">${log.previous_state} &rarr; ${log.new_state}</div>
+                            <div class="timeline-by">By: ${log.changed_by}</div>
+                            ${log.comments ? `<div class="timeline-note">&ldquo;${log.comments}&rdquo;</div>` : ''}
+                        </div>`;
+                    });
+                } else {
+                    th = '<p style="color:var(--gray);font-size:0.85rem;">No transition history found.</p>';
+                }
+                document.getElementById('timelineList').innerHTML = th;
+            })
+            .catch(err => {
+                console.error(err);
+                document.getElementById('complianceList').innerHTML = '<p style="color:red;">Failed to load details. Please try again.</p>';
+            });
+    }
+</script>
 </body>
 </html>
