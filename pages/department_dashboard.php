@@ -29,7 +29,7 @@ require_once '../includes/db_connect.php';
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         
         body {
@@ -65,8 +65,28 @@ require_once '../includes/db_connect.php';
         }
         
         .header h1 {
+            font-family: 'Inter', sans-serif;
             color: var(--primary);
-            font-size: 1.8rem;
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.05;
+            margin: 0;
+        }
+        .header h1 span { color: var(--accent); }
+        .welcome-message,
+        .greeting {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.98rem;
+            font-weight: 500;
+            color: #6b7280;
+            margin-bottom: 6px;
+            line-height: 1.3;
+        }
+        .welcome-message strong,
+        .greeting strong {
+            color: #2563eb;
+            font-weight: 700;
         }
         
         .user-info {
@@ -551,7 +571,7 @@ require_once '../includes/db_connect.php';
                         </div>
                         <div class="user-details">
                             <h2><?php echo htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']); ?></h2>
-                            <p><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $_SESSION['role']))); ?></p>
+                            <p><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $_SESSION['role']))) . ' · Pasig City'; ?></p>
                         </div>
                     </div>
                 </div>

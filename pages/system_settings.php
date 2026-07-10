@@ -220,15 +220,29 @@ try {
             flex-direction: column;
         }
 
-        .welcome-message {
-            font-size: 1.2rem;
-            color: var(--gray);
-            margin-bottom: 5px;
+        .welcome-message,
+        .greeting {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.98rem;
+            font-weight: 500;
+            color: #6b7280;
+            margin-bottom: 6px;
+            line-height: 1.3;
+        }
+        .welcome-message strong,
+        .greeting strong {
+            color: #2563eb;
+            font-weight: 700;
         }
 
         .header h1 {
+            font-family: 'Inter', sans-serif;
             color: var(--primary);
-            font-size: 1.8rem;
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.05;
+            margin: 0;
         }
 
         .header-actions {
@@ -241,10 +255,11 @@ try {
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 8px 15px;
-            background: white;
-            border-radius: 25px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            padding: 5px 12px;
+            border-radius: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            border: 3px solid transparent;
+            background: linear-gradient(var(--card-bg), var(--card-bg)) padding-box, linear-gradient(135deg, #0f172a 0%, #3498db 100%) border-box;
         }
 
         .user-avatar {
@@ -463,11 +478,11 @@ try {
                         </div>
                         <div class="user-details">
                             <h2><?php echo htmlspecialchars(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? '')); ?></h2>
-                            <p><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', ($user['role'] ?? '')))); ?></p>
-          </div>
-          </div>
+                            <p><?php echo (($user['role'] ?? '') === 'department_admin') ? 'Department Admin · Pasig City' : htmlspecialchars(ucwords(str_replace('_', ' ', $user['role'] ?? ''))) . ' · ' . htmlspecialchars($user['barangay'] ?? ''); ?></p>
+                        </div>
         </div>
       </div>
+    </div>
 
             <?php if ($message): ?>
                 <div class="message" style="background-color: var(--success); color: white; padding: 10px; border-radius: 5px; margin-bottom: 15px;"><?php echo $message; ?></div>

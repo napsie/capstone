@@ -64,17 +64,38 @@ $verifiedC     = $queueStats['verified'] ?? 0;
             align-items: center;
             margin-bottom: 28px;
         }
-        .page-header-left h1 { font-size: 1.7rem; font-weight: 800; color: var(--primary); margin: 0; }
-        .page-header-left h1 span { color: var(--accent); }
+        .page-header-left h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: #0f172a;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            line-height: 1.05;
+        }
+        .page-header-left h1 span {
+            color: #2563eb;
+        }
+        .greeting {
+            font-size: 0.98rem;
+            font-weight: 500;
+            color: #6b7280;
+            margin-bottom: 4px;
+            font-family: 'Inter', sans-serif;
+        }
+        .greeting strong {
+            font-weight: 700;
+            color: #111827;
+        }
         .header-user {
             display: flex;
             align-items: center;
             gap: 12px;
-            background: var(--card);
-            border-radius: 12px;
-            padding: 10px 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-            border: 1px solid var(--border);
+            border-radius: 30px;
+            padding: 8px 14px;
+            box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+            border: 1px solid rgba(37, 99, 235, 0.22);
+            background: linear-gradient(var(--card), var(--card)) padding-box, linear-gradient(135deg, #0f172a 0%, #3498db 100%) border-box;
         }
         .header-user img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); }
         .header-user-info h3 { font-size: 0.9rem; font-weight: 700; color: var(--primary); margin: 0; }

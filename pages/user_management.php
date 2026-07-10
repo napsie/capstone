@@ -180,13 +180,36 @@ try {
     <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=1.1">
     <style>
         /* Existing styles remain unchanged */
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         :root { --primary: #0f172a; --secondary: #1e3a5f; --accent: #2563eb; --success: #10b981; --warning: #f59e0b; --light: #f8fafc; --dark: #020617; --gray: #94a3b8; }
         body { background-color: #f1f5f9; color: #0f172a; line-height: 1.6; }
         .container { display: flex; }
         .main-content { flex-grow: 1; padding: 20px; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0; }
-        .header h1 { color: var(--primary); font-size: 1.8rem; }
+        .header h1 {
+            font-family: 'Inter', sans-serif;
+            color: var(--primary);
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.05;
+            margin: 0;
+        }
+        .header h1 span { color: var(--accent); }
+        .welcome-message,
+        .greeting {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.98rem;
+            font-weight: 500;
+            color: #6b7280;
+            margin-bottom: 6px;
+            line-height: 1.3;
+        }
+        .welcome-message strong,
+        .greeting strong {
+            color: #2563eb;
+            font-weight: 700;
+        }
         .card { background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); padding: 20px; margin-bottom: 20px; }
         .card h3 { font-size: 18px; margin-bottom: 15px; color: white; background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%); display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-radius: 10px; }
         .card h3 i { margin-right: 10px; color: inherit; }

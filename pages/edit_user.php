@@ -367,9 +367,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
         }
 
         .header h1 {
+            font-family: 'Inter', sans-serif;
             color: var(--primary);
-            font-size: 1.8rem;
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.05;
+            margin: 0;
         }
+        .header h1 span { color: var(--accent); }
 
         .user-info {
             display: flex;
@@ -567,7 +573,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
                     </div>
                     <div class="user-details">
                         <h2><?php echo htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']); ?></h2>
-                        <p><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $_SESSION['role']))); ?></p>
+                        <p><?php echo ($_SESSION['role'] === 'department_admin') ? 'Department Admin · Pasig City' : htmlspecialchars(ucwords(str_replace('_', ' ', $_SESSION['role']))) . ' · ' . htmlspecialchars($_SESSION['barangay'] ?? ''); ?></p>
                     </div>
                 </div>
             </div>

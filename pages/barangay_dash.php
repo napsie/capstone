@@ -17,11 +17,23 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CPRAS Dashboard - Barangay <?php echo $barangayName; ?></title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=1.1">
-    <link rel="stylesheet" href="../assets/css/main-dark-mode.css?v=1.1">
+    <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=1.2">
+    <link rel="stylesheet" href="../assets/css/main-dark-mode.css?v=1.2">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* Page-specific styles for dashboard */
+        .welcome-message {
+            font-size: 0.98rem;
+            font-weight: 500;
+            color: #6b7280;
+            margin-bottom: 6px;
+            font-family: 'Inter', sans-serif;
+            line-height: 1.3;
+        }
+        .welcome-message strong {
+            color: #2563eb;
+            font-weight: 700;
+        }
         .dashboard-panels {
             display: grid;
             grid-template-columns: 1fr;
@@ -110,7 +122,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
         <div class="main-content">
             <div class="header">
                 <div class="header-content">
-                    <div class="welcome-message" data-first-name="<?php echo htmlspecialchars($_SESSION['first_name']); ?>" data-last-name="<?php echo htmlspecialchars($_SESSION['last_name']); ?>"></div>
+                    <div class="welcome-message" style="font-size:0.98rem;font-weight:500;color:#6b7280;margin-bottom:6px;font-family:'Inter',sans-serif;line-height:1.3;" data-first-name="<?php echo htmlspecialchars($_SESSION['first_name']); ?>" data-last-name="<?php echo htmlspecialchars($_SESSION['last_name']); ?>"></div>
                     <h1>Barangay <?php echo $barangayName; ?> Dashboard</h1>
                 </div>
                 <div class="header-actions">

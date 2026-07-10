@@ -75,26 +75,36 @@ function getStatusClass($status) {
             margin-bottom: 28px;
         }
         .page-header-left .greeting {
-            font-size: 0.88rem;
-            color: var(--gray);
-            margin-bottom: 4px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.98rem;
+            font-weight: 500;
+            color: #6b7280;
+            margin-bottom: 6px;
+            line-height: 1.3;
+        }
+        .page-header-left .greeting strong {
+            color: #2563eb;
+            font-weight: 700;
         }
         .page-header-left h1 {
-            font-size: 1.7rem;
+            font-family: 'Inter', sans-serif;
+            font-size: 2rem;
             font-weight: 800;
+            letter-spacing: -0.02em;
             color: var(--primary);
             margin: 0;
+            line-height: 1.05;
         }
         .page-header-left h1 span { color: var(--accent); }
         .header-user {
             display: flex;
             align-items: center;
             gap: 12px;
-            background: var(--card);
-            border-radius: 12px;
-            padding: 10px 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-            border: 1px solid var(--border);
+            border-radius: 30px;
+            padding: 7px 13px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border: 3px solid transparent;
+            background: linear-gradient(var(--card), var(--card)) padding-box, linear-gradient(135deg, #0f172a 0%, #3498db 100%) border-box;
         }
         .header-user img {
             width: 40px; height: 40px;
