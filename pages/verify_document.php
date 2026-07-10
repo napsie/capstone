@@ -649,8 +649,15 @@ $verifiedC     = $queueStats['verified'] ?? 0;
         document.getElementById('applicationModal').style.display = 'block';
 
         fetch(`../api/get_application_details.php?id=${encodeURIComponent(appId)}`)
-            .then(r => r.json())
-            .then(app => {
+            .then(r => r.text())
+            .then(text => {
+                let app;
+                try { app = JSON.parse(text); }
+                catch(parseErr) {
+                    document.getElementById('complianceList').innerHTML =
+                        `<p style="color:red;"><strong>Server Error (non-JSON response):</strong><br><pre style="font-size:0.75rem;overflow:auto;">${text.substring(0,600)}</pre></p>`;
+                    return;
+                }
                 if (app.error) {
                     document.getElementById('complianceList').innerHTML = `<p style="color:red;">${app.error}</p>`;
                     return;
@@ -668,7 +675,8 @@ $verifiedC     = $queueStats['verified'] ?? 0;
                 steps.forEach((s, i) => {
                     const el = document.getElementById('step-' + s.replace(' ','-'));
                     if (!el) return;
-                    el.classList.add(i < idx ? 'completed' : i === idx ? 'active' : '');
+                    if (i < idx) el.classList.add('completed');
+                    else if (i === idx) el.classList.add('active');
                 });
 
                 /* ── Basic Info ── */
@@ -812,7 +820,7 @@ $verifiedC     = $queueStats['verified'] ?? 0;
                 let th = '';
                 if (app.history && app.history.length > 0) {
                     app.history.forEach(log => {
-                        const t = new Date(log.changed_at.replace(' ','T')).toLocaleString();
+                        const t = new Date((log.changed_at || '').replace(' ','T')).toLocaleString();
                         th += `<div class="timeline-event">
                             <div class="timeline-time">${t}</div>
                             <div class="timeline-title">${log.previous_state} &rarr; ${log.new_state}</div>
@@ -827,7 +835,7 @@ $verifiedC     = $queueStats['verified'] ?? 0;
             })
             .catch(err => {
                 console.error(err);
-                alert("Failed to load application profile.");
+                document.getElementById('complianceList').innerHTML = `<p style="color:red;">Network error: ${err.message}</p>`;
             });
     }
 

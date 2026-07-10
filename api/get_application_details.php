@@ -1,7 +1,16 @@
 <?php
 session_start();
-require_once '../includes/db_connect.php';
-require_once '../includes/application_types.php';
+
+// Wrap everything so we always output JSON, never HTML error pages
+try {
+    require_once '../includes/db_connect.php';
+    require_once '../includes/application_types.php';
+} catch (Throwable $boot_err) {
+    header('Content-Type: application/json');
+    http_response_code(500);
+    echo json_encode(['error' => 'Database connection failed: ' . $boot_err->getMessage()]);
+    exit();
+}
 
 header('Content-Type: application/json');
 
@@ -20,7 +29,7 @@ $baseCols = "a.id_number, a.full_name, a.application_type, a.birth_date, a.conta
              (a.proof_of_address IS NOT NULL) as has_proof_of_address, (a.id_image IS NOT NULL) as has_id_image,
              a.lastName, a.firstName, a.middleName, a.suffix,
              a.sss_number, a.pension_amount, a.date_of_death, a.relationship_to_deceased,
-             a.is_proxy_application, a.proxy_name, a.proxy_relationship, a.proxy_token,
+             a.is_proxy_application, a.proxy_name, a.proxy_relationship, a.proxy_contact_number, a.proxy_token,
              a.priority_level, a.workflow_state, a.additional_notes, a.email_address,
              a.psa_birth_cert, a.barangay_residency, a.comelec_cert, a.proof_of_life,
              a.auth_letter, a.proxy_id, a.proxy_birth_cert, a.home_visitation_form,

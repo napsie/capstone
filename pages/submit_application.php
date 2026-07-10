@@ -784,8 +784,15 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
         });
 
         fetch(`../api/get_application_details.php?id=${encodeURIComponent(appId)}`)
-            .then(r => r.json())
-            .then(app => {
+            .then(r => r.text())
+            .then(text => {
+                let app;
+                try { app = JSON.parse(text); }
+                catch(parseErr) {
+                    alert("Server error. Check below for raw output:\n\n" + text.substring(0, 1000));
+                    console.error("Non-JSON response:", text);
+                    return;
+                }
                 if (app.error) { alert(app.error); return; }
 
                 document.getElementById('modalAppTitle').textContent = `Reviewing: ${app.full_name} (${app.id_number})`;
@@ -835,7 +842,9 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                 if (idx === -1) idx = 0;
                 steps.forEach((s, i) => {
                     const el = document.getElementById('step-' + s.replace(' ','-'));
-                    if (el) el.classList.add(i < idx ? 'completed' : i === idx ? 'active' : '');
+                    if (!el) return;
+                    if (i < idx) el.classList.add('completed');
+                    else if (i === idx) el.classList.add('active');
                 });
 
                 // File previews
@@ -915,7 +924,7 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                 let th = '';
                 if (app.history && app.history.length > 0) {
                     app.history.forEach(log => {
-                        const t = new Date(log.changed_at.replace(' ','T')).toLocaleString();
+                        const t = new Date((log.changed_at || '').replace(' ','T')).toLocaleString();
                         th += `<div class="timeline-event">
                             <div class="timeline-time">${t}</div>
                             <div class="timeline-title">${log.previous_state} &rarr; ${log.new_state}</div>
@@ -928,7 +937,7 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                 }
                 document.getElementById('timelineList').innerHTML = th;
             })
-            .catch(err => { console.error(err); alert("Failed to fetch application profile details."); });
+            .catch(err => { console.error(err); alert("Connection or network error: " + err.message); });
     }
 
     /* ─── Form submit handler ─── */
@@ -947,7 +956,7 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                     alert(data.message);
                 }
             })
-            .catch(err => { console.error(err); alert("An error occurred during updating."); });
+            .catch(err => { console.error(err); alert("An error occurred during updating: " + err.message); });
     });
 
     /* ─── Action Functions ─── */
@@ -970,7 +979,7 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                     alert("Submission Error: " + res.message);
                 }
             })
-            .catch(err => { console.error(err); alert("Connection error during submission."); });
+            .catch(err => { console.error(err); alert("Connection error during submission: " + err.message); });
     }
 
     function deleteApplication(appId) {
@@ -989,7 +998,8 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
             } else {
                 alert(data.message);
             }
-        });
+        })
+        .catch(err => { console.error(err); alert("Connection error during deletion: " + err.message); });
     }
 
     function exportApplicationDetails(idNo) {
