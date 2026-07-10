@@ -62,6 +62,19 @@ try {
         exit();
     }
 
+    if (empty(trim($application['complete_address'] ?? ''))) {
+        $addressParts = array_filter([
+            $application['house_no'] ?? '',
+            $application['street'] ?? '',
+            $application['barangay'] ?? '',
+            $application['city'] ?? '',
+            $application['province'] ?? '',
+            $application['zip_code'] ?? '',
+        ], fn($part) => trim((string)$part) !== '');
+
+        $application['complete_address'] = implode(', ', $addressParts);
+    }
+
     $stmtHistory = $conn->prepare("SELECT previous_state, new_state, changed_by, changed_at, comments
                                    FROM application_history WHERE application_id = ? ORDER BY changed_at ASC");
     $stmtHistory->execute([$appId]);

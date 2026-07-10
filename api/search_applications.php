@@ -14,7 +14,9 @@ if (isset($_SESSION['user_id']) && $_SESSION['role'] === 'barangay_staff') {
     $filter_barangay = $_SESSION['barangay'];
 }
 
-$sql = "SELECT a.id_number as id, a.full_name, a.application_type, a.birth_date, a.contact_number, a.date_submitted, a.status, a.complete_address, a.workflow_state, a.priority_level,
+$sql = "SELECT a.id_number as id, a.full_name, a.application_type, a.birth_date, a.contact_number, a.date_submitted, a.status,
+               a.complete_address, a.house_no, a.street, a.city, a.province, a.zip_code, a.barangay,
+               a.workflow_state, a.priority_level,
                (SELECT h.comments FROM application_history h WHERE h.application_id = a.id_number AND h.new_state = 'Received' AND h.previous_state != 'None' ORDER BY h.changed_at DESC LIMIT 1) as return_comments
         FROM applications a";
 $params = [];
@@ -61,6 +63,22 @@ $sql .= " ORDER BY CASE WHEN a.priority_level = 'high' THEN 0 ELSE 1 END, a.date
 $stmt = $conn->prepare($sql);
 $stmt->execute($params);
 $applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+foreach ($applications as &$application) {
+    if (empty(trim($application['complete_address'] ?? ''))) {
+        $addressParts = array_filter([
+            $application['house_no'] ?? '',
+            $application['street'] ?? '',
+            $application['barangay'] ?? '',
+            $application['city'] ?? '',
+            $application['province'] ?? '',
+            $application['zip_code'] ?? '',
+        ], fn($part) => trim((string)$part) !== '');
+
+        $application['complete_address'] = implode(', ', $addressParts);
+    }
+}
+unset($application);
 
 echo json_encode($applications);
 ?>
