@@ -850,35 +850,8 @@ function getStatusBadge($status) {
                     </div>`;
                 }
                 document.getElementById('complianceList').innerHTML = ch;
-
-                /* ── Dynamic Details ── */
-                let dh = '';
-                if (app.application_type === 'pwd') {
-                    dh = `<div class="section-title" style="margin-top:14px;"><i class="fas fa-wheelchair"></i> Disability Details</div>
-                          <div class="info-grid"><div class="info-item wide"><label>Disability Type</label><span>${app.disability_type||'—'}</span></div></div>`;
-                } else if (app.application_type === 'pension') {
-                    dh = `<div class="section-title" style="margin-top:14px;"><i class="fas fa-coins"></i> Social Pension</div>
-                          <div class="info-grid">
-                            <div class="info-item"><label>SSS Number</label><span>${app.sss_number||'—'}</span></div>
-                            <div class="info-item"><label>Monthly Pension</label><span>₱${parseFloat(app.pension_amount||0).toFixed(2)}</span></div>
-                          </div>`;
-                } else if (app.application_type === 'burial') {
-                    dh = `<div class="section-title" style="margin-top:14px;"><i class="fas fa-cross"></i> Burial Assistance</div>
-                          <div class="info-grid">
-                            <div class="info-item"><label>Date of Passing</label><span>${app.date_of_death||'—'}</span></div>
-                            <div class="info-item"><label>Relationship</label><span>${app.relationship_to_deceased||'—'}</span></div>
-                          </div>`;
-                }
-                if (app.is_proxy_application == 1) {
-                    dh += `<div class="section-title" style="margin-top:14px;"><i class="fas fa-user-clock"></i> Proxy Representative</div>
-                           <div class="info-grid">
-                             <div class="info-item"><label>Proxy Name</label><span>${app.proxy_name||'—'}</span></div>
-                             <div class="info-item"><label>Relationship</label><span>${app.proxy_relationship||'—'}</span></div>
-                             <div class="info-item"><label>Contact</label><span>${app.proxy_contact_number||'—'}</span></div>
-                             <div class="info-item"><label>Token</label><span>${app.proxy_token||'—'}</span></div>
-                           </div>`;
-                }
-                document.getElementById('dynamicDetailsSection').innerHTML = dh;
+                /* ── Dynamic Details (Complete details rendering) ── */
+                document.getElementById('dynamicDetailsSection').innerHTML = getCompleteDetailsHtml(app);
 
                 /* ── Document Previews ── */
                 document.getElementById('previewProof').innerHTML = app.has_proof_of_address
@@ -910,6 +883,197 @@ function getStatusBadge($status) {
                 console.error(err);
                 document.getElementById('complianceList').innerHTML = '<p style="color:red;">Failed to load details. Please try again.</p>';
             });
+    }
+
+    function getCompleteDetailsHtml(app) {
+        function getFieldHtml(label, val) {
+            if (val === null || val === undefined || val === '' || val === '0' || val === 0) return '';
+            if (val === 1 || val === '1') val = 'Yes';
+            return `
+                <div class="info-item">
+                    <label>${label}</label>
+                    <span>${val}</span>
+                </div>`;
+        }
+
+        let dynamicHtml = "";
+
+        // 1. Personal & Demographics Extra Info
+        let personalHtml = "";
+        personalHtml += getFieldHtml("Place of Birth", app.place_of_birth);
+        personalHtml += getFieldHtml("Gender", app.gender);
+        personalHtml += getFieldHtml("Civil Status", app.civil_status);
+        personalHtml += getFieldHtml("Mother's Maiden Name", app.mothers_maiden_name);
+        personalHtml += getFieldHtml("Nationality", app.nationality);
+        personalHtml += getFieldHtml("Email Address", app.email_address);
+
+        if (personalHtml) {
+            dynamicHtml += `
+                <div class="section-title" style="margin-top:20px;"><i class="fas fa-id-card-clip"></i> Personal Profile</div>
+                <div class="info-grid">
+                    ${personalHtml}
+                </div>`;
+        }
+
+        // 2. Household & Housing
+        let housingHtml = "";
+        housingHtml += getFieldHtml("House No", app.house_no);
+        housingHtml += getFieldHtml("Street", app.street);
+        housingHtml += getFieldHtml("City", app.city);
+        housingHtml += getFieldHtml("Province", app.province);
+        housingHtml += getFieldHtml("Zip Code", app.zip_code);
+        housingHtml += getFieldHtml("Landmark", app.landmark);
+        housingHtml += getFieldHtml("Owns House", app.owns_house);
+        housingHtml += getFieldHtml("Renter", app.is_renter);
+
+        if (housingHtml) {
+            dynamicHtml += `
+                <div class="section-title" style="margin-top:20px;"><i class="fas fa-house-user"></i> Address Details</div>
+                <div class="info-grid">
+                    ${housingHtml}
+                </div>`;
+        }
+
+        // 3. Financial & Pension Info
+        let financeHtml = "";
+        financeHtml += getFieldHtml("SSS Number", app.sss_number);
+        financeHtml += getFieldHtml("Pension Amount", app.pension_amount ? `₱${parseFloat(app.pension_amount).toFixed(2)}` : '');
+        financeHtml += getFieldHtml("Is Pensioner", app.is_pensioner);
+        financeHtml += getFieldHtml("Pension Source", app.pension_source);
+        financeHtml += getFieldHtml("Permanent Income", app.is_permanent_income);
+        financeHtml += getFieldHtml("Income Source", app.income_source);
+        financeHtml += getFieldHtml("Personal Income Amount", app.personal_income_amount ? `₱${parseFloat(app.personal_income_amount).toFixed(2)}` : '');
+        financeHtml += getFieldHtml("Source of Funds", app.source_of_funds);
+        financeHtml += getFieldHtml("Family Support Amount", app.family_support_amount ? `₱${parseFloat(app.family_support_amount).toFixed(2)}` : '');
+
+        if (financeHtml) {
+            dynamicHtml += `
+                <div class="section-title" style="margin-top:20px;"><i class="fas fa-wallet"></i> Financial Profile</div>
+                <div class="info-grid">
+                    ${financeHtml}
+                </div>`;
+        }
+
+        // 4. OSCA Registration & Banking info
+        let oscaRegHtml = "";
+        oscaRegHtml += getFieldHtml("Senior ID No", app.senior_id_no);
+        oscaRegHtml += getFieldHtml("ID Purpose", app.id_purpose);
+        oscaRegHtml += getFieldHtml("Control No", app.control_no);
+        oscaRegHtml += getFieldHtml("Landbank Card No", app.landbank_card_no);
+        oscaRegHtml += getFieldHtml("ATM Card No", app.atm_card_no);
+        oscaRegHtml += getFieldHtml("Name on Card", app.name_on_card);
+        oscaRegHtml += getFieldHtml("TIN", app.tin);
+        oscaRegHtml += getFieldHtml("ID Type Presented", app.id_type_presented);
+        oscaRegHtml += getFieldHtml("Parent Senior ID", app.parent_senior_id);
+
+        if (oscaRegHtml) {
+            dynamicHtml += `
+                <div class="section-title" style="margin-top:20px;"><i class="fas fa-piggy-bank"></i> Registration & Banking</div>
+                <div class="info-grid">
+                    ${oscaRegHtml}
+                </div>`;
+        }
+
+        // 5. Health & Living Arrangement
+        let healthHtml = "";
+        healthHtml += getFieldHtml("Health Status", app.health_status);
+        healthHtml += getFieldHtml("Health Condition", app.health_condition);
+        healthHtml += getFieldHtml("Living Arrangement", app.living_arrangement);
+        healthHtml += getFieldHtml("With Maintenance Meds", app.with_maintenance);
+        healthHtml += getFieldHtml("Maintenance Specification", app.maintenance_spec);
+        healthHtml += getFieldHtml("Priority Level", app.priority_level);
+
+        if (healthHtml) {
+            dynamicHtml += `
+                <div class="section-title" style="margin-top:20px;"><i class="fas fa-heart-pulse"></i> Health & Wellness</div>
+                <div class="info-grid">
+                    ${healthHtml}
+                </div>`;
+        }
+
+        // 6. Burial Claims
+        let burialHtml = "";
+        if (app.application_type === 'burial' || app.deceased_last_name) {
+            let decName = [app.deceased_last_name, app.deceased_first_name, app.deceased_middle_name, app.deceased_suffix].filter(Boolean).join(' ');
+            burialHtml += getFieldHtml("Deceased Senior Name", decName);
+            burialHtml += getFieldHtml("Date of Passing", app.date_of_death);
+            burialHtml += getFieldHtml("Relationship to Deceased", app.relationship_to_deceased);
+            burialHtml += getFieldHtml("Deceased Birth Date", app.deceased_birth_date);
+            burialHtml += getFieldHtml("Claimant Name", app.claimant_name);
+            burialHtml += getFieldHtml("Claimant Relationship", app.claimant_relationship);
+            burialHtml += getFieldHtml("Claimant Contact", app.claimant_contact);
+        }
+
+        if (burialHtml) {
+            dynamicHtml += `
+                <div class="section-title" style="margin-top:20px;"><i class="fas fa-ribbon"></i> Burial Claim Details</div>
+                <div class="info-grid">
+                    ${burialHtml}
+                </div>`;
+        }
+
+        // 7. PWD details
+        let pwdHtml = "";
+        pwdHtml += getFieldHtml("Disability Type", app.disability_type);
+        if (pwdHtml) {
+            dynamicHtml += `
+                <div class="section-title" style="margin-top:20px;"><i class="fas fa-wheelchair"></i> Disability Support Info</div>
+                <div class="info-grid">
+                    ${pwdHtml}
+                </div>`;
+        }
+
+        // 8. Milestone Gifts
+        let milestoneHtml = "";
+        milestoneHtml += getFieldHtml("Milestone Age", app.milestone_age);
+        milestoneHtml += getFieldHtml("Milestone Applicant Name", app.applicant_name);
+        if (milestoneHtml) {
+            dynamicHtml += `
+                <div class="section-title" style="margin-top:20px;"><i class="fas fa-cake-candles"></i> Milestone Celebration Details</div>
+                <div class="info-grid">
+                    ${milestoneHtml}
+                </div>`;
+        }
+
+        // 9. Home Visit summaries
+        let visitHtml = "";
+        visitHtml += getFieldHtml("Visit Purpose", app.visit_purpose);
+        visitHtml += getFieldHtml("Visit Summary", app.visit_summary);
+        if (visitHtml) {
+            dynamicHtml += `
+                <div class="section-title" style="margin-top:20px;"><i class="fas fa-person-walking-luggage"></i> Field Visit Summary</div>
+                <div class="info-grid">
+                    ${visitHtml}
+                </div>`;
+        }
+
+        // 10. Proxy Details
+        let proxyHtml = "";
+        if (app.is_proxy_application == 1) {
+            proxyHtml += getFieldHtml("Proxy Name", app.proxy_name);
+            proxyHtml += getFieldHtml("Relationship", app.proxy_relationship);
+            proxyHtml += getFieldHtml("Proxy Contact", app.proxy_contact_number);
+            proxyHtml += getFieldHtml("Proxy Token", app.proxy_token);
+        }
+        if (proxyHtml) {
+            dynamicHtml += `
+                <div class="section-title" style="margin-top:20px;"><i class="fas fa-user-clock"></i> Proxy Representative Details</div>
+                <div class="info-grid">
+                    ${proxyHtml}
+                </div>`;
+        }
+
+        // 11. Additional Notes
+        let notesHtml = getFieldHtml("Additional Notes / Remarks", app.additional_notes);
+        if (notesHtml) {
+            dynamicHtml += `
+                <div class="section-title" style="margin-top:20px;"><i class="fas fa-comment-dots"></i> Additional Notes</div>
+                <div class="info-grid">
+                    ${notesHtml}
+                </div>`;
+        }
+
+        return dynamicHtml;
     }
 </script>
 </body>
