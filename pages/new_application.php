@@ -1575,11 +1575,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         <div style="display:grid;grid-template-columns:0.8fr 1fr 0.8fr;gap:8px;">
                                             <div>
                                                 <label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">House/Lot/Block/Bldg. No.</label>
-                                                <input type="text" id="burialAddrHouseNo" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="e.g. 123 Blk 4">
+                                                <input type="text" id="burialAddrHouseNo" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'houseNo'); syncAddressFromActiveCard();" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="e.g. 123 Blk 4">
                                             </div>
                                             <div>
                                                 <label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">Street/Road/Purok/Subd/Village</label>
-                                                <input type="text" id="burialAddrStreet" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="e.g. Mabini St.">
+                                                <input type="text" id="burialAddrStreet" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'street'); syncAddressFromActiveCard();" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="e.g. Mabini St.">
                                             </div>
                                             <div>
                                                 <label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">Barangay</label>
@@ -1849,11 +1849,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <div style="display:grid;grid-template-columns:0.7fr 1fr 0.7fr 0.5fr 0.5fr;gap:8px;">
                                         <div>
                                             <label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">House No.</label>
-                                            <input type="text" id="hvHouseNo" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#0891b2';" onblur="this.style.borderColor='#d0dae8';" placeholder="e.g. 123 Blk 4">
+                                            <input type="text" id="hvHouseNo" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'houseNo'); syncAddressFromActiveCard();" onfocus="this.style.borderColor='#0891b2';" onblur="this.style.borderColor='#d0dae8';" placeholder="e.g. 123 Blk 4">
                                         </div>
                                         <div>
                                             <label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">Street</label>
-                                            <input type="text" id="hvStreet" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#0891b2';" onblur="this.style.borderColor='#d0dae8';" placeholder="e.g. Mabini St.">
+                                            <input type="text" id="hvStreet" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'street'); syncAddressFromActiveCard();" onfocus="this.style.borderColor='#0891b2';" onblur="this.style.borderColor='#d0dae8';" placeholder="e.g. Mabini St.">
                                         </div>
                                         <div>
                                             <label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">Barangay</label>
@@ -1865,7 +1865,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         </div>
                                         <div>
                                             <label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">Province / ZIP</label>
-                                            <input type="text" placeholder="MM / 1600" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#0891b2';" onblur="this.style.borderColor='#d0dae8';">
+                                            <input type="text" id="hvZipCode" placeholder="1600" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'zipCode'); syncAddressFromActiveCard();" onfocus="this.style.borderColor='#0891b2';" onblur="this.style.borderColor='#d0dae8';">
                                         </div>
                                     </div>
                                 </div>
@@ -2144,11 +2144,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <div style="display:grid;grid-template-columns:0.7fr 1fr 0.7fr 0.5fr 0.5fr;gap:8px;">
                                         <div>
                                             <label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">House No.</label>
-                                            <input type="text" id="msHouseNo" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#be185d';" onblur="this.style.borderColor='#d0dae8';" placeholder="e.g. 123 Blk 4">
+                                            <input type="text" id="msHouseNo" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'houseNo'); syncAddressFromActiveCard();" onfocus="this.style.borderColor='#be185d';" onblur="this.style.borderColor='#d0dae8';" placeholder="e.g. 123 Blk 4">
                                         </div>
                                         <div>
                                             <label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">Street</label>
-                                            <input type="text" id="msStreet" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#be185d';" onblur="this.style.borderColor='#d0dae8';" placeholder="e.g. Mabini St.">
+                                            <input type="text" id="msStreet" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'street'); syncAddressFromActiveCard();" onfocus="this.style.borderColor='#be185d';" onblur="this.style.borderColor='#d0dae8';" placeholder="e.g. Mabini St.">
                                         </div>
                                         <div>
                                             <label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">Barangay</label>
@@ -2160,7 +2160,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         </div>
                                         <div>
                                             <label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">Province / ZIP</label>
-                                            <input type="text" placeholder="MM / 1600" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#be185d';" onblur="this.style.borderColor='#d0dae8';">
+                                            <input type="text" id="msZipCode" placeholder="1600" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'zipCode'); syncAddressFromActiveCard();" onfocus="this.style.borderColor='#be185d';" onblur="this.style.borderColor='#d0dae8';">
                                         </div>
                                     </div>
                                 </div>
@@ -2444,10 +2444,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         <i class="fas fa-map-marker-alt" style="color:#b45309;"></i> Address
                                     </label>
                                     <div style="display:grid;grid-template-columns:0.7fr 1fr 0.7fr 0.5fr;gap:8px;">
-                                        <div><label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">House/Blk/Lot No.</label><input type="text" id="penHouseNo" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#b45309';" onblur="this.style.borderColor='#d0dae8';" placeholder="e.g. 123 Blk 4"></div>
-                                        <div><label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">Street/Purok/Village</label><input type="text" id="penStreet" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#b45309';" onblur="this.style.borderColor='#d0dae8';" placeholder="e.g. Mabini St."></div>
+                                        <div><label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">House/Blk/Lot No.</label><input type="text" id="penHouseNo" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'houseNo'); syncAddressFromActiveCard();" onfocus="this.style.borderColor='#b45309';" onblur="this.style.borderColor='#d0dae8';" placeholder="e.g. 123 Blk 4"></div>
+                                        <div><label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">Street/Purok/Village</label><input type="text" id="penStreet" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'street'); syncAddressFromActiveCard();" onfocus="this.style.borderColor='#b45309';" onblur="this.style.borderColor='#d0dae8';" placeholder="e.g. Mabini St."></div>
                                         <div><label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">Barangay</label><input type="text" value="<?php echo htmlspecialchars($_SESSION['barangay'] ?? ''); ?>" readonly style="width:100%;padding:6px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:0.82rem;color:#b45309;background:#fefce8;font-weight:700;"></div>
-                                        <div><label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">ZIP Code</label><input type="text" placeholder="1600" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#b45309';" onblur="this.style.borderColor='#d0dae8';"></div>
+                                        <div><label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">ZIP Code</label><input type="text" id="penZipCode" placeholder="1600" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'zipCode'); syncAddressFromActiveCard();" onfocus="this.style.borderColor='#b45309';" onblur="this.style.borderColor='#d0dae8';"></div>
                                     </div>
                                 </div>
 
@@ -2747,7 +2747,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">ZIP Code</label>
-                                            <input type="text" id="lbZipCode" maxlength="10" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'zipCode')" onfocus="this.style.borderColor='#059669';" onblur="this.style.borderColor='#d0dae8';" placeholder="1600">
+                                            <input type="text" id="lbZipCode" maxlength="10" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'zipCode'); syncAddressFromActiveCard();" onfocus="this.style.borderColor='#059669';" onblur="this.style.borderColor='#d0dae8';" placeholder="1600">
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Contact Number</label>
@@ -2968,11 +2968,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <div style="display:grid;grid-template-columns:0.7fr 1fr 0.7fr 0.5fr 0.5fr;gap:8px;margin-bottom:8px;">
                                         <div>
                                             <label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">House/Lot/Blk/Bldg. No.</label>
-                                            <input type="text" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="e.g. 123 Blk 4">
+                                            <input type="text" id="seniorHouseNo" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'houseNo'); syncAddressFromActiveCard();" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="e.g. 123 Blk 4">
                                         </div>
                                         <div>
                                             <label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">Street/Road/Purok/Subd./Village</label>
-                                            <input type="text" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="e.g. Mabini St.">
+                                            <input type="text" id="seniorStreet" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'street'); syncAddressFromActiveCard();" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="e.g. Mabini St.">
                                         </div>
                                         <div>
                                             <label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">Barangay</label>
@@ -2980,11 +2980,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         </div>
                                         <div>
                                             <label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">ZIP Code</label>
-                                            <input type="text" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="1600">
+                                            <input type="text" id="seniorZipCode" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'zipCode'); syncAddressFromActiveCard();" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="1600">
                                         </div>
                                         <div>
                                             <label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">Landmark</label>
-                                            <input type="text" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="Near...">
+                                            <input type="text" id="seniorLandmark" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'landmark')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="Near...">
                                         </div>
                                     </div>
                                 </div>
@@ -3118,6 +3118,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <input type="hidden" id="birthDate"            name="birthDate"            value="<?php echo htmlspecialchars($loadedProxyData['birthDate'] ?? ''); ?>">
                     <input type="hidden" id="contactNumber"        name="contactNumber"        value="<?php echo htmlspecialchars($loadedProxyData['contactNumber'] ?? ''); ?>">
                     <input type="hidden" id="completeAddress"      name="completeAddress"      value="<?php echo htmlspecialchars($loadedProxyData['completeAddress'] ?? ''); ?>">
+                    <input type="hidden" id="houseNo"              name="houseNo"              value="">
+                    <input type="hidden" id="street"               name="street"               value="">
+                    <input type="hidden" id="city"                 name="city"                 value="Pasig City">
+                    <input type="hidden" id="province"             name="province"             value="Metro Manila">
+                    <input type="hidden" id="zipCode"              name="zipCode"              value="">
+                    <input type="hidden" id="landmark"             name="landmark"             value="">
                     <input type="hidden" id="emergencyContactName" name="emergencyContactName" value="">
                     <input type="hidden" id="emergencyContact"     name="emergencyContact"     value="">
                     <!-- Pension/Burial hidden fields — synced from official form preview cards -->
@@ -3783,6 +3789,57 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             if (mainFieldId === 'birthDate') checkAgeCompliance();
         }
 
+        function syncAddressFromActiveCard() {
+            const type = document.getElementById('applicationType').value;
+            const barangay = <?php echo json_encode($_SESSION['barangay'] ?? ''); ?>;
+            const city = 'Pasig City';
+            const province = 'Metro Manila';
+            const sources = {
+                senior: { houseNo: 'seniorHouseNo', street: 'seniorStreet', zipCode: 'seniorZipCode', landmark: 'seniorLandmark' },
+                burial: { houseNo: 'burialAddrHouseNo', street: 'burialAddrStreet' },
+                home_visit: { houseNo: 'hvHouseNo', street: 'hvStreet', zipCode: 'hvZipCode' },
+                milestone_gift: { houseNo: 'msHouseNo', street: 'msStreet', zipCode: 'msZipCode' },
+                pension: { houseNo: 'penHouseNo', street: 'penStreet', zipCode: 'penZipCode' },
+                national_pension: { houseNo: 'penHouseNo', street: 'penStreet', zipCode: 'penZipCode' },
+                landbank: { completeAddress: 'lbCompleteAddress', zipCode: 'lbZipCode' }
+            };
+            const source = sources[type] || {};
+            const read = id => {
+                const el = id ? document.getElementById(id) : null;
+                return el ? el.value.trim() : '';
+            };
+            const write = (id, value) => {
+                const el = document.getElementById(id);
+                if (el) el.value = value;
+            };
+
+            if (source.completeAddress) {
+                const fullAddress = read(source.completeAddress);
+                if (fullAddress) write('completeAddress', fullAddress);
+                if (source.zipCode) write('zipCode', read(source.zipCode));
+                write('city', city);
+                write('province', province);
+                return;
+            }
+
+            const houseNo = read(source.houseNo);
+            const street = read(source.street);
+            const zipCode = read(source.zipCode);
+            const landmark = read(source.landmark);
+            write('houseNo', houseNo);
+            write('street', street);
+            write('city', city);
+            write('province', province);
+            write('zipCode', zipCode);
+            write('landmark', landmark);
+
+            const addressParts = [houseNo, street, barangay, city, province, zipCode]
+                .filter(part => part && part.trim() !== '');
+            if (addressParts.length) {
+                write('completeAddress', addressParts.join(', '));
+            }
+        }
+
         // Sync an OSCA card select → main form select (one-way: OSCA → main)
         function syncSelectField(oscaSelect, mainFieldId) {
             const mainEl = document.getElementById(mainFieldId);
@@ -3952,6 +4009,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         // Intercept Form Submit to block invalid compliance cases
         document.getElementById('mainAppForm').addEventListener('submit', function(e) {
+            syncAddressFromActiveCard();
             const type = document.getElementById('applicationType').value;
             
             // Age compliance block

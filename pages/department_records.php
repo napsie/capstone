@@ -917,6 +917,7 @@ function getStatusBadge($status) {
 
         // 2. Household & Housing
         let housingHtml = "";
+        housingHtml += getFieldHtml("Complete Address", app.complete_address);
         housingHtml += getFieldHtml("House No", app.house_no);
         housingHtml += getFieldHtml("Street", app.street);
         housingHtml += getFieldHtml("City", app.city);

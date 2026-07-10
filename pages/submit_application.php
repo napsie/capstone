@@ -497,6 +497,36 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                             </div>
                             <div class="form-row">
                                 <div class="form-group">
+                                    <label for="houseNo">House / Lot / Block No.</label>
+                                    <input type="text" id="houseNo" name="houseNo" oninput="syncCompleteAddressFromParts()">
+                                </div>
+                                <div class="form-group">
+                                    <label for="street">Street / Purok / Village</label>
+                                    <input type="text" id="street" name="street" oninput="syncCompleteAddressFromParts()">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="city">City</label>
+                                    <input type="text" id="city" name="city" value="Pasig City" oninput="syncCompleteAddressFromParts()">
+                                </div>
+                                <div class="form-group">
+                                    <label for="province">Province</label>
+                                    <input type="text" id="province" name="province" value="Metro Manila" oninput="syncCompleteAddressFromParts()">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="zipCode">ZIP Code</label>
+                                    <input type="text" id="zipCode" name="zipCode" oninput="syncCompleteAddressFromParts()">
+                                </div>
+                                <div class="form-group">
+                                    <label for="landmark">Landmark</label>
+                                    <input type="text" id="landmark" name="landmark">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
                                     <label for="emergencyContactName">Emergency Contact Name</label>
                                     <input type="text" id="emergencyContactName" name="emergencyContactName">
                                 </div>
@@ -625,6 +655,37 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
     const tableBody             = document.getElementById('applicationsTableBody');
     const userBarangay          = "<?php echo $loggedInBarangay; ?>";
 
+    function buildAddressFromParts(app = {}) {
+        return [
+            app.house_no ?? app.houseNo ?? '',
+            app.street ?? '',
+            app.barangay ?? userBarangay ?? '',
+            app.city ?? 'Pasig City',
+            app.province ?? 'Metro Manila',
+            app.zip_code ?? app.zipCode ?? ''
+        ].map(part => String(part).trim()).filter(Boolean).join(', ');
+    }
+
+    function setValue(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.value = value ?? '';
+    }
+
+    function syncCompleteAddressFromParts() {
+        const address = buildAddressFromParts({
+            houseNo: document.getElementById('houseNo')?.value,
+            street: document.getElementById('street')?.value,
+            barangay: userBarangay,
+            city: document.getElementById('city')?.value || 'Pasig City',
+            province: document.getElementById('province')?.value || 'Metro Manila',
+            zipCode: document.getElementById('zipCode')?.value
+        });
+
+        if (address) {
+            setValue('completeAddress', address);
+        }
+    }
+
     function fetchApplications() {
         tableBody.innerHTML = '<tr><td colspan="9" style="text-align:center;">Loading applications…</td></tr>';
         
@@ -736,7 +797,14 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                 document.getElementById('suffix').value              = app.suffix || '';
                 document.getElementById('birthDate').value           = app.birth_date || '';
                 document.getElementById('contactNumber').value       = app.contact_number || '';
-                document.getElementById('completeAddress').value     = app.complete_address || '';
+                const displayAddress = app.complete_address || buildAddressFromParts(app);
+                document.getElementById('completeAddress').value     = displayAddress;
+                setValue('houseNo', app.house_no || '');
+                setValue('street', app.street || '');
+                setValue('city', app.city || 'Pasig City');
+                setValue('province', app.province || 'Metro Manila');
+                setValue('zipCode', app.zip_code || '');
+                setValue('landmark', app.landmark || '');
                 document.getElementById('emergencyContactName').value = app.emergency_contact_name || '';
                 document.getElementById('emergencyContact').value     = app.emergency_contact || '';
 
@@ -866,6 +934,7 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
     /* ─── Form submit handler ─── */
     document.getElementById('applicationDetailForm').addEventListener('submit', function(e) {
         e.preventDefault();
+        syncCompleteAddressFromParts();
         const fd = new FormData(this);
         fetch(this.action, { method: 'POST', body: fd })
             .then(r => r.json())
