@@ -156,8 +156,6 @@ try {
         'home_visitation_form'       => "VARCHAR(255) DEFAULT NULL",
         'landbank_enrollment_form'   => "VARCHAR(255) DEFAULT NULL",
         'parent_senior_id'           => "VARCHAR(50) DEFAULT NULL",
-        'ai_status'                  => "VARCHAR(50) DEFAULT 'AI-VERIFIED'",
-        'ai_confidence_score'        => "DECIMAL(5,2) DEFAULT 95.00",
     ];
 
     foreach ($columns_to_add as $column => $definition) {

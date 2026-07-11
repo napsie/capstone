@@ -672,7 +672,7 @@ function getStatusBadge($status) {
 
             <!-- Compliance Engine -->
             <div class="compliance-card">
-                <div class="compliance-title"><i class="fas fa-shield-halved"></i> Compliance & AI Verification Engine</div>
+                <div class="compliance-title"><i class="fas fa-shield-halved"></i> Compliance & Verification Engine</div>
                 <div id="complianceList">
                     <p style="color:var(--gray);font-size:0.85rem;">Loading compliance checks…</p>
                 </div>
@@ -838,19 +838,6 @@ function getStatusBadge($status) {
 
                 /* ── Compliance ── */
                 let ch = '';
-                const aiScore  = parseFloat(app.ai_confidence_score || 95);
-                const aiFlag   = (app.ai_status || '') === 'FLAGGED_ANOMALY';
-                if (aiScore >= 90 && !aiFlag) {
-                    ch += `<div class="compliance-item" style="background:rgba(16,185,129,0.06);border-left:3px solid var(--success);padding:6px 8px;border-radius:5px;">
-                        <span style="font-weight:600;"><i class="fas fa-robot" style="color:var(--success)"></i> CNN AI Document Verification</span>
-                        <span class="pass-tag"><i class="fas fa-shield-halved"></i> AI-VERIFIED — ${aiScore.toFixed(1)}%</span>
-                    </div>`;
-                } else {
-                    ch += `<div class="compliance-item" style="background:rgba(239,68,68,0.08);border-left:3px solid var(--danger);padding:6px 8px;border-radius:5px;">
-                        <span style="font-weight:600;"><i class="fas fa-robot" style="color:var(--danger)"></i> CNN AI Document Verification</span>
-                        <span class="fail-tag"><i class="fas fa-triangle-exclamation"></i> ANOMALY DETECTED — ${aiScore.toFixed(1)}%</span>
-                    </div>`;
-                }
                 if (app.application_type !== 'pwd') {
                     ch += age >= 60
                         ? `<div class="compliance-item"><span>Age Compliance (60+ Check)</span><span class="pass-tag"><i class="fas fa-circle-check"></i> PASS — Age ${age}</span></div>`
