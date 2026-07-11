@@ -2894,28 +2894,39 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#475569;margin-bottom:8px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">
                                         <i class="fas fa-user" style="color:#3b82f6;margin-right:5px;"></i> Full Name
                                     </div>
-                                    <div style="display:grid;grid-template-columns:2fr 1fr 2fr 1fr;gap:10px;">
+                                    <div style="display:grid;grid-template-columns:2fr 2fr 2fr 1fr;gap:10px;">
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Last Name</label>
                                             <input type="text" id="oscaLastName" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;transition:border-color 0.2s;" oninput="syncField(this,'lastName')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="Dela Cruz">
-                                        </div>
-                                        <div>
-                                            <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Ext.</label>
-                                            <input type="text" id="oscaSuffix" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;transition:border-color 0.2s;" oninput="syncField(this,'suffix')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="Jr.">
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">First Name</label>
                                             <input type="text" id="oscaFirstName" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;transition:border-color 0.2s;" oninput="syncField(this,'firstName')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="Juan">
                                         </div>
                                         <div>
-                                            <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Date Issued</label>
-                                            <input type="date" style="width:100%;padding:7px 8px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.8rem;color:#0f172a;background:#fff;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" value="<?php echo date('Y-m-d'); ?>">
+                                            <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Middle Name</label>
+                                            <input type="text" id="oscaMiddleName" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;transition:border-color 0.2s;" oninput="syncField(this,'middleName')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="Santos">
+                                        </div>
+                                        <div>
+                                            <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Ext.</label>
+                                            <input type="text" id="oscaSuffix" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;transition:border-color 0.2s;" oninput="syncField(this,'suffix')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="Jr.">
+                                        </div>
+                                    </div>
+
+                                    <!-- Senior ID generator (numbers only) -->
+                                    <div style="margin-top:10px;display:flex;gap:10px;align-items:center;">
+                                        <div style="flex:1;">
+                                            <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Senior ID No.</label>
+                                            <input type="text" id="oscaSeniorId" readonly style="width:100%;padding:8px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.9rem;color:#0f172a;background:#f8fafc;" placeholder="Numbers only (4–6 digits)" />
+                                        </div>
+                                        <div style="flex-shrink:0;">
+                                            <button type="button" class="btn" style="background:#1e90ff;padding:8px 12px;border-radius:7px;height:40px;display:inline-flex;align-items:center;gap:8px;border:none;color:#fff;cursor:pointer;" onclick="generateSeniorId()"><i class="fas fa-hashtag"></i> Generate</button>
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- DOB / Age / Place of Birth / Middle Name -->
-                                <div style="display:grid;grid-template-columns:1.2fr 0.6fr 1.2fr 1fr;gap:10px;margin-bottom:14px;">
+                                <!-- DOB / Age / Place of Birth -->
+                                <div style="display:grid;grid-template-columns:1.2fr 0.6fr 1.2fr;gap:10px;margin-bottom:14px;">
                                     <div>
                                         <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Date of Birth</label>
                                         <input type="date" id="oscaBirthDate" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'birthDate');updateOscaAge();" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';">
@@ -2927,10 +2938,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <div>
                                         <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Place of Birth</label>
                                         <input type="text" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="Pasig City, MM">
-                                    </div>
-                                    <div>
-                                        <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Middle Name</label>
-                                        <input type="text" id="oscaMiddleName" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'middleName')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="Santos">
                                     </div>
                                 </div>
 
@@ -3016,7 +3023,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#1e3a8a;margin-bottom:10px;display:flex;align-items:center;gap:6px;">
                                         <i class="fas fa-clipboard-list" style="color:#2563eb;"></i> Requirements Reference Guide
                                     </div>
-                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:0.78rem;color:#1e3a5f;">
+                                    <div id="requirementsGuideGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:0.78rem;color:#1e3a5f;">
                                         <div>
                                             <div style="font-weight:700;color:#1d4ed8;margin-bottom:5px;display:flex;align-items:center;gap:5px;"><span style="width:20px;height:20px;background:#2563eb;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:0.6rem;flex-shrink:0;"><i class="fas fa-id-card"></i></span> New Applicant (Filipino Citizen)</div>
                                             <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:3px;">
@@ -3042,7 +3049,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                                     <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#16a34a;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>Original Barangay Residency Certificate</span></li>
                                                 </ul>
                                             </div>
-                                        </div>
+                                            </div>
                                     </div>
                                 </div>
 
@@ -3080,7 +3087,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                                         <div>
                                             <label for="proofOfAddress" id="labelProofOfAddress" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
-                                                <i class="fas fa-home" style="margin-right:4px;color:#16a34a;"></i> Proof of Address
+                                                <i class="fas fa-home" style="margin-right:4px;color:#16a34a;"></i> Original Barangay Residency Certificate
                                             </label>
                                             <input type="file" id="proofOfAddress" name="proofOfAddress" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)"
                                                 style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
@@ -3088,13 +3095,91 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                                 <i class="fas fa-exclamation-triangle"></i> File is large (&gt;8MB). Consider compressing it first.
                                             </div>
                                         </div>
-                                        <div>
-                                            <label for="idImage" id="labelIdImage" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
-                                                <i class="fas fa-id-card" style="margin-right:4px;color:#16a34a;"></i> ID Image / Supporting Document Photo
+
+                                        <div id="validId1Wrap" style="display:none;">
+                                            <label for="validId1" id="labelValidId1" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-id-badge" style="margin-right:4px;color:#16a34a;"></i> Valid ID #1 (with DOB & Pasig City address)
                                             </label>
-                                            <input type="file" id="idImage" name="idImage" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)"
+                                            <input type="file" id="validId1" name="validId1" accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)"
                                                 style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
-                                            <div id="idImageSizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;">
+                                            <div id="validId1SizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;">
+                                                <i class="fas fa-exclamation-triangle"></i> File is large (&gt;8MB). Consider compressing it first.
+                                            </div>
+                                        </div>
+
+                                        <div id="validId2Wrap" style="display:none;">
+                                            <label for="validId2" id="labelValidId2" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-id-badge" style="margin-right:4px;color:#16a34a;"></i> Valid ID #2 (with DOB & Pasig City address)
+                                            </label>
+                                            <input type="file" id="validId2" name="validId2" accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)"
+                                                style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <div id="validId2SizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;">
+                                                <i class="fas fa-exclamation-triangle"></i> File is large (&gt;8MB). Consider compressing it first.
+                                            </div>
+                                        </div>
+
+                                        <div id="birthOriginalWrap" style="display:none;">
+                                            <label for="birthOriginal" id="labelBirthOriginal" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-file-alt" style="margin-right:4px;color:#16a34a;"></i> Birth Certificate (Original)
+                                            </label>
+                                            <input type="file" id="birthOriginal" name="birthOriginal" accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)"
+                                                style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <div id="birthOriginalSizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;">
+                                                <i class="fas fa-exclamation-triangle"></i> File is large (&gt;8MB). Consider compressing it first.
+                                            </div>
+                                        </div>
+
+                                        <div id="birthPhotocopyWrap" style="display:none;">
+                                            <label for="birthPhotocopy" id="labelBirthPhotocopy" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-copy" style="margin-right:4px;color:#16a34a;"></i> Birth Certificate (Photocopy)
+                                            </label>
+                                            <input type="file" id="birthPhotocopy" name="birthPhotocopy" accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)"
+                                                style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <div id="birthPhotocopySizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;">
+                                                <i class="fas fa-exclamation-triangle"></i> File is large (&gt;8MB). Consider compressing it first.
+                                            </div>
+                                        </div>
+
+                                        <div id="originalSeniorIdWrap" style="display:none;">
+                                            <label for="originalSeniorId" id="labelOriginalSeniorId" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-id-card" style="margin-right:4px;color:#16a34a;"></i> Original Senior Citizen ID
+                                            </label>
+                                            <input type="file" id="originalSeniorId" name="originalSeniorId" accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)"
+                                                style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <div id="originalSeniorIdSizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;">
+                                                <i class="fas fa-exclamation-triangle"></i> File is large (&gt;8MB). Consider compressing it first.
+                                            </div>
+                                        </div>
+
+                                        <div id="affidavitOfLossWrap" style="display:none;">
+                                            <label for="affidavitOfLoss" id="labelAffidavitOfLoss" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-file-signature" style="margin-right:4px;color:#16a34a;"></i> Original Affidavit of Loss
+                                            </label>
+                                            <input type="file" id="affidavitOfLoss" name="affidavitOfLoss" accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)"
+                                                style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <div id="affidavitOfLossSizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;">
+                                                <i class="fas fa-exclamation-triangle"></i> File is large (&gt;8MB). Consider compressing it first.
+                                            </div>
+                                        </div>
+
+                                        <div id="cancellationCertWrap" style="display:none;">
+                                            <label for="cancellationCert" id="labelCancellationCert" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-file-alt" style="margin-right:4px;color:#16a34a;"></i> Certificate of Cancellation of SC ID
+                                            </label>
+                                            <input type="file" id="cancellationCert" name="cancellationCert" accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)"
+                                                style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <div id="cancellationCertSizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;">
+                                                <i class="fas fa-exclamation-triangle"></i> File is large (&gt;8MB). Consider compressing it first.
+                                            </div>
+                                        </div>
+
+                                        <div id="oscaAdditionalDocWrap" style="display:none;">
+                                            <label for="oscaAdditionalDoc" id="labelAdditionalDoc" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-file" style="margin-right:4px;color:#16a34a;"></i> Additional Document
+                                            </label>
+                                            <input type="file" id="oscaAdditionalDoc" name="oscaAdditionalDoc" accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)"
+                                                style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <div id="oscaAdditionalDocSizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;">
                                                 <i class="fas fa-exclamation-triangle"></i> File is large (&gt;8MB). Consider compressing it first.
                                             </div>
                                         </div>
@@ -3483,6 +3568,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             // Trigger dependent logic
             toggleFields();
             checkAgeCompliance();
+
+            // Update requirements guide and file inputs based on purpose if OSCA senior form is visible
+            try {
+                const purposeRadios = document.getElementsByName('idPurposeOsca');
+                let selPurpose = null;
+                for (const r of purposeRadios) if (r.checked) selPurpose = r.value;
+                updateRequirementsByPurpose(selPurpose || 'new');
+            } catch (e) { /* ignore if not present */ }
         }
 
         function resetAppType() {
@@ -3507,6 +3600,101 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             document.getElementById('cardSelectorSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
+
+        // Update the Requirements Reference Guide and toggle required file inputs based on OSCA purpose
+        function updateRequirementsByPurpose(purpose) {
+            const grid = document.getElementById('requirementsGuideGrid');
+            if (!grid) return;
+
+            // references to inputs and wrappers
+            const proof = document.getElementById('proofOfAddress');
+            const valid1Wrap = document.getElementById('validId1Wrap');
+            const valid2Wrap = document.getElementById('validId2Wrap');
+            const birthOriginalWrap = document.getElementById('birthOriginalWrap');
+            const birthPhotocopyWrap = document.getElementById('birthPhotocopyWrap');
+            const originalSeniorIdWrap = document.getElementById('originalSeniorIdWrap');
+            const affidavitOfLossWrap = document.getElementById('affidavitOfLossWrap');
+            const cancellationCertWrap = document.getElementById('cancellationCertWrap');
+            const oscaAddWrap = document.getElementById('oscaAdditionalDocWrap');
+
+            // helper to hide and clear required
+            function hide(id) { const e = document.getElementById(id); if (e) { e.style.display = 'none'; const inp = e.querySelector('input[type=file]'); if (inp) inp.required = false; } }
+            function show(id, req) { const e = document.getElementById(id); if (e) { e.style.display = 'block'; const inp = e.querySelector('input[type=file]'); if (inp) inp.required = !!req; } }
+
+            // hide all purpose-specific wrappers by default
+            ['validId1Wrap','validId2Wrap','birthOriginalWrap','birthPhotocopyWrap','originalSeniorIdWrap','affidavitOfLossWrap','cancellationCertWrap','oscaAdditionalDocWrap'].forEach(hide);
+
+            // reset proof and any common inputs
+            if (proof) proof.required = false;
+            const idimg = document.getElementById('idImage'); if (idimg) idimg.required = false;
+            const photo = document.getElementById('oscaIdPhoto'); if (photo) photo.required = false;
+
+            if (purpose === 'new' || purpose === 'change') {
+                // show guide text (reuse existing new applicant block)
+                grid.innerHTML = `
+                    <div>
+                        <div style="font-weight:700;color:#1d4ed8;margin-bottom:5px;display:flex;align-items:center;gap:5px;"><span style="width:20px;height:20px;background:#2563eb;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:0.6rem;flex-shrink:0;"><i class="fas fa-id-card"></i></span> New Applicant (Filipino Citizen)</div>
+                        <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:3px;">
+                            <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#3b82f6;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>Birth Certificate (Original & Photocopy)</span></li>
+                            <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#3b82f6;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>Original Barangay Residency Certificate</span></li>
+                            <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#3b82f6;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>2 valid IDs (with date of birth & Pasig City address)</span></li>
+                        </ul>
+                    </div>
+                `;
+
+                // Require birth certificate original + photocopy, barangay cert, two valid IDs
+                if (proof) proof.required = true;
+                show('birthOriginalWrap', true);
+                show('birthPhotocopyWrap', true);
+                show('validId1Wrap', true);
+                show('validId2Wrap', true);
+
+            } else if (purpose === 'lost') {
+                grid.innerHTML = `
+                    <div>
+                        <div style="font-weight:700;color:#ca8a04;margin-bottom:4px;display:flex;align-items:center;gap:5px;"><span style="width:20px;height:20px;background:#ca8a04;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:0.6rem;flex-shrink:0;"><i class="fas fa-sync"></i></span> Replacement / Lost</div>
+                        <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:2px;">
+                            <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#ca8a04;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>Original Senior Citizen ID</span></li>
+                            <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#ef4444;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span><em>Lost only:</em> Original Affidavit of Loss</span></li>
+                        </ul>
+                    </div>
+                `;
+
+                show('originalSeniorIdWrap', true);
+                show('affidavitOfLossWrap', true);
+
+            } else if (purpose === 'transfer') {
+                grid.innerHTML = `
+                    <div>
+                        <div style="font-weight:700;color:#16a34a;margin-bottom:4px;display:flex;align-items:center;gap:5px;"><span style="width:20px;height:20px;background:#16a34a;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:0.6rem;flex-shrink:0;"><i class="fas fa-exchange-alt"></i></span> Transfer</div>
+                        <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:2px;">
+                            <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#16a34a;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>Certificate of Cancellation of SC ID from previous OSCA</span></li>
+                            <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#16a34a;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>Original Barangay Residency Certificate</span></li>
+                        </ul>
+                    </div>
+                `;
+
+                if (proof) proof.required = true;
+                show('cancellationCertWrap', true);
+
+            } else {
+                // fallback to new
+                updateRequirementsByPurpose('new');
+            }
+        }
+
+        // Listen to purpose radio changes and update requirements
+        document.addEventListener('change', function(e) {
+            if (e.target && e.target.name === 'idPurposeOsca') {
+                updateRequirementsByPurpose(e.target.value);
+            }
+        });
+
+        // Initialize requirements guide on load based on selected purpose
+        document.addEventListener('DOMContentLoaded', function() {
+            const sel = document.querySelector('input[name="idPurposeOsca"]:checked');
+            if (sel) updateRequirementsByPurpose(sel.value);
+        });
 
         function goBackFromApplication() {
             document.getElementById('formBody').classList.remove('visible');
@@ -3714,6 +3902,41 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
             ageEl.value = age >= 0 ? age : '';
         }
+
+        // Generate numeric-only Senior ID and populate visible and hidden fields
+        function generateSeniorId() {
+            // Numeric-only ID: random 4–6 digits
+            const len = Math.floor(Math.random() * 3) + 4; // 4,5,6
+            let rand = '';
+            for (let i = 0; i < len; i++) rand += Math.floor(Math.random() * 10).toString();
+            const numericId = rand; // e.g. 4321 or 12345
+
+            const visible = document.getElementById('oscaSeniorId');
+            const hidden = document.getElementById('idNumber');
+            if (visible) {
+                visible.value = numericId;
+                visible.style.background = '#e6fffb';
+            }
+            if (hidden) hidden.value = numericId;
+
+            // Mirror to other preview controls that show control no.
+            const controlNoDisp = document.getElementById('lbControlNoDisplay');
+            if (controlNoDisp) controlNoDisp.textContent = numericId;
+        }
+
+        // Validate on form submit: for senior applications, ensure generated ID is numeric-only
+        document.getElementById('mainAppForm')?.addEventListener('submit', function(e) {
+            const type = document.getElementById('applicationType')?.value;
+            if (type === 'senior') {
+                const idVal = (document.getElementById('idNumber') || {}).value || '';
+                if (!/^[0-9]{4,6}$/.test(idVal)) {
+                    e.preventDefault();
+                    alert('Please generate a numeric Senior ID (4–6 digits) before submitting. Click Generate.');
+                    return false;
+                }
+            }
+            return true;
+        });
 
         // Mirror main form fields into Burial card
         function mirrorMainFieldsToBurial() {
