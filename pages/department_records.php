@@ -68,7 +68,7 @@ function getStatusBadge($status) {
     <title>Department Records – SENIORLINK</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=1.1">
-    <link rel="stylesheet" href="../assets/css/application-documents.css?v=3">
+    <link rel="stylesheet" href="../assets/css/application-documents.css?v=6">
     <style>
         /* ─── Variables ─────────────────────────────────────────────────── */
         :root {
@@ -721,6 +721,7 @@ function getStatusBadge($status) {
                 <div>
                     <div style="margin-bottom:16px;">
                         <button type="button" class="btn btn-primary" id="btnOfficialForm" disabled><i class="fas fa-file-pdf"></i> Generate Official Form</button>
+                        <button type="button" class="btn" id="btnReleaseApplication" style="display:none;background:#10b981;color:#fff;"><i class="fas fa-box-open"></i> Release Application</button>
                     </div>
                     <div class="section-title"><i class="fas fa-clock-rotate-left"></i> Audit History</div>
                     <div class="timeline" id="timelineList">
@@ -773,7 +774,8 @@ function getStatusBadge($status) {
 </div>
 
 <script src="../assets/js/sidebar-toggle.js"></script>
-<script src="../assets/js/application-documents.js?v=3"></script>
+<script src="../assets/js/application-documents.js?v=6"></script>
+<script src="../assets/js/carelink-feedback.js?v=1"></script>
 <script src="../assets/js/application-form-generator.js?v=2"></script>
 <script>
     /* ─── Greeting ──────────────────────────────────────────── */
@@ -855,6 +857,7 @@ function getStatusBadge($status) {
     /* ─── Open modal and populate ───────────────────────────── */
     function openApplicationModal(appId) {
         document.getElementById('btnOfficialForm').disabled = true;
+        document.getElementById('btnReleaseApplication').style.display = 'none';
         // Reset placeholders
         document.getElementById('modalAppTitle').textContent  = 'Loading…';
         document.getElementById('complianceList').innerHTML   = '<p style="color:var(--gray);font-size:0.85rem;">Loading compliance checks…</p>';
@@ -887,10 +890,18 @@ function getStatusBadge($status) {
                 }
 
                 /* ── Title ── */
-                document.getElementById('modalAppTitle').textContent = `${app.full_name} - ${app.id_number} - ${getOfficialApplicationFormLabel(app.application_type)}`;
+                const seniorCitizenId = app.senior_id_no || 'Not yet issued';
+                document.getElementById('modalAppTitle').textContent = `${app.full_name} - Senior Citizen ID: ${seniorCitizenId} - ${getOfficialApplicationFormLabel(app.application_type)}`;
                 const officialFormButton = document.getElementById('btnOfficialForm');
                 officialFormButton.disabled = false;
                 officialFormButton.onclick = () => openOfficialApplicationForm(app.id_number);
+
+                const currentState = app.workflow_state || app.status || 'Received';
+                const releaseButton = document.getElementById('btnReleaseApplication');
+                if (currentState === 'Approved') {
+                    releaseButton.style.display = 'inline-flex';
+                    releaseButton.onclick = () => releaseApplication(app.id_number);
+                }
 
                 /* ── Stepper ── */
                 const steps = ['Received','For Review','Verified','Approved','Released'];
@@ -973,6 +984,31 @@ function getStatusBadge($status) {
             });
     }
 
+    function releaseApplication(appId) {
+        if (!confirm('Release this approved application? This will mark it as released.')) return;
+
+        const formData = new FormData();
+        formData.append('applicationId', appId);
+        formData.append('action', 'next');
+        formData.append('comments', 'Application released by the department.');
+
+        fetch('../api/update_fsm_state.php', { method: 'POST', body: formData })
+            .then(response => response.json())
+            .then(result => {
+                if (!result.success) {
+                    showCarelinkResult('Release failed: ' + (result.message || 'Please try again.'), false);
+                    return;
+                }
+                showCarelinkResult('Application released successfully.', true);
+                document.getElementById('applicationModal').style.display = 'none';
+                setTimeout(() => window.location.reload(), 900);
+            })
+            .catch(error => {
+                console.error(error);
+                showCarelinkResult('Unable to release the application. Please try again.', false);
+            });
+    }
+
     function getCompleteDetailsHtml(app) {
         function getFieldHtml(label, val) {
             if (val === null || val === undefined || val === '' || val === '0' || val === 0) return '';
@@ -1005,14 +1041,16 @@ function getStatusBadge($status) {
         // 2. Household & Housing
         let housingHtml = "";
         housingHtml += getFieldHtml("Complete Address", app.complete_address);
-        housingHtml += getFieldHtml("House No", app.house_no);
-        housingHtml += getFieldHtml("Street", app.street);
-        housingHtml += getFieldHtml("City", app.city);
-        housingHtml += getFieldHtml("Province", app.province);
-        housingHtml += getFieldHtml("Zip Code", app.zip_code);
-        housingHtml += getFieldHtml("Landmark", app.landmark);
-        housingHtml += getFieldHtml("Owns House", app.owns_house);
-        housingHtml += getFieldHtml("Renter", app.is_renter);
+        if (app.application_type === 'senior' || app.application_type === 'landbank') {
+            housingHtml += getFieldHtml("ZIP Code", app.zip_code);
+        }
+        if (app.application_type === 'senior') {
+            housingHtml += getFieldHtml("Landmark", app.landmark);
+        }
+        if (app.application_type === 'pension' || app.application_type === 'national_pension') {
+            housingHtml += getFieldHtml("Owns House", app.owns_house);
+            housingHtml += getFieldHtml("Renter", app.is_renter);
+        }
 
         if (housingHtml) {
             dynamicHtml += `

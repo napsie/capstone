@@ -47,7 +47,7 @@ function getStatusClass($status) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=1.1">
     <link rel="stylesheet" href="../assets/css/main-dark-mode.css?v=1.1">
-    <link rel="stylesheet" href="../assets/css/application-documents.css?v=3">
+    <link rel="stylesheet" href="../assets/css/application-documents.css?v=6">
     <style>
         /* ─── Variables ─────────────────────────────────────────────────── */
         :root {
@@ -797,7 +797,8 @@ function getStatusClass($status) {
 </div><!-- /#applicationModal -->
 
 <script src="../assets/js/sidebar-toggle.js"></script>
-<script src="../assets/js/application-documents.js?v=3"></script>
+<script src="../assets/js/application-documents.js?v=6"></script>
+<script src="../assets/js/carelink-feedback.js?v=1"></script>
 <script src="../assets/js/application-form-generator.js?v=2"></script>
 <script src="../assets/js/dark-mode.js"></script>
 <script>
@@ -876,7 +877,8 @@ function getStatusClass($status) {
                 }
 
                 /* ── Title ── */
-                document.getElementById('modalAppTitle').textContent = `${app.full_name} - ${app.id_number} - ${getOfficialApplicationFormLabel(app.application_type)}`;
+                const seniorCitizenId = app.senior_id_no || 'Not yet issued';
+                document.getElementById('modalAppTitle').textContent = `${app.full_name} - Senior Citizen ID: ${seniorCitizenId} - ${getOfficialApplicationFormLabel(app.application_type)}`;
                 const officialFormButton = document.getElementById('btnOfficialForm');
                 officialFormButton.disabled = false;
                 officialFormButton.onclick = () => openOfficialApplicationForm(app.id_number);
@@ -1077,14 +1079,16 @@ function getStatusClass($status) {
         // 2. Household & Housing
         let housingHtml = "";
         housingHtml += getFieldHtml("Complete Address", app.complete_address);
-        housingHtml += getFieldHtml("House No", app.house_no);
-        housingHtml += getFieldHtml("Street", app.street);
-        housingHtml += getFieldHtml("City", app.city);
-        housingHtml += getFieldHtml("Province", app.province);
-        housingHtml += getFieldHtml("Zip Code", app.zip_code);
-        housingHtml += getFieldHtml("Landmark", app.landmark);
-        housingHtml += getFieldHtml("Owns House", app.owns_house);
-        housingHtml += getFieldHtml("Renter", app.is_renter);
+        if (app.application_type === 'senior' || app.application_type === 'landbank') {
+            housingHtml += getFieldHtml("ZIP Code", app.zip_code);
+        }
+        if (app.application_type === 'senior') {
+            housingHtml += getFieldHtml("Landmark", app.landmark);
+        }
+        if (app.application_type === 'pension' || app.application_type === 'national_pension') {
+            housingHtml += getFieldHtml("Owns House", app.owns_house);
+            housingHtml += getFieldHtml("Renter", app.is_renter);
+        }
 
         if (housingHtml) {
             dynamicHtml += `

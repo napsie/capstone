@@ -64,6 +64,37 @@ foreach ($required as $fieldName => $fieldValue) {
 $fullName = trim("{$firstName} {$middleName} {$lastName} {$suffix}");
 $oscaData = parseOscaFormPost($_POST);
 
+// Only update a form-specific column when its field was actually present in
+// the submitted modal. This keeps stored application data intact when a
+// field is intentionally not part of the selected official form.
+$oscaInputMap = [
+    'place_of_birth' => 'placeOfBirth', 'gender' => 'gender', 'civil_status' => 'civilStatus',
+    'mothers_maiden_name' => 'mothersMaidenName', 'house_no' => 'houseNo', 'street' => 'street',
+    'city' => 'city', 'province' => 'province', 'zip_code' => 'zipCode', 'landmark' => 'landmark',
+    'health_status' => 'healthStatus', 'senior_id_no' => 'seniorIdNo', 'id_purpose' => 'idPurpose',
+    'milestone_age' => 'milestoneAge', 'claimant_name' => 'claimantName',
+    'claimant_relationship' => 'claimantRelationship', 'claimant_contact' => 'claimantContact',
+    'deceased_last_name' => 'deceasedLastName', 'deceased_first_name' => 'deceasedFirstName',
+    'deceased_middle_name' => 'deceasedMiddleName', 'deceased_suffix' => 'deceasedSuffix',
+    'deceased_birth_date' => 'deceasedBirthDate', 'landbank_card_no' => 'landbankCardNo',
+    'applicant_name' => 'applicantName', 'visit_purpose' => 'visit_purpose',
+    'living_arrangement' => 'livingArrangement', 'is_pensioner' => 'isPensioner',
+    'pension_source' => 'pensionSource', 'family_support' => 'familySupport',
+    'family_support_amount' => 'familySupportAmount', 'personal_income' => 'personalIncome',
+    'personal_income_amount' => 'personalIncomeAmount', 'health_condition' => 'healthCondition',
+    'with_maintenance' => 'withMaintenance', 'maintenance_spec' => 'maintenanceSpec',
+    'visit_summary' => 'visitSummary', 'name_on_card' => 'nameOnCard', 'tin' => 'tin',
+    'id_type_presented' => 'idTypePresented', 'nationality' => 'nationality',
+    'source_of_funds' => 'sourceOfFunds', 'atm_card_no' => 'atmCardNo',
+    'control_no' => 'controlNo', 'is_permanent_income' => 'isPermanentIncome',
+    'income_source' => 'incomeSource', 'owns_house' => 'ownsHouse', 'is_renter' => 'isRenter',
+];
+$oscaData = array_filter(
+    $oscaData,
+    static fn($column) => array_key_exists($oscaInputMap[$column], $_POST),
+    ARRAY_FILTER_USE_KEY
+);
+
 if (!empty($oscaData['house_no']) || !empty($oscaData['street'])) {
     $parts = array_filter([
         $oscaData['house_no'], $oscaData['street'],
@@ -80,7 +111,7 @@ $relationshipToDeceased = !empty($_POST['relationshipToDeceased']) ? sanitize_st
 $emailAddress          = array_key_exists('emailAddress', $_POST) && !empty($_POST['emailAddress']) ? sanitize_str($_POST['emailAddress']) : null;
 $additionalNotes       = !empty($_POST['additionalNotes']) ? sanitize_str($_POST['additionalNotes']) : null;
 
-$stmtExisting = $conn->prepare("SELECT proof_of_address, proof_of_address_type, id_image, id_image_type, email_address FROM applications WHERE id_number = ?");
+$stmtExisting = $conn->prepare("SELECT proof_of_address, proof_of_address_type, id_image, id_image_type, email_address, emergency_contact, emergency_contact_name, additional_notes FROM applications WHERE id_number = ?");
 $stmtExisting->execute([$appId]);
 $existingApplication = $stmtExisting->fetch(PDO::FETCH_ASSOC);
 
@@ -93,6 +124,15 @@ if (!$existingApplication) {
 // existing value unless a trusted caller explicitly supplies this field.
 if (!array_key_exists('emailAddress', $_POST)) {
     $emailAddress = $existingApplication['email_address'] ?? null;
+}
+if (!array_key_exists('emergencyContact', $_POST)) {
+    $emergencyContact = $existingApplication['emergency_contact'] ?? '';
+}
+if (!array_key_exists('emergencyContactName', $_POST)) {
+    $emergencyContactName = $existingApplication['emergency_contact_name'] ?? '';
+}
+if (!array_key_exists('additionalNotes', $_POST)) {
+    $additionalNotes = $existingApplication['additional_notes'] ?? null;
 }
 
 $allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];

@@ -20,7 +20,7 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=1.1">
     <link rel="stylesheet" href="../assets/css/main-dark-mode.css?v=1.1">
-    <link rel="stylesheet" href="../assets/css/application-documents.css?v=3">
+    <link rel="stylesheet" href="../assets/css/application-documents.css?v=6">
     <style>
         /* ─── Variables ─────────────────────────────────────────────────── */
         :root {
@@ -256,6 +256,12 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
         }
         .modal-close:hover { background: rgba(255,255,255,0.3); }
         .modal-scroller { max-height: 80vh; overflow-y: auto; padding: 28px; }
+        .app-result-dialog { width:min(380px,100%); padding:28px 26px 24px; border-radius:16px; background:#fff; text-align:center; box-shadow:0 20px 60px rgba(15,23,42,.28); animation:resultDialogIn .2s ease-out; }
+        .app-result-icon { width:54px; height:54px; margin:0 auto 12px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.35rem; }
+        .app-result-dialog h3 { margin:0 0 8px; color:#0f172a; font-size:1.05rem; }
+        .app-result-dialog p { margin:0 auto 20px; color:#64748b; font-size:.86rem; line-height:1.5; max-width:310px; }
+        .app-result-close { min-width:108px; justify-content:center; }
+        @keyframes resultDialogIn { from { opacity:0; transform:translateY(8px) scale(.98); } to { opacity:1; transform:none; } }
 
         /* Stepper */
         .stepper { display: flex; justify-content: space-between; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
@@ -510,37 +516,17 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                                 <label for="completeAddress">Complete Address</label>
                                 <textarea id="completeAddress" name="completeAddress" rows="2" required></textarea>
                             </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="houseNo">House / Lot / Block No.</label>
-                                    <input type="text" id="houseNo" name="houseNo" oninput="syncCompleteAddressFromParts()">
-                                </div>
-                                <div class="form-group">
-                                    <label for="street">Street / Purok / Village</label>
-                                    <input type="text" id="street" name="street" oninput="syncCompleteAddressFromParts()">
-                                </div>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="city">City</label>
-                                    <input type="text" id="city" name="city" value="Pasig City" oninput="syncCompleteAddressFromParts()">
-                                </div>
-                                <div class="form-group">
-                                    <label for="province">Province</label>
-                                    <input type="text" id="province" name="province" value="Metro Manila" oninput="syncCompleteAddressFromParts()">
-                                </div>
-                            </div>
-                            <div class="form-row">
+                            <div class="form-row" id="zipLandmarkRow">
                                 <div class="form-group">
                                     <label for="zipCode">ZIP Code</label>
-                                    <input type="text" id="zipCode" name="zipCode" oninput="syncCompleteAddressFromParts()">
+                                    <input type="text" id="zipCode" name="zipCode">
                                 </div>
-                                <div class="form-group">
+                                <div class="form-group" id="landmarkGroup">
                                     <label for="landmark">Landmark</label>
                                     <input type="text" id="landmark" name="landmark">
                                 </div>
                             </div>
-                            <div class="form-row">
+                            <div class="form-row" id="emergencyContactRow">
                                 <div class="form-group">
                                     <label for="emergencyContactName">Emergency Contact Name</label>
                                     <input type="text" id="emergencyContactName" name="emergencyContactName">
@@ -549,10 +535,6 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                                     <label for="emergencyContact">Emergency Contact Number</label>
                                     <input type="text" id="emergencyContact" name="emergencyContact">
                                 </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="additionalNotes">Additional Notes</label>
-                                <textarea id="additionalNotes" name="additionalNotes" rows="2" placeholder="Any additional information or context regarding this application..."></textarea>
                             </div>
                         </div>
 
@@ -566,8 +548,8 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                                     <input type="text" id="sssNumber" name="sssNumber">
                                 </div>
                                 <div class="form-group">
-                                    <label for="pensionAmount">Verified Monthly Pension (PHP)</label>
-                                    <input type="number" step="0.01" id="pensionAmount" name="pensionAmount" readonly>
+                                    <label for="pensionAmount">Monthly Pension Amount (PHP)</label>
+                                    <input type="number" step="0.01" min="0" id="pensionAmount" name="pensionAmount">
                                 </div>
                             </div>
                         </div>
@@ -640,7 +622,8 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
 <script src="../assets/js/sidebar-toggle.js"></script>
 <script src="../assets/js/dark-mode.js"></script>
 <script src="../assets/js/osca-form-fields.js"></script>
-<script src="../assets/js/application-documents.js?v=3"></script>
+<script src="../assets/js/application-documents.js?v=6"></script>
+<script src="../assets/js/carelink-feedback.js?v=1"></script>
 <script src="../assets/js/application-form-generator.js?v=1"></script>
 <script>
     const TYPE_LABELS = <?php echo json_encode(getApplicationTypeOptions()); ?>;
@@ -683,19 +666,23 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
         if (el) el.value = value ?? '';
     }
 
-    function syncCompleteAddressFromParts() {
-        const address = buildAddressFromParts({
-            houseNo: document.getElementById('houseNo')?.value,
-            street: document.getElementById('street')?.value,
-            barangay: userBarangay,
-            city: document.getElementById('city')?.value || 'Pasig City',
-            province: document.getElementById('province')?.value || 'Metro Manila',
-            zipCode: document.getElementById('zipCode')?.value
-        });
+    function setModalFormFieldVisibility(applicationType) {
+        const zipRow = document.getElementById('zipLandmarkRow');
+        const landmarkGroup = document.getElementById('landmarkGroup');
+        const emergencyRow = document.getElementById('emergencyContactRow');
+        const showZip = applicationType === 'senior' || applicationType === 'landbank';
+        const showLandmark = applicationType === 'senior';
+        const showEmergency = applicationType === 'senior';
 
-        if (address) {
-            setValue('completeAddress', address);
-        }
+        const setVisibility = (element, visible, display = 'flex') => {
+            if (!element) return;
+            element.style.display = visible ? display : 'none';
+            element.querySelectorAll('input, textarea, select').forEach(field => field.disabled = !visible);
+        };
+
+        setVisibility(zipRow, showZip);
+        setVisibility(landmarkGroup, showLandmark, 'block');
+        setVisibility(emergencyRow, showEmergency);
     }
 
     function fetchApplications() {
@@ -815,7 +802,8 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                 }
                 if (app.error) { alert(app.error); return; }
 
-                document.getElementById('modalAppTitle').textContent = `Reviewing: ${app.full_name} (${app.id_number})`;
+                const seniorCitizenId = app.senior_id_no || 'Not yet issued';
+                document.getElementById('modalAppTitle').textContent = `Reviewing: ${app.full_name} (Senior Citizen ID: ${seniorCitizenId})`;
                 document.getElementById('applicationId').value       = app.id_number;
                 document.getElementById('applicationType').value     = app.application_type;
                 document.getElementById('lastName').value            = app.lastName || '';
@@ -826,17 +814,13 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                 document.getElementById('contactNumber').value       = app.contact_number || '';
                 const displayAddress = app.complete_address || buildAddressFromParts(app);
                 document.getElementById('completeAddress').value     = displayAddress;
-                setValue('houseNo', app.house_no || '');
-                setValue('street', app.street || '');
-                setValue('city', app.city || 'Pasig City');
-                setValue('province', app.province || 'Metro Manila');
                 setValue('zipCode', app.zip_code || '');
                 setValue('landmark', app.landmark || '');
                 document.getElementById('emergencyContactName').value = app.emergency_contact_name || '';
                 document.getElementById('emergencyContact').value     = app.emergency_contact || '';
-                if (document.getElementById('additionalNotes')) document.getElementById('additionalNotes').value = app.additional_notes || '';
 
                 populateOscaFields(app, '');
+                setModalFormFieldVisibility(app.application_type);
 
                 // Toggle type-specific sections
                 const pm = document.getElementById('pension-fields-modal');
@@ -868,10 +852,8 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                     else if (i === idx) el.classList.add('active');
                 });
 
-                // File previews
-                renderAllSubmittedDocuments(app, appId);
-
                 // Rejected Warning Banner
+                document.getElementById('returnedWarningBox').style.display = 'none';
                 if ((currentState === 'Received' || currentState === 'Submitted') && app.return_comments) {
                     document.getElementById('returnedWarningBox').style.display = 'block';
                     document.getElementById('returnedReasonText').textContent = `"${app.return_comments}"`;
@@ -922,6 +904,11 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                     }
                 });
 
+                // Barangay staff can correct a submitted requirement while the
+                // application is still at the barangay stage.
+                const canCorrectDocuments = currentState === 'Received' || currentState === 'Submitted';
+                renderAllSubmittedDocuments(app, appId, { allowReplacement: canCorrectDocuments });
+
                 // Action Buttons
                 let btns = '';
                 if (isEditable) {
@@ -958,28 +945,33 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
 
     /* ─── Toast notification helper ─── */
     function showToast(message, isSuccess) {
-        const existing = document.getElementById('saveToast');
+        if (typeof window.showCarelinkResult === 'function') {
+            window.showCarelinkResult(message, isSuccess);
+            return;
+        }
+        const existing = document.getElementById('appResultModal');
         if (existing) existing.remove();
-        const toast = document.createElement('div');
-        toast.id = 'saveToast';
-        toast.innerHTML = `<i class="fas fa-${isSuccess ? 'check-circle' : 'exclamation-circle'}"></i> ${message}`;
-        toast.style.cssText = `
-            position: fixed; bottom: 30px; right: 30px; z-index: 9999;
-            padding: 14px 22px; border-radius: 10px; font-size: 0.9rem; font-weight: 700;
-            background: ${isSuccess ? '#10b981' : '#ef4444'}; color: #fff;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.18);
-            display: flex; align-items: center; gap: 10px;
-            animation: slideInToast 0.3s ease;
-        `;
-        document.body.appendChild(toast);
-        setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.4s'; setTimeout(() => toast.remove(), 400); }, 3500);
+        const modal = document.createElement('div');
+        modal.id = 'appResultModal';
+        const color = isSuccess ? '#10b981' : '#ef4444';
+        const title = isSuccess ? 'Success' : 'Unable to complete';
+        modal.innerHTML = `
+            <div class="app-result-dialog" role="alertdialog" aria-modal="true" aria-labelledby="appResultTitle">
+                <div class="app-result-icon" style="background:${isSuccess ? 'rgba(16,185,129,.12)' : 'rgba(239,68,68,.12)'};color:${color};">
+                    <i class="fas fa-${isSuccess ? 'check' : 'exclamation'}"></i>
+                </div>
+                <h3 id="appResultTitle">${title}</h3>
+                <p>${String(message).replace(/[<>]/g, '')}</p>
+                <button type="button" class="btn btn-primary app-result-close" style="background:${color};" onclick="document.getElementById('appResultModal')?.remove()">OK</button>
+            </div>`;
+        modal.style.cssText = 'position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,.58);backdrop-filter:blur(3px);';
+        document.body.appendChild(modal);
+        setTimeout(() => modal.remove(), 5000);
     }
 
     /* ─── Form submit handler ─── */
     document.getElementById('applicationDetailForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        syncCompleteAddressFromParts();
-
         // Sync the hidden applicationType input in case the disabled select wasn't captured
         const appTypeSelect = document.getElementById('applicationType');
         if (appTypeSelect) {
@@ -1023,11 +1015,11 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
             });
     });
 
-    function renderAllSubmittedDocuments(app, appId) {
+    function renderAllSubmittedDocuments(app, appId, options = {}) {
         const section = document.getElementById('allSubmittedDocumentsSection');
         if (typeof window.renderApplicationDocuments === 'function') {
             section.style.display = 'block';
-            section.innerHTML = window.renderApplicationDocuments(app, appId);
+            section.innerHTML = window.renderApplicationDocuments(app, appId, options);
             return;
         }
 
@@ -1067,6 +1059,76 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
         }).join('');
     }
 
+    window.previewDocumentReplacement = function(input) {
+        const file = input?.files?.[0];
+        const card = input?.closest('.application-document');
+        const preview = card?.querySelector('.application-document__preview');
+        if (!file || !preview) return;
+
+        if (preview.dataset.objectUrl) URL.revokeObjectURL(preview.dataset.objectUrl);
+        if (file.type === 'application/pdf') {
+            preview.innerHTML = '<i class="fas fa-file-pdf" aria-hidden="true"></i><span class="application-document__selected-file">PDF selected</span>';
+            delete preview.dataset.objectUrl;
+            return;
+        }
+        if (file.type.startsWith('image/')) {
+            const objectUrl = URL.createObjectURL(file);
+            preview.dataset.objectUrl = objectUrl;
+            preview.innerHTML = `<img src="${objectUrl}" alt="Selected replacement document">`;
+            return;
+        }
+        preview.innerHTML = '<i class="fas fa-file" aria-hidden="true"></i><span class="application-document__selected-file">File selected</span>';
+    };
+
+    window.replaceSubmittedDocument = async function(button) {
+        const card = button.closest('.application-document');
+        const fileInput = card?.querySelector('input[type="file"]');
+        const appId = button.dataset.applicationId;
+        const documentId = button.dataset.documentId;
+        const documentKey = button.dataset.documentKey;
+        if (!fileInput?.files?.length) {
+            showToast('Choose the corrected document first.', false);
+            return;
+        }
+
+        const file = fileInput.files[0];
+        if (file.size > 8 * 1024 * 1024) {
+            showToast('The replacement document must be 8 MB or smaller.', false);
+            return;
+        }
+
+        const data = new FormData();
+        data.append('applicationId', appId);
+        if (documentId) {
+            data.append('documentId', documentId);
+            data.append('replacementDocument', file);
+        } else {
+            const legacyInputs = { proof_of_address: 'proofOfAddress', id_image: 'idImage' };
+            if (!legacyInputs[documentKey]) {
+                showToast('This older document cannot be replaced automatically. Please contact the administrator.', false);
+                return;
+            }
+            data.append(legacyInputs[documentKey], file);
+        }
+
+        const original = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
+        try {
+            const response = await fetch('../api/update_application_documents.php', { method: 'POST', body: data });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message || 'The document could not be replaced.');
+            showToast(result.message, true);
+            openApplicationModal(appId);
+            fetchApplications();
+        } catch (error) {
+            console.error(error);
+            showToast(error.message || 'The document could not be replaced.', false);
+            button.disabled = false;
+            button.innerHTML = original;
+        }
+    };
+
     /* ─── Action Functions ─── */
     function exportQueuePdf() {
         const search = document.getElementById('searchInput')?.value.trim() || '';
@@ -1087,14 +1149,14 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
             .then(r => r.json())
             .then(res => {
                 if (res.success) {
-                    alert(res.message);
+                    showCarelinkResult(res.message, true);
                     document.getElementById('applicationModal').style.display = 'none';
                     fetchApplications();
                 } else {
-                    alert("Submission Error: " + res.message);
+                    showCarelinkResult("Submission Error: " + res.message, false);
                 }
             })
-            .catch(err => { console.error(err); alert("Connection error during submission: " + err.message); });
+            .catch(err => { console.error(err); showCarelinkResult("Connection error during submission: " + err.message, false); });
     }
 
     function deleteApplication(appId) {
@@ -1108,13 +1170,13 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
         .then(r => r.json())
         .then(data => {
             if (data.success) {
-                alert('Application deleted successfully.');
+                showCarelinkResult('Application deleted successfully.', true);
                 fetchApplications();
             } else {
-                alert(data.message);
+                showCarelinkResult(data.message, false);
             }
         })
-        .catch(err => { console.error(err); alert("Connection error during deletion: " + err.message); });
+        .catch(err => { console.error(err); showCarelinkResult("Connection error during deletion: " + err.message, false); });
     }
 
 

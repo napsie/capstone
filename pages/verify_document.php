@@ -35,7 +35,7 @@ $verifiedC     = $queueStats['verified'] ?? 0;
     <title>SENIORLINK — Document Verification Terminal</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=1.1">
-    <link rel="stylesheet" href="../assets/css/application-documents.css?v=3">
+    <link rel="stylesheet" href="../assets/css/application-documents.css?v=6">
     <style>
         /* ─── Variables ─────────────────────────────────────────────────── */
         :root {
@@ -615,7 +615,8 @@ $verifiedC     = $queueStats['verified'] ?? 0;
 </div><!-- /#applicationModal -->
 
 <script src="../assets/js/sidebar-toggle.js"></script>
-<script src="../assets/js/application-documents.js?v=3"></script>
+<script src="../assets/js/application-documents.js?v=6"></script>
+<script src="../assets/js/carelink-feedback.js?v=1"></script>
 <script src="../assets/js/application-form-generator.js?v=2"></script>
 <script>
     /* ─── Greeting ──────────────────────────────────────────── */
@@ -700,7 +701,8 @@ $verifiedC     = $queueStats['verified'] ?? 0;
                 currentWorkflowState = app.workflow_state || 'Received';
 
                 /* ── Title ── */
-                document.getElementById('modalAppTitle').textContent = `Reviewing: ${app.full_name} (${app.id_number}) - ${getOfficialApplicationFormLabel(app.application_type)}`;
+                const seniorCitizenId = app.senior_id_no || 'Not yet issued';
+                document.getElementById('modalAppTitle').textContent = `Reviewing: ${app.full_name} (Senior Citizen ID: ${seniorCitizenId}) - ${getOfficialApplicationFormLabel(app.application_type)}`;
                 const officialFormButton = document.getElementById('btnOfficialForm');
                 officialFormButton.disabled = false;
                 officialFormButton.onclick = () => openOfficialApplicationForm(app.id_number);
@@ -864,7 +866,7 @@ $verifiedC     = $queueStats['verified'] ?? 0;
         const comment = document.getElementById('fsmComment').value.trim();
 
         if (action === 'return' && !comment) {
-            alert("Please input comment remarks explaining why this application is being returned to the Barangay (e.g. Blurry Documents / Missing IDs).");
+            showCarelinkResult("Please input comment remarks explaining why this application is being returned to the Barangay (e.g. Blurry Documents / Missing IDs).", false);
             return;
         }
 
@@ -885,15 +887,15 @@ $verifiedC     = $queueStats['verified'] ?? 0;
             const result = await response.json();
 
             if (result.success) {
-                alert(result.message);
+                showCarelinkResult(result.message, true);
                 closeModal();
-                location.reload();
+                setTimeout(() => location.reload(), 900);
             } else {
-                alert("Workflow State Transition Error: " + result.message);
+                showCarelinkResult("Workflow State Transition Error: " + result.message, false);
             }
         } catch (err) {
             console.error(err);
-            alert("Connection error during state transition.");
+            showCarelinkResult("Connection error during state transition.", false);
         }
     }
 
@@ -929,14 +931,16 @@ $verifiedC     = $queueStats['verified'] ?? 0;
         // 2. Household & Housing
         let housingHtml = "";
         housingHtml += getFieldHtml("Complete Address", app.complete_address);
-        housingHtml += getFieldHtml("House No", app.house_no);
-        housingHtml += getFieldHtml("Street", app.street);
-        housingHtml += getFieldHtml("City", app.city);
-        housingHtml += getFieldHtml("Province", app.province);
-        housingHtml += getFieldHtml("Zip Code", app.zip_code);
-        housingHtml += getFieldHtml("Landmark", app.landmark);
-        housingHtml += getFieldHtml("Owns House", app.owns_house);
-        housingHtml += getFieldHtml("Renter", app.is_renter);
+        if (app.application_type === 'senior' || app.application_type === 'landbank') {
+            housingHtml += getFieldHtml("ZIP Code", app.zip_code);
+        }
+        if (app.application_type === 'senior') {
+            housingHtml += getFieldHtml("Landmark", app.landmark);
+        }
+        if (app.application_type === 'pension' || app.application_type === 'national_pension') {
+            housingHtml += getFieldHtml("Owns House", app.owns_house);
+            housingHtml += getFieldHtml("Renter", app.is_renter);
+        }
 
         if (housingHtml) {
             dynamicHtml += `

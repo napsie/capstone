@@ -8,11 +8,14 @@
 .application-document__preview { height:138px; display:flex; align-items:center; justify-content:center; overflow:hidden; border:1px dashed #dbe3ef; border-radius:8px; background:#f8fafc; }
 .application-document__preview img { max-width:100%; max-height:100%; object-fit:contain; }
 .application-document__preview .fa-file-pdf { color:#ef4444; font-size:2.6rem; }
+.application-document__selected-file { margin-left:6px; color:#64748b; font-size:.72rem; font-weight:700; }
 /* Keep document actions consistent with the navy modal and sidebar theme. */
+.application-document__actions { display:grid; grid-template-columns:1fr; gap:8px; margin-top:8px; }
+.application-document__actions.has-replacement { grid-template-columns:1fr 1fr; }
 .application-document__view {
     width:100%;
     justify-content:center;
-    margin-top:8px;
+    margin-top:0;
     background:#1e3a5f !important;
     border-color:#1e3a5f !important;
     color:#fff !important;
@@ -23,9 +26,15 @@
     border-color:#0f172a !important;
     color:#fff !important;
 }
+.application-document__replacement { margin-top:9px; display:grid; gap:6px; }
+.application-document__replacement label { color:#64748b; font-size:.68rem; font-weight:700; }
+.application-document__replacement input { display:block; width:100%; margin-top:3px; font-size:.68rem; }
+.application-document__replace-button { width:100%; border:0; border-radius:6px; padding:6px 8px; background:#10b981; color:#fff; font-size:.71rem; font-weight:700; cursor:pointer; }
+.application-document__replace-button:hover { background:#059669; }
 .application-documents__empty { padding:14px; color:var(--gray,#64748b); font-size:.82rem; text-align:center; border:1px dashed #cbd5e1; border-radius:8px; }
 
 @media (max-width: 520px) {
     .application-documents__grid { grid-template-columns: 1fr; }
     .application-document__preview { height: 180px; }
+    .application-document__actions { grid-template-columns: 1fr; }
 }
