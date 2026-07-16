@@ -6,13 +6,13 @@ $age = oscaAge($app['birth_date'] ?? null);
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>F2 — Landbank Cash Card — <?php echo oscaVal($app['full_name']); ?></title>
+    <title>Land Bank Cash Card — <?php echo oscaVal($app['full_name']); ?></title>
     <style><?php echo oscaPrintStyles('F2'); ?></style>
 </head>
 <body>
 <div class="print-bar"><button onclick="window.print()">Print / Save as PDF</button><button onclick="window.close()">Close</button></div>
 <div class="form-page">
-    <?php oscaPrintHeader('F2', 'Land Bank Cash Card Enrollment Form'); ?>
+    <?php oscaPrintHeader('', 'Land Bank Cash Card Enrollment Form'); ?>
     <?php oscaFieldRow(['Last Name' => $app['lastName'] ?? '', 'First Name' => $app['firstName'] ?? '', 'Middle Name' => $app['middleName'] ?? '']); ?>
     <?php oscaFieldRow(['Name on Card (23 chars)' => $app['name_on_card'] ?? '', 'Date of Birth' => oscaFmtDate($app['birth_date'] ?? null), 'Age' => $age]); ?>
     <?php oscaFieldRow(['Home Address' => $app['complete_address'] ?? '', 'ZIP Code' => $app['zip_code'] ?? '', 'Contact No.' => $app['contact_number'] ?? '']); ?>

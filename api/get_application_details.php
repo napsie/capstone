@@ -89,6 +89,21 @@ try {
     $stmtHistory->execute([$appId]);
     $application['history'] = $stmtHistory->fetchAll(PDO::FETCH_ASSOC);
 
+    // Template-based forms can submit many requirements. Return their
+    // metadata separately so every modal can render the same document cards.
+    if ($userRole === 'barangay_staff' && $userBarangay) {
+        $documentsSql = 'SELECT d.id, d.document_key, d.document_label, d.mime_type
+                         FROM application_documents d
+                         INNER JOIN applications a ON a.id_number = d.application_id
+                         WHERE d.application_id = ? AND a.barangay = ? ORDER BY d.id';
+        $documentsStmt = $conn->prepare($documentsSql);
+        $documentsStmt->execute([$appId, $userBarangay]);
+    } else {
+        $documentsStmt = $conn->prepare('SELECT id, document_key, document_label, mime_type FROM application_documents WHERE application_id = ? ORDER BY id');
+        $documentsStmt->execute([$appId]);
+    }
+    $application['documents'] = $documentsStmt->fetchAll(PDO::FETCH_ASSOC);
+
     echo json_encode($application);
 
 } catch (Exception $e) {

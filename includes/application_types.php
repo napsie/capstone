@@ -5,13 +5,13 @@
 
 function getApplicationTypeOptions(): array {
     return [
-        'senior'           => 'F1 — Senior Citizens ID Application',
-        'landbank'         => 'F2 — Land Bank Cash Card Enrollment',
+        'senior'           => 'Senior Citizens ID Application',
+        'landbank'         => 'Land Bank Cash Card Enrollment',
         'pension'          => 'Local Senior Pension Form',
         'national_pension' => 'National DSWD Pension (RA 11916)',
-        'milestone_gift'   => 'F5 — Octogenarian / Nonagenarian / Centenarian',
-        'burial'           => 'F7 — Burial Assistance',
-        'home_visit'       => 'F8 — Home Visitation / Confirmation',
+        'milestone_gift'   => 'Octogenarian / Nonagenarian / Centenarian',
+        'burial'           => 'Burial Assistance',
+        'home_visit'       => 'Home Visitation / Confirmation',
     ];
 }
 
@@ -36,7 +36,7 @@ function getApplicationBenefitDetails(): array {
                 'Applicant must be at least 60 years old',
                 'Must be a resident of the barangay where application is filed',
                 'Valid proof of identity and proof of address',
-                'Personal appearance or authorized proxy with complete documents',
+                'Personal appearance or authorized representative with complete documents',
             ],
             'documents' => [
                 'Birth certificate or valid government-issued ID',
@@ -129,7 +129,7 @@ function getApplicationBenefitDetails(): array {
             'benefits'     => [
                 'Burial assistance for families of deceased seniors (60+)',
                 'Timely filing within the prescribed working-day window',
-                'Processed as an OSCA Form 7 claim',
+                'Processed as an OSCA burial assistance claim',
             ],
             'requirements' => [
                 'Deceased must be at least 60 years old at time of passing',

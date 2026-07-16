@@ -10,13 +10,22 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['barangay_staf
 }
 
 if (isset($_POST['id'])) {
-    $id = $_POST['id'];
+    $id = trim((string)$_POST['id']);
+    if ($id === '') {
+        echo json_encode(['success' => false, 'message' => 'Application ID is empty.']);
+        exit;
+    }
 
     try {
-        $sql = "DELETE FROM applications WHERE id_number = ?";
-        $stmt = $conn->prepare($sql);
+        $where = 'id_number = ?';
+        $params = [$id];
+        if (($_SESSION['role'] ?? '') === 'barangay_staff') {
+            $where .= ' AND barangay = ?';
+            $params[] = $_SESSION['barangay'] ?? '';
+        }
+        $stmt = $conn->prepare("DELETE FROM applications WHERE $where");
         
-        if ($stmt->execute([$id])) {
+        if ($stmt->execute($params)) {
             // Check if any row was actually deleted
             if ($stmt->rowCount() > 0) {
                 echo json_encode(['success' => true, 'message' => 'Application deleted successfully.']);

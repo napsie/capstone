@@ -7,13 +7,13 @@ $milestones = ['80' => '₱10,000', '85' => '₱15,000', '90' => '₱25,000', '9
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>F5 — Octogenarian — <?php echo oscaVal($app['full_name']); ?></title>
+    <title>Octogenarian — <?php echo oscaVal($app['full_name']); ?></title>
     <style><?php echo oscaPrintStyles('F5'); ?></style>
 </head>
 <body>
 <div class="print-bar"><button onclick="window.print()">Print / Save as PDF</button><button onclick="window.close()">Close</button></div>
 <div class="form-page">
-    <?php oscaPrintHeader('F5', 'OCTOGENARIAN, NONAGENARIAN, & CENTENARIAN APPLICATION FORM'); ?>
+    <?php oscaPrintHeader('', 'OCTOGENARIAN, NONAGENARIAN, & CENTENARIAN APPLICATION FORM'); ?>
     <div class="checkbox-row"><strong>Milestone Age:</strong>
         <?php foreach (array_keys($milestones) as $m): ?>
             <?php echo oscaCheck(($app['milestone_age'] ?? '') == $m); ?> <?php echo $m; ?>

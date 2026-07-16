@@ -336,7 +336,7 @@ $resetUrl = $resetUrl ?? $formAction;
                 <i class="fas fa-user-plus"></i>
             </div>
             <h4>New Bedridden Pre-Registration</h4>
-            <p>For seniors without an ID card yet. Pre-register to place them in the Counter Priority Queue (Form 1).</p>
+            <p>For seniors without an ID card yet. Pre-register to place them in the Counter Priority Queue.</p>
         </div>
 
         <div class="portal-option-card" id="optionCardExisting" onclick="selectPortalPath('existing_benefits')">
@@ -475,23 +475,23 @@ $resetUrl = $resetUrl ?? $formAction;
                     <input type="file" id="proof_of_life_file" name="proof_of_life_file" accept="image/jpeg" required>
                 </div>
 
-                <h5 style="margin-top:20px; color:#475569; font-size:0.88rem; text-transform:uppercase; letter-spacing:0.5px;">Proxy Verification Documents</h5>
+                <h5 style="margin-top:20px; color:#475569; font-size:0.88rem; text-transform:uppercase; letter-spacing:0.5px;">Representative Verification Documents</h5>
                 
                 <div class="upload-slot">
                     <label for="auth_letter_file">Authorization Letter <span class="req">*</span></label>
-                    <p class="slot-desc">Authorization letter signed or marked with Lolo Tomas's thumbmark authorizing the proxy.</p>
+                    <p class="slot-desc">Authorization letter signed or marked with Lolo Tomas's thumbmark authorizing the representative.</p>
                     <input type="file" id="auth_letter_file" name="auth_letter_file" accept="image/jpeg,application/pdf" required>
                 </div>
 
                 <div class="upload-slot">
-                    <label for="proxy_id_file">Proxy's Government ID <span class="req">*</span></label>
-                    <p class="slot-desc">Valid government ID of the authorized proxy representative (Maria).</p>
+                    <label for="proxy_id_file">Representative's Government ID <span class="req">*</span></label>
+                    <p class="slot-desc">Valid government ID of the authorized representative (Maria).</p>
                     <input type="file" id="proxy_id_file" name="proxy_id_file" accept="image/jpeg,application/pdf" required>
                 </div>
 
                 <div class="upload-slot">
-                    <label for="proxy_birth_cert_file">Proxy's Birth Certificate <span class="req">*</span></label>
-                    <p class="slot-desc">Proxy's birth certificate proving relation to Lolo Tomas.</p>
+                    <label for="proxy_birth_cert_file">Representative's Birth Certificate <span class="req">*</span></label>
+                    <p class="slot-desc">Representative's birth certificate proving relation to Lolo Tomas.</p>
                     <input type="file" id="proxy_birth_cert_file" name="proxy_birth_cert_file" accept="image/jpeg,application/pdf" required>
                 </div>
             </div>
@@ -500,15 +500,15 @@ $resetUrl = $resetUrl ?? $formAction;
             <div class="step-heading" style="margin-top: 25px;">
                 <div class="step-number">3</div>
                 <div>
-                    <h3>Proxy Representative Details</h3>
-                    <p>Details of the proxy representative submitting on behalf of the senior citizen.</p>
+                    <h3>Representative Details</h3>
+                    <p>Details of the representative submitting on behalf of the senior citizen.</p>
                 </div>
             </div>
 
             <div class="form-section">
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="proxyName">Proxy Representative Name <span style="color:#b91c1c;">*</span></label>
+                        <label for="proxyName">Representative Name <span style="color:#b91c1c;">*</span></label>
                         <input type="text" id="proxyName" name="proxyName" class="form-control" placeholder="e.g. Maria Dela Cruz" required>
                     </div>
                     <div class="form-group">
@@ -526,7 +526,7 @@ $resetUrl = $resetUrl ?? $formAction;
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="proxyContactNumber">Proxy Contact Number <span style="color:#b91c1c;">*</span></label>
+                        <label for="proxyContactNumber">Representative Contact Number <span style="color:#b91c1c;">*</span></label>
                         <input type="text" id="proxyContactNumber" name="proxyContactNumber" class="form-control" placeholder="e.g. 09123456789" maxlength="11" required>
                     </div>
                     <div class="form-group">
@@ -558,7 +558,7 @@ $resetUrl = $resetUrl ?? $formAction;
             <div class="privacy-alert" role="note" style="margin-bottom: 24px; background: #eff6ff; border-color: #bfdbfe; color: #1e40af;">
                 <i class="fas fa-info-circle" aria-hidden="true" style="color: #2563eb;"></i>
                 <div>
-                    <strong>Secondary Benefit Enrollment:</strong> Verified bedridden senior citizens can apply for additional municipal pension payouts through this proxy portal.
+                    <strong>Secondary Benefit Enrollment:</strong> Verified bedridden senior citizens can apply for additional municipal pension payouts through this representative portal.
                 </div>
             </div>
 
@@ -762,7 +762,7 @@ $resetUrl = $resetUrl ?? $formAction;
             </p>
             
             <div class="qr-image-wrapper">
-                <img src="<?php echo htmlspecialchars($proxyQrUrl); ?>" alt="Proxy QR Token">
+                <img src="<?php echo htmlspecialchars($proxyQrUrl); ?>" alt="Representative QR Token">
                 <div>
                     <span class="qr-token-label">TOKEN: <?php echo htmlspecialchars($proxyTransactionId); ?></span>
                 </div>

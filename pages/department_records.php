@@ -38,22 +38,6 @@ if ($typeFilter !== 'all') {
 
 $whereSql = " WHERE " . implode(' AND ', $whereClauses);
 
-// CSV export
-if (isset($_GET['export']) && $_GET['export'] === '1') {
-    $exportStmt = $conn->prepare("SELECT id_number, full_name, application_type, barangay, date_submitted, COALESCE(workflow_state, status) as status " . $baseQuery . $whereSql . " ORDER BY date_submitted DESC");
-    foreach ($params as $k => &$v) $exportStmt->bindParam($k, $v);
-    $exportStmt->execute();
-    $exportData = $exportStmt->fetchAll(PDO::FETCH_ASSOC);
-
-    header('Content-Type: text/csv');
-    header('Content-Disposition: attachment; filename="department_records_' . date('Ymd') . '.csv"');
-    $out = fopen('php://output', 'w');
-    fputcsv($out, ['ID Number', 'Applicant Name', 'Application Type', 'Barangay', 'Date Submitted', 'Status']);
-    foreach ($exportData as $row) fputcsv($out, [$row['id_number'], $row['full_name'], applicationTypeLabel($row['application_type']), $row['barangay'], $row['date_submitted'], $row['status']]);
-    fclose($out);
-    exit;
-}
-
 // Total count
 $totalStmt = $conn->prepare("SELECT COUNT(*) " . $baseQuery . $whereSql);
 $totalStmt->execute($params);
@@ -84,6 +68,7 @@ function getStatusBadge($status) {
     <title>Department Records – SENIORLINK</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=1.1">
+    <link rel="stylesheet" href="../assets/css/application-documents.css?v=3">
     <style>
         /* ─── Variables ─────────────────────────────────────────────────── */
         :root {
@@ -372,6 +357,18 @@ function getStatusBadge($status) {
         }
         .modal-close:hover { background: rgba(255,255,255,0.3); }
         .modal-scroller { max-height: 80vh; overflow-y: auto; padding: 28px; }
+        .export-modal-box { max-width: 520px; }
+        .export-modal-body { padding: 26px 28px 28px; }
+        .export-modal-body p { margin: 0 0 18px; color: var(--gray); font-size: .88rem; line-height: 1.55; }
+        .export-option { display:flex; align-items:center; gap:10px; padding:12px 14px; border:1px solid var(--border); border-radius:9px; margin-bottom:10px; cursor:pointer; }
+        .export-option:has(input:checked) { border-color:var(--accent); background:#eff6ff; }
+        .export-option input { accent-color:var(--accent); }
+        .export-option strong { display:block; font-size:.88rem; color:var(--primary); }
+        .export-option small { color:var(--gray); font-size:.76rem; }
+        .export-select-wrap { margin: 14px 0 20px; }
+        .export-select-wrap label { display:block; font-size:.76rem; font-weight:700; color:var(--gray); text-transform:uppercase; margin-bottom:6px; }
+        .export-select-wrap select { width:100%; padding:10px 11px; border:1px solid var(--border); border-radius:8px; color:var(--primary); background:#fff; }
+        .export-actions { display:flex; justify-content:flex-end; gap:10px; }
 
         /* Stepper */
         .stepper { display: flex; justify-content: space-between; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
@@ -499,9 +496,9 @@ function getStatusBadge($status) {
             <div class="records-card-header">
                 <h2><i class="fas fa-folder-open"></i> All Approved Records – Pasig City</h2>
                 <div class="header-actions">
-                    <a href="?<?php echo http_build_query(array_merge($_GET, ['export'=>'1'])); ?>" class="btn btn-ghost">
-                        <i class="fas fa-file-csv"></i> Export CSV
-                    </a>
+                    <button type="button" class="btn btn-ghost" onclick="exportDepartmentRecords()">
+                        <i class="fas fa-file-excel"></i> Export Excel
+                    </button>
                 </div>
             </div>
 
@@ -704,25 +701,30 @@ function getStatusBadge($status) {
                             <label>Complete Address</label>
                             <span id="infoAddress">—</span>
                         </div>
+                        <div class="info-item wide">
+                            <label>Email Address</label>
+                            <span id="infoEmail">—</span>
+                        </div>
+                        <div class="info-item wide">
+                            <label>Additional Notes</label>
+                            <span id="infoNotes">—</span>
+                        </div>
                     </div>
 
                     <!-- Dynamic (type-specific) section -->
                     <div id="dynamicDetailsSection"></div>
 
-                    <!-- Document previews -->
-                    <div class="section-title" style="margin-top:20px;"><i class="fas fa-file-image"></i> Submitted Documents</div>
-                    <div class="doc-preview-title">Proof of Address</div>
-                    <div class="doc-preview-box" id="previewProof">
-                        <span style="color:var(--gray);font-size:0.8rem;">Loading…</span>
-                    </div>
-                    <div class="doc-preview-title">ID / Identification Photo</div>
-                    <div class="doc-preview-box" id="previewIdImage">
-                        <span style="color:var(--gray);font-size:0.8rem;">Loading…</span>
+                    <!-- Document previews (all docs, dynamic) -->
+                    <div id="allDocumentsSection">
+                        <span style="color:var(--gray);font-size:0.8rem;">Loading documents…</span>
                     </div>
                 </div>
 
                 <!-- RIGHT: Audit timeline -->
                 <div>
+                    <div style="margin-bottom:16px;">
+                        <button type="button" class="btn btn-primary" id="btnOfficialForm" disabled><i class="fas fa-file-pdf"></i> Generate Official Form</button>
+                    </div>
                     <div class="section-title"><i class="fas fa-clock-rotate-left"></i> Audit History</div>
                     <div class="timeline" id="timelineList">
                         <p style="color:var(--gray);font-size:0.85rem;">Loading history…</p>
@@ -734,7 +736,48 @@ function getStatusBadge($status) {
     </div><!-- /.modal-box -->
 </div><!-- /#applicationModal -->
 
+<!-- Export scope modal -->
+<div id="exportModal" class="modal-overlay">
+    <div class="modal-box export-modal-box">
+        <div class="modal-head">
+            <h2><i class="fas fa-file-excel"></i> Export Excel Report</h2>
+            <button type="button" class="modal-close" id="closeExportModalBtn">&times;</button>
+        </div>
+        <form id="exportReportForm" method="GET" action="../api/export_records_excel.php">
+            <div class="export-modal-body">
+                <p>Choose the barangay coverage for this report. Your current search and application-type filters will also be applied.</p>
+                <input type="hidden" name="scope" value="department">
+                <input type="hidden" name="search" id="exportSearch">
+                <input type="hidden" name="type" id="exportType">
+                <input type="hidden" name="barangay" id="exportBarangayValue" value="all">
+                <label class="export-option">
+                    <input type="radio" name="barangayChoice" value="all" checked>
+                    <span><strong>All Barangays</strong><small>Include approved and released records across Pasig City.</small></span>
+                </label>
+                <label class="export-option">
+                    <input type="radio" name="barangayChoice" value="selected" id="selectedBarangayRadio">
+                    <span><strong>One Barangay</strong><small>Export records from one selected barangay only.</small></span>
+                </label>
+                <div class="export-select-wrap" id="exportBarangayWrap" style="display:none;">
+                    <label for="exportBarangay">Select Barangay</label>
+                    <select id="exportBarangay">
+                        <?php foreach ($barangays_list as $b): ?>
+                            <option value="<?php echo htmlspecialchars($b); ?>"><?php echo htmlspecialchars($b); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="export-actions">
+                    <button type="button" class="btn btn-ghost" id="cancelExportBtn">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-download"></i> Generate Excel</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script src="../assets/js/sidebar-toggle.js"></script>
+<script src="../assets/js/application-documents.js?v=3"></script>
+<script src="../assets/js/application-form-generator.js?v=1"></script>
 <script>
     /* ─── Greeting ──────────────────────────────────────────── */
     (function(){
@@ -756,10 +799,45 @@ function getStatusBadge($status) {
         document.getElementById('applicationModal').addEventListener('click', function(e) {
             if (e.target === this) closeModal();
         });
+        document.getElementById('closeExportModalBtn').addEventListener('click', closeExportModal);
+        document.getElementById('cancelExportBtn').addEventListener('click', closeExportModal);
+        document.getElementById('exportModal').addEventListener('click', function(e) {
+            if (e.target === this) closeExportModal();
+        });
+        document.querySelectorAll('input[name="barangayChoice"]').forEach(input => input.addEventListener('change', toggleExportBarangay));
+        document.getElementById('exportReportForm').addEventListener('submit', function() {
+            const selected = document.querySelector('input[name="barangayChoice"]:checked').value;
+            document.getElementById('exportBarangayValue').value = selected === 'selected'
+                ? document.getElementById('exportBarangay').value
+                : 'all';
+        });
     });
 
     function closeModal() {
         document.getElementById('applicationModal').style.display = 'none';
+    }
+
+    function exportDepartmentRecords() {
+        const currentBarangay = document.getElementById('barangayFilter').value;
+        document.getElementById('exportSearch').value = document.getElementById('searchInput').value.trim();
+        document.getElementById('exportType').value = document.getElementById('typeFilter').value;
+        if (currentBarangay !== 'all') {
+            document.getElementById('selectedBarangayRadio').checked = true;
+            document.getElementById('exportBarangay').value = currentBarangay;
+        } else {
+            document.querySelector('input[name="barangayChoice"][value="all"]').checked = true;
+        }
+        toggleExportBarangay();
+        document.getElementById('exportModal').style.display = 'block';
+    }
+
+    function toggleExportBarangay() {
+        const oneBarangay = document.getElementById('selectedBarangayRadio').checked;
+        document.getElementById('exportBarangayWrap').style.display = oneBarangay ? 'block' : 'none';
+    }
+
+    function closeExportModal() {
+        document.getElementById('exportModal').style.display = 'none';
     }
 
     /* ─── Helpers ───────────────────────────────────────────── */
@@ -779,13 +857,13 @@ function getStatusBadge($status) {
 
     /* ─── Open modal and populate ───────────────────────────── */
     function openApplicationModal(appId) {
+        document.getElementById('btnOfficialForm').disabled = true;
         // Reset placeholders
         document.getElementById('modalAppTitle').textContent  = 'Loading…';
         document.getElementById('complianceList').innerHTML   = '<p style="color:var(--gray);font-size:0.85rem;">Loading compliance checks…</p>';
         document.getElementById('dynamicDetailsSection').innerHTML = '';
+        document.getElementById('allDocumentsSection').innerHTML   = '<span style="color:var(--gray);font-size:0.8rem;">Loading documents…</span>';
         document.getElementById('timelineList').innerHTML     = '<p style="color:var(--gray);font-size:0.85rem;">Loading history…</p>';
-        document.getElementById('previewProof').innerHTML     = '<span style="color:var(--gray);font-size:0.8rem;">Loading…</span>';
-        document.getElementById('previewIdImage').innerHTML   = '<span style="color:var(--gray);font-size:0.8rem;">Loading…</span>';
 
         // Reset stepper
         ['step-Received','step-For-Review','step-Verified','step-Approved','step-Released'].forEach(id => {
@@ -794,6 +872,7 @@ function getStatusBadge($status) {
         });
 
         document.getElementById('applicationModal').style.display = 'block';
+        document.querySelector('#applicationModal .modal-scroller').scrollTop = 0;
 
         fetch(`../api/get_application_details.php?id=${encodeURIComponent(appId)}`)
             .then(r => r.text())
@@ -812,6 +891,9 @@ function getStatusBadge($status) {
 
                 /* ── Title ── */
                 document.getElementById('modalAppTitle').textContent = `${app.full_name} — ${app.id_number}`;
+                const officialFormButton = document.getElementById('btnOfficialForm');
+                officialFormButton.disabled = false;
+                officialFormButton.onclick = () => openOfficialApplicationForm(app.id_number);
 
                 /* ── Stepper ── */
                 const steps = ['Received','For Review','Verified','Approved','Released'];
@@ -835,6 +917,8 @@ function getStatusBadge($status) {
                 document.getElementById('infoContact').textContent  = app.contact_number || '—';
                 document.getElementById('infoAddress').textContent  = app.complete_address || '—';
                 document.getElementById('infoBarangay').textContent = app.barangay || '—';
+                document.getElementById('infoEmail').textContent    = app.email_address || '—';
+                document.getElementById('infoNotes').textContent    = app.additional_notes || '—';
 
                 /* ── Compliance ── */
                 let ch = '';
@@ -867,14 +951,8 @@ function getStatusBadge($status) {
                 /* ── Dynamic Details (Complete details rendering) ── */
                 document.getElementById('dynamicDetailsSection').innerHTML = getCompleteDetailsHtml(app);
 
-                /* ── Document Previews ── */
-                document.getElementById('previewProof').innerHTML = app.has_proof_of_address
-                    ? `<img src="../api/get_document.php?id=${appId}&doc_type=proof_of_address" alt="Proof of Address">`
-                    : '<span style="color:var(--gray);font-size:0.8rem;"><i class="fas fa-file-slash"></i> No file uploaded</span>';
-
-                document.getElementById('previewIdImage').innerHTML = app.has_id_image
-                    ? `<img src="../api/get_document.php?id=${appId}&doc_type=id_image" alt="ID Photo">`
-                    : '<span style="color:var(--gray);font-size:0.8rem;"><i class="fas fa-file-slash"></i> No file uploaded</span>';
+                /* ── All Documents ── */
+                document.getElementById('allDocumentsSection').innerHTML = buildAllDocumentsHtml(app, appId);
 
                 /* ── Timeline ── */
                 let th = '';
@@ -1065,14 +1143,14 @@ function getStatusBadge($status) {
         // 10. Proxy Details
         let proxyHtml = "";
         if (app.is_proxy_application == 1) {
-            proxyHtml += getFieldHtml("Proxy Name", app.proxy_name);
+            proxyHtml += getFieldHtml("Representative Name", app.proxy_name);
             proxyHtml += getFieldHtml("Relationship", app.proxy_relationship);
-            proxyHtml += getFieldHtml("Proxy Contact", app.proxy_contact_number);
-            proxyHtml += getFieldHtml("Proxy Token", app.proxy_token);
+            proxyHtml += getFieldHtml("Representative Contact", app.proxy_contact_number);
+            proxyHtml += getFieldHtml("Representative Token", app.proxy_token);
         }
         if (proxyHtml) {
             dynamicHtml += `
-                <div class="section-title" style="margin-top:20px;"><i class="fas fa-user-clock"></i> Proxy Representative Details</div>
+                <div class="section-title" style="margin-top:20px;"><i class="fas fa-user-clock"></i> Representative Details</div>
                 <div class="info-grid">
                     ${proxyHtml}
                 </div>`;
@@ -1089,6 +1167,62 @@ function getStatusBadge($status) {
         }
 
         return dynamicHtml;
+    }
+
+    /* ─── Build Complete Documents Section ─────────────────── */
+    function buildAllDocumentsHtml(app, appId) {
+        if (typeof window.renderApplicationDocuments === 'function') {
+            return window.renderApplicationDocuments(app, appId);
+        }
+
+        const noDoc = `<span style="color:var(--gray);font-size:0.8rem;"><i class="fas fa-file-slash"></i> No file uploaded</span>`;
+
+        function blobDocBox(label, hasBool, docType) {
+            const inner = hasBool
+                ? `<img src="../api/get_document.php?id=${appId}&doc_type=${docType}" alt="${label}" style="max-width:100%;max-height:100%;object-fit:contain;">`
+                : noDoc;
+            return `
+                <div style="margin-bottom:16px;">
+                    <div class="doc-preview-title">${label}</div>
+                    <div class="doc-preview-box">${inner}</div>
+                </div>`;
+        }
+
+        function fileDocCard(label, filename, docType) {
+            if (!filename) return '';
+            const ext    = (filename.split('.').pop() || '').toLowerCase();
+            const isPdf  = ext === 'pdf';
+            const url    = `../api/get_document.php?id=${encodeURIComponent(appId)}&doc_type=${encodeURIComponent(docType)}`;
+            const preview = isPdf
+                ? `<i class="fas fa-file-pdf" style="font-size:2.6rem;color:var(--danger);"></i>`
+                : `<img src="${url}" alt="${label}" style="max-width:100%;max-height:100%;object-fit:contain;">`;
+            return `
+                <div style="border:1px solid var(--border);border-radius:10px;padding:10px;background:#fff;">
+                    <div class="doc-preview-title">${label}</div>
+                    <div class="doc-preview-box" style="height:150px;display:flex;align-items:center;justify-content:center;">${preview}</div>
+                    <a href="${url}" target="_blank" class="btn btn-primary btn-small" style="width:100%;justify-content:center;margin-top:8px;"><i class="fas fa-eye"></i> View</a>
+                </div>`;
+        }
+
+        let html = `<div class="section-title" style="margin-top:20px;"><i class="fas fa-file-image"></i> Submitted Documents</div>`;
+
+        html += blobDocBox('Proof of Address', app.has_proof_of_address, 'proof_of_address');
+        html += blobDocBox('ID / Identification Photo', app.has_id_image, 'id_image');
+
+        const additionalDocs = [
+            ['psa_birth_cert', 'PSA Birth Certificate'], ['barangay_residency', 'Barangay Residency'],
+            ['comelec_cert', 'COMELEC Certificate'], ['proof_of_life', 'Proof of Life (In Bed)'],
+            ['auth_letter', 'Authorization Letter'], ['proxy_id', 'Representative Government ID'],
+            ['proxy_birth_cert', 'Representative Birth Certificate'], ['home_visitation_form', 'Home Visitation Form'],
+            ['landbank_enrollment_form', 'Land Bank Enrollment Form']
+        ].filter(([key]) => app[key]);
+        if (additionalDocs.length) {
+            html += `<div class="section-title" style="margin-top:24px;"><i class="fas fa-user-shield"></i> Additional Submitted Documents</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;">`;
+            html += additionalDocs.map(([key, label]) => fileDocCard(label, app[key], key)).join('');
+            html += '</div>';
+        }
+
+        return html;
     }
 </script>
 </body>

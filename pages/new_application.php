@@ -35,9 +35,9 @@ if (isset($_GET['token'])) {
     $decrypted = ProxyCrypto::decrypt($_GET['token']);
     if ($decrypted) {
         $loadedProxyData = $decrypted;
-        $successMessage = "Proxy Pre-Registration details loaded successfully. Priority status set to HIGH Queue.";
+        $successMessage = "Representative pre-registration details loaded successfully. Priority status set to HIGH Queue.";
     } else {
-        $errorMessage = "Failed to decrypt Proxy Token. Data is corrupted or invalid.";
+        $errorMessage = "Failed to decrypt representative token. Data is corrupted or invalid.";
     }
 }
 
@@ -58,7 +58,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $oscaData = parseOscaFormPost($_POST);
 
     $idNumber = isset($_POST['idNumber']) ? trim(strip_tags($_POST['idNumber'])) : '';
-    $disabilityType = null;
+    $disabilityType = isset($_POST['disabilityType']) ? implode(', ', array_map('strip_tags', (array)$_POST['disabilityType'])) : null;
+    $emailAddress   = isset($_POST['emailAddress']) ? trim(strip_tags($_POST['emailAddress'])) : null;
+    $additionalNotes = isset($_POST['additionalNotes']) ? trim(strip_tags($_POST['additionalNotes'])) : null;
 
     // Rule-Based Compliance validation on backend
     if (!empty($birthDate)) {
@@ -141,35 +143,102 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             // Allowed MIME types for uploaded documents
             $allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
             $finfo = new finfo(FILEINFO_MIME_TYPE);
+            // Every file field on an official application form is retained.
+            // The older columns below remain for backward compatibility, but
+            // this collection is what lets the modal show every requirement.
+            $documentLabels = [
+                'proofOfAddress' => 'Proof of Address',
+                'idImage' => 'ID / Identification Photo',
+                'oscaIdPhoto' => 'OSCA ID Photo',
+                'lbIdPhoto' => 'Land Bank ID Photo',
+                'doc_death_certificate' => 'Death Certificate',
+                'doc_relationship_proof' => 'Proof of Relationship',
+                'doc_barangay_cert' => 'Barangay Certificate',
+                'doc_claimant_id' => 'Claimant Government ID',
+                'doc_affidavit_loss' => 'Affidavit of Loss',
+                'doc_birth_certificate' => 'Birth Certificate',
+                'doc_valid_id' => 'Valid Government ID',
+                'doc_indigency_cert' => 'Certificate of Indigency',
+                'doc_osca_id' => 'OSCA Senior Citizen ID',
+                'validId1' => 'Valid ID (Front)',
+                'validId2' => 'Valid ID (Back)',
+                'birthOriginal' => 'Birth Certificate (Original)',
+                'birthPhotocopy' => 'Birth Certificate (Photocopy)',
+                'originalSeniorId' => 'Original Senior Citizen ID',
+                'affidavitOfLoss' => 'Affidavit of Loss',
+                'cancellationCert' => 'Cancellation Certificate',
+                'oscaAdditionalDoc' => 'Additional Supporting Document',
+            ];
+            $submittedDocuments = [];
+            foreach ($documentLabels as $field => $label) {
+                if (!isset($_FILES[$field]) || $_FILES[$field]['error'] === UPLOAD_ERR_NO_FILE) continue;
+                if ($_FILES[$field]['error'] !== UPLOAD_ERR_OK || $_FILES[$field]['size'] <= 0) {
+                    $errorMessage = "{$label} upload failed. Please select the file again.";
+                    break;
+                }
+                $mimeType = $finfo->file($_FILES[$field]['tmp_name']);
+                if (!in_array($mimeType, $allowedMimes, true)) {
+                    $errorMessage = "{$label}: only JPEG, PNG, GIF, and PDF files are accepted.";
+                    break;
+                }
+                $submittedDocuments[] = [
+                    'key' => $field,
+                    'label' => $label,
+                    'mime' => $mimeType,
+                    'data' => file_get_contents($_FILES[$field]['tmp_name']),
+                ];
+            }
 
             $proofOfAddress     = null;
             $proofOfAddressType = null;
-            if (isset($_FILES['proofOfAddress']) && $_FILES['proofOfAddress']['error'] === UPLOAD_ERR_OK && $_FILES['proofOfAddress']['size'] > 0) {
-                $mimeType = $finfo->file($_FILES['proofOfAddress']['tmp_name']);
-                if (!in_array($mimeType, $allowedMimes)) {
-                    $errorMessage = "Proof of Address: only JPEG, PNG, GIF, and PDF files are accepted. You uploaded: {$mimeType}";
-                } else {
-                    $proofOfAddress     = file_get_contents($_FILES['proofOfAddress']['tmp_name']);
-                    $proofOfAddressType = $mimeType;
+            if (empty($errorMessage)) {
+                $uploadedProofKey = null;
+                if (isset($_FILES['proofOfAddress']) && $_FILES['proofOfAddress']['error'] !== UPLOAD_ERR_NO_FILE) {
+                    $uploadedProofKey = 'proofOfAddress';
+                } elseif (isset($_FILES['doc_barangay_cert']) && $_FILES['doc_barangay_cert']['error'] !== UPLOAD_ERR_NO_FILE) {
+                    $uploadedProofKey = 'doc_barangay_cert';
                 }
-            } elseif (isset($_FILES['proofOfAddress']) && $_FILES['proofOfAddress']['error'] !== UPLOAD_ERR_NO_FILE) {
-                $uploadErr = $_FILES['proofOfAddress']['error'];
-                $errorMessage = "Proof of Address upload error (code {$uploadErr}). Please try a smaller file.";
+
+                if ($uploadedProofKey && $_FILES[$uploadedProofKey]['error'] === UPLOAD_ERR_OK && $_FILES[$uploadedProofKey]['size'] > 0) {
+                    $mimeType = $finfo->file($_FILES[$uploadedProofKey]['tmp_name']);
+                    if (!in_array($mimeType, $allowedMimes)) {
+                        $errorMessage = "Proof of Address: only JPEG, PNG, GIF, and PDF files are accepted. You uploaded: {$mimeType}";
+                    } else {
+                        $proofOfAddress     = file_get_contents($_FILES[$uploadedProofKey]['tmp_name']);
+                        $proofOfAddressType = $mimeType;
+                    }
+                } elseif ($uploadedProofKey && $_FILES[$uploadedProofKey]['error'] !== UPLOAD_ERR_NO_FILE) {
+                    $uploadErr = $_FILES[$uploadedProofKey]['error'];
+                    $errorMessage = "Proof of Address upload error (code {$uploadErr}). Please try a smaller file.";
+                }
             }
 
             $idImage     = null;
             $idImageType = null;
             if (empty($errorMessage)) {
-                if (isset($_FILES['idImage']) && $_FILES['idImage']['error'] === UPLOAD_ERR_OK && $_FILES['idImage']['size'] > 0) {
-                    $mimeType = $finfo->file($_FILES['idImage']['tmp_name']);
+                $uploadedIdImageKey = null;
+                if (isset($_FILES['idImage']) && $_FILES['idImage']['error'] !== UPLOAD_ERR_NO_FILE) {
+                    $uploadedIdImageKey = 'idImage';
+                } elseif (isset($_FILES['oscaIdPhoto']) && $_FILES['oscaIdPhoto']['error'] !== UPLOAD_ERR_NO_FILE) {
+                    $uploadedIdImageKey = 'oscaIdPhoto';
+                } elseif (isset($_FILES['lbIdPhoto']) && $_FILES['lbIdPhoto']['error'] !== UPLOAD_ERR_NO_FILE) {
+                    $uploadedIdImageKey = 'lbIdPhoto';
+                } elseif (isset($_FILES['doc_valid_id']) && $_FILES['doc_valid_id']['error'] !== UPLOAD_ERR_NO_FILE) {
+                    $uploadedIdImageKey = 'doc_valid_id';
+                } elseif (isset($_FILES['doc_claimant_id']) && $_FILES['doc_claimant_id']['error'] !== UPLOAD_ERR_NO_FILE) {
+                    $uploadedIdImageKey = 'doc_claimant_id';
+                }
+
+                if ($uploadedIdImageKey && $_FILES[$uploadedIdImageKey]['error'] === UPLOAD_ERR_OK && $_FILES[$uploadedIdImageKey]['size'] > 0) {
+                    $mimeType = $finfo->file($_FILES[$uploadedIdImageKey]['tmp_name']);
                     if (!in_array($mimeType, $allowedMimes)) {
                         $errorMessage = "ID Image: only JPEG, PNG, GIF, and PDF files are accepted. You uploaded: {$mimeType}";
                     } else {
-                        $idImage     = file_get_contents($_FILES['idImage']['tmp_name']);
+                        $idImage     = file_get_contents($_FILES[$uploadedIdImageKey]['tmp_name']);
                         $idImageType = $mimeType;
                     }
-                } elseif (isset($_FILES['idImage']) && $_FILES['idImage']['error'] !== UPLOAD_ERR_NO_FILE) {
-                    $uploadErr = $_FILES['idImage']['error'];
+                } elseif ($uploadedIdImageKey && $_FILES[$uploadedIdImageKey]['error'] !== UPLOAD_ERR_NO_FILE) {
+                    $uploadErr = $_FILES[$uploadedIdImageKey]['error'];
                     $errorMessage = "ID Image upload error (code {$uploadErr}). Please try a smaller file.";
                 }
             }
@@ -177,6 +246,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         if (empty($errorMessage)) {
             try {
+                $conn->beginTransaction();
                 // Prepare and bind - Including new columns
                 $oscaCols = getOscaExtraColumns();
                 $colList = 'id_number, full_name, application_type, birth_date, contact_number, complete_address,
@@ -185,8 +255,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             lastName, firstName, middleName, suffix, disability_type,
                             sss_number, pension_amount, date_of_death, relationship_to_deceased,
                             is_proxy_application, proxy_name, proxy_relationship, proxy_contact_number, proxy_token,
-                            priority_level, workflow_state, ' . implode(', ', $oscaCols);
-                $placeholders = implode(', ', array_fill(0, 29 + count($oscaCols), '?'));
+                            priority_level, workflow_state, email_address, additional_notes, ' . implode(', ', $oscaCols);
+                $placeholders = implode(', ', array_fill(0, 31 + count($oscaCols), '?'));
 
                 $stmt = $conn->prepare("INSERT INTO applications ($colList) VALUES ($placeholders)");
 
@@ -197,24 +267,39 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $lastName, $firstName, $middleName, $suffix, $disabilityType,
                     $sssNumber, $pensionAmount, $dateOfDeath, $relationshipToDeceased,
                     $isProxy, $proxyName, $proxyRelationship, $proxyContactNumber, $proxyToken,
-                    $priorityLevel, 'Received',
+                    $priorityLevel, 'Received', $emailAddress, $additionalNotes,
                 ];
                 foreach ($oscaCols as $col) {
                     $params[] = $oscaData[$col];
                 }
 
                 if ($stmt->execute($params)) {
+                    if ($submittedDocuments) {
+                        $documentStmt = $conn->prepare('INSERT INTO application_documents (application_id, document_key, document_label, mime_type, document_data) VALUES (?, ?, ?, ?, ?)');
+                        foreach ($submittedDocuments as $document) {
+                            $documentStmt->bindValue(1, $idNumber, PDO::PARAM_STR);
+                            $documentStmt->bindValue(2, $document['key'], PDO::PARAM_STR);
+                            $documentStmt->bindValue(3, $document['label'], PDO::PARAM_STR);
+                            $documentStmt->bindValue(4, $document['mime'], PDO::PARAM_STR);
+                            $documentStmt->bindValue(5, $document['data'], PDO::PARAM_LOB);
+                            $documentStmt->execute();
+                        }
+                    }
                     // Log history
                     $stmtHist = $conn->prepare("INSERT INTO application_history (application_id, previous_state, new_state, changed_by, comments) VALUES (?, ?, ?, ?, ?)");
                     $userName = $_SESSION['username'] ?? 'barangay_staff';
                     $stmtHist->execute([$idNumber, 'None', 'Received', $userName, 'Application created and received at the counter.']);
 
+                    $conn->commit();
+
                     header("Location: submit_application.php?success=1");
                     exit();
                 } else {
+                    if ($conn->inTransaction()) $conn->rollBack();
                     $errorMessage = "Database error while saving the application. Please try again.";
                 }
             } catch (PDOException $e) {
+                if ($conn->inTransaction()) $conn->rollBack();
                 if (strpos($e->getMessage(), 'max_allowed_packet') !== false || $e->getCode() == '08S01') {
                     $errorMessage = "Upload failed: The size of the uploaded files exceeds the database's transfer limit (max_allowed_packet). Please try uploading smaller images/files (under 2MB each) or contact the administrator to increase the MySQL max_allowed_packet size.";
                 } else {
@@ -680,23 +765,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             font-size: 1.05rem; font-weight: 700;
             color: #e2e8f0;
         }
-        .btn-change-type {
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.12);
-            color: #94a3b8;
-            padding: 9px 18px;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 0.875rem;
-            font-weight: 600;
-            transition: all 0.2s;
-            display: flex; align-items: center; gap: 7px;
-            font-family: inherit;
-        }
-        .btn-change-type:hover {
-            border-color: #6366f1;
-            color: #a5b4fc;
-            background: rgba(99,102,241,0.1);
+        .banner-state {
+            display:flex; align-items:center; gap:7px; flex-shrink:0;
+            padding:7px 10px; border-radius:999px;
+            background:rgba(16,185,129,.12); border:1px solid rgba(16,185,129,.24);
+            color:#bbf7d0; font-size:.72rem; font-weight:700;
         }
 
         /* ── Step headings (inside form) ──────────────────────────── */
@@ -912,23 +985,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .selected-type-banner .banner-info strong {
             font-size: 1.15rem; font-weight: 700;
             color: #e2e8f0;
-        }
-        .btn-change-type {
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            color: #94a3b8;
-            padding: 8px 16px;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            font-weight: 600;
-            transition: all 0.2s;
-            display: flex; align-items: center; gap: 7px;
-        }
-        .btn-change-type:hover {
-            border-color: #3b82f6;
-            color: #60a5fa;
-            background: rgba(59,130,246,0.08);
         }
 
         /* ── Step headings ───────────────────────────── */
@@ -1370,7 +1426,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <div class="main-content">
             <div class="header" style="display: flex; justify-content: space-between; align-items: center;">
                 <h1 style="color: var(--text);">New Application</h1>
-                <button class="proxy-load-btn" onclick="openProxyModal()"><i class="fas fa-qrcode"></i> Scan Proxy QR Code</button>
+                
             </div>
 
 
@@ -1388,13 +1444,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <?php
                     $benefitDetails = getApplicationBenefitDetails();
                     $typeIcons = [
-                        'senior'           => ['icon' => 'fas fa-id-card',       'color' => '#60a5fa', 'grad' => 'linear-gradient(135deg,#1e3a8a,#1d4ed8)', 'desc' => 'Senior Citizens ID registration',    'code' => 'Form 1',    'accent' => '#3b82f6'],
-                        'landbank'         => ['icon' => 'fas fa-credit-card',   'color' => '#34d399', 'grad' => 'linear-gradient(135deg,#064e3b,#059669)', 'desc' => 'Land Bank Cash Card enrollment',       'code' => 'Form 2',    'accent' => '#10b981'],
+                        'senior'           => ['icon' => 'fas fa-id-card',       'color' => '#60a5fa', 'grad' => 'linear-gradient(135deg,#1e3a8a,#1d4ed8)', 'desc' => 'Senior Citizens ID registration',    'code' => '',           'accent' => '#3b82f6'],
+                        'landbank'         => ['icon' => 'fas fa-credit-card',   'color' => '#34d399', 'grad' => 'linear-gradient(135deg,#064e3b,#059669)', 'desc' => 'Land Bank Cash Card enrollment',       'code' => '',           'accent' => '#10b981'],
                         'pension'          => ['icon' => 'fas fa-wallet',        'color' => '#fbbf24', 'grad' => 'linear-gradient(135deg,#78350f,#d97706)', 'desc' => 'Local social pension benefit',          'code' => 'Local',     'accent' => '#f59e0b'],
                         'national_pension' => ['icon' => 'fas fa-landmark',     'color' => '#a78bfa', 'grad' => 'linear-gradient(135deg,#4c1d95,#7c3aed)', 'desc' => 'National DSWD pension (RA 11916)',     'code' => 'National',  'accent' => '#8b5cf6'],
-                        'milestone_gift'   => ['icon' => 'fas fa-gift',          'color' => '#f472b6', 'grad' => 'linear-gradient(135deg,#831843,#db2777)', 'desc' => 'Octogenarian / Centenarian cash gift',  'code' => 'Form 5',    'accent' => '#ec4899'],
-                        'burial'           => ['icon' => 'fas fa-ribbon',        'color' => '#94a3b8', 'grad' => 'linear-gradient(135deg,#1e293b,#475569)', 'desc' => 'Burial financial assistance claim',      'code' => 'Form 7',    'accent' => '#64748b'],
-                        'home_visit'       => ['icon' => 'fas fa-house-medical', 'color' => '#22d3ee', 'grad' => 'linear-gradient(135deg,#164e63,#0891b2)', 'desc' => 'Home visitation &amp; confirmation',     'code' => 'Form 8',    'accent' => '#06b6d4'],
+                        'milestone_gift'   => ['icon' => 'fas fa-gift',          'color' => '#f472b6', 'grad' => 'linear-gradient(135deg,#831843,#db2777)', 'desc' => 'Octogenarian / Centenarian cash gift',  'code' => '',           'accent' => '#ec4899'],
+                        'burial'           => ['icon' => 'fas fa-ribbon',        'color' => '#94a3b8', 'grad' => 'linear-gradient(135deg,#1e293b,#475569)', 'desc' => 'Burial financial assistance claim',      'code' => '',           'accent' => '#64748b'],
+                        'home_visit'       => ['icon' => 'fas fa-house-medical', 'color' => '#22d3ee', 'grad' => 'linear-gradient(135deg,#164e63,#0891b2)', 'desc' => 'Home visitation &amp; confirmation',     'code' => '',           'accent' => '#06b6d4'],
                     ];
                     ?>
                     <div class="app-type-grid" id="appTypeGrid">
@@ -1422,7 +1478,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 <span class="sr-only"><?php echo htmlspecialchars($label); ?></span>
                             </div>
                             <div class="card-content">
-                                <div class="card-code"><?php echo htmlspecialchars($meta['code']); ?></div>
                                 <div class="card-title"><?php echo htmlspecialchars($label); ?></div>
                                 <div class="card-desc"><?php echo $meta['desc']; ?></div>
                             </div>
@@ -1437,16 +1492,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <div class="selected-type-banner" id="selectedTypeBanner" style="display:none;">
                         <div class="banner-icon" id="bannerIcon"></div>
                         <div class="banner-info">
-                            <small><i class="fas fa-layer-group"></i> Selected Application Type</small>
+                            <small><i class="fas fa-layer-group"></i> <span id="bannerTypeContext">Selected Application Form</span></small>
                             <strong id="bannerLabel"></strong>
                         </div>
-                        <button type="button" class="btn-change-type" onclick="resetAppType()"><i class="fas fa-arrow-left"></i> Change</button>
-                    </div>
-
-                    <div class="form-top-nav">
-                        <button type="button" class="btn-form-back" onclick="goBackFromApplication()">
-                            <i class="fas fa-arrow-left"></i> Back
-                        </button>
+                        <span class="banner-state"><i class="fas fa-check-circle"></i> Form in progress</span>
                     </div>
 
                 <form method="POST" action="new_application.php" enctype="multipart/form-data" id="mainAppForm">
@@ -1490,8 +1539,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <div style="color:#f0c060;font-size:0.8rem;font-weight:700;margin-top:3px;letter-spacing:0.04em;">SENIOR CITIZEN BURIAL ASSISTANCE FORM</div>
                                 </div>
                                 <div style="text-align:right;">
-                                    <div style="color:rgba(255,255,255,0.5);font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">Form No.</div>
-                                    <div style="color:#fff;font-size:0.9rem;font-weight:800;margin-top:2px;">F7</div>
                                     <div style="color:rgba(255,255,255,0.5);font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-top:6px;">Date Filed:</div>
                                     <div style="color:#93c5fd;font-size:0.78rem;margin-top:1px;font-weight:600;"><?php echo date('m/d/Y'); ?></div>
                                 </div>
@@ -1666,7 +1713,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                                 <!-- Stub -->
                                 <div style="border:2px dashed #94a3b8;border-radius:10px;padding:12px 16px;background:#f8fafc;">
-                                    <div style="font-size:0.7rem;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">F7 — BURIAL ASSISTANCE STUB <span style="font-size:0.65rem;color:#94a3b8;font-weight:500;">(Present upon claiming — do not lose)</span></div>
+                                    <div style="font-size:0.7rem;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">BURIAL ASSISTANCE STUB <span style="font-size:0.65rem;color:#94a3b8;font-weight:500;">(Present upon claiming — do not lose)</span></div>
                                     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:0.75rem;color:#334155;">
                                         <div><span style="font-weight:700;">Name of claimant:</span><div style="border-bottom:1px solid #cbd5e1;min-height:16px;margin-top:2px;"></div></div>
                                         <div><span style="font-weight:700;">Barangay:</span><div style="border-bottom:1px solid #cbd5e1;min-height:16px;margin-top:2px;"><?php echo htmlspecialchars($_SESSION['barangay'] ?? ''); ?></div></div>
@@ -2026,7 +2073,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     </div><!-- /#homeVisitOfficialFormCard -->
 
                     <!-- ================================================================
-                         OSCA OFFICIAL FORM — F5 Octogenarian / Nonagenarian / Centenarian
+                         OSCA OFFICIAL FORM — Octogenarian / Nonagenarian / Centenarian
                          Visible only when 'milestone_gift' application type is selected
                          ================================================================ -->
                     <div id="milestoneOfficialFormCard" style="display:none; margin-bottom:28px;">
@@ -2055,8 +2102,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <div style="color:#fbcfe8;font-size:0.8rem;font-weight:700;margin-top:3px;letter-spacing:0.04em;">OCTOGENARIAN, NONAGENARIAN &amp; CENTENARIAN APPLICATION FORM</div>
                                 </div>
                                 <div style="text-align:right;">
-                                    <div style="color:rgba(255,255,255,0.5);font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">Form No.</div>
-                                    <div style="color:#fff;font-size:0.9rem;font-weight:800;margin-top:2px;">F5</div>
                                     <div style="color:rgba(255,255,255,0.5);font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-top:6px;">Date:</div>
                                     <div style="color:#fbcfe8;font-size:0.78rem;margin-top:1px;font-weight:600;"><?php echo date('m/d/Y'); ?></div>
                                 </div>
@@ -2280,7 +2325,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                                 <!-- Stub -->
                                 <div style="border:2px dashed #be185d;border-radius:10px;padding:12px 16px;background:#fdf2f8;">
-                                    <div style="font-size:0.7rem;font-weight:800;color:#9d174d;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">F5 &mdash; OCTO LOCAL STUB <span style="font-size:0.65rem;color:#f9a8d4;font-weight:500;">(Present upon claiming &mdash; do not lose)</span></div>
+                                    <div style="font-size:0.7rem;font-weight:800;color:#9d174d;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">MILESTONE CASH GIFT STUB <span style="font-size:0.65rem;color:#f9a8d4;font-weight:500;">(Present upon claiming &mdash; do not lose)</span></div>
                                     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:0.75rem;color:#4a0728;">
                                         <div><span style="font-weight:700;">Name of Senior Citizen:</span><div style="border-bottom:1px solid #fbcfe8;min-height:16px;margin-top:2px;"></div></div>
                                         <div><span style="font-weight:700;">Name of Claimant:</span><div style="border-bottom:1px solid #fbcfe8;min-height:16px;margin-top:2px;"></div></div>
@@ -2332,7 +2377,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                                 <p style="font-size:0.67rem;color:#94a3b8;text-align:center;margin-top:10px;margin-bottom:0;">
                                     <i class="fas fa-info-circle" style="margin-right:4px;"></i>
-                                    This official form preview mirrors the physical OSCA F5 Milestone Cash Gift form. All fields entered here are automatically carried over to the main form below.
+                                    This official form preview mirrors the Milestone Cash Gift form. All fields entered here are automatically carried over to the main form below.
                                 </p>
                             </div><!-- /form body -->
                         </div>
@@ -2623,7 +2668,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 <div style="flex:1;">
                                     <div style="color:rgba(255,255,255,0.7);font-size:0.72rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;">Republic of the Philippines &bull; City Government of Pasig</div>
                                     <div style="color:#fff;font-size:1rem;font-weight:800;line-height:1.2;margin-top:2px;">Office for the Senior Citizens Affairs (OSCA)</div>
-                                    <div style="color:#6ee7b7;font-size:0.8rem;font-weight:700;margin-top:3px;letter-spacing:0.04em;">LAND BANK CASH CARD ENROLLMENT FORM (FORM 2)</div>
+                                    <div style="color:#6ee7b7;font-size:0.8rem;font-weight:700;margin-top:3px;letter-spacing:0.04em;">LAND BANK CASH CARD ENROLLMENT FORM</div>
                                 </div>
                                 <div style="text-align:right;">
                                     <div style="color:rgba(255,255,255,0.5);font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">Control No.</div>
@@ -3224,18 +3269,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <!-- Proxy Representative Information (Visual validation block) -->
                     <div id="proxy-details-section" style="<?php echo $loadedProxyData ? 'display: block;' : 'display: none;'; ?>">
                         <div class="form-section" style="border: 1px dashed #2980b9; padding: 15px; border-radius: 8px; background-color: rgba(41, 128, 185, 0.05);">
-                            <h3 style="color: #2980b9;"><i class="fas fa-id-card-alt"></i> Proxy Registration Active (High-Priority Line)</h3>
+                            <h3 style="color: #2980b9;"><i class="fas fa-id-card-alt"></i> Representative Registration Active (High-Priority Line)</h3>
                             <div class="form-row" style="grid-template-columns: 1fr 1fr 1fr;">
                                 <div class="form-group">
-                                    <label for="proxyName">Proxy Representative Name</label>
+                                    <label for="proxyName">Representative Name</label>
                                     <input type="text" id="proxyName" name="proxyName" value="<?php echo htmlspecialchars($loadedProxyData['proxyName'] ?? ''); ?>" readonly>
                                 </div>
                                 <div class="form-group">
-                                    <label for="proxyRelationship">Proxy Relationship</label>
+                                    <label for="proxyRelationship">Representative Relationship</label>
                                     <input type="text" id="proxyRelationship" name="proxyRelationship" value="<?php echo htmlspecialchars($loadedProxyData['proxyRelationship'] ?? ''); ?>" readonly>
                                 </div>
                                 <div class="form-group">
-                                    <label for="proxyDisplayContact">Proxy Contact Number</label>
+                                    <label for="proxyDisplayContact">Representative Contact Number</label>
                                     <input type="text" id="proxyDisplayContact" value="<?php echo htmlspecialchars($loadedProxyData['proxyContactNumber'] ?? ''); ?>" readonly>
                                 </div>
                             </div>
@@ -3292,13 +3337,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </div>
     </div>
 
-    <!-- Scan Proxy QR Modal -->
+    <!-- Scan Representative QR Modal -->
     <div id="proxyModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeProxyModal()">&times;</span>
-            <h2 style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px; color: #3498db;"><i class="fas fa-qrcode"></i> Scan Proxy QR Token</h2>
+            <h2 style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px; color: #3498db;"><i class="fas fa-qrcode"></i> Scan Representative QR Token</h2>
             <p style="margin-bottom: 15px; font-size: 0.9rem; color: #94a3b8;">
-                Paste or scan the encrypted Proxy QR token URL/payload generated by the relatives portal to retrieve details and place the senior in the High-Priority Queue.
+                Paste or scan the encrypted representative QR token URL/payload generated by the relatives portal to retrieve details and place the senior in the High-Priority Queue.
             </p>
             <div class="form-group">
                 <label for="modalToken">Decoded QR Link / Encrypted Token String</label>
@@ -3324,6 +3369,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 color:  card.dataset.color,
                 bg:     card.dataset.bg,
                 accent: card.dataset.accent,
+                code:   card.dataset.code,
             };
         });
         let pendingBenefitType = '';
@@ -3492,7 +3538,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     }
 
                     closeProxyModal();
-                    alert("Proxy details loaded! Added senior to the HIGH PRIORITY queue.");
+                    alert("Representative details loaded! Added senior to the HIGH PRIORITY queue.");
                 } else {
                     document.getElementById('modalError').textContent = result.message || 'Decryption failed.';
                 }
@@ -3517,6 +3563,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             const meta   = TYPE_META[value] || {};
             const banner = document.getElementById('selectedTypeBanner');
             document.getElementById('bannerLabel').textContent = meta.label || value;
+            document.getElementById('bannerTypeContext').textContent = 'Selected Application Form';
             const bannerIcon = document.getElementById('bannerIcon');
             bannerIcon.innerHTML = `<i class="${meta.icon || 'fas fa-file'}" style="font-size:1.1rem;"></i>`;
             bannerIcon.style.background = meta.bg    || '';
@@ -3576,29 +3623,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 for (const r of purposeRadios) if (r.checked) selPurpose = r.value;
                 updateRequirementsByPurpose(selPurpose || 'new');
             } catch (e) { /* ignore if not present */ }
-        }
-
-        function resetAppType() {
-            document.getElementById('applicationType').value = '';
-            document.querySelectorAll('#appTypeGrid .app-type-card').forEach(c => {
-                c.classList.remove('selected');
-                c.setAttribute('aria-pressed', 'false');
-            });
-
-            const formBody = document.getElementById('formBody');
-            formBody.classList.remove('visible');
-            document.getElementById('selectedTypeBanner').style.display = 'none';
-            document.getElementById('cardSelectorSection').classList.remove('hidden');
-
-            ['oscaOfficialFormCard','burialOfficialFormCard','homeVisitOfficialFormCard','milestoneOfficialFormCard','pensionOfficialFormCard','landbankOfficialFormCard'].forEach(id => {
-                const card = document.getElementById(id);
-                if (card) {
-                    card.style.display = 'none';
-                    setCardSectionInputsState(id, false);
-                }
-            });
-
-            document.getElementById('cardSelectorSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         // Update the Requirements Reference Guide and toggle required file inputs based on OSCA purpose

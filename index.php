@@ -141,7 +141,6 @@ header('Expires: 0');
             </div>
         </div>
         <nav class="site-nav" aria-label="Main navigation">
-            <a href="pages/proxy_registration.php">Proxy Registration</a>
             <a href="#" id="aboutLink" aria-haspopup="dialog">About</a>
             <a href="pages/signup.php" class="btn-primary">Sign Up</a>
         </nav>
@@ -197,12 +196,12 @@ header('Expires: 0');
                 </a>
 
                 <a href="pages/proxy_registration.php" class="portal-card" id="proxyCard"
-                   aria-label="Proxy pre-registration for bedridden seniors">
+                   aria-label="Representative pre-registration for bedridden seniors">
                     <div class="portal-card-icon proxy" aria-hidden="true">
                         <i class="fas fa-qrcode"></i>
                     </div>
                     <div class="portal-card-body">
-                        <h4>Proxy Pre-Registration</h4>
+                        <h4>Representative Pre-Registration</h4>
                         <p>Pre-register for bedridden seniors and get a priority queue QR token.</p>
                     </div>
                     <span class="portal-card-arrow" aria-hidden="true">

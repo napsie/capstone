@@ -20,6 +20,7 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=1.1">
     <link rel="stylesheet" href="../assets/css/main-dark-mode.css?v=1.1">
+    <link rel="stylesheet" href="../assets/css/application-documents.css?v=3">
     <style>
         /* ─── Variables ─────────────────────────────────────────────────── */
         :root {
@@ -393,18 +394,6 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="filter-group">
-                    <label>FSM State</label>
-                    <select id="statusFilter">
-                        <option value="">All States</option>
-                        <option value="Received">Received</option>
-                        <option value="For Review">For Review</option>
-                        <option value="Verified">Verified</option>
-                        <option value="Approved">Approved</option>
-                        <option value="Released">Released</option>
-                    </select>
-                </div>
-                <button class="btn btn-primary" id="applyFilterBtn"><i class="fas fa-filter"></i> Apply</button>
                 <button class="btn btn-accent" id="scanQrBtn" onclick="openProxyModal()"><i class="fas fa-qrcode"></i> Scan Token</button>
             </div>
 
@@ -467,6 +456,8 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                 <div>
                     <form id="applicationDetailForm" method="POST" action="../api/update_application.php" enctype="multipart/form-data">
                         <input type="hidden" id="applicationId" name="applicationId">
+                        <!-- Mirror of disabled select so applicationType is always submitted -->
+                        <input type="hidden" id="applicationTypeHidden" name="applicationType">
 
                         <div class="form-section">
                             <h3><i class="fas fa-user"></i> Basic Information</h3>
@@ -508,6 +499,10 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                                 <div class="form-group">
                                     <label for="contactNumber">Contact Number</label>
                                     <input type="text" id="contactNumber" name="contactNumber" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="emailAddress">Email Address</label>
+                                    <input type="email" id="emailAddress" name="emailAddress">
                                 </div>
                             </div>
                             <div class="form-group">
@@ -554,6 +549,10 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                                     <input type="text" id="emergencyContact" name="emergencyContact">
                                 </div>
                             </div>
+                            <div class="form-group">
+                                <label for="additionalNotes">Additional Notes</label>
+                                <textarea id="additionalNotes" name="additionalNotes" rows="2" placeholder="Any additional information or context regarding this application..."></textarea>
+                            </div>
                         </div>
 
                         <?php $formFieldPrefix = ''; include '../partials/osca_form_sections.php'; ?>
@@ -587,22 +586,15 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                         </div>
 
                         <div class="form-section">
-                            <h3><i class="fas fa-file-alt"></i> Required Documents upload</h3>
-                            <div class="form-group" style="margin-bottom:14px;">
-                                <label for="proofOfAddress">Proof of Address</label>
-                                <input type="file" id="proofOfAddress" name="proofOfAddress">
-                                <div class="image-placeholder" id="proofOfAddressPreview"></div>
-                            </div>
-                            <div class="form-group">
-                                <label for="idImage">ID Image</label>
-                                <input type="file" id="idImage" name="idImage">
-                                <div class="image-placeholder" id="idImagePreview"></div>
+                            <div id="allSubmittedDocumentsSection" style="display:none; margin:0 0 18px;">
+                                <div style="font-size:.76rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--gray);margin-bottom:10px;">Submitted Documents</div>
+                                <div id="allSubmittedDocumentsList" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;"></div>
                             </div>
                         </div>
 
                         <!-- Proxy Documents -->
                         <div class="form-section" id="proxyDocumentsSection" style="display:none;">
-                            <h3><i class="fas fa-user-shield"></i> Submitted Proxy Documents</h3>
+                            <h3><i class="fas fa-user-shield"></i> Submitted Representative Documents</h3>
                             <div id="proxyDocumentsList" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;"></div>
                         </div>
 
@@ -625,7 +617,7 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
 <div id="proxyModal" class="modal-overlay">
     <div class="modal-box" style="max-width:500px; margin: 10% auto;">
         <div class="modal-head">
-            <h2><i class="fas fa-qrcode"></i> Scan Proxy QR Token</h2>
+            <h2><i class="fas fa-qrcode"></i> Scan Representative QR Token</h2>
             <button class="modal-close" onclick="closeProxyModal()">&times;</button>
         </div>
         <div class="modal-scroller" style="padding:20px;">
@@ -647,6 +639,8 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
 <script src="../assets/js/sidebar-toggle.js"></script>
 <script src="../assets/js/dark-mode.js"></script>
 <script src="../assets/js/osca-form-fields.js"></script>
+<script src="../assets/js/application-documents.js?v=3"></script>
+<script src="../assets/js/application-form-generator.js?v=1"></script>
 <script>
     const TYPE_LABELS = <?php echo json_encode(getApplicationTypeOptions()); ?>;
     
@@ -669,8 +663,6 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
     /* ─── Search and Filters ────────────────────────────────── */
     const searchInput           = document.getElementById('searchInput');
     const applicationTypeFilter = document.getElementById('applicationTypeFilter');
-    const statusFilter          = document.getElementById('statusFilter');
-    const applyFilterBtn        = document.getElementById('applyFilterBtn');
     const tableBody             = document.getElementById('applicationsTableBody');
     const userBarangay          = "<?php echo $loggedInBarangay; ?>";
 
@@ -710,7 +702,9 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
         
         let url = `../api/search_applications.php?query=${encodeURIComponent(searchInput.value)}`;
         if (applicationTypeFilter.value) url += `&type=${encodeURIComponent(applicationTypeFilter.value)}`;
-        if (statusFilter.value)          url += `&status=${encodeURIComponent(statusFilter.value)}`;
+        // Finalized records belong in Barangay Records, which shows only
+        // Approved and Released applications. This queue keeps active work.
+        url += `&status=${encodeURIComponent('Received,For Review,Verified')}`;
         if (userBarangay)                url += `&barangay=${encodeURIComponent(userBarangay)}`;
 
         fetch(url)
@@ -756,7 +750,7 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                             <td style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${app.complete_address}</td>
                             <td>
                                 ${state === 'Received' 
-                                    ? `<button class="btn btn-danger btn-small" onclick="deleteApplication(${app.id})"><i class="fas fa-trash"></i> Delete</button>`
+                                    ? `<button type="button" class="btn btn-danger btn-small delete-application-btn" data-id="${app.id}"><i class="fas fa-trash"></i> Delete</button>`
                                     : '<span style="color:var(--gray);font-size:0.75rem;font-style:italic;">Locked</span>'
                                 }
                             </td>
@@ -769,15 +763,22 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
             });
     }
 
-    applyFilterBtn.addEventListener('click', fetchApplications);
-    statusFilter.addEventListener('change', fetchApplications);
     applicationTypeFilter.addEventListener('change', fetchApplications);
-    searchInput.addEventListener('keyup', e => { if (e.key === 'Enter') fetchApplications(); });
+    let searchTimer;
+    searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(fetchApplications, 250);
+    });
 
     // Table Event delegation for clicking Name links
     tableBody.addEventListener('click', e => {
         const lnk = e.target.closest('.name-link');
         if (lnk) { e.preventDefault(); openApplicationModal(lnk.dataset.id); }
+        const deleteButton = e.target.closest('.delete-application-btn');
+        if (deleteButton) {
+            e.preventDefault();
+            deleteApplication(deleteButton.dataset.id);
+        }
     });
 
     fetchApplications();
@@ -788,10 +789,9 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
     function openApplicationModal(appId) {
         currentAppId = appId;
         document.getElementById('applicationModal').style.display = 'block';
+        document.querySelector('#applicationModal .modal-scroller').scrollTop = 0;
 
         // Clear previews / warning
-        document.getElementById('proofOfAddressPreview').innerHTML = '';
-        document.getElementById('idImagePreview').innerHTML = '';
         document.getElementById('returnedWarningBox').style.display = 'none';
         document.getElementById('proxyDocumentsSection').style.display = 'none';
         document.getElementById('proxyDocumentsList').innerHTML = '';
@@ -833,6 +833,8 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                 setValue('landmark', app.landmark || '');
                 document.getElementById('emergencyContactName').value = app.emergency_contact_name || '';
                 document.getElementById('emergencyContact').value     = app.emergency_contact || '';
+                if (document.getElementById('emailAddress')) document.getElementById('emailAddress').value = app.email_address || '';
+                if (document.getElementById('additionalNotes')) document.getElementById('additionalNotes').value = app.additional_notes || '';
 
                 populateOscaFields(app, '');
 
@@ -867,13 +869,7 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                 });
 
                 // File previews
-                document.getElementById('proofOfAddressPreview').innerHTML = app.has_proof_of_address
-                    ? `<img src="../api/get_document.php?id=${appId}&doc_type=proof_of_address" alt="Proof of Address">`
-                    : '<span style="color:var(--gray);font-size:0.8rem;">No file uploaded</span>';
-                
-                document.getElementById('idImagePreview').innerHTML = app.has_id_image
-                    ? `<img src="../api/get_document.php?id=${appId}&doc_type=id_image" alt="ID Image">`
-                    : '<span style="color:var(--gray);font-size:0.8rem;">No file uploaded</span>';
+                renderAllSubmittedDocuments(app, appId);
 
                 // Rejected Warning Banner
                 if ((currentState === 'Received' || currentState === 'Submitted') && app.return_comments) {
@@ -882,7 +878,8 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                 }
 
                 // Render Proxy Docs
-                if (app.is_proxy_application == 1) {
+                // Fallback only if the shared document renderer is unavailable.
+                if (app.is_proxy_application == 1 && typeof window.renderApplicationDocuments !== 'function') {
                     const proxySec  = document.getElementById('proxyDocumentsSection');
                     const proxyList = document.getElementById('proxyDocumentsList');
                     proxySec.style.display = 'block';
@@ -893,8 +890,8 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                         { key: 'comelec_cert', label: 'COMELEC Certificate' },
                         { key: 'proof_of_life', label: 'Proof of Life (In Bed)' },
                         { key: 'auth_letter', label: 'Auth Letter' },
-                        { key: 'proxy_id', label: 'Proxy Government ID' },
-                        { key: 'proxy_birth_cert', label: 'Proxy Birth Cert' },
+                        { key: 'proxy_id', label: 'Representative Government ID' },
+                        { key: 'proxy_birth_cert', label: 'Representative Birth Certificate' },
                         { key: 'home_visitation_form', label: 'Home Visitation Form' },
                         { key: 'landbank_enrollment_form', label: 'Landbank Form' }
                     ];
@@ -930,7 +927,7 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                 if (isEditable) {
                     btns += `<button type="submit" class="btn btn-accent"><i class="fas fa-save"></i> Save Changes</button>`;
                 }
-                btns += `<button type="button" class="btn btn-primary" onclick="exportApplicationDetails('${app.id_number}')"><i class="fas fa-print"></i> Print Official Form</button>`;
+                btns += `<button type="button" class="btn btn-primary" onclick="openOfficialApplicationForm('${app.id_number}')"><i class="fas fa-file-pdf"></i> Generate Official Form</button>`;
                 
                 if (currentState === 'Received' || currentState === 'Submitted') {
                     btns += `<button type="button" class="btn" style="background:#3b82f6; color:#fff;" onclick="forwardToReviewDesk()"><i class="fas fa-paper-plane"></i> Submit to Review Desk</button>`;
@@ -959,24 +956,116 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
             .catch(err => { console.error(err); alert("Connection or network error: " + err.message); });
     }
 
+    /* ─── Toast notification helper ─── */
+    function showToast(message, isSuccess) {
+        const existing = document.getElementById('saveToast');
+        if (existing) existing.remove();
+        const toast = document.createElement('div');
+        toast.id = 'saveToast';
+        toast.innerHTML = `<i class="fas fa-${isSuccess ? 'check-circle' : 'exclamation-circle'}"></i> ${message}`;
+        toast.style.cssText = `
+            position: fixed; bottom: 30px; right: 30px; z-index: 9999;
+            padding: 14px 22px; border-radius: 10px; font-size: 0.9rem; font-weight: 700;
+            background: ${isSuccess ? '#10b981' : '#ef4444'}; color: #fff;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+            display: flex; align-items: center; gap: 10px;
+            animation: slideInToast 0.3s ease;
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.4s'; setTimeout(() => toast.remove(), 400); }, 3500);
+    }
+
     /* ─── Form submit handler ─── */
     document.getElementById('applicationDetailForm').addEventListener('submit', function(e) {
         e.preventDefault();
         syncCompleteAddressFromParts();
+
+        // Sync the hidden applicationType input in case the disabled select wasn't captured
+        const appTypeSelect = document.getElementById('applicationType');
+        if (appTypeSelect) {
+            document.getElementById('applicationTypeHidden').value = appTypeSelect.value;
+        }
+
+        const saveBtn = this.querySelector('button[type="submit"]');
+        const origText = saveBtn ? saveBtn.innerHTML : '';
+        if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
+
         const fd = new FormData(this);
-        fetch(this.action, { method: 'POST', body: fd })
-            .then(r => r.json())
+        // Always use the ID of the record currently open in the modal. This
+        // prevents a stale/empty hidden input from saving to the wrong row.
+        if (currentAppId) fd.set('applicationId', currentAppId);
+        const hasReplacement = ['proofOfAddress', 'idImage'].some(id => document.getElementById(id)?.files?.length);
+        const saveEndpoint = hasReplacement ? '../api/update_application_documents.php' : this.action;
+        fetch(saveEndpoint, { method: 'POST', body: fd })
+            .then(async response => {
+                const text = await response.text();
+                try { return JSON.parse(text); }
+                catch (error) { throw new Error(`Server returned an invalid response (${response.status}).`); }
+            })
             .then(data => {
+                if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = origText; }
                 if (data.success) {
-                    alert(data.message);
+                    showToast(data.message || 'Application updated successfully!', true);
+                    ['proofOfAddress', 'idImage'].forEach(id => {
+                        const input = document.getElementById(id);
+                        if (input) input.value = '';
+                    });
                     document.getElementById('applicationModal').style.display = 'none';
                     fetchApplications();
                 } else {
-                    alert(data.message);
+                    showToast(data.message || 'Failed to save changes.', false);
                 }
             })
-            .catch(err => { console.error(err); alert("An error occurred during updating: " + err.message); });
+            .catch(err => {
+                if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = origText; }
+                console.error(err);
+                showToast('Could not save changes: ' + err.message, false);
+            });
     });
+
+    function renderAllSubmittedDocuments(app, appId) {
+        const section = document.getElementById('allSubmittedDocumentsSection');
+        if (typeof window.renderApplicationDocuments === 'function') {
+            section.style.display = 'block';
+            section.innerHTML = window.renderApplicationDocuments(app, appId);
+            return;
+        }
+
+        const list = document.getElementById('allSubmittedDocumentsList');
+        const documents = [
+            ['proof_of_address', 'Proof of Address', app.has_proof_of_address],
+            ['id_image', 'ID / Identification Photo', app.has_id_image],
+            ['psa_birth_cert', 'PSA Birth Certificate', app.psa_birth_cert],
+            ['barangay_residency', 'Barangay Residency', app.barangay_residency],
+            ['comelec_cert', 'COMELEC Certificate', app.comelec_cert],
+            ['proof_of_life', 'Proof of Life (In Bed)', app.proof_of_life],
+            ['auth_letter', 'Authorization Letter', app.auth_letter],
+            ['proxy_id', 'Representative Government ID', app.proxy_id],
+            ['proxy_birth_cert', 'Representative Birth Certificate', app.proxy_birth_cert],
+            ['home_visitation_form', 'Home Visitation Form', app.home_visitation_form],
+            ['landbank_enrollment_form', 'Land Bank Enrollment Form', app.landbank_enrollment_form]
+        ].filter(([, , exists]) => Boolean(exists));
+
+        if (!documents.length) {
+            section.style.display = 'none';
+            list.innerHTML = '';
+            return;
+        }
+
+        section.style.display = 'block';
+        list.innerHTML = documents.map(([key, label, value]) => {
+            const url = `../api/get_document.php?id=${encodeURIComponent(appId)}&doc_type=${encodeURIComponent(key)}`;
+            const isPdf = typeof value === 'string' && value.toLowerCase().endsWith('.pdf');
+            const preview = isPdf
+                ? '<i class="fas fa-file-pdf" style="font-size:2.6rem;color:#ef4444;"></i>'
+                : `<img src="${url}" alt="${label}" style="max-width:100%;max-height:100%;object-fit:contain;">`;
+            return `<div style="padding:10px;background:#fff;border:1px solid #e2e8f0;border-radius:9px;">
+                <div style="font-size:.72rem;font-weight:700;color:var(--gray);margin-bottom:8px;">${label}</div>
+                <div class="image-placeholder" style="height:130px;display:flex;align-items:center;justify-content:center;">${preview}</div>
+                <a href="${url}" target="_blank" class="btn btn-primary btn-small" style="width:100%;justify-content:center;margin-top:8px;"><i class="fas fa-eye"></i> View</a>
+            </div>`;
+        }).join('');
+    }
 
     /* ─── Action Functions ─── */
     function forwardToReviewDesk() {
@@ -1021,9 +1110,6 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
         .catch(err => { console.error(err); alert("Connection error during deletion: " + err.message); });
     }
 
-    function exportApplicationDetails(idNo) {
-        window.open(`../api/export_application_pdf.php?id=${encodeURIComponent(idNo)}`, '_blank');
-    }
 
     /* ─── Proxy QR Scanner Modals ─── */
     function openProxyModal() {
@@ -1055,7 +1141,7 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                 if (r.success && r.data && r.data.transactionId) {
                     txId = r.data.transactionId;
                 } else {
-                    errDiv.textContent = 'Failed to decrypt proxy token.';
+                    errDiv.textContent = 'Failed to decrypt representative token.';
                     return;
                 }
             }

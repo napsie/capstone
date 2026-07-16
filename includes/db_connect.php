@@ -75,6 +75,40 @@ try {
         ");
     }
 
+    // One record per submitted requirement. This avoids losing documents when
+    // an application form has more than the two legacy image fields.
+    if ($driver === 'pgsql') {
+        $conn->exec("CREATE TABLE IF NOT EXISTS application_documents (
+            id SERIAL PRIMARY KEY,
+            application_id VARCHAR(255) NOT NULL,
+            document_key VARCHAR(100) NOT NULL,
+            document_label VARCHAR(255) NOT NULL,
+            mime_type VARCHAR(100) NOT NULL,
+            document_data BYTEA NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )");
+    } else {
+        $conn->exec("CREATE TABLE IF NOT EXISTS application_documents (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            application_id VARCHAR(255) NOT NULL,
+            document_key VARCHAR(100) NOT NULL,
+            document_label VARCHAR(255) NOT NULL,
+            mime_type VARCHAR(100) NOT NULL,
+            document_data MEDIUMBLOB NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_application_documents_application (application_id),
+            UNIQUE KEY uq_application_document (application_id, document_key)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    }
+
+    // Upgrade databases created before the complete document store was added.
+    if ($driver === 'mysql') {
+        try { $conn->exec('ALTER TABLE application_documents ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'); } catch (PDOException $e) {}
+        try { $conn->exec('ALTER TABLE application_documents ADD UNIQUE KEY uq_application_document (application_id, document_key)'); } catch (PDOException $e) {}
+    }
+
     // --- CPRAS System Enhancements Schema Migrations ---
     // Add columns to applications table if they do not exist
     $columns_to_add = [

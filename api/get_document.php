@@ -14,13 +14,52 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['barangay_staf
 $userRole     = $_SESSION['role'];
 $userBarangay = $_SESSION['barangay'] ?? null;
 
-if (!isset($_GET['id']) || !isset($_GET['doc_type'])) {
+if (!isset($_GET['id'])) {
     http_response_code(400);
     echo 'Invalid request.';
     exit();
 }
 
 $appId   = trim($_GET['id']);
+$documentId = isset($_GET['document_id']) ? (int)$_GET['document_id'] : 0;
+
+// Documents submitted through template forms are stored one-per-requirement.
+// Serve them first, while applying the same barangay access scope as legacy files.
+if ($documentId > 0) {
+    try {
+        if ($userRole === 'barangay_staff' && $userBarangay) {
+            $stmt = $conn->prepare('SELECT d.mime_type, d.document_data FROM application_documents d INNER JOIN applications a ON a.id_number = d.application_id WHERE d.id = ? AND d.application_id = ? AND a.barangay = ?');
+            $stmt->execute([$documentId, $appId, $userBarangay]);
+        } else {
+            $stmt = $conn->prepare('SELECT mime_type, document_data FROM application_documents WHERE id = ? AND application_id = ?');
+            $stmt->execute([$documentId, $appId]);
+        }
+        $document = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$document) {
+            http_response_code(404);
+            header('Content-Type: text/plain');
+            echo 'Document not found or access denied.';
+            exit();
+        }
+        header('Content-Type: ' . $document['mime_type']);
+        header('Cache-Control: private, no-store');
+        echo $document['document_data'];
+        exit();
+    } catch (PDOException $e) {
+        http_response_code(500);
+        error_log('get_document.php template document error: ' . $e->getMessage());
+        header('Content-Type: text/plain');
+        echo 'A server error occurred.';
+        exit();
+    }
+}
+
+if (!isset($_GET['doc_type'])) {
+    http_response_code(400);
+    echo 'Invalid request.';
+    exit();
+}
+
 $docType = trim($_GET['doc_type']);
 
 // Whitelist document types to prevent SQL injection via column name interpolation

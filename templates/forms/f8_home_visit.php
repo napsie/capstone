@@ -7,13 +7,13 @@ $purposes = array_map('trim', explode(',', $app['visit_purpose'] ?? ''));
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>F8 — Home Visit — <?php echo oscaVal($app['full_name']); ?></title>
+    <title>Home Visit — <?php echo oscaVal($app['full_name']); ?></title>
     <style><?php echo oscaPrintStyles('F8'); ?></style>
 </head>
 <body>
 <div class="print-bar"><button onclick="window.print()">Print / Save as PDF</button><button onclick="window.close()">Close</button></div>
 <div class="form-page">
-    <?php oscaPrintHeader('F8', 'HOME VISITATION / CONFIRMATION FORM'); ?>
+    <?php oscaPrintHeader('', 'HOME VISITATION / CONFIRMATION FORM'); ?>
     <div class="checkbox-row">
         <?php foreach (['LOCAL PENSION','BURIAL ASSISTANCE','SENIOR ID','CASH GIFT','OCTOGENARIAN'] as $p): ?>
             <?php echo oscaCheck(in_array($p, $purposes)); ?> <?php echo $p; ?>

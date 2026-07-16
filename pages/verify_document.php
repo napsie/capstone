@@ -33,6 +33,7 @@ $verifiedC     = $queueStats['verified'] ?? 0;
     <title>SENIORLINK — Document Verification Terminal</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=1.1">
+    <link rel="stylesheet" href="../assets/css/application-documents.css?v=3">
     <style>
         /* ─── Variables ─────────────────────────────────────────────────── */
         :root {
@@ -562,20 +563,22 @@ $verifiedC     = $queueStats['verified'] ?? 0;
                             <label>Complete Address</label>
                             <span id="infoAddress">—</span>
                         </div>
+                        <div class="info-item wide">
+                            <label>Email Address</label>
+                            <span id="infoEmail">—</span>
+                        </div>
+                        <div class="info-item wide">
+                            <label>Additional Notes</label>
+                            <span id="infoNotes">—</span>
+                        </div>
                     </div>
 
                     <!-- Dynamic (type-specific) section -->
                     <div id="dynamicDetailsSection"></div>
 
-                    <!-- Document previews -->
-                    <div class="section-title" style="margin-top:20px;"><i class="fas fa-file-image"></i> Submitted Documents</div>
-                    <div class="doc-preview-title">Proof of Address</div>
-                    <div class="doc-preview-box" id="previewProof">
-                        <span style="color:var(--gray);font-size:0.8rem;">Loading…</span>
-                    </div>
-                    <div class="doc-preview-title">ID / Identification Photo</div>
-                    <div class="doc-preview-box" id="previewIdImage">
-                        <span style="color:var(--gray);font-size:0.8rem;">Loading…</span>
+                    <!-- Document previews (all docs, dynamic) -->
+                    <div id="allDocumentsSection">
+                        <span style="color:var(--gray);font-size:0.8rem;">Loading documents…</span>
                     </div>
                 </div>
 
@@ -588,6 +591,7 @@ $verifiedC     = $queueStats['verified'] ?? 0;
                         <textarea id="fsmComment" class="workflow-comment" placeholder="Write transition details or reason for return/blurry scan here…"></textarea>
                         
                         <div class="workflow-buttons">
+                            <button type="button" class="btn btn-primary" id="btnOfficialForm" disabled><i class="fas fa-file-pdf"></i> Generate Official Form</button>
                             <button type="button" class="btn btn-primary" id="btnNextState" onclick="submitFsmTransition('next')">Advance State</button>
                             <button type="button" class="btn btn-secondary" id="btnReturnState" onclick="submitFsmTransition('return')">Return to Barangay</button>
                         </div>
@@ -605,6 +609,8 @@ $verifiedC     = $queueStats['verified'] ?? 0;
 </div><!-- /#applicationModal -->
 
 <script src="../assets/js/sidebar-toggle.js"></script>
+<script src="../assets/js/application-documents.js?v=3"></script>
+<script src="../assets/js/application-form-generator.js?v=1"></script>
 <script>
     /* ─── Greeting ──────────────────────────────────────────── */
     (function(){
@@ -650,6 +656,7 @@ $verifiedC     = $queueStats['verified'] ?? 0;
 
     /* ─── Open modal and populate ───────────────────────────── */
     function openApplicationModal(appId) {
+        document.getElementById('btnOfficialForm').disabled = true;
         currentAppId = appId;
 
         // Reset placeholders
@@ -657,9 +664,8 @@ $verifiedC     = $queueStats['verified'] ?? 0;
         document.getElementById('fsmComment').value = "";
         document.getElementById('complianceList').innerHTML   = '<p style="color:var(--gray);font-size:0.85rem;">Loading compliance checks…</p>';
         document.getElementById('dynamicDetailsSection').innerHTML = '';
+        document.getElementById('allDocumentsSection').innerHTML   = '<span style="color:var(--gray);font-size:0.8rem;">Loading documents…</span>';
         document.getElementById('timelineList').innerHTML     = '<p style="color:var(--gray);font-size:0.85rem;">Loading history…</p>';
-        document.getElementById('previewProof').innerHTML     = '<span style="color:var(--gray);font-size:0.8rem;">Loading…</span>';
-        document.getElementById('previewIdImage').innerHTML   = '<span style="color:var(--gray);font-size:0.8rem;">Loading…</span>';
 
         // Reset stepper
         ['step-Received','step-For-Review','step-Verified','step-Approved','step-Released'].forEach(id => {
@@ -668,6 +674,7 @@ $verifiedC     = $queueStats['verified'] ?? 0;
         });
 
         document.getElementById('applicationModal').style.display = 'block';
+        document.querySelector('#applicationModal .modal-scroller').scrollTop = 0;
 
         fetch(`../api/get_application_details.php?id=${encodeURIComponent(appId)}`)
             .then(r => r.text())
@@ -688,6 +695,9 @@ $verifiedC     = $queueStats['verified'] ?? 0;
 
                 /* ── Title ── */
                 document.getElementById('modalAppTitle').textContent = `Reviewing: ${app.full_name} (${app.id_number})`;
+                const officialFormButton = document.getElementById('btnOfficialForm');
+                officialFormButton.disabled = false;
+                officialFormButton.onclick = () => openOfficialApplicationForm(app.id_number);
 
                 /* ── Stepper ── */
                 const steps = ['Received','For Review','Verified','Approved','Released'];
@@ -710,6 +720,11 @@ $verifiedC     = $queueStats['verified'] ?? 0;
                 document.getElementById('infoContact').textContent  = app.contact_number || '—';
                 document.getElementById('infoAddress').textContent  = app.complete_address || '—';
                 document.getElementById('infoBarangay').textContent = app.barangay || '—';
+                document.getElementById('infoEmail').textContent    = app.email_address || '—';
+                document.getElementById('infoNotes').textContent    = app.additional_notes || '—';
+
+                /* ── All Documents ── */
+                document.getElementById('allDocumentsSection').innerHTML = buildAllDocumentsHtml(app, appId);
 
                 /* ── Compliance Checks ── */
                 let ch = '';
@@ -758,14 +773,8 @@ $verifiedC     = $queueStats['verified'] ?? 0;
                 /* ── Dynamic Details (Complete details rendering) ── */
                 document.getElementById('dynamicDetailsSection').innerHTML = getCompleteDetailsHtml(app);
 
-                /* ── Document Previews ── */
-                document.getElementById('previewProof').innerHTML = app.has_proof_of_address
-                    ? `<img src="../api/get_document.php?id=${appId}&doc_type=proof_of_address" alt="Proof of Address">`
-                    : '<span style="color:var(--gray);font-size:0.8rem;"><i class="fas fa-file-slash"></i> No document uploaded</span>';
-
-                document.getElementById('previewIdImage').innerHTML = app.has_id_image
-                    ? `<img src="../api/get_document.php?id=${appId}&doc_type=id_image" alt="ID Document Photo">`
-                    : '<span style="color:var(--gray);font-size:0.8rem;"><i class="fas fa-file-slash"></i> No document uploaded</span>';
+                /* ── All Documents ── */
+                document.getElementById('allDocumentsSection').innerHTML = buildAllDocumentsHtml(app, appId);
 
                 /* ── FSM Operations ── */
                 const btnNext = document.getElementById('btnNextState');
@@ -1049,14 +1058,14 @@ $verifiedC     = $queueStats['verified'] ?? 0;
         // 10. Proxy Details
         let proxyHtml = "";
         if (app.is_proxy_application == 1) {
-            proxyHtml += getFieldHtml("Proxy Name", app.proxy_name);
+            proxyHtml += getFieldHtml("Representative Name", app.proxy_name);
             proxyHtml += getFieldHtml("Relationship", app.proxy_relationship);
-            proxyHtml += getFieldHtml("Proxy Contact", app.proxy_contact_number);
-            proxyHtml += getFieldHtml("Proxy Token", app.proxy_token);
+            proxyHtml += getFieldHtml("Representative Contact", app.proxy_contact_number);
+            proxyHtml += getFieldHtml("Representative Token", app.proxy_token);
         }
         if (proxyHtml) {
             dynamicHtml += `
-                <div class="section-title" style="margin-top:20px;"><i class="fas fa-user-clock"></i> Proxy Representative Details</div>
+                <div class="section-title" style="margin-top:20px;"><i class="fas fa-user-clock"></i> Representative Details</div>
                 <div class="info-grid">
                     ${proxyHtml}
                 </div>`;
@@ -1073,6 +1082,63 @@ $verifiedC     = $queueStats['verified'] ?? 0;
         }
 
         return dynamicHtml;
+    }
+
+    /* ─── Build Complete Documents Section ─────────────────── */
+    function buildAllDocumentsHtml(app, appId) {
+        if (typeof window.renderApplicationDocuments === 'function') {
+            return window.renderApplicationDocuments(app, appId);
+        }
+
+        const noDoc = `<span style="color:var(--gray);font-size:0.8rem;"><i class="fas fa-file-slash"></i> No file uploaded</span>`;
+
+        function blobDocBox(label, hasBool, docType) {
+            const inner = hasBool
+                ? `<img src="../api/get_document.php?id=${appId}&doc_type=${docType}" alt="${label}" style="max-width:100%;max-height:100%;object-fit:contain;">`
+                : noDoc;
+            return `
+                <div style="margin-bottom:16px;">
+                    <div class="doc-preview-title">${label}</div>
+                    <div class="doc-preview-box">${inner}</div>
+                </div>`;
+        }
+
+        function fileDocCard(label, filename, docType) {
+            if (!filename) return '';
+            const ext    = (filename.split('.').pop() || '').toLowerCase();
+            const isPdf  = ext === 'pdf';
+            const url    = `../api/get_document.php?id=${encodeURIComponent(appId)}&doc_type=${encodeURIComponent(docType)}`;
+            const preview = isPdf
+                ? `<i class="fas fa-file-pdf" style="font-size:2.6rem;color:var(--danger);"></i>`
+                : `<img src="${url}" alt="${label}" style="max-width:100%;max-height:100%;object-fit:contain;">`;
+            return `
+                <div style="border:1px solid var(--border);border-radius:10px;padding:10px;background:#fff;">
+                    <div class="doc-preview-title">${label}</div>
+                    <div class="doc-preview-box" style="height:150px;display:flex;align-items:center;justify-content:center;">${preview}</div>
+                    <a href="${url}" target="_blank" class="btn btn-primary btn-small" style="width:100%;justify-content:center;margin-top:8px;"><i class="fas fa-eye"></i> View</a>
+                </div>`;
+        }
+
+        let html = `<div class="section-title" style="margin-top:20px;"><i class="fas fa-file-image"></i> Submitted Documents</div>`;
+
+        // Always shown: Proof of Address + ID Image (BLOB)
+        html += blobDocBox('Proof of Address', app.has_proof_of_address, 'proof_of_address');
+        html += blobDocBox('ID / Identification Photo', app.has_id_image, 'id_image');
+
+        const additionalDocs = [
+            ['psa_birth_cert', 'PSA Birth Certificate'], ['barangay_residency', 'Barangay Residency'],
+            ['comelec_cert', 'COMELEC Certificate'], ['proof_of_life', 'Proof of Life (In Bed)'],
+            ['auth_letter', 'Authorization Letter'], ['proxy_id', 'Representative Government ID'],
+            ['proxy_birth_cert', 'Representative Birth Certificate'], ['home_visitation_form', 'Home Visitation Form'],
+            ['landbank_enrollment_form', 'Land Bank Enrollment Form']
+        ].filter(([key]) => app[key]);
+        if (additionalDocs.length) {
+            html += `<div class="section-title" style="margin-top:24px;"><i class="fas fa-user-shield"></i> Additional Submitted Documents</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;">`;
+            html += additionalDocs.map(([key, label]) => fileDocCard(label, app[key], key)).join('');
+            html += '</div>';
+        }
+
+        return html;
     }
 </script>
 </body>

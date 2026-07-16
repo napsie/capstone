@@ -8,7 +8,7 @@ if ($addr === ', , Pasig City') $addr = $app['complete_address'] ?? '';
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>F1 — Senior Citizens ID — <?php echo oscaVal($app['full_name']); ?></title>
+    <title>Senior Citizens ID — <?php echo oscaVal($app['full_name']); ?></title>
     <style><?php echo oscaPrintStyles('F1'); ?></style>
 </head>
 <body>
@@ -17,7 +17,7 @@ if ($addr === ', , Pasig City') $addr = $app['complete_address'] ?? '';
     <button onclick="window.close()">Close</button>
 </div>
 <div class="form-page">
-    <?php oscaPrintHeader('F1', 'SENIOR CITIZENS ID APPLICATION'); ?>
+    <?php oscaPrintHeader('', 'SENIOR CITIZENS ID APPLICATION'); ?>
 
     <div class="checkbox-row">
         <strong>Purpose:</strong>

@@ -47,6 +47,7 @@ function getStatusClass($status) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=1.1">
     <link rel="stylesheet" href="../assets/css/main-dark-mode.css?v=1.1">
+    <link rel="stylesheet" href="../assets/css/application-documents.css?v=3">
     <style>
         /* ─── Variables ─────────────────────────────────────────────────── */
         :root {
@@ -577,7 +578,7 @@ function getStatusClass($status) {
             <div class="records-card-header">
                 <h2><i class="fas fa-folder-open"></i> Application Records</h2>
                 <button class="btn-export" onclick="exportDisplayedRecords()">
-                    <i class="fas fa-file-csv"></i> Export CSV
+                    <i class="fas fa-file-excel"></i> Export Excel
                 </button>
             </div>
 
@@ -747,12 +748,23 @@ function getStatusClass($status) {
                             <label>Barangay</label>
                             <span id="infoBarangay">—</span>
                         </div>
+                        <div class="info-item wide">
+                            <label>Email Address</label>
+                            <span id="infoEmail">—</span>
+                        </div>
+                        <div class="info-item wide">
+                            <label>Additional Notes</label>
+                            <span id="infoNotes">—</span>
+                        </div>
                     </div>
 
                     <!-- Dynamic section (PWD / Pension / Burial) -->
                     <div id="dynamicDetailsSection"></div>
 
+                    <div id="allDocumentsSection"></div>
+
                     <!-- Documents -->
+                    <div id="legacyDocumentPreviews" style="display:none;">
                     <div class="section-title" style="margin-top:20px;"><i class="fas fa-file-image"></i> Submitted Documents</div>
                     <div class="doc-preview-title">Proof of Address</div>
                     <div class="doc-preview-box" id="previewProof">
@@ -762,10 +774,19 @@ function getStatusClass($status) {
                     <div class="doc-preview-box" id="previewIdImage">
                         <span style="color:var(--gray);font-size:0.8rem;">Loading…</span>
                     </div>
+                    
+                    <div id="proxyDocumentsSection" style="display:none; margin-top:20px;">
+                        <div class="section-title"><i class="fas fa-user-shield"></i> Representative Documents</div>
+                        <div id="proxyDocumentsList" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;"></div>
+                    </div>
+                    </div>
                 </div>
 
                 <!-- RIGHT: Audit timeline -->
                 <div>
+                    <div style="margin-bottom:16px;">
+                        <button type="button" class="btn btn-primary" id="btnOfficialForm" disabled><i class="fas fa-file-pdf"></i> Generate Official Form</button>
+                    </div>
                     <div class="section-title"><i class="fas fa-clock-rotate-left"></i> Audit History</div>
                     <div class="timeline" id="timelineList">
                         <p style="color:var(--gray);font-size:0.85rem;">Loading history…</p>
@@ -778,6 +799,8 @@ function getStatusClass($status) {
 </div><!-- /#applicationModal -->
 
 <script src="../assets/js/sidebar-toggle.js"></script>
+<script src="../assets/js/application-documents.js?v=3"></script>
+<script src="../assets/js/application-form-generator.js?v=1"></script>
 <script src="../assets/js/dark-mode.js"></script>
 <script>
     /* ─── Greeting ──────────────────────────────────────────── */
@@ -821,6 +844,7 @@ function getStatusClass($status) {
 
     /* ─── Open modal and populate ───────────────────────────── */
     function openApplicationModal(appId) {
+        document.getElementById('btnOfficialForm').disabled = true;
         // Reset
         document.getElementById('modalAppTitle').textContent  = 'Loading…';
         document.getElementById('complianceList').innerHTML   = '<p style="color:var(--gray);font-size:0.85rem;">Loading compliance checks…</p>';
@@ -836,6 +860,7 @@ function getStatusClass($status) {
         });
 
         document.getElementById('applicationModal').style.display = 'block';
+        document.querySelector('#applicationModal .modal-scroller').scrollTop = 0;
 
         fetch(`../api/get_application_details.php?id=${encodeURIComponent(appId)}`)
             .then(r => r.text())
@@ -854,6 +879,9 @@ function getStatusClass($status) {
 
                 /* ── Title ── */
                 document.getElementById('modalAppTitle').textContent = `${app.full_name} — ${app.id_number}`;
+                const officialFormButton = document.getElementById('btnOfficialForm');
+                officialFormButton.disabled = false;
+                officialFormButton.onclick = () => openOfficialApplicationForm(app.id_number);
 
                 /* ── Stepper ── */
                 const steps = ['Received','For Review','Verified','Approved','Released'];
@@ -877,6 +905,8 @@ function getStatusClass($status) {
                 document.getElementById('infoContact').textContent  = app.contact_number || '—';
                 document.getElementById('infoAddress').textContent  = app.complete_address || '—';
                 document.getElementById('infoBarangay').textContent = app.barangay || '—';
+                document.getElementById('infoEmail').textContent    = app.email_address || '—';
+                document.getElementById('infoNotes').textContent    = app.additional_notes || '—';
 
                 /* ── Compliance ── */
                 let ch = '';
@@ -910,6 +940,11 @@ function getStatusClass($status) {
                 document.getElementById('complianceList').innerHTML = ch;
                 /* ── Dynamic Details (Complete details rendering) ── */
                 document.getElementById('dynamicDetailsSection').innerHTML = getCompleteDetailsHtml(app);
+                if (typeof window.renderApplicationDocuments === 'function') {
+                    document.getElementById('allDocumentsSection').innerHTML = window.renderApplicationDocuments(app, appId);
+                } else {
+                    document.getElementById('legacyDocumentPreviews').style.display = 'block';
+                }
 
                 /* ── Document Previews ── */
                 document.getElementById('previewProof').innerHTML = app.has_proof_of_address
@@ -919,6 +954,44 @@ function getStatusClass($status) {
                 document.getElementById('previewIdImage').innerHTML = app.has_id_image
                     ? `<img src="../api/get_document.php?id=${appId}&doc_type=id_image" alt="ID Photo">`
                     : '<span style="color:var(--gray);font-size:0.8rem;"><i class="fas fa-file-slash"></i> No file uploaded</span>';
+
+                /* ── Proxy Docs ── */
+                if (app.is_proxy_application == 1 && typeof window.renderApplicationDocuments !== 'function') {
+                    const proxySec  = document.getElementById('proxyDocumentsSection');
+                    const proxyList = document.getElementById('proxyDocumentsList');
+                    proxySec.style.display = 'block';
+                    proxyList.innerHTML    = '';
+                    const docs = [
+                        { key: 'psa_birth_cert', label: 'PSA Birth Certificate' },
+                        { key: 'barangay_residency', label: 'Barangay Residency' },
+                        { key: 'comelec_cert', label: 'COMELEC Certificate' },
+                        { key: 'proof_of_life', label: 'Proof of Life (In Bed)' },
+                        { key: 'auth_letter', label: 'Auth Letter' },
+                        { key: 'proxy_id', label: 'Representative Government ID' },
+                        { key: 'proxy_birth_cert', label: 'Representative Birth Certificate' },
+                        { key: 'home_visitation_form', label: 'Home Visitation Form' },
+                        { key: 'landbank_enrollment_form', label: 'Landbank Form' },
+                    ];
+                    
+                    docs.forEach(d => {
+                        if (app[d.key]) {
+                            const docUrl = `../api/get_document.php?id=${encodeURIComponent(appId)}&doc_type=${encodeURIComponent(d.key)}`;
+                            const isPdf = app[d.key].toLowerCase().endsWith('.pdf');
+                            proxyList.innerHTML += `
+                                <div style="background:#fff;padding:10px;border-radius:8px;border:1px solid #e2e8f0;">
+                                    <div style="font-size:0.75rem;font-weight:700;color:var(--gray);margin-bottom:8px;">${d.label}</div>
+                                    <div class="image-placeholder" style="height:120px;display:flex;align-items:center;justify-content:center;">
+                                        ${isPdf ? '<i class="fas fa-file-pdf" style="font-size:2.4rem;color:#ef4444;"></i>' : `<img src="${docUrl}" alt="${d.label}" style="max-width:100%;max-height:100%;object-fit:contain;">`}
+                                    </div>
+                                    <a href="${docUrl}" target="_blank" class="btn btn-primary btn-small" style="width:100%;justify-content:center;margin-top:8px;"><i class="fas fa-eye"></i> View</a>
+                                </div>
+                            `;
+                        }
+                    });
+                } else {
+                    const proxySec = document.getElementById('proxyDocumentsSection');
+                    if(proxySec) proxySec.style.display = 'none';
+                }
 
                 /* ── Timeline ── */
                 let th = '';
@@ -964,31 +1037,15 @@ function getStatusClass($status) {
         document.getElementById('noResultsMsg').style.display = visible === 0 ? 'block' : 'none';
     }
 
-    /* ─── Export CSV ─────────────────────────────────────────── */
+    /* ─── Export formatted Excel report ─────────────────────── */
     function exportDisplayedRecords() {
-        const rows = Array.from(document.querySelectorAll('#tableBody .record-row')).filter(r => r.style.display !== 'none');
-        if (!rows.length) { alert('No visible records to export.'); return; }
-
-        const csvRows = [['Applicant Name','ID Number','Application Type','Date Submitted','Status']];
-        rows.forEach(row => {
-            const cells = row.querySelectorAll('td');
-            csvRows.push([
-                cells[0]?.querySelector('.full-name')?.textContent.trim() || '',
-                cells[0]?.querySelector('.app-id')?.textContent.trim() || '',
-                cells[1]?.textContent.trim() || '',
-                cells[2]?.textContent.trim() || '',
-                cells[3]?.textContent.trim() || '',
-            ]);
+        const query = new URLSearchParams({
+            scope: 'barangay',
+            search: document.getElementById('search-input').value.trim(),
+            year: document.getElementById('year-filter').value,
+            type: document.getElementById('type-filter').value
         });
-
-        const csv  = csvRows.map(r => r.map(c => `"${c.replace(/"/g,'""')}"`).join(',')).join('\n');
-        const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-        const url  = URL.createObjectURL(blob);
-        const a    = Object.assign(document.createElement('a'), {href: url, download: `barangay_${<?php echo json_encode($_SESSION['barangay']); ?>}_records.csv`});
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        window.location.href = `../api/export_records_excel.php?${query.toString()}`;
     }
 
     function getCompleteDetailsHtml(app) {
@@ -1157,14 +1214,14 @@ function getStatusClass($status) {
         // 10. Proxy Details
         let proxyHtml = "";
         if (app.is_proxy_application == 1) {
-            proxyHtml += getFieldHtml("Proxy Name", app.proxy_name);
+            proxyHtml += getFieldHtml("Representative Name", app.proxy_name);
             proxyHtml += getFieldHtml("Relationship", app.proxy_relationship);
-            proxyHtml += getFieldHtml("Proxy Contact", app.proxy_contact_number);
-            proxyHtml += getFieldHtml("Proxy Token", app.proxy_token);
+            proxyHtml += getFieldHtml("Representative Contact", app.proxy_contact_number);
+            proxyHtml += getFieldHtml("Representative Token", app.proxy_token);
         }
         if (proxyHtml) {
             dynamicHtml += `
-                <div class="section-title" style="margin-top:20px;"><i class="fas fa-user-clock"></i> Proxy Representative Details</div>
+                <div class="section-title" style="margin-top:20px;"><i class="fas fa-user-clock"></i> Representative Details</div>
                 <div class="info-grid">
                     ${proxyHtml}
                 </div>`;

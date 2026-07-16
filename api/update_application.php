@@ -42,6 +42,14 @@ $completeAddress      = sanitize_str($_POST['completeAddress'] ?? null);
 $emergencyContact     = sanitize_str($_POST['emergencyContact'] ?? '') ?? '';
 $emergencyContactName = sanitize_str($_POST['emergencyContactName'] ?? '') ?? '';
 
+// If applicationType was not submitted (disabled select not mirrored), fetch it from the DB
+if (empty($applicationType)) {
+    $stmtType = $conn->prepare("SELECT application_type FROM applications WHERE id_number = ?");
+    $stmtType->execute([$appId]);
+    $rowType = $stmtType->fetch(PDO::FETCH_ASSOC);
+    $applicationType = $rowType['application_type'] ?? null;
+}
+
 $required = [
     'Last Name' => $lastName, 'First Name' => $firstName, 'Application Type' => $applicationType,
     'Birth Date' => $birthDate, 'Contact Number' => $contactNumber, 'Complete Address' => $completeAddress,
@@ -69,6 +77,8 @@ $sssNumber    = !empty($_POST['sssNumber']) ? sanitize_str($_POST['sssNumber']) 
 $pensionAmount = !empty($_POST['pensionAmount']) ? floatval($_POST['pensionAmount']) : null;
 $dateOfDeath            = !empty($_POST['dateOfDeath']) ? sanitize_str($_POST['dateOfDeath']) : null;
 $relationshipToDeceased = !empty($_POST['relationshipToDeceased']) ? sanitize_str($_POST['relationshipToDeceased']) : null;
+$emailAddress          = !empty($_POST['emailAddress']) ? sanitize_str($_POST['emailAddress']) : null;
+$additionalNotes       = !empty($_POST['additionalNotes']) ? sanitize_str($_POST['additionalNotes']) : null;
 
 $stmtExisting = $conn->prepare("SELECT proof_of_address, proof_of_address_type, id_image, id_image_type FROM applications WHERE id_number = ?");
 $stmtExisting->execute([$appId]);
@@ -113,6 +123,7 @@ $setParts = [
     'proof_of_address = ?', 'proof_of_address_type = ?', 'id_image = ?', 'id_image_type = ?',
     'lastName = ?', 'firstName = ?', 'middleName = ?', 'suffix = ?', 'disability_type = ?',
     'sss_number = ?', 'pension_amount = ?', 'date_of_death = ?', 'relationship_to_deceased = ?',
+    'email_address = ?', 'additional_notes = ?',
 ];
 $params = [
     $fullName, $applicationType, $birthDate, $contactNumber, $completeAddress,
@@ -120,6 +131,7 @@ $params = [
     $proofOfAddress, $proofOfAddressType, $idImage, $idImageType,
     $lastName, $firstName, $middleName, $suffix, $disabilityType,
     $sssNumber, $pensionAmount, $dateOfDeath, $relationshipToDeceased,
+    $emailAddress, $additionalNotes,
 ];
 
 foreach ($oscaData as $col => $val) {

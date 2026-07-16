@@ -11,13 +11,13 @@ if ($deceased === '') {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>F7 — Burial Assistance — <?php echo oscaVal($app['full_name']); ?></title>
+    <title>Burial Assistance — <?php echo oscaVal($app['full_name']); ?></title>
     <style><?php echo oscaPrintStyles('F7'); ?></style>
 </head>
 <body>
 <div class="print-bar"><button onclick="window.print()">Print / Save as PDF</button><button onclick="window.close()">Close</button></div>
 <div class="form-page">
-    <?php oscaPrintHeader('F7', 'SENIOR CITIZEN BURIAL ASSISTANCE FORM'); ?>
+    <?php oscaPrintHeader('', 'SENIOR CITIZEN BURIAL ASSISTANCE FORM'); ?>
     <?php oscaFieldRow(['Deceased Last Name' => $app['deceased_last_name'] ?? $app['lastName'] ?? '', 'First Name' => $app['deceased_first_name'] ?? $app['firstName'] ?? '', 'Middle Name' => $app['deceased_middle_name'] ?? $app['middleName'] ?? '']); ?>
     <?php oscaFieldRow(['Senior ID No.' => $app['senior_id_no'] ?? '', 'Birth Date of Deceased' => oscaFmtDate($app['deceased_birth_date'] ?? $app['birth_date'] ?? null), 'Date of Death' => oscaFmtDate($app['date_of_death'] ?? null)]); ?>
     <?php oscaFieldRow(['Landbank Cash Card No.' => $app['landbank_card_no'] ?? '', 'Contact No.' => $app['contact_number'] ?? '', 'Applicant Name' => $app['applicant_name'] ?? $app['full_name'] ?? '']); ?>

@@ -100,6 +100,8 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
         /* Summary stats strip */
         .stats-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px; margin-bottom: 25px; }
         .stat-card { background: white; border-radius: 10px; padding: 18px 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 15px; }
+        .stat-card-link { color: inherit; text-decoration: none; cursor: pointer; transition: transform .18s ease, box-shadow .18s ease; }
+        .stat-card-link:hover, .stat-card-link:focus-visible { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(15,23,42,.14); outline: none; }
         .stat-icon { font-size: 1.8rem; width: 45px; text-align: center; }
         .stat-label { font-size: 0.8rem; color: var(--gray); font-weight: 600; text-transform: uppercase; }
         .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
@@ -149,11 +151,9 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
 
             <!-- Summary Stats Strip -->
             <div class="stats-strip" id="statsStrip">
-                <div class="stat-card"><div class="stat-icon" style="color:#3b82f6;"><i class="fas fa-file-alt"></i></div><div><div class="stat-label">Total Applications</div><div class="stat-value" id="statTotal">—</div></div></div>
-                <div class="stat-card"><div class="stat-icon" style="color:#f59e0b;"><i class="fas fa-inbox"></i></div><div><div class="stat-label">Received</div><div class="stat-value" id="statReceived">—</div></div></div>
-                <div class="stat-card"><div class="stat-icon" style="color:#8b5cf6;"><i class="fas fa-search"></i></div><div><div class="stat-label">For Review</div><div class="stat-value" id="statReview">—</div></div></div>
-                <div class="stat-card"><div class="stat-icon" style="color:#10b981;"><i class="fas fa-check-double"></i></div><div><div class="stat-label">Approved</div><div class="stat-value" id="statApproved">—</div></div></div>
-                <div class="stat-card"><div class="stat-icon" style="color:#ec4899;"><i class="fas fa-gift"></i></div><div><div class="stat-label">Released</div><div class="stat-value" id="statReleased">—</div></div></div>
+                <a class="stat-card stat-card-link" href="submit_application.php" aria-label="Open active applications"><div class="stat-icon" style="color:#3b82f6;"><i class="fas fa-file-alt"></i></div><div><div class="stat-label">Total Applications</div><div class="stat-value" id="statTotal">—</div></div></a>
+                <a class="stat-card stat-card-link" href="submit_application.php" aria-label="Open received applications"><div class="stat-icon" style="color:#f59e0b;"><i class="fas fa-inbox"></i></div><div><div class="stat-label">Received</div><div class="stat-value" id="statReceived">—</div></div></a>
+                <a class="stat-card stat-card-link" href="barangay_records.php" aria-label="Open approved application records"><div class="stat-icon" style="color:#10b981;"><i class="fas fa-check-double"></i></div><div><div class="stat-label">Approved</div><div class="stat-value" id="statApproved">—</div></div></a>
             </div>
 
             <h2 style="color: var(--text); margin-bottom: 20px;">Application Statistics</h2>
@@ -484,9 +484,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
             fsmMap[row.workflow_state] = parseInt(row.count);
         });
         if (el('statReceived'))  el('statReceived').textContent  = fsmMap['Received']  ?? 0;
-        if (el('statReview'))    el('statReview').textContent    = fsmMap['For Review'] ?? 0;
         if (el('statApproved'))  el('statApproved').textContent  = fsmMap['Approved']   ?? 0;
-        if (el('statReleased'))  el('statReleased').textContent  = fsmMap['Released']   ?? 0;
 
         // Priority banner
         const priorityCount = data.priority_count ?? 0;
@@ -595,7 +593,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                     data: {
                         labels: chartLabels, // Use the new chartLabels
                         datasets: [
-                            { label: 'Disability Support Applications', data: pwdData, backgroundColor: '#3498db' },
+                           
                             { label: 'Senior Citizen Applications', data: seniorData, backgroundColor: '#2ecc71' }
                         ]
                     },
