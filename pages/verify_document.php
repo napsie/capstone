@@ -13,9 +13,10 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['department_ad
 $statsQuery = "SELECT 
     COUNT(*) as total_queue,
     SUM(CASE WHEN priority_level = 'high' THEN 1 ELSE 0 END) as high_priority_count,
-    SUM(CASE WHEN COALESCE(workflow_state, 'Received') = 'For Review' THEN 1 ELSE 0 END) as for_review,
-    SUM(CASE WHEN COALESCE(workflow_state, 'Received') = 'Verified' THEN 1 ELSE 0 END) as verified
-    FROM applications WHERE COALESCE(workflow_state, status) NOT IN ('Approved', 'Released')";
+    SUM(CASE WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') = 'For Review' THEN 1 ELSE 0 END) as for_review,
+    SUM(CASE WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') = 'Verified' THEN 1 ELSE 0 END) as verified
+    FROM applications
+    WHERE COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') NOT IN ('Approved', 'Released')";
 $statsStmt = $conn->prepare($statsQuery);
 $statsStmt->execute();
 $queueStats = $statsStmt->fetch(PDO::FETCH_ASSOC);
@@ -24,6 +25,7 @@ $totalQCount   = $queueStats['total_queue'] ?? 0;
 $highPCount    = $queueStats['high_priority_count'] ?? 0;
 $forReviewC    = $queueStats['for_review'] ?? 0;
 $verifiedC     = $queueStats['verified'] ?? 0;
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -431,8 +433,10 @@ $verifiedC     = $queueStats['verified'] ?? 0;
                     </thead>
                     <tbody>
                         <?php
-                        $sql = "SELECT id_number as id, full_name, application_type, barangay, date_submitted, status, workflow_state, priority_level 
-                                FROM applications 
+                        $sql = "SELECT id_number as id, full_name, application_type, barangay, date_submitted, status, workflow_state, priority_level,
+                                       COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') AS effective_state
+                                FROM applications
+                                WHERE COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') NOT IN ('Approved', 'Released')
                                 ORDER BY CASE WHEN priority_level = 'high' THEN 0 ELSE 1 END, date_submitted DESC";
                         $stmt = $conn->prepare($sql);
                         $stmt->execute();
@@ -450,7 +454,7 @@ $verifiedC     = $queueStats['verified'] ?? 0;
                                 $isHigh = ($row['priority_level'] === 'high');
                                 $rowClass = $isHigh ? 'priority-high-row' : '';
                                 
-                                $state = $row['workflow_state'] ?: 'Received';
+                                $state = $row['effective_state'];
                                 $stateBadgeClass = 'badge-received';
                                 if ($state === 'For Review') $stateBadgeClass = 'badge-review';
                                 if ($state === 'Verified') $stateBadgeClass = 'badge-verified';
