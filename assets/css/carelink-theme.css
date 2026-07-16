@@ -123,6 +123,15 @@ body {
     font-size: 1.35rem;
     box-shadow: 0 4px 16px rgba(27, 138, 74, 0.35);
 }
+.brand-logo {
+    width: 48px;
+    height: 48px;
+    flex: 0 0 48px;
+    object-fit: cover;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 4px 16px rgba(8, 28, 58, 0.28);
+}
 .brand-text h1 {
     font-size: 1.3rem;
     font-weight: 700;
@@ -574,7 +583,25 @@ textarea.form-control { resize: vertical; min-height: 88px; }
 }
 
 @media (max-width: 600px) {
+    body { overflow-x: hidden; }
+    .site-header {
+        align-items: flex-start;
+        gap: 12px;
+        padding: 12px 16px;
+    }
+    .brand { min-width: 0; gap: 10px; }
+    .brand-icon, .brand-logo { width: 40px; height: 40px; flex: 0 0 40px; font-size: 1.1rem; }
+    .brand-text h1 { font-size: 1.05rem; white-space: nowrap; }
+    .site-nav { margin-left: auto; flex: 0 0 auto; }
+    .site-nav a { padding: 9px 11px; font-size: 0.8rem; }
     .form-row { grid-template-columns: 1fr; }
+    .form-actions, .proxy-success-actions { width: 100%; }
+    .form-actions .btn, .proxy-success-actions .btn { width: 100%; justify-content: center; }
+    .proxy-section { padding: 18px 12px; }
+    .proxy-panel { border-radius: 14px; }
+    .proxy-panel-body { padding: 20px 16px; }
+    .qr-wrapper { max-width: 100%; padding: 12px; }
+    .qr-wrapper img { max-width: 100%; height: auto; }
     .back-btn { top: 12px; left: 12px; padding: 8px 12px; font-size: 0.8rem; }
 }
 

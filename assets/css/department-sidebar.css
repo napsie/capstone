@@ -311,3 +311,29 @@
     z-index: 100;
     background-color: #f5f7fa;
 }
+
+/* Shared mobile layout for Department staff pages. */
+@media (max-width: 768px) {
+    html, body { max-width: 100%; overflow-x: hidden; }
+    .sidebar { position: sticky !important; top: 0; z-index: 1200; padding: 8px 10px !important; overflow: hidden; }
+    .sidebar .logo { display: none; }
+    .sidebar-menu { width: 100%; overflow-x: auto; scrollbar-width: none; }
+    .sidebar-menu::-webkit-scrollbar { display: none; }
+    .sidebar-menu ul { width: max-content; gap: 4px; padding: 0; }
+    .sidebar-menu li { flex: 0 0 auto; }
+    .sidebar-menu a { min-width: 44px; padding: 10px 12px; justify-content: center; }
+    .sidebar .link-text { display: none; }
+    .main-content { margin-left: 0 !important; padding: 16px !important; min-width: 0; }
+    .header, .header-content, .records-card-header, .table-header { flex-wrap: wrap; gap: 12px; }
+    .header h1 { font-size: clamp(1.35rem, 6vw, 1.8rem); }
+    .filter-bar { grid-template-columns: 1fr !important; align-items: stretch; }
+    .filter-group, .filter-bar .btn, .filter-bar a, .search-wrap { width: 100%; min-width: 0; }
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .records-tbl { min-width: 700px; }
+    .modal-overlay { padding: 8px !important; }
+    .modal-box { width: 100% !important; max-width: 100% !important; margin: 0 !important; border-radius: 12px !important; }
+    .modal-scroller { max-height: calc(100dvh - 16px) !important; padding: 16px !important; }
+    .modal-grid, .form-row { grid-template-columns: 1fr !important; }
+    .workflow-buttons { flex-wrap: wrap; }
+    .workflow-buttons .btn { flex: 1 1 100%; justify-content: center; }
+}

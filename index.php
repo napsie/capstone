@@ -122,8 +122,8 @@ header('Expires: 0');
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/loading-spinner.css">
-    <link rel="stylesheet" href="assets/css/carelink-theme.css?v=3">
-    <link rel="stylesheet" href="assets/css/landing.css?v=3">
+    <link rel="stylesheet" href="assets/css/carelink-theme.css?v=4">
+    <link rel="stylesheet" href="assets/css/landing.css?v=4">
 </head>
 <body>
     <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -132,9 +132,7 @@ header('Expires: 0');
 
     <header class="site-header">
         <div class="brand">
-            <div class="brand-icon" aria-hidden="true">
-                <i class="fas fa-hands-helping"></i>
-            </div>
+            <img class="brand-logo" src="images/LOGO.jpg" alt="SENIORLINK logo">
             <div class="brand-text">
                 <h1>SENIORLINK</h1>
                 <p>Centralized Profiling System</p>

@@ -229,7 +229,19 @@ try {
         .message, .error { padding: 10px; border-radius: 5px; margin-bottom: 15px; text-align: center; color: white; }
         .message { background: var(--success); }
         .error { background: var(--accent); }
-        .profile-picture-preview { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-top: 10px; border: 2px solid #ddd; }
+        .profile-picture-preview {
+            display: block;
+            width: 104px;
+            height: 104px;
+            aspect-ratio: 1;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-top: 12px;
+            padding: 3px;
+            background: #f8fafc;
+            border: 2px solid #cbd5e1;
+            box-shadow: 0 3px 10px rgba(15, 23, 42, 0.12);
+        }
         .password-input-container { position: relative; width: 100%; }
         .password-input-container .toggle-password { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: var(--gray); }
         
@@ -330,7 +342,7 @@ try {
                         <div class="form-group">
                             <label for="profile_picture">Profile Picture (optional)</label>
                             <input type="file" id="profile_picture" name="profile_picture" accept="image/*">
-                            <img id="profile_picture_preview" class="profile-picture-preview" src="../images/profile_pictures/default.jpg" alt="Profile Picture Preview">
+                            <img id="profile_picture_preview" class="profile-picture-preview" alt="Profile picture preview" hidden>
                         </div>
                         <div class="form-group">
                             <label for="masterPassword">Master Password</label>
@@ -366,8 +378,8 @@ try {
                                         <?php
                                             $userProfilePic = !empty($user['profile_picture']) ? $user['profile_picture'] : 'default.jpg';
                                             $userProfilePicPath = '../images/profile_pictures/' . $userProfilePic;
-                                            if (!file_exists($userProfilePicPath) || is_dir($userProfilePicPath)) {
-                                                $userProfilePicPath = '../images/profile_pictures/default.jpg';
+                                            if ($userProfilePic === 'default.jpg' || !file_exists($userProfilePicPath) || is_dir($userProfilePicPath)) {
+                                                $userProfilePicPath = '../images/LOGO.jpg';
                                             }
                                         ?>
                                         <img src="<?php echo $userProfilePicPath; ?>" alt="Profile Picture" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;">
@@ -418,7 +430,7 @@ try {
                         <div class="form-group"><label for="editRole">Role</label><select id="editRole" name="role" required><option value="department_admin">Administrator</option><option value="barangay_staff">Barangay Staff</option></select></div>
                         <div class="form-group" id="editBarangayFormGroup"><label for="editBarangay">Barangay</label><select id="editBarangay" name="barangay"><option value="">Select barangay...</option><?php foreach ($barangays_list as $b): ?><option value="<?php echo htmlspecialchars($b); ?>"><?php echo htmlspecialchars($b); ?></option><?php endforeach; ?></select></div>
                     </div>
-                    <div class="form-group"><label for="editProfilePicture">Profile Picture (optional)</label><input type="file" id="editProfilePicture" name="profile_picture" accept="image/*"><img id="editProfilePicturePreview" class="profile-picture-preview" src="../images/profile_pictures/default.jpg" alt="Profile Picture Preview"></div>
+                    <div class="form-group"><label for="editProfilePicture">Profile Picture (optional)</label><input type="file" id="editProfilePicture" name="profile_picture" accept="image/*"><img id="editProfilePicturePreview" class="profile-picture-preview" src="../images/LOGO.jpg" alt="Profile picture preview"></div>
                     <div class="form-row">
                         <div class="form-group"><label for="editNewPassword">New Password (leave blank to keep)</label><input type="password" id="editNewPassword" name="newPassword"></div>
                         <div class="form-group"><label for="editConfirmPassword">Confirm New Password</label><input type="password" id="editConfirmPassword" name="confirmPassword"></div>
@@ -573,11 +585,21 @@ try {
                     const file = this.files[0];
                     if (file) {
                         const reader = new FileReader();
-                        reader.onload = (e) => { profilePicturePreview.src = e.target.result; };
+                        reader.onload = (e) => {
+                            profilePicturePreview.src = e.target.result;
+                            profilePicturePreview.hidden = false;
+                        };
                         reader.readAsDataURL(file);
                     } else {
-                        profilePicturePreview.src = '../images/profile_pictures/default.jpg';
+                        profilePicturePreview.removeAttribute('src');
+                        profilePicturePreview.hidden = true;
                     }
+                });
+                profilePictureInput.closest('form').addEventListener('reset', () => {
+                    window.setTimeout(() => {
+                        profilePicturePreview.removeAttribute('src');
+                        profilePicturePreview.hidden = true;
+                    });
                 });
             }
         }
@@ -616,7 +638,7 @@ try {
                                 document.getElementById('editUsername').value = user.username;
                                 document.getElementById('editRole').value = user.role;
                                 document.getElementById('editBarangay').value = user.barangay || '';
-                                document.getElementById('editProfilePicturePreview').src = user.profile_picture_path || '../images/profile_pictures/default.jpg';
+                                document.getElementById('editProfilePicturePreview').src = user.profile_picture_path || '../images/LOGO.jpg';
                                 document.getElementById('editNewPassword').value = '';
                                 document.getElementById('editConfirmPassword').value = '';
                                 toggleBarangayField(editRoleSelect, editBarangayGroup);

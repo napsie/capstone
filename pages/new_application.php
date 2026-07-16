@@ -537,6 +537,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         @media (max-width: 480px) {
             .app-type-grid { grid-template-columns: 1fr; }
         }
+        @media (max-width: 768px) {
+            .selected-type-banner {
+                align-items: flex-start;
+                flex-wrap: wrap;
+                gap: 12px;
+                padding: 16px;
+            }
+            .selected-type-banner .banner-icon { flex: 0 0 44px; }
+            .selected-type-banner .banner-state { margin-left: 56px; width: calc(100% - 56px); }
+            .app-type-card { padding: 20px 18px; }
+        }
 
         /* ── Individual Card ──────────────────────────────────────── */
         .app-type-card {

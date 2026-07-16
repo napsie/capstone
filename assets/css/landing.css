@@ -284,8 +284,27 @@ body {
     .hero-stat strong { font-size: 1.2rem; }
 }
 @media (max-width: 480px) {
+    /* Use one natural page scroll on phones; nested scrolling hid the portal cards. */
+    body { height: auto; min-height: 100dvh; overflow-x: hidden; overflow-y: auto; }
+    .landing-wrapper { min-height: auto; overflow: visible; }
+    .landing-main {
+        flex: none;
+        min-height: auto;
+        overflow: visible;
+        align-items: start;
+        padding: 28px 16px 24px;
+        gap: 22px;
+    }
+    .hero-badge { margin-bottom: 14px; padding: 7px 12px; font-size: 0.68rem; }
+    .hero-content h2 { font-size: clamp(1.75rem, 9vw, 2.15rem); margin-bottom: 12px; }
+    .hero-content .hero-sub { font-size: 0.95rem; margin-bottom: 8px; }
+    .hero-content .hero-audience { font-size: 0.8rem; padding: 8px 0; }
     .brand-text p { display: none; }
     .hero-stats { flex-wrap: wrap; }
-    .portal-card { padding: 16px; }
+    .portal-panel { border-radius: 18px; padding: 22px 18px; }
+    .portal-panel-header { margin-bottom: 16px; }
+    .portal-card { padding: 16px; gap: 12px; }
     .portal-card-icon { width: 48px; height: 48px; font-size: 1.2rem; }
+    .portal-card-title { font-size: 0.95rem; }
+    .portal-card-body p { font-size: 0.82rem; }
 }

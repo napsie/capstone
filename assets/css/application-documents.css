@@ -10,3 +10,8 @@
 .application-document__preview .fa-file-pdf { color:#ef4444; font-size:2.6rem; }
 .application-document__view { width:100%; justify-content:center; margin-top:8px; }
 .application-documents__empty { padding:14px; color:var(--gray,#64748b); font-size:.82rem; text-align:center; border:1px dashed #cbd5e1; border-radius:8px; }
+
+@media (max-width: 520px) {
+    .application-documents__grid { grid-template-columns: 1fr; }
+    .application-document__preview { height: 180px; }
+}

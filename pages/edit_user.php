@@ -29,7 +29,7 @@ error_log("DEBUG: edit_user.php: barangays_list.php included.");
 $user = null;
 $message = '';
 $error = '';
-$currentProfilePicPath = '../images/profile_pictures/default.jpg'; // Initialize with default
+$currentProfilePicPath = '../images/LOGO.jpg'; // Clean circular fallback image
 
 // Handle GET request to fetch user data for editing
 if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['id'])) {
@@ -50,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['id'])) {
             $currentProfilePic = isset($user['profile_picture']) ? $user['profile_picture'] : 'default.jpg';
             $currentProfilePicPath = '../images/profile_pictures/' . $currentProfilePic;
             if (!file_exists($currentProfilePicPath) || is_dir($currentProfilePicPath)) {
-                $currentProfilePicPath = '../images/profile_pictures/default.jpg';
+                $currentProfilePicPath = '../images/LOGO.jpg';
             }
             $user['profile_picture_path'] = $currentProfilePicPath; // Add path for client-side use
 
@@ -293,7 +293,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
                         $currentProfilePic = isset($user['profile_picture']) ? $user['profile_picture'] : 'default.jpg';
                         $currentProfilePicPath = '../images/profile_pictures/' . $currentProfilePic;
                         if (!file_exists($currentProfilePicPath) || is_dir($currentProfilePicPath)) {
-                            $currentProfilePicPath = '../images/profile_pictures/default.jpg';
+                            $currentProfilePicPath = '../images/LOGO.jpg';
                         }
                     }
                 } catch (PDOException $e) {
@@ -566,7 +566,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
                             $profilePic = isset($_SESSION['profile_picture']) ? $_SESSION['profile_picture'] : 'default.jpg';
                             $profilePicPath = '../images/profile_pictures/' . $profilePic;
                             if (!file_exists($profilePicPath) || is_dir($profilePicPath)) {
-                                $profilePicPath = '../images/profile_pictures/default.jpg'; // Fallback to default if file doesn't exist
+                                $profilePicPath = '../images/LOGO.jpg'; // Fallback if no valid profile image exists
                             }
                         ?>
                         <img src="<?php echo $profilePicPath; ?>" alt="Profile Picture" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
@@ -637,7 +637,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
                             $currentProfilePic = isset($user['profile_picture']) ? $user['profile_picture'] : 'default.jpg';
                             $currentProfilePicPath = '../images/profile_pictures/' . $currentProfilePic;
                             if (!file_exists($currentProfilePicPath) || is_dir($currentProfilePicPath)) {
-                                $currentProfilePicPath = '../images/profile_pictures/default.jpg'; // Fallback to default if file doesn't exist
+                                $currentProfilePicPath = '../images/LOGO.jpg'; // Fallback if no valid profile image exists
                             }
                         ?>
                         <img id="profile_picture_preview" class="profile-picture-preview" src="<?php echo $currentProfilePicPath; ?>" alt="Profile Picture Preview">
@@ -795,7 +795,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
                             $currentProfilePic = isset($user['profile_picture']) ? $user['profile_picture'] : 'default.jpg';
                             $currentProfilePicPath = '../images/profile_pictures/' . $currentProfilePic;
                             if (!file_exists($currentProfilePicPath) || is_dir($currentProfilePicPath)) {
-                                $currentProfilePicPath = '../images/profile_pictures/default.jpg'; // Fallback to default if file doesn't exist
+                                $currentProfilePicPath = '../images/LOGO.jpg'; // Fallback if no valid profile image exists
                             }
                         ?>
                         <img id="profile_picture_preview" class="profile-picture-preview" src="<?php echo $currentProfilePicPath; ?>" alt="Profile Picture Preview">

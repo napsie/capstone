@@ -578,6 +578,40 @@ tr:hover {
 .status-default {
     background-color: var(--gray); /* Gray fallback */
 }
+
+/* Shared mobile layout for Barangay staff pages. */
+@media (max-width: 768px) {
+  html, body { max-width: 100%; overflow-x: hidden; }
+  .sidebar { position: sticky !important; top: 0; z-index: 1200; padding: 8px 10px !important; overflow: hidden; }
+  .sidebar .logo { display: none; }
+  .sidebar .nav-links { width: 100%; overflow-x: auto; scrollbar-width: none; gap: 4px; padding: 0; }
+  .sidebar .nav-links::-webkit-scrollbar { display: none; }
+  .sidebar .nav-links li { flex: 0 0 auto; }
+  .sidebar .nav-links a { min-width: 44px; padding: 10px 12px; justify-content: center; }
+  .sidebar .link-text { display: none; }
+  .main, .main-content { margin-left: 0 !important; padding: 16px !important; min-width: 0; }
+  .header, .header-content, .records-card-header, .table-header { flex-wrap: wrap; gap: 12px; }
+  .header h1 { font-size: clamp(1.35rem, 6vw, 1.8rem); }
+  .filter-bar { grid-template-columns: 1fr !important; align-items: stretch; }
+  .filter-group, .filter-bar .btn, .filter-bar a, .search-wrap, .search-box { width: 100%; min-width: 0; }
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .records-tbl { min-width: 700px; }
+  .stats-strip { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+  .stat-card { padding: 14px !important; gap: 10px !important; }
+  .stat-icon { width: auto !important; font-size: 1.35rem !important; }
+  .stat-value { font-size: 1.25rem !important; }
+  .modal-overlay { padding: 8px !important; }
+  .modal-box { width: 100% !important; max-width: 100% !important; margin: 0 !important; border-radius: 12px !important; }
+  .modal-scroller { max-height: calc(100dvh - 16px) !important; padding: 16px !important; }
+  .modal-grid, .form-row { grid-template-columns: 1fr !important; }
+  .form-actions, .workflow-buttons { flex-wrap: wrap; }
+  .form-actions .btn, .workflow-buttons .btn { flex: 1 1 100%; justify-content: center; }
+}
+
+@media (max-width: 420px) {
+  .stats-strip { grid-template-columns: 1fr !important; }
+  .main, .main-content { padding: 12px !important; }
+}
 .header-actions {
     display: flex;
     align-items: center;
