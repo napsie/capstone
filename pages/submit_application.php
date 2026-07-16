@@ -125,6 +125,8 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
         }
         .queue-card-header h2 { color: #fff; font-size: 1.05rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 10px; }
         .queue-card-header h2 i { color: #60a5fa; }
+        .queue-export-btn { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.38); color:#fff; }
+        .queue-export-btn:hover { background:rgba(255,255,255,.22); color:#fff; }
 
         /* Filter Controls */
         .filter-bar {
@@ -374,6 +376,9 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
         <div class="queue-card">
             <div class="queue-card-header">
                 <h2><i class="fas fa-clipboard-list"></i> Applications Queue</h2>
+                <button type="button" class="btn btn-small queue-export-btn" onclick="exportQueuePdf()">
+                    <i class="fas fa-file-pdf"></i> Export PDF
+                </button>
             </div>
 
             <!-- Filter Controls -->
@@ -1063,6 +1068,13 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
     }
 
     /* ─── Action Functions ─── */
+    function exportQueuePdf() {
+        const search = document.getElementById('searchInput')?.value.trim() || '';
+        const type = document.getElementById('applicationTypeFilter')?.value || 'all';
+        const params = new URLSearchParams({ scope: 'barangay', report_mode: 'queue', search, type });
+        window.location.href = `../api/export_records_pdf.php?${params.toString()}`;
+    }
+
     function forwardToReviewDesk() {
         if (!confirm("Forward this application to the department reviewer queue?")) return;
         

@@ -30,6 +30,8 @@ function pdfLine(float $x1, float $y1, float $x2, float $y2, array $color = [0.8
 $role = $_SESSION['role'];
 $scope = $_GET['scope'] ?? ($role === 'barangay_staff' ? 'barangay' : 'department');
 if ($scope === 'department' && $role === 'barangay_staff') { http_response_code(403); exit('Access denied.'); }
+$reportMode = $_GET['report_mode'] ?? 'records';
+if (!in_array($reportMode, ['records', 'queue', 'verification'], true)) $reportMode = 'records';
 $search = trim($_GET['search'] ?? '');
 $type = trim($_GET['type'] ?? 'all');
 $year = trim($_GET['year'] ?? 'all');
@@ -38,15 +40,22 @@ $where = [];
 $params = [];
 
 if ($scope === 'department') {
-    $where[] = "COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') IN ('Approved', 'Released')";
+    if ($reportMode === 'verification') {
+        $where[] = "COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') NOT IN ('Approved', 'Released')";
+    } else {
+        $where[] = "COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') IN ('Approved', 'Released')";
+    }
     if ($barangay !== '' && $barangay !== 'all') { $where[] = 'barangay = ?'; $params[] = $barangay; }
-    $reportTitle = 'Approved Application Records - Pasig City';
+    $reportTitle = $reportMode === 'verification' ? 'Document Verification Queue - Pasig City' : 'Approved Application Records - Pasig City';
     $coverageLabel = ($barangay !== '' && $barangay !== 'all') ? 'Barangay Coverage: ' . $barangay : 'Barangay Coverage: All Barangays';
 } else {
     $assignedBarangay = $_SESSION['barangay'] ?? '';
     $where[] = 'barangay = ?';
     $params[] = $assignedBarangay;
-    $reportTitle = 'Application Records - ' . ($assignedBarangay ?: 'Assigned Barangay');
+    if ($reportMode === 'queue') {
+        $where[] = "COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') NOT IN ('Approved', 'Released')";
+    }
+    $reportTitle = ($reportMode === 'queue' ? 'Applications Queue - ' : 'Application Records - ') . ($assignedBarangay ?: 'Assigned Barangay');
     $coverageLabel = 'Barangay Coverage: ' . ($assignedBarangay ?: 'Assigned Barangay');
 }
 if ($search !== '') { $where[] = '(full_name LIKE ? OR id_number LIKE ?)'; $params[] = "%{$search}%"; $params[] = "%{$search}%"; }

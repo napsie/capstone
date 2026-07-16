@@ -138,6 +138,8 @@ $verifiedC     = $queueStats['verified'] ?? 0;
         }
         .queue-card-header h2 { color: #fff; font-size: 1.05rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 10px; }
         .queue-card-header h2 i { color: #60a5fa; }
+        .queue-export-btn { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.38); color:#fff; }
+        .queue-export-btn:hover { background:rgba(255,255,255,.22); color:#fff; }
 
         /* Priority badge */
         .priority-badge {
@@ -416,6 +418,9 @@ $verifiedC     = $queueStats['verified'] ?? 0;
         <div class="queue-card">
             <div class="queue-card-header">
                 <h2><i class="fas fa-list-ol"></i> Evaluation Review Queue</h2>
+                <a class="btn btn-small queue-export-btn" href="../api/export_records_pdf.php?scope=department&amp;report_mode=verification">
+                    <i class="fas fa-file-pdf"></i> Export PDF
+                </a>
             </div>
 
             <!-- Table -->
