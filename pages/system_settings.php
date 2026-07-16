@@ -707,14 +707,14 @@ try {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert('Success: ' + data.message);
+                    window.showCarelinkResult(data.message, true);
                 } else {
-                    alert('Error: ' + data.message);
+                    window.showCarelinkResult(data.message, false);
                 }
             })
             .catch(error => {
                 console.error('Fetch error:', error);
-                alert('An unexpected error occurred during backup.');
+                window.showCarelinkResult('An unexpected error occurred during backup.', false);
             })
             .finally(() => {
                 backupButton.disabled = false; // Re-enable button
@@ -722,5 +722,6 @@ try {
             });
         }
   </script>
+<script src="../assets/js/carelink-feedback.js?v=2"></script>
 </body>
 </html>

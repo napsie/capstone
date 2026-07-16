@@ -3550,7 +3550,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     }
 
                     closeProxyModal();
-                    alert("Representative details loaded! Added senior to the HIGH PRIORITY queue.");
+                    window.showCarelinkResult("Representative details loaded! Added senior to the HIGH PRIORITY queue.", true);
                 } else {
                     document.getElementById('modalError').textContent = result.message || 'Decryption failed.';
                 }
@@ -3971,7 +3971,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 const idVal = (document.getElementById('idNumber') || {}).value || '';
                 if (!/^[0-9]{4,6}$/.test(idVal)) {
                     e.preventDefault();
-                    alert('Please generate a numeric Senior ID (4–6 digits) before submitting. Click Generate.');
+                    window.showCarelinkResult('Please generate a numeric Senior ID (4–6 digits) before submitting. Click Generate.', false);
                     return false;
                 }
             }
@@ -4240,16 +4240,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
             
             if ((type === 'senior' || type === 'burial') && age < 60) {
-                alert("Localized Compliance Error:\nApplicant is under 60 years old. Senior citizen benefits require age 60+.");
+                window.showCarelinkResult("Applicant is under 60 years old. Senior citizen benefits require age 60+.", false);
                 e.preventDefault();
                 return;
             } else if ((type === 'pension' || type === 'national_pension') && age < 65) {
-                alert("Localized Compliance Error:\nSocial pension applications require age 65+.");
+                window.showCarelinkResult("Social pension applications require age 65+.", false);
                 e.preventDefault();
                 return;
             } else if (type === 'milestone_gift') {
                 if (age < 80) {
-                    alert("Localized Compliance Error:\nOctogenarian / Nonagenarian / Centenarian Cash Gift is available to applicants aged 80 and above.");
+                    window.showCarelinkResult("Octogenarian / Nonagenarian / Centenarian Cash Gift is available to applicants aged 80 and above.", false);
                     e.preventDefault();
                     return;
                 }
@@ -4270,7 +4270,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     curDate.setDate(curDate.getDate() + 1);
                 }
                 if (workingDays > 30) {
-                    alert("Localized Compliance Error:\nBurial assistance claims must be submitted within 30 working days from the date of death (current: " + workingDays + " working days). Submission is blocked.");
+                window.showCarelinkResult("Burial assistance claims must be submitted within 30 working days from the date of death (current: " + workingDays + " working days). Submission is blocked.", false);
                     e.preventDefault();
                     return;
                 }
@@ -4301,5 +4301,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
         }
     </script>
+<script src="../assets/js/carelink-feedback.js?v=2"></script>
 </body>
 </html>

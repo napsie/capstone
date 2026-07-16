@@ -144,13 +144,14 @@ foreach ($apps as $app) {
 <script>
 function cp(id) {
   const t = document.getElementById(id).textContent.trim();
-  navigator.clipboard.writeText(t).then(() => alert('Copied!')).catch(() => {
+  navigator.clipboard.writeText(t).then(() => window.showCarelinkResult('Token copied to clipboard.', true)).catch(() => {
     const el = document.getElementById(id);
     const r = document.createRange(); r.selectNodeContents(el);
     window.getSelection().removeAllRanges(); window.getSelection().addRange(r);
-    document.execCommand('copy'); alert('Copied!');
+    document.execCommand('copy'); window.showCarelinkResult('Token copied to clipboard.', true);
   });
 }
 </script>
+<script src="assets/js/carelink-feedback.js?v=2"></script>
 </body>
 </html>

@@ -623,7 +623,7 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
 <script src="../assets/js/dark-mode.js"></script>
 <script src="../assets/js/osca-form-fields.js"></script>
 <script src="../assets/js/application-documents.js?v=6"></script>
-<script src="../assets/js/carelink-feedback.js?v=1"></script>
+<script src="../assets/js/carelink-feedback.js?v=2"></script>
 <script src="../assets/js/application-form-generator.js?v=1"></script>
 <script>
     const TYPE_LABELS = <?php echo json_encode(getApplicationTypeOptions()); ?>;
@@ -796,11 +796,11 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                 let app;
                 try { app = JSON.parse(text); }
                 catch(parseErr) {
-                    alert("Server error. Check below for raw output:\n\n" + text.substring(0, 1000));
+                    window.showCarelinkResult("Server error. " + text.substring(0, 1000), false);
                     console.error("Non-JSON response:", text);
                     return;
                 }
-                if (app.error) { alert(app.error); return; }
+                if (app.error) { window.showCarelinkResult(app.error, false); return; }
 
                 const seniorCitizenId = app.senior_id_no || 'Not yet issued';
                 document.getElementById('modalAppTitle').textContent = `Reviewing: ${app.full_name} (Senior Citizen ID: ${seniorCitizenId})`;
@@ -940,7 +940,7 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                 }
                 document.getElementById('timelineList').innerHTML = th;
             })
-            .catch(err => { console.error(err); alert("Connection or network error: " + err.message); });
+            .catch(err => { console.error(err); window.showCarelinkResult("Connection or network error: " + err.message, false); });
     }
 
     /* ─── Toast notification helper ─── */
@@ -1138,8 +1138,10 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
     }
 
     function forwardToReviewDesk() {
-        if (!confirm("Forward this application to the department reviewer queue?")) return;
-        
+        window.showCarelinkConfirm("Forward this application to the department reviewer queue?", forwardApplicationRequest);
+    }
+
+    function forwardApplicationRequest() {
         const fd = new FormData();
         fd.append('applicationId', currentAppId);
         fd.append('action', 'next');
@@ -1160,8 +1162,10 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
     }
 
     function deleteApplication(appId) {
-        if (!confirm('Are you sure you want to delete this application? This action is permanent.')) return;
-        
+        window.showCarelinkConfirm('Are you sure you want to delete this application? This action is permanent.', () => deleteApplicationRequest(appId));
+    }
+
+    function deleteApplicationRequest(appId) {
         fetch('../api/delete_application.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

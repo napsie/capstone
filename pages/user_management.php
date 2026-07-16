@@ -13,6 +13,16 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'department_admin') {
 $message = '';
 $error = '';
 
+// Display one-time feedback after actions that redirect back to this page (for example, delete user).
+if (!empty($_SESSION['message'])) {
+    $message = (string) $_SESSION['message'];
+    unset($_SESSION['message']);
+}
+if (!empty($_SESSION['error'])) {
+    $error = (string) $_SESSION['error'];
+    unset($_SESSION['error']);
+}
+
 // Generate CSRF token
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -390,7 +400,7 @@ try {
                                     <td><?php echo htmlspecialchars($user['barangay']); ?></td>
                                     <td>
                                         <button class="btn btn-small btn-warning edit-user-btn" data-id="<?php echo $user['id']; ?>">Edit</button>
-                                        <form action="delete_user.php" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure?');">
+                                        <form action="delete_user.php" method="POST" style="display:inline;" onsubmit="return confirmCarelinkSubmit(this, 'Are you sure you want to delete this user? This action is permanent.');">
                                             <input type="hidden" name="id" value="<?php echo $user['id']; ?>">
                                             <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                                             <button type="submit" name="deleteUser" class="btn btn-small btn-danger">Delete</button>
@@ -644,12 +654,12 @@ try {
                                 toggleBarangayField(editRoleSelect, editBarangayGroup);
                                 editUserModal.style.display = 'flex';
                             } else {
-                                alert('Error: ' + data.message);
+                                window.showCarelinkResult('Error: ' + data.message, false);
                             }
                         })
                         .catch(error => {
                             console.error('Error fetching user details:', error);
-                            alert('An error occurred while fetching user details.');
+                            window.showCarelinkResult('An error occurred while fetching user details.', false);
                         });
                 }
             });
@@ -675,7 +685,7 @@ try {
                 })
                 .then(data => {
                     if (data.success) {
-                        alert(data.message);
+                        window.showCarelinkResult(data.message, !!data.success);
                         location.reload();
                     } else {
                         editAlert.textContent = data.message || 'An unknown error occurred during update.';
@@ -703,5 +713,11 @@ try {
         });
     });
     </script>
+<script src="../assets/js/carelink-feedback.js?v=2"></script>
+<?php if ($message !== ''): ?>
+<script>window.addEventListener('DOMContentLoaded', () => window.showCarelinkResult(<?= json_encode($message) ?>, true));</script>
+<?php elseif ($error !== ''): ?>
+<script>window.addEventListener('DOMContentLoaded', () => window.showCarelinkResult(<?= json_encode($error) ?>, false));</script>
+<?php endif; ?>
 </body>
 </html>

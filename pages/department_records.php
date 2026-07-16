@@ -775,7 +775,7 @@ function getStatusBadge($status) {
 
 <script src="../assets/js/sidebar-toggle.js"></script>
 <script src="../assets/js/application-documents.js?v=6"></script>
-<script src="../assets/js/carelink-feedback.js?v=1"></script>
+<script src="../assets/js/carelink-feedback.js?v=2"></script>
 <script src="../assets/js/application-form-generator.js?v=2"></script>
 <script>
     /* ─── Greeting ──────────────────────────────────────────── */
@@ -984,8 +984,11 @@ function getStatusBadge($status) {
             });
     }
 
-    function releaseApplication(appId) {
-        if (!confirm('Release this approved application? This will mark it as released.')) return;
+    function releaseApplication(appId, confirmed = false) {
+        if (!confirmed) {
+            window.showCarelinkConfirm('Release this approved application? This will mark it as released.', () => releaseApplication(appId, true));
+            return;
+        }
 
         const formData = new FormData();
         formData.append('applicationId', appId);

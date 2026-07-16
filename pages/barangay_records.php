@@ -798,7 +798,7 @@ function getStatusClass($status) {
 
 <script src="../assets/js/sidebar-toggle.js"></script>
 <script src="../assets/js/application-documents.js?v=6"></script>
-<script src="../assets/js/carelink-feedback.js?v=1"></script>
+<script src="../assets/js/carelink-feedback.js?v=2"></script>
 <script src="../assets/js/application-form-generator.js?v=2"></script>
 <script src="../assets/js/dark-mode.js"></script>
 <script>

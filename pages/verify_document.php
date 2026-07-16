@@ -616,7 +616,7 @@ $verifiedC     = $queueStats['verified'] ?? 0;
 
 <script src="../assets/js/sidebar-toggle.js"></script>
 <script src="../assets/js/application-documents.js?v=6"></script>
-<script src="../assets/js/carelink-feedback.js?v=1"></script>
+<script src="../assets/js/carelink-feedback.js?v=2"></script>
 <script src="../assets/js/application-form-generator.js?v=2"></script>
 <script>
     /* ─── Greeting ──────────────────────────────────────────── */
@@ -862,7 +862,7 @@ $verifiedC     = $queueStats['verified'] ?? 0;
             });
     }
 
-    async function submitFsmTransition(action) {
+    async function submitFsmTransition(action, confirmed = false) {
         const comment = document.getElementById('fsmComment').value.trim();
 
         if (action === 'return' && !comment) {
@@ -870,7 +870,8 @@ $verifiedC     = $queueStats['verified'] ?? 0;
             return;
         }
 
-        if (!confirm(`Confirm triggering workflow state transition?`)) {
+        if (!confirmed) {
+            window.showCarelinkConfirm('Confirm triggering workflow state transition?', () => submitFsmTransition(action, true));
             return;
         }
 

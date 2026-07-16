@@ -688,7 +688,7 @@ $resetUrl = $resetUrl ?? $formAction;
             
             const seniorId = seniorIdInput.value.trim();
             if (!seniorId) {
-                alert('Please enter a Senior Citizen ID.');
+                window.showCarelinkResult('Please enter a Senior Citizen ID.', false);
                 return;
             }
 
