@@ -73,33 +73,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         } elseif (($applicationType === 'pension' || $applicationType === 'national_pension') && $age < 65) {
             $errorMessage = "Localized Compliance Check Failed: Local/National Social Pension requires applicant to be at least 65 years old (current age: $age).";
         } elseif ($applicationType === 'milestone_gift') {
-            $milestones = [80, 85, 90, 95];
-            $isMilestone = in_array($age, $milestones) || ($age >= 100);
-            if (!$isMilestone) {
-                $errorMessage = "Localized Compliance Check Failed: Milestone Cash Gift is only available for ages 80, 85, 90, 95, or 100+ (current age: $age).";
+            if ($age < 80) {
+                $errorMessage = "Localized Compliance Check Failed: Octogenarian / Nonagenarian / Centenarian Cash Gift is available to applicants aged 80 and above (current age: $age).";
             }
         }
     }
 
-    // Social Pension validation (SSS cap <= P4,000 for local, 0 for national)
+    // Pension details are recorded for reference only. SSS verification is not
+    // available in this system, so it must not prevent an application submission.
     $sssNumber = null;
     $pensionAmount = null;
-    if ($applicationType === 'pension') {
+    if ($applicationType === 'pension' || $applicationType === 'national_pension') {
         $sssNumber = isset($_POST['sssNumber']) ? trim(strip_tags($_POST['sssNumber'])) : '';
-        $pensionAmount = isset($_POST['pensionAmount']) ? floatval($_POST['pensionAmount']) : 0;
-        if (empty($sssNumber)) {
-            $errorMessage = "Localized Compliance Check Failed: SSS Number is required for local social pension.";
-        } else if ($pensionAmount > 4000) {
-            $errorMessage = "Localized Compliance Check Failed: Monthly SSS Pension exceeds the local limit of P4,000 (current: P" . number_format($pensionAmount, 2) . ").";
-        }
-    } elseif ($applicationType === 'national_pension') {
-        $sssNumber = isset($_POST['sssNumber']) ? trim(strip_tags($_POST['sssNumber'])) : '';
-        $pensionAmount = isset($_POST['pensionAmount']) ? floatval($_POST['pensionAmount']) : 0;
-        if (empty($sssNumber)) {
-            $errorMessage = "Localized Compliance Check Failed: SSS Number is required for national social pension.";
-        } else if ($pensionAmount > 0) {
-            $errorMessage = "Localized Compliance Check Failed: National DSWD Social Pension is restricted to indigent seniors with no other pension benefits (current verified: P" . number_format($pensionAmount, 2) . ").";
-        }
+        $pensionAmountRaw = trim($_POST['pensionAmount'] ?? '');
+        $pensionAmount = is_numeric($pensionAmountRaw) ? floatval($pensionAmountRaw) : null;
     }
 
     // Burial Assistance validation (death within 30 working days)
@@ -2507,6 +2494,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     </div>
                                 </div>
 
+                                <!-- Pension details (reference only; no external verification) -->
+                                <div style="background:#fff7ed;border:1.5px solid #fdba74;border-radius:12px;padding:14px 16px;margin-bottom:14px;">
+                                    <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#9a3412;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+                                        <i class="fas fa-file-invoice-dollar" style="color:#ea580c;"></i> Pension Details <span style="font-weight:600;text-transform:none;letter-spacing:0;">(Optional)</span>
+                                    </div>
+                                    <p style="font-size:0.78rem;color:#9a3412;line-height:1.5;margin:0 0 10px;">Record the applicant's SSS information if it is available. This is not verified by the system and will not affect submission.</p>
+                                    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:end;">
+                                        <div>
+                                            <label style="font-size:0.66rem;font-weight:700;color:#9a3412;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:3px;">SSS Number</label>
+                                            <input type="text" id="penSssNumber" inputmode="numeric" autocomplete="off" style="width:100%;padding:8px 10px;border:1.5px solid #fdba74;border-radius:7px;font-size:0.88rem;color:#431407;background:#fff;outline:none;" oninput="syncField(this,'sssNumber');" placeholder="Enter SSS number">
+                                        </div>
+                                        <div>
+                                            <label style="font-size:0.66rem;font-weight:700;color:#9a3412;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:3px;">Monthly Pension Amount</label>
+                                            <input type="number" id="penPensionAmount" min="0" step="0.01" inputmode="decimal" style="width:100%;padding:8px 10px;border:1.5px solid #fdba74;border-radius:7px;font-size:0.88rem;color:#431407;background:#fff;outline:none;" oninput="syncField(this,'pensionAmount');" placeholder="e.g. 3500.00">
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <!-- Economic Status -->
                                 <div style="background:#fefce8;border:1px solid #fde68a;border-radius:12px;padding:14px 16px;margin-bottom:14px;">
                                     <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#92400e;margin-bottom:12px;display:flex;align-items:center;gap:6px;">
@@ -3274,7 +3279,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <input type="hidden" id="relationshipToDeceased" name="relationshipToDeceased" value="<?php echo htmlspecialchars($loadedProxyData['relationshipToDeceased'] ?? ''); ?>">
                     <div id="ageComplianceResult" style="display:none;"></div>
                     <div id="burialComplianceResult" style="display:none;"></div>
-                    <div id="pensionComplianceResult" style="display:none;"></div>
 
 
                     <!-- Proxy Representative Information (Visual validation block) -->
@@ -3541,9 +3545,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     toggleFields();
                     checkAgeCompliance();
                     
-                    if (data.applicationType === 'pension' && data.sssNumber) {
-                        verifySssPension();
-                    }
                     if (data.applicationType === 'burial') {
                         checkBurialDeadlineCompliance();
                     }
@@ -3745,9 +3746,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             document.getElementById('dateOfDeath')?.removeAttribute('required');
             document.getElementById('relationshipToDeceased')?.removeAttribute('required');
 
-            if (type === 'pension' || type === 'national_pension') {
-                document.getElementById('sssNumber')?.setAttribute('required', 'required');
-            } else if (type === 'burial') {
+            if (type === 'burial') {
                 document.getElementById('dateOfDeath')?.setAttribute('required', 'required');
                 document.getElementById('relationshipToDeceased')?.setAttribute('required', 'required');
             }
@@ -3917,11 +3916,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 'suffix':        'penSuffix',
                 'birthDate':     'penBirthDate',
                 'contactNumber': 'penContact',
+                'sssNumber':     'penSssNumber',
             };
             for (const [mainId, pId] of Object.entries(map)) {
                 const mainEl = document.getElementById(mainId);
                 const pEl = document.getElementById(pId);
                 if (mainEl && pEl && mainEl.value) pEl.value = mainEl.value;
+            }
+            const pensionAmount = document.getElementById('pensionAmount');
+            const pensionAmountDisplay = document.getElementById('penPensionAmount');
+            if (pensionAmount && pensionAmountDisplay && pensionAmount.value !== '') {
+                pensionAmountDisplay.value = pensionAmount.value;
             }
             updatePenAge();
         }
@@ -4170,12 +4175,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     container.innerHTML = `<span class="compliance-badge compliance-fail"><i class="fas fa-times"></i> Disqualified: Age ${age} is under 65 (Requires 65+ for social pension)</span>`;
                 }
             } else if (type === 'milestone_gift') {
-                const milestones = [80, 85, 90, 95];
-                const isMilestone = milestones.includes(age) || (age >= 100);
-                if (isMilestone) {
-                    container.innerHTML = `<span class="compliance-badge compliance-pass"><i class="fas fa-check"></i> Qualifies: Age ${age} matches Milestone Cash Gift bracket</span>`;
+                if (age >= 80) {
+                    container.innerHTML = `<span class="compliance-badge compliance-pass"><i class="fas fa-check"></i> Qualifies: Applicant is ${age} years old and eligible for the cash gift</span>`;
                 } else {
-                    container.innerHTML = `<span class="compliance-badge compliance-fail"><i class="fas fa-times"></i> Disqualified: Age ${age} is not a milestone age (Requires 80, 85, 90, 95, or 100+)</span>`;
+                    container.innerHTML = `<span class="compliance-badge compliance-fail"><i class="fas fa-times"></i> Disqualified: Age ${age} is under 80 (Requires age 80 and above)</span>`;
                 }
             } else { // senior, burial
                 if (age >= 60) {
@@ -4183,50 +4186,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 } else {
                     container.innerHTML = `<span class="compliance-badge compliance-fail"><i class="fas fa-times"></i> Disqualified: Age ${age} is under 60 (Requires 60+)</span>`;
                 }
-            }
-        }
-
-        // Live Localized Compliance: Pension check (SSS Cap P4,000 for local, 0 for national)
-        async function verifySssPension() {
-            const sssNum = document.getElementById('sssNumber').value.trim();
-            const container = document.getElementById('pensionComplianceResult');
-            const amountInput = document.getElementById('pensionAmount');
-            const type = document.getElementById('applicationType').value;
-            
-            if (!sssNum) {
-                alert("Please enter an SSS Number first.");
-                return;
-            }
-
-            container.innerHTML = `<span class="compliance-badge compliance-info"><i class="fas fa-spinner fa-spin"></i> Checking SSS External Registry...</span>`;
-            
-            try {
-                const response = await fetch(`../api/get_pension_check.php?sss_number=${encodeURIComponent(sssNum)}`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    const amount = data.pension_amount;
-                    amountInput.value = amount.toFixed(2);
-                    
-                    if (type === 'national_pension') {
-                        if (amount === 0) {
-                            container.innerHTML = `<span class="compliance-badge compliance-pass"><i class="fas fa-check"></i> Qualifies: Applicant has no active SSS pension</span>`;
-                        } else {
-                            container.innerHTML = `<span class="compliance-badge compliance-fail"><i class="fas fa-times"></i> Disqualified: National pension is restricted to indigent seniors with no SSS pension (current: P${amount.toFixed(2)})</span>`;
-                        }
-                    } else { // local pension
-                        if (amount <= 4000) {
-                            container.innerHTML = `<span class="compliance-badge compliance-pass"><i class="fas fa-check"></i> Qualifies: Pension (P${amount.toFixed(2)}) is <= P4,000 limit</span>`;
-                        } else {
-                            container.innerHTML = `<span class="compliance-badge compliance-fail"><i class="fas fa-times"></i> Disqualified: Pension (P${amount.toFixed(2)}) exceeds P4,000 cap</span>`;
-                        }
-                    }
-                } else {
-                    container.innerHTML = `<span class="compliance-badge compliance-fail"><i class="fas fa-exclamation-circle"></i> SSS Verification failed: ${data.message}</span>`;
-                }
-            } catch (err) {
-                console.error(err);
-                container.innerHTML = `<span class="compliance-badge compliance-fail"><i class="fas fa-times"></i> External connection timed out</span>`;
             }
         }
 
@@ -4289,35 +4248,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 e.preventDefault();
                 return;
             } else if (type === 'milestone_gift') {
-                const milestones = [80, 85, 90, 95];
-                const isMilestone = milestones.includes(age) || (age >= 100);
-                if (!isMilestone) {
-                    alert("Localized Compliance Error:\nMilestone Cash Gift is only available for ages 80, 85, 90, 95, or 100+.");
-                    e.preventDefault();
-                    return;
-                }
-            }
-
-            // Pension compliance block
-            if (type === 'pension') {
-                const pensionAmt = parseFloat(document.getElementById('pensionAmount').value);
-                if (isNaN(pensionAmt)) {
-                    alert("Localized Compliance Error:\nPlease verify SSS Pension before submitting.");
-                    e.preventDefault();
-                    return;
-                } else if (pensionAmt > 4000) {
-                    alert("Localized Compliance Error:\nApplicant is receiving an SSS pension of P" + pensionAmt.toFixed(2) + ", which exceeds the P4,000 cap mandated under Pasig Ordinance No. 17 (Series of 2025).");
-                    e.preventDefault();
-                    return;
-                }
-            } else if (type === 'national_pension') {
-                const pensionAmt = parseFloat(document.getElementById('pensionAmount').value);
-                if (isNaN(pensionAmt)) {
-                    alert("Localized Compliance Error:\nPlease verify SSS Pension before submitting.");
-                    e.preventDefault();
-                    return;
-                } else if (pensionAmt > 0) {
-                    alert("Localized Compliance Error:\nNational DSWD Social Pension is restricted to indigent seniors with NO other pension benefits.");
+                if (age < 80) {
+                    alert("Localized Compliance Error:\nOctogenarian / Nonagenarian / Centenarian Cash Gift is available to applicants aged 80 and above.");
                     e.preventDefault();
                     return;
                 }

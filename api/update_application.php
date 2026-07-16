@@ -77,16 +77,22 @@ $sssNumber    = !empty($_POST['sssNumber']) ? sanitize_str($_POST['sssNumber']) 
 $pensionAmount = !empty($_POST['pensionAmount']) ? floatval($_POST['pensionAmount']) : null;
 $dateOfDeath            = !empty($_POST['dateOfDeath']) ? sanitize_str($_POST['dateOfDeath']) : null;
 $relationshipToDeceased = !empty($_POST['relationshipToDeceased']) ? sanitize_str($_POST['relationshipToDeceased']) : null;
-$emailAddress          = !empty($_POST['emailAddress']) ? sanitize_str($_POST['emailAddress']) : null;
+$emailAddress          = array_key_exists('emailAddress', $_POST) && !empty($_POST['emailAddress']) ? sanitize_str($_POST['emailAddress']) : null;
 $additionalNotes       = !empty($_POST['additionalNotes']) ? sanitize_str($_POST['additionalNotes']) : null;
 
-$stmtExisting = $conn->prepare("SELECT proof_of_address, proof_of_address_type, id_image, id_image_type FROM applications WHERE id_number = ?");
+$stmtExisting = $conn->prepare("SELECT proof_of_address, proof_of_address_type, id_image, id_image_type, email_address FROM applications WHERE id_number = ?");
 $stmtExisting->execute([$appId]);
 $existingApplication = $stmtExisting->fetch(PDO::FETCH_ASSOC);
 
 if (!$existingApplication) {
     echo json_encode(['success' => false, 'message' => 'Application not found.']);
     exit();
+}
+
+// Email is intentionally not exposed in the editing modal. Preserve its
+// existing value unless a trusted caller explicitly supplies this field.
+if (!array_key_exists('emailAddress', $_POST)) {
+    $emailAddress = $existingApplication['email_address'] ?? null;
 }
 
 $allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];

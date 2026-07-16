@@ -340,7 +340,8 @@ function getStatusBadge($status) {
             justify-content: space-between;
             align-items: center;
         }
-        .modal-head h2 { color: #fff; font-size: 1rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 10px; }
+        .modal-head h2 { color: #fff; font-size: 1rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 10px; min-width: 0; }
+        #modalAppTitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .modal-head h2 i { color: #60a5fa; }
         .modal-close {
             background: rgba(255,255,255,0.15);
@@ -497,7 +498,7 @@ function getStatusBadge($status) {
                 <h2><i class="fas fa-folder-open"></i> All Approved Records – Pasig City</h2>
                 <div class="header-actions">
                     <button type="button" class="btn btn-ghost" onclick="exportDepartmentRecords()">
-                        <i class="fas fa-file-excel"></i> Export Excel
+                        <i class="fas fa-file-pdf"></i> Export PDF
                     </button>
                 </div>
             </div>
@@ -702,10 +703,6 @@ function getStatusBadge($status) {
                             <span id="infoAddress">—</span>
                         </div>
                         <div class="info-item wide">
-                            <label>Email Address</label>
-                            <span id="infoEmail">—</span>
-                        </div>
-                        <div class="info-item wide">
                             <label>Additional Notes</label>
                             <span id="infoNotes">—</span>
                         </div>
@@ -740,10 +737,10 @@ function getStatusBadge($status) {
 <div id="exportModal" class="modal-overlay">
     <div class="modal-box export-modal-box">
         <div class="modal-head">
-            <h2><i class="fas fa-file-excel"></i> Export Excel Report</h2>
+            <h2><i class="fas fa-file-pdf"></i> Export PDF Report</h2>
             <button type="button" class="modal-close" id="closeExportModalBtn">&times;</button>
         </div>
-        <form id="exportReportForm" method="GET" action="../api/export_records_excel.php">
+        <form id="exportReportForm" method="GET" action="../api/export_records_pdf.php">
             <div class="export-modal-body">
                 <p>Choose the barangay coverage for this report. Your current search and application-type filters will also be applied.</p>
                 <input type="hidden" name="scope" value="department">
@@ -768,7 +765,7 @@ function getStatusBadge($status) {
                 </div>
                 <div class="export-actions">
                     <button type="button" class="btn btn-ghost" id="cancelExportBtn">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-download"></i> Generate Excel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-file-pdf"></i> Generate PDF</button>
                 </div>
             </div>
         </form>
@@ -777,7 +774,7 @@ function getStatusBadge($status) {
 
 <script src="../assets/js/sidebar-toggle.js"></script>
 <script src="../assets/js/application-documents.js?v=3"></script>
-<script src="../assets/js/application-form-generator.js?v=1"></script>
+<script src="../assets/js/application-form-generator.js?v=2"></script>
 <script>
     /* ─── Greeting ──────────────────────────────────────────── */
     (function(){
@@ -890,7 +887,7 @@ function getStatusBadge($status) {
                 }
 
                 /* ── Title ── */
-                document.getElementById('modalAppTitle').textContent = `${app.full_name} — ${app.id_number}`;
+                document.getElementById('modalAppTitle').textContent = `${app.full_name} - ${app.id_number} - ${getOfficialApplicationFormLabel(app.application_type)}`;
                 const officialFormButton = document.getElementById('btnOfficialForm');
                 officialFormButton.disabled = false;
                 officialFormButton.onclick = () => openOfficialApplicationForm(app.id_number);
@@ -917,7 +914,6 @@ function getStatusBadge($status) {
                 document.getElementById('infoContact').textContent  = app.contact_number || '—';
                 document.getElementById('infoAddress').textContent  = app.complete_address || '—';
                 document.getElementById('infoBarangay').textContent = app.barangay || '—';
-                document.getElementById('infoEmail').textContent    = app.email_address || '—';
                 document.getElementById('infoNotes').textContent    = app.additional_notes || '—';
 
                 /* ── Compliance ── */
@@ -997,7 +993,6 @@ function getStatusBadge($status) {
         personalHtml += getFieldHtml("Civil Status", app.civil_status);
         personalHtml += getFieldHtml("Mother's Maiden Name", app.mothers_maiden_name);
         personalHtml += getFieldHtml("Nationality", app.nationality);
-        personalHtml += getFieldHtml("Email Address", app.email_address);
 
         if (personalHtml) {
             dynamicHtml += `

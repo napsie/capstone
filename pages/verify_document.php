@@ -246,7 +246,8 @@ $verifiedC     = $queueStats['verified'] ?? 0;
             justify-content: space-between;
             align-items: center;
         }
-        .modal-head h2 { color: #fff; font-size: 1rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 10px; }
+        .modal-head h2 { color: #fff; font-size: 1rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 10px; min-width: 0; }
+        #modalAppTitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .modal-head h2 i { color: #60a5fa; }
         .modal-close {
             background: rgba(255,255,255,0.15);
@@ -568,10 +569,6 @@ $verifiedC     = $queueStats['verified'] ?? 0;
                             <span id="infoAddress">—</span>
                         </div>
                         <div class="info-item wide">
-                            <label>Email Address</label>
-                            <span id="infoEmail">—</span>
-                        </div>
-                        <div class="info-item wide">
                             <label>Additional Notes</label>
                             <span id="infoNotes">—</span>
                         </div>
@@ -614,7 +611,7 @@ $verifiedC     = $queueStats['verified'] ?? 0;
 
 <script src="../assets/js/sidebar-toggle.js"></script>
 <script src="../assets/js/application-documents.js?v=3"></script>
-<script src="../assets/js/application-form-generator.js?v=1"></script>
+<script src="../assets/js/application-form-generator.js?v=2"></script>
 <script>
     /* ─── Greeting ──────────────────────────────────────────── */
     (function(){
@@ -698,7 +695,7 @@ $verifiedC     = $queueStats['verified'] ?? 0;
                 currentWorkflowState = app.workflow_state || 'Received';
 
                 /* ── Title ── */
-                document.getElementById('modalAppTitle').textContent = `Reviewing: ${app.full_name} (${app.id_number})`;
+                document.getElementById('modalAppTitle').textContent = `Reviewing: ${app.full_name} (${app.id_number}) - ${getOfficialApplicationFormLabel(app.application_type)}`;
                 const officialFormButton = document.getElementById('btnOfficialForm');
                 officialFormButton.disabled = false;
                 officialFormButton.onclick = () => openOfficialApplicationForm(app.id_number);
@@ -724,7 +721,6 @@ $verifiedC     = $queueStats['verified'] ?? 0;
                 document.getElementById('infoContact').textContent  = app.contact_number || '—';
                 document.getElementById('infoAddress').textContent  = app.complete_address || '—';
                 document.getElementById('infoBarangay').textContent = app.barangay || '—';
-                document.getElementById('infoEmail').textContent    = app.email_address || '—';
                 document.getElementById('infoNotes').textContent    = app.additional_notes || '—';
 
                 /* ── All Documents ── */
@@ -916,7 +912,6 @@ $verifiedC     = $queueStats['verified'] ?? 0;
         personalHtml += getFieldHtml("Civil Status", app.civil_status);
         personalHtml += getFieldHtml("Mother's Maiden Name", app.mothers_maiden_name);
         personalHtml += getFieldHtml("Nationality", app.nationality);
-        personalHtml += getFieldHtml("Email Address", app.email_address);
 
         if (personalHtml) {
             dynamicHtml += `

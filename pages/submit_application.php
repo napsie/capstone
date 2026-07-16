@@ -500,10 +500,6 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                                     <label for="contactNumber">Contact Number</label>
                                     <input type="text" id="contactNumber" name="contactNumber" required>
                                 </div>
-                                <div class="form-group">
-                                    <label for="emailAddress">Email Address</label>
-                                    <input type="email" id="emailAddress" name="emailAddress">
-                                </div>
                             </div>
                             <div class="form-group">
                                 <label for="completeAddress">Complete Address</label>
@@ -833,7 +829,6 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                 setValue('landmark', app.landmark || '');
                 document.getElementById('emergencyContactName').value = app.emergency_contact_name || '';
                 document.getElementById('emergencyContact').value     = app.emergency_contact || '';
-                if (document.getElementById('emailAddress')) document.getElementById('emailAddress').value = app.email_address || '';
                 if (document.getElementById('additionalNotes')) document.getElementById('additionalNotes').value = app.additional_notes || '';
 
                 populateOscaFields(app, '');

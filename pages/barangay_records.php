@@ -349,7 +349,9 @@ function getStatusClass($status) {
             display: flex;
             align-items: center;
             gap: 10px;
+            min-width: 0;
         }
+        #modalAppTitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .modal-head h2 i { color: #60a5fa; }
         .modal-close {
             background: rgba(255,255,255,0.15);
@@ -578,7 +580,7 @@ function getStatusClass($status) {
             <div class="records-card-header">
                 <h2><i class="fas fa-folder-open"></i> Application Records</h2>
                 <button class="btn-export" onclick="exportDisplayedRecords()">
-                    <i class="fas fa-file-excel"></i> Export Excel
+                    <i class="fas fa-file-pdf"></i> Export PDF
                 </button>
             </div>
 
@@ -749,10 +751,6 @@ function getStatusClass($status) {
                             <span id="infoBarangay">—</span>
                         </div>
                         <div class="info-item wide">
-                            <label>Email Address</label>
-                            <span id="infoEmail">—</span>
-                        </div>
-                        <div class="info-item wide">
                             <label>Additional Notes</label>
                             <span id="infoNotes">—</span>
                         </div>
@@ -800,7 +798,7 @@ function getStatusClass($status) {
 
 <script src="../assets/js/sidebar-toggle.js"></script>
 <script src="../assets/js/application-documents.js?v=3"></script>
-<script src="../assets/js/application-form-generator.js?v=1"></script>
+<script src="../assets/js/application-form-generator.js?v=2"></script>
 <script src="../assets/js/dark-mode.js"></script>
 <script>
     /* ─── Greeting ──────────────────────────────────────────── */
@@ -878,7 +876,7 @@ function getStatusClass($status) {
                 }
 
                 /* ── Title ── */
-                document.getElementById('modalAppTitle').textContent = `${app.full_name} — ${app.id_number}`;
+                document.getElementById('modalAppTitle').textContent = `${app.full_name} - ${app.id_number} - ${getOfficialApplicationFormLabel(app.application_type)}`;
                 const officialFormButton = document.getElementById('btnOfficialForm');
                 officialFormButton.disabled = false;
                 officialFormButton.onclick = () => openOfficialApplicationForm(app.id_number);
@@ -905,7 +903,6 @@ function getStatusClass($status) {
                 document.getElementById('infoContact').textContent  = app.contact_number || '—';
                 document.getElementById('infoAddress').textContent  = app.complete_address || '—';
                 document.getElementById('infoBarangay').textContent = app.barangay || '—';
-                document.getElementById('infoEmail').textContent    = app.email_address || '—';
                 document.getElementById('infoNotes').textContent    = app.additional_notes || '—';
 
                 /* ── Compliance ── */
@@ -1045,7 +1042,7 @@ function getStatusClass($status) {
             year: document.getElementById('year-filter').value,
             type: document.getElementById('type-filter').value
         });
-        window.location.href = `../api/export_records_excel.php?${query.toString()}`;
+        window.location.href = `../api/export_records_pdf.php?${query.toString()}`;
     }
 
     function getCompleteDetailsHtml(app) {
@@ -1068,7 +1065,6 @@ function getStatusClass($status) {
         personalHtml += getFieldHtml("Civil Status", app.civil_status);
         personalHtml += getFieldHtml("Mother's Maiden Name", app.mothers_maiden_name);
         personalHtml += getFieldHtml("Nationality", app.nationality);
-        personalHtml += getFieldHtml("Email Address", app.email_address);
 
         if (personalHtml) {
             dynamicHtml += `
