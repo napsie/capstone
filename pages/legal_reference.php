@@ -514,61 +514,7 @@ $sidebarCss = ($role === 'barangay_staff') ? '../assets/css/barangay-sidebar.css
             </div>
         </div>
 
-        <!-- IRR Downloads Section -->
-        <div class="downloads-section">
-            <h2><i class="fas fa-download" style="color:#8b5cf6;"></i> Official IRR Document References</h2>
-            <p class="section-sub">Downloadable references to the official Implementing Rules and Regulations (IRR) for each Republic Act.</p>
-            <div class="download-grid">
-                <a href="https://www.officialgazette.gov.ph/2010/08/26/republic-act-no-9994/" target="_blank" class="download-item">
-                    <div class="download-icon" style="background:#dbeafe;"><i class="fas fa-file-pdf" style="color:#2563eb;"></i></div>
-                    <div>
-                        <div class="download-label">RA 9994 — Official Gazette</div>
-                        <div class="download-sub">Full text of the Expanded Senior Citizens Act of 2010</div>
-                    </div>
-                    <i class="fas fa-external-link-alt" style="color:#94a3b8;font-size:.75rem;margin-left:auto;flex-shrink:0;"></i>
-                </a>
-                <a href="https://www.officialgazette.gov.ph/2022/07/19/republic-act-no-11916/" target="_blank" class="download-item">
-                    <div class="download-icon" style="background:#dcfce7;"><i class="fas fa-file-pdf" style="color:#16a34a;"></i></div>
-                    <div>
-                        <div class="download-label">RA 11916 — Official Gazette</div>
-                        <div class="download-sub">Social Pension for Indigent Senior Citizens Act</div>
-                    </div>
-                    <i class="fas fa-external-link-alt" style="color:#94a3b8;font-size:.75rem;margin-left:auto;flex-shrink:0;"></i>
-                </a>
-                <a href="https://www.officialgazette.gov.ph/2023/04/05/republic-act-no-11982/" target="_blank" class="download-item">
-                    <div class="download-icon" style="background:#fef9c3;"><i class="fas fa-file-pdf" style="color:#ca8a04;"></i></div>
-                    <div>
-                        <div class="download-label">RA 11982 — Official Gazette</div>
-                        <div class="download-sub">Expanded Centenarian Act — Full Text</div>
-                    </div>
-                    <i class="fas fa-external-link-alt" style="color:#94a3b8;font-size:.75rem;margin-left:auto;flex-shrink:0;"></i>
-                </a>
-                <a href="https://osca.gov.ph/" target="_blank" class="download-item">
-                    <div class="download-icon" style="background:#f3e8ff;"><i class="fas fa-landmark" style="color:#7c3aed;"></i></div>
-                    <div>
-                        <div class="download-label">OSCA Official Portal</div>
-                        <div class="download-sub">Office for Senior Citizens Affairs — Philippines</div>
-                    </div>
-                    <i class="fas fa-external-link-alt" style="color:#94a3b8;font-size:.75rem;margin-left:auto;flex-shrink:0;"></i>
-                </a>
-                <a href="https://www.dswd.gov.ph/programs-projects/social-pension-program/" target="_blank" class="download-item">
-                    <div class="download-icon" style="background:#dcfce7;"><i class="fas fa-hand-holding-heart" style="color:#16a34a;"></i></div>
-                    <div>
-                        <div class="download-label">DSWD Social Pension Program</div>
-                        <div class="download-sub">Official DSWD guidance on indigent senior pension</div>
-                    </div>
-                    <i class="fas fa-external-link-alt" style="color:#94a3b8;font-size:.75rem;margin-left:auto;flex-shrink:0;"></i>
-                </a>
-                <a href="https://www.philhealth.gov.ph/members/senior/" target="_blank" class="download-item">
-                    <div class="download-icon" style="background:#fce7f3;"><i class="fas fa-shield-alt" style="color:#db2777;"></i></div>
-                    <div>
-                        <div class="download-label">PhilHealth Senior Coverage</div>
-                        <div class="download-sub">Health insurance guide for senior citizen members</div>
-                    </div>
-                    <i class="fas fa-external-link-alt" style="color:#94a3b8;font-size:.75rem;margin-left:auto;flex-shrink:0;"></i>
-                </a>
-            </div>
-        </div>
+     
 
         <!-- Footer note -->
         <p style="font-size:.75rem;color:#94a3b8;text-align:center;margin-bottom:30px;">
