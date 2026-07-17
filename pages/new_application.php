@@ -49,6 +49,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $suffix = isset($_POST['suffix']) ? trim(strip_tags($_POST['suffix'])) : '';
     $fullName = trim($firstName . ' ' . $middleName . ' ' . $lastName . ' ' . $suffix);
     $applicationType = isset($_POST['applicationType']) ? trim(strip_tags($_POST['applicationType'])) : '';
+    $availableApplicationTypes = getApplicationTypeOptions();
+    unset($availableApplicationTypes['home_visit']);
     $birthDate = isset($_POST['birthDate']) ? trim(strip_tags($_POST['birthDate'])) : '';
     $contactNumber = isset($_POST['contactNumber']) ? trim(strip_tags($_POST['contactNumber'])) : '';
     $completeAddress = isset($_POST['completeAddress']) ? trim(strip_tags($_POST['completeAddress'])) : '';
@@ -61,6 +63,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $disabilityType = isset($_POST['disabilityType']) ? implode(', ', array_map('strip_tags', (array)$_POST['disabilityType'])) : null;
     $emailAddress   = isset($_POST['emailAddress']) ? trim(strip_tags($_POST['emailAddress'])) : null;
     $additionalNotes = isset($_POST['additionalNotes']) ? trim(strip_tags($_POST['additionalNotes'])) : null;
+
+    if (!array_key_exists($applicationType, $availableApplicationTypes)) {
+        $errorMessage = 'Please select a valid application type.';
+    }
 
     // Rule-Based Compliance validation on backend
     if (!empty($birthDate)) {
@@ -1448,11 +1454,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         'national_pension' => ['icon' => 'fas fa-landmark',     'color' => '#a78bfa', 'grad' => 'linear-gradient(135deg,#4c1d95,#7c3aed)', 'desc' => 'National DSWD pension (RA 11916)',     'code' => 'National',  'accent' => '#8b5cf6'],
                         'milestone_gift'   => ['icon' => 'fas fa-gift',          'color' => '#f472b6', 'grad' => 'linear-gradient(135deg,#831843,#db2777)', 'desc' => 'Octogenarian / Centenarian cash gift',  'code' => '',           'accent' => '#ec4899'],
                         'burial'           => ['icon' => 'fas fa-ribbon',        'color' => '#94a3b8', 'grad' => 'linear-gradient(135deg,#1e293b,#475569)', 'desc' => 'Burial financial assistance claim',      'code' => '',           'accent' => '#64748b'],
-                        'home_visit'       => ['icon' => 'fas fa-house-medical', 'color' => '#22d3ee', 'grad' => 'linear-gradient(135deg,#164e63,#0891b2)', 'desc' => 'Home visitation &amp; confirmation',     'code' => '',           'accent' => '#06b6d4'],
                     ];
+                    $newApplicationTypes = getApplicationTypeOptions();
+                    unset($newApplicationTypes['home_visit']);
                     ?>
                     <div class="app-type-grid" id="appTypeGrid">
-                        <?php foreach (getApplicationTypeOptions() as $val => $label):
+                        <?php foreach ($newApplicationTypes as $val => $label):
                             $meta = $typeIcons[$val] ?? ['icon' => 'fas fa-file', 'color' => '#94a3b8', 'grad' => 'linear-gradient(135deg,#1e293b,#334155)', 'desc' => '', 'code' => '', 'accent' => '#64748b'];
                         ?>
                             <div class="app-type-card"

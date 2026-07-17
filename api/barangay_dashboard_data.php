@@ -18,6 +18,7 @@ $response = [
         'monthly'        => [],
         'notifications'  => [],
         'priority_count' => 0,
+        'queue_count'    => 0,
         'total_count'    => 0,
     ]
 ];
@@ -36,11 +37,11 @@ try {
     // 2. Get FSM Workflow State Distribution Chart data
     $fsmStmt = $conn->prepare("
         SELECT 
-            COALESCE(workflow_state, 'Received') as workflow_state, 
+            COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') as workflow_state, 
             COUNT(*) as count 
         FROM applications 
         WHERE barangay = :barangay 
-        GROUP BY workflow_state
+        GROUP BY COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received')
     ");
     $fsmStmt->execute(['barangay' => $barangay]);
     $response['data']['fsm_stats'] = $fsmStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -51,11 +52,24 @@ try {
         FROM applications 
         WHERE barangay = :barangay 
         AND priority_level = 'high'
-        AND workflow_state = 'Received'
+        AND COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') = 'Received'
     ");
     $priorityStmt->execute(['barangay' => $barangay]);
     $priorityRow = $priorityStmt->fetch(PDO::FETCH_ASSOC);
     $response['data']['priority_count'] = (int)($priorityRow['count'] ?? 0);
+
+    // Match the Barangay Submit Application page: it contains every active
+    // application that has not yet been finalized in the records section.
+    $queueStmt = $conn->prepare("
+        SELECT COUNT(*) AS count
+        FROM applications
+        WHERE barangay = :barangay
+          AND COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received')
+              IN ('Received', 'For Review', 'Verified')
+    ");
+    $queueStmt->execute(['barangay' => $barangay]);
+    $queueRow = $queueStmt->fetch(PDO::FETCH_ASSOC);
+    $response['data']['queue_count'] = (int)($queueRow['count'] ?? 0);
 
     // 4. Total applications count
     $totalStmt = $conn->prepare("
@@ -88,7 +102,7 @@ try {
             full_name,
             application_type,
             status,
-            COALESCE(workflow_state, 'Received') as workflow_state,
+            COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') as workflow_state,
             priority_level,
             date_submitted
         FROM applications

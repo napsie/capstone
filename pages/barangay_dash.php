@@ -483,7 +483,9 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
         (data.fsm_stats || []).forEach(row => {
             fsmMap[row.workflow_state] = parseInt(row.count);
         });
-        if (el('statReceived'))  el('statReceived').textContent  = fsmMap['Received']  ?? 0;
+        // The Submit Application page contains all active states, not only
+        // applications that are still at the first Received step.
+        if (el('statReceived'))  el('statReceived').textContent  = data.queue_count ?? 0;
         if (el('statApproved'))  el('statApproved').textContent  = fsmMap['Approved']   ?? 0;
 
         // Priority banner
