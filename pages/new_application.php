@@ -1422,6 +1422,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .dark-mode #benefitModal .benefit-ack-row {
             color: #92400e !important;
         }
+
+        /* Claim stubs and handwritten signature areas are printed only after
+           approval. They are not part of the online application form. */
+        .non-submission-preview { display: none !important; }
     </style>
 </head>
 <body>
@@ -1693,7 +1697,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 </div>
 
                                 <!-- Signature + Received by -->
-                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:10px;">
+                                <div class="non-submission-preview" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:10px;">
                                     <div style="border:1px solid #d0dae8;border-radius:8px;padding:10px 12px;">
                                         <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:18px;">Signature over printed name</label>
                                         <div style="border-top:1px solid #cbd5e1;padding-top:4px;font-size:0.7rem;color:#94a3b8;">Claimant's Signature</div>
@@ -1717,7 +1721,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 </div>
 
                                 <!-- Stub -->
-                                <div style="border:2px dashed #94a3b8;border-radius:10px;padding:12px 16px;background:#f8fafc;">
+                                <div class="non-submission-preview" style="border:2px dashed #94a3b8;border-radius:10px;padding:12px 16px;background:#f8fafc;">
                                     <div style="font-size:0.7rem;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">BURIAL ASSISTANCE STUB <span style="font-size:0.65rem;color:#94a3b8;font-weight:500;">(Present upon claiming — do not lose)</span></div>
                                     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:0.75rem;color:#334155;">
                                         <div><span style="font-weight:700;">Name of claimant:</span><div style="border-bottom:1px solid #cbd5e1;min-height:16px;margin-top:2px;"></div></div>
@@ -2027,7 +2031,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                             <label style="font-size:0.68rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Reason for Decision:</label>
                                             <textarea rows="2" style="width:100%;padding:6px 10px;border:1.5px solid #fde68a;border-radius:7px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;resize:vertical;" onfocus="this.style.borderColor='#0891b2';" onblur="this.style.borderColor='#fde68a';"></textarea>
                                         </div>
-                                        <div style="border:1px solid #d0dae8;border-radius:8px;padding:10px 12px;">
+                                        <div class="non-submission-preview" style="border:1px solid #d0dae8;border-radius:8px;padding:10px 12px;">
                                             <label style="font-size:0.64rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:18px;">Evaluated by (Signature over Printed Name)</label>
                                             <div style="border-top:1px solid #cbd5e1;padding-top:4px;display:flex;justify-content:space-between;align-items:center;">
                                                 <div style="font-size:0.68rem;color:#94a3b8;">Date and time: <input type="datetime-local" style="border:none;border-bottom:1px solid #cbd5e1;outline:none;font-size:0.78rem;"></div>
@@ -2262,8 +2266,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     </div>
                                 </div>
 
-                                <!-- Certification / Oath -->
-                                <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+                                <!-- Certification / Oath (completed during the in-person claim process) -->
+                                <div class="non-submission-preview" style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
                                     <p style="font-size:0.74rem;color:#78350f;line-height:1.7;margin:0 0 12px;">
                                         <i class="fas fa-gavel" style="color:#92400e;margin-right:5px;"></i>
                                         I hereby certify under law on perjury that the information provided in this form is <strong>complete, true, correct, and of my knowledge</strong>. I further authorize the City Government of Pasig to process my data, validate, and confirm the answers herein with third parties such as the GSIS, SSS, DSWD and other Government/Private Agencies.
@@ -2329,7 +2333,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 </div>
 
                                 <!-- Stub -->
-                                <div style="border:2px dashed #be185d;border-radius:10px;padding:12px 16px;background:#fdf2f8;">
+                                <div class="non-submission-preview" style="border:2px dashed #be185d;border-radius:10px;padding:12px 16px;background:#fdf2f8;">
                                     <div style="font-size:0.7rem;font-weight:800;color:#9d174d;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">MILESTONE CASH GIFT STUB <span style="font-size:0.65rem;color:#f9a8d4;font-weight:500;">(Present upon claiming &mdash; do not lose)</span></div>
                                     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:0.75rem;color:#4a0728;">
                                         <div><span style="font-weight:700;">Name of Senior Citizen:</span><div style="border-bottom:1px solid #fbcfe8;min-height:16px;margin-top:2px;"></div></div>
@@ -2562,7 +2566,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 </div>
 
                                 <!-- Certification / Oath -->
-                                <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+                                <div class="non-submission-preview" style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
                                     <p style="font-size:0.74rem;color:#78350f;line-height:1.7;margin:0 0 12px;">
                                         <i class="fas fa-gavel" style="color:#92400e;margin-right:5px;"></i>
                                         I hereby certify under law on perjury that the information provided in this form is <strong>complete, true and correct to the best of my knowledge</strong>. I further authorize the City Government of Pasig to process my data, validate, and confirm the answers herein with third parties such as the GSIS, SSS, DSWD and other Government/Private Agencies.
@@ -2601,7 +2605,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 </div>
 
                                 <!-- Pension Stub -->
-                                <div style="border:2px dashed #b45309;border-radius:10px;padding:12px 16px;background:#fefce8;">
+                                <div class="non-submission-preview" style="border:2px dashed #b45309;border-radius:10px;padding:12px 16px;background:#fefce8;">
                                     <div style="font-size:0.7rem;font-weight:800;color:#92400e;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">OSCA &mdash; PASIG CITY LOCAL SENIOR PENSION STUB <span style="font-size:0.65rem;color:#d97706;font-weight:500;">(Present upon claiming)</span></div>
                                     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:0.75rem;color:#431407;">
                                         <div><span style="font-weight:700;">Name:</span><div style="border-bottom:1px solid #fde68a;min-height:16px;margin-top:2px;"></div></div>
@@ -2825,7 +2829,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 </div>
 
                                 <!-- Bottom certification stub -->
-                                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px 14px;margin-bottom:4px;">
+                                <div class="non-submission-preview" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px 14px;margin-bottom:4px;">
                                     <p style="font-size:0.75rem;color:#166534;line-height:1.6;margin:0 0 10px;">
                                         <i class="fas fa-info-circle" style="color:#15803d;margin-right:5px;"></i>
                                         I hereby authorize Land Bank of the Philippines and OSCA City Government of Pasig to process my enrollment details. I acknowledge and agree to the Terms and Conditions of the LANDBANK Cash Card and verify the authenticity of all documents presented.
