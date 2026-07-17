@@ -71,9 +71,14 @@ try {
     $queueRow = $queueStmt->fetch(PDO::FETCH_ASSOC);
     $response['data']['queue_count'] = (int)($queueRow['count'] ?? 0);
 
-    // 4. Total applications count
+    // 4. Dashboard total follows the Submit Application queue. Finalized
+    // records are intentionally excluded because they appear in Barangay Records.
     $totalStmt = $conn->prepare("
-        SELECT COUNT(*) as count FROM applications WHERE barangay = :barangay
+        SELECT COUNT(*) as count
+        FROM applications
+        WHERE barangay = :barangay
+          AND COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received')
+              IN ('Received', 'For Review', 'Verified')
     ");
     $totalStmt->execute(['barangay' => $barangay]);
     $totalRow = $totalStmt->fetch(PDO::FETCH_ASSOC);
