@@ -341,6 +341,7 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
         /* Footer */
         .page-footer { text-align:center; padding:24px; font-size:0.78rem; color:var(--gray); }
     </style>
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=3">
 </head>
 <body>
 <div class="container">
@@ -446,7 +447,7 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
         </div>
         <div class="modal-scroller">
 
-            <!-- FSM Stepper -->
+            <!-- Workflow progress stepper -->
             <div class="stepper">
                 <div class="step" id="step-Received"><div class="step-circle">1</div><div class="step-label">Received</div></div>
                 <div class="step" id="step-For-Review"><div class="step-circle">2</div><div class="step-label">For Review</div></div>
@@ -536,6 +537,14 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                                     <input type="text" id="emergencyContact" name="emergencyContact">
                                 </div>
                             </div>
+                            <div class="form-group">
+                                <label for="emailAddress">Email Address</label>
+                                <input type="email" id="emailAddress" name="emailAddress">
+                            </div>
+                            <div class="form-group">
+                                <label for="additionalNotes">Additional Notes</label>
+                                <textarea id="additionalNotes" name="additionalNotes" rows="3"></textarea>
+                            </div>
                         </div>
 
                         <?php $formFieldPrefix = ''; include '../partials/osca_form_sections.php'; ?>
@@ -589,6 +598,8 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                 <div>
                     <div class="section-title"><i class="fas fa-clock-rotate-left"></i> Audit Trail History Log</div>
                     <div class="timeline" id="timelineList"></div>
+                    <div class="section-title" style="margin-top:24px;"><i class="fas fa-rectangle-list"></i> Application Context</div>
+                    <div id="dynamicDetailsSection"></div>
                 </div>
             </div>
 
@@ -621,8 +632,9 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
 
 <script src="../assets/js/sidebar-toggle.js"></script>
 <script src="../assets/js/dark-mode.js"></script>
-<script src="../assets/js/osca-form-fields.js"></script>
+<script src="../assets/js/osca-form-fields.js?v=2"></script>
 <script src="../assets/js/application-documents.js?v=6"></script>
+<script src="../assets/js/application-details.js?v=2"></script>
 <script src="../assets/js/carelink-feedback.js?v=2"></script>
 <script src="../assets/js/application-form-generator.js?v=1"></script>
 <script>
@@ -722,7 +734,7 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                     const typeLabel = TYPE_LABELS[app.application_type] || app.application_type;
 
                     tableBody.innerHTML += `
-                        <tr class="${isHigh ? 'priority-high-row' : ''}">
+                        <tr class="applicant-row ${isHigh ? 'priority-high-row' : ''}" data-id="${app.id}" tabindex="0" role="button" aria-label="View applicant details">
                             <td>${isHigh ? '<span class="priority-badge"><i class="fas fa-star"></i> HIGH</span>' : '<span style="color:var(--gray);font-size:0.75rem;">Normal</span>'}</td>
                             <td>
                                 <div class="name-cell">
@@ -758,14 +770,30 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
         searchTimer = setTimeout(fetchApplications, 250);
     });
 
-    // Table Event delegation for clicking Name links
+    // Open the application from the name, View button, or anywhere on its row.
     tableBody.addEventListener('click', e => {
         const lnk = e.target.closest('.name-link');
-        if (lnk) { e.preventDefault(); openApplicationModal(lnk.dataset.id); }
+        if (lnk) {
+            e.preventDefault();
+            openApplicationModal(lnk.dataset.id);
+            return;
+        }
         const deleteButton = e.target.closest('.delete-application-btn');
         if (deleteButton) {
             e.preventDefault();
             deleteApplication(deleteButton.dataset.id);
+            return;
+        }
+        const row = e.target.closest('.applicant-row[data-id]');
+        if (row && !e.target.closest('a, button, input, select, textarea')) {
+            openApplicationModal(row.dataset.id);
+        }
+    });
+    tableBody.addEventListener('keydown', e => {
+        const row = e.target.closest('.applicant-row[data-id]');
+        if (row && e.target === row && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            openApplicationModal(row.dataset.id);
         }
     });
 
@@ -776,6 +804,7 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
 
     function openApplicationModal(appId) {
         currentAppId = appId;
+        document.getElementById('applicationDetailForm').reset();
         document.getElementById('applicationModal').style.display = 'block';
         document.querySelector('#applicationModal .modal-scroller').scrollTop = 0;
 
@@ -802,8 +831,7 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                 }
                 if (app.error) { window.showCarelinkResult(app.error, false); return; }
 
-                const seniorCitizenId = app.senior_id_no || 'Not yet issued';
-                document.getElementById('modalAppTitle').textContent = `Reviewing: ${app.full_name} (Senior Citizen ID: ${seniorCitizenId})`;
+                document.getElementById('modalAppTitle').textContent = `Edit application: ${app.full_name}`;
                 document.getElementById('applicationId').value       = app.id_number;
                 document.getElementById('applicationType').value     = app.application_type;
                 document.getElementById('lastName').value            = app.lastName || '';
@@ -818,9 +846,12 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                 setValue('landmark', app.landmark || '');
                 document.getElementById('emergencyContactName').value = app.emergency_contact_name || '';
                 document.getElementById('emergencyContact').value     = app.emergency_contact || '';
+                document.getElementById('emailAddress').value         = app.email_address || '';
+                document.getElementById('additionalNotes').value      = app.additional_notes || '';
 
                 populateOscaFields(app, '');
                 setModalFormFieldVisibility(app.application_type);
+                document.getElementById('dynamicDetailsSection').innerHTML = window.renderApplicationEditContext(app);
 
                 // Toggle type-specific sections
                 const pm = document.getElementById('pension-fields-modal');
@@ -919,7 +950,7 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                 if (currentState === 'Received' || currentState === 'Submitted') {
                     btns += `<button type="button" class="btn" style="background:#3b82f6; color:#fff;" onclick="forwardToReviewDesk()"><i class="fas fa-paper-plane"></i> Submit to Review Desk</button>`;
                 } else {
-                    btns += `<span style="color:var(--gray);font-style:italic;font-size:0.84rem;margin-left:10px;"><i class="fas fa-lock"></i> Locked State: [${currentState}]</span>`;
+                    btns += `<span style="color:var(--gray);font-style:italic;font-size:0.84rem;margin-left:10px;"><i class="fas fa-lock"></i> Locked Status: [${currentState}]</span>`;
                 }
                 document.getElementById('modalFormActions').innerHTML = btns;
 
@@ -1147,7 +1178,7 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
         fd.append('action', 'next');
         fd.append('comments', 'Submitted by Barangay Staff for review evaluation.');
 
-        fetch('../api/update_fsm_state.php', { method: 'POST', body: fd })
+        fetch('../api/update_workflow_status.php', { method: 'POST', body: fd })
             .then(r => r.json())
             .then(res => {
                 if (res.success) {
@@ -1232,5 +1263,7 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
         }
     }
 </script>
+<script src="../assets/js/vendor/html5-qrcode.min.js?v=2.3.8"></script>
+<script src="../assets/js/simple-code-scanner.js?v=3"></script>
 </body>
 </html>

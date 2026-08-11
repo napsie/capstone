@@ -353,6 +353,7 @@ $verifiedC     = $queueStats['verified'] ?? 0;
         /* Footer */
         .page-footer { text-align:center; padding:24px; font-size:0.78rem; color:var(--gray); }
     </style>
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=3">
 </head>
 <body>
 <div class="container">
@@ -469,7 +470,7 @@ $verifiedC     = $queueStats['verified'] ?? 0;
 
                                 $typeLabel = applicationTypeLabel($row['application_type']);
                             ?>
-                            <tr class="<?php echo $rowClass; ?>">
+                            <tr class="applicant-row <?php echo $rowClass; ?>" data-id="<?php echo htmlspecialchars($row['id']); ?>" tabindex="0" role="button" aria-label="Open applicant review">
                                 <td>
                                     <?php if ($isHigh): ?>
                                         <span class="priority-badge"><i class="fas fa-star"></i> HIGH</span>
@@ -515,7 +516,7 @@ $verifiedC     = $queueStats['verified'] ?? 0;
         </div>
         <div class="modal-scroller">
 
-            <!-- FSM Stepper -->
+            <!-- Workflow progress stepper -->
             <div class="stepper">
                 <div class="step" id="step-Received">
                     <div class="step-circle">1</div>
@@ -539,9 +540,9 @@ $verifiedC     = $queueStats['verified'] ?? 0;
                 </div>
             </div>
 
-            <!-- Compliance Engine -->
+            <!-- Manual review checklist -->
             <div class="compliance-card">
-                <div class="compliance-title"><i class="fas fa-shield-halved"></i> Compliance & Verification Engine</div>
+                <div class="compliance-title"><i class="fas fa-clipboard-check"></i> Compliance & Verification Checklist</div>
                 <div id="complianceList">
                     <p style="color:var(--gray);font-size:0.85rem;">Loading compliance checks…</p>
                 </div>
@@ -590,16 +591,16 @@ $verifiedC     = $queueStats['verified'] ?? 0;
 
                 <!-- RIGHT: Workflow actions + Audit timeline -->
                 <div>
-                    <!-- FSM Control Actions -->
+                    <!-- Rule-based workflow actions -->
                     <div class="workflow-control">
                         <h3><i class="fas fa-sliders-h" style="color:var(--accent); margin-right:5px;"></i> Workflow Control Actions</h3>
-                        <div class="workflow-instructions" id="fsmInstructions">Loading instructions…</div>
-                        <textarea id="fsmComment" class="workflow-comment" placeholder="Write transition details or reason for return/blurry scan here…"></textarea>
+                        <div class="workflow-instructions" id="statusInstructions">Loading instructions…</div>
+                        <textarea id="statusComment" class="workflow-comment" placeholder="Write status update details or reason for return/blurry scan here…"></textarea>
                         
                         <div class="workflow-buttons">
                             <button type="button" class="btn btn-primary" id="btnOfficialForm" disabled><i class="fas fa-file-pdf"></i> Generate Official Form</button>
-                            <button type="button" class="btn btn-primary" id="btnNextState" onclick="submitFsmTransition('next')">Advance State</button>
-                            <button type="button" class="btn btn-secondary" id="btnReturnState" onclick="submitFsmTransition('return')">Return to Barangay</button>
+                            <button type="button" class="btn btn-primary" id="btnAdvanceStatus" onclick="submitStatusAction('next')">Advance Status</button>
+                            <button type="button" class="btn btn-secondary" id="btnReturnStatus" onclick="submitStatusAction('return')">Return to Barangay</button>
                         </div>
                     </div>
 
@@ -616,6 +617,7 @@ $verifiedC     = $queueStats['verified'] ?? 0;
 
 <script src="../assets/js/sidebar-toggle.js"></script>
 <script src="../assets/js/application-documents.js?v=6"></script>
+<script src="../assets/js/application-details.js?v=2"></script>
 <script src="../assets/js/carelink-feedback.js?v=2"></script>
 <script src="../assets/js/application-form-generator.js?v=2"></script>
 <script>
@@ -628,12 +630,27 @@ $verifiedC     = $queueStats['verified'] ?? 0;
 
     /* ─── Modal open/close ──────────────────────────────────── */
     let currentAppId = null;
-    let currentWorkflowState = 'Received';
+    let currentWorkflowStatus = 'Received';
 
     document.addEventListener('DOMContentLoaded', function() {
-        document.querySelector('.records-tbl').addEventListener('click', function(e) {
+        const recordsTable = document.querySelector('.records-tbl');
+        recordsTable.addEventListener('click', function(e) {
             const btn = e.target.closest('.view-details-btn');
-            if (btn) openApplicationModal(btn.dataset.id);
+            if (btn) {
+                openApplicationModal(btn.dataset.id);
+                return;
+            }
+            const row = e.target.closest('.applicant-row[data-id]');
+            if (row && !e.target.closest('a, button, input, select, textarea')) {
+                openApplicationModal(row.dataset.id);
+            }
+        });
+        recordsTable.addEventListener('keydown', function(e) {
+            const row = e.target.closest('.applicant-row[data-id]');
+            if (row && e.target === row && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                openApplicationModal(row.dataset.id);
+            }
         });
 
         document.getElementById('closeModalBtn').addEventListener('click', closeModal);
@@ -668,7 +685,7 @@ $verifiedC     = $queueStats['verified'] ?? 0;
 
         // Reset placeholders
         document.getElementById('modalAppTitle').textContent  = 'Loading…';
-        document.getElementById('fsmComment').value = "";
+        document.getElementById('statusComment').value = "";
         document.getElementById('complianceList').innerHTML   = '<p style="color:var(--gray);font-size:0.85rem;">Loading compliance checks…</p>';
         document.getElementById('dynamicDetailsSection').innerHTML = '';
         document.getElementById('allDocumentsSection').innerHTML   = '<span style="color:var(--gray);font-size:0.8rem;">Loading documents…</span>';
@@ -698,18 +715,17 @@ $verifiedC     = $queueStats['verified'] ?? 0;
                     return;
                 }
 
-                currentWorkflowState = app.workflow_state || 'Received';
+                currentWorkflowStatus = app.workflow_state || 'Received';
 
                 /* ── Title ── */
-                const seniorCitizenId = app.senior_id_no || 'Not yet issued';
-                document.getElementById('modalAppTitle').textContent = `Reviewing: ${app.full_name} (Senior Citizen ID: ${seniorCitizenId}) - ${getOfficialApplicationFormLabel(app.application_type)}`;
+                document.getElementById('modalAppTitle').textContent = `Verifying: ${app.full_name} - ${getOfficialApplicationFormLabel(app.application_type)}`;
                 const officialFormButton = document.getElementById('btnOfficialForm');
                 officialFormButton.disabled = false;
                 officialFormButton.onclick = () => openOfficialApplicationForm(app.id_number);
 
                 /* ── Stepper ── */
                 const steps = ['Received','For Review','Verified','Approved','Released'];
-                let idx = steps.indexOf(currentWorkflowState);
+                let idx = steps.indexOf(currentWorkflowStatus);
                 if (idx === -1) idx = 0;
                 steps.forEach((s, i) => {
                     const el = document.getElementById('step-' + s.replace(' ','-'));
@@ -729,9 +745,6 @@ $verifiedC     = $queueStats['verified'] ?? 0;
                 document.getElementById('infoAddress').textContent  = app.complete_address || '—';
                 document.getElementById('infoBarangay').textContent = app.barangay || '—';
                 document.getElementById('infoNotes').textContent    = app.additional_notes || '—';
-
-                /* ── All Documents ── */
-                document.getElementById('allDocumentsSection').innerHTML = buildAllDocumentsHtml(app, appId);
 
                 /* ── Compliance Checks ── */
                 let ch = '';
@@ -778,15 +791,15 @@ $verifiedC     = $queueStats['verified'] ?? 0;
                 }
                 document.getElementById('complianceList').innerHTML = ch;
                 /* ── Dynamic Details (Complete details rendering) ── */
-                document.getElementById('dynamicDetailsSection').innerHTML = getCompleteDetailsHtml(app);
+                document.getElementById('dynamicDetailsSection').innerHTML = window.renderApplicationVerificationDetails(app);
 
                 /* ── All Documents ── */
                 document.getElementById('allDocumentsSection').innerHTML = buildAllDocumentsHtml(app, appId);
 
-                /* ── FSM Operations ── */
-                const btnNext = document.getElementById('btnNextState');
-                const btnReturn = document.getElementById('btnReturnState');
-                const instruction = document.getElementById('fsmInstructions');
+                /* Rule-based workflow operations */
+                const btnNext = document.getElementById('btnAdvanceStatus');
+                const btnReturn = document.getElementById('btnReturnStatus');
+                const instruction = document.getElementById('statusInstructions');
 
                 btnReturn.style.display = 'block';
                 btnNext.style.display = 'block';
@@ -794,15 +807,15 @@ $verifiedC     = $queueStats['verified'] ?? 0;
                 const existingBlockBanner = document.getElementById('policyBlockBanner');
                 if (existingBlockBanner) existingBlockBanner.remove();
 
-                if (currentWorkflowState === 'Received') {
-                    instruction.innerHTML = "<strong>State Action:</strong> Forward this application to the department desk for detailed evaluation.";
+                if (currentWorkflowStatus === 'Received') {
+                    instruction.innerHTML = "<strong>Status Action:</strong> Forward this application to the department desk for detailed evaluation.";
                     btnNext.textContent = "Forward to Review Desk";
                     btnReturn.style.display = 'none';
-                } else if (currentWorkflowState === 'For Review') {
-                    instruction.innerHTML = "<strong>State Action:</strong> Mark document audits as Verified and lock the compliance records.";
+                } else if (currentWorkflowStatus === 'For Review') {
+                    instruction.innerHTML = "<strong>Status Action:</strong> Mark document audits as Verified and lock the compliance records.";
                     btnNext.textContent = "Verify Application";
-                } else if (currentWorkflowState === 'Verified') {
-                    instruction.innerHTML = "<strong>State Action:</strong> Authorize senior credentials and approve for payroll benefits distribution.";
+                } else if (currentWorkflowStatus === 'Verified') {
+                    instruction.innerHTML = "<strong>Status Action:</strong> Authorize senior credentials and approve for payroll benefits distribution.";
                     btnNext.textContent = "Approve for Payroll";
 
                     if (approvalBlocked) {
@@ -830,11 +843,11 @@ $verifiedC     = $queueStats['verified'] ?? 0;
                         btnNext.style.opacity = '';
                         btnNext.style.cursor  = '';
                     }
-                } else if (currentWorkflowState === 'Approved') {
-                    instruction.innerHTML = "<strong>State Action:</strong> Finalize benefits check and mark credentials as Released.";
+                } else if (currentWorkflowStatus === 'Approved') {
+                    instruction.innerHTML = "<strong>Status Action:</strong> Finalize benefits check and mark credentials as Released.";
                     btnNext.textContent = "Release Benefits";
-                } else if (currentWorkflowState === 'Released') {
-                    instruction.innerHTML = "<strong>State Action:</strong> The workflow has completed. Benefits are released to the citizen.";
+                } else if (currentWorkflowStatus === 'Released') {
+                    instruction.innerHTML = "<strong>Status Action:</strong> Processing is complete. Benefits are released to the citizen.";
                     btnNext.style.display = 'none';
                     btnReturn.style.display = 'none';
                 }
@@ -862,8 +875,8 @@ $verifiedC     = $queueStats['verified'] ?? 0;
             });
     }
 
-    async function submitFsmTransition(action, confirmed = false) {
-        const comment = document.getElementById('fsmComment').value.trim();
+    async function submitStatusAction(action, confirmed = false) {
+        const comment = document.getElementById('statusComment').value.trim();
 
         if (action === 'return' && !comment) {
             showCarelinkResult("Please input comment remarks explaining why this application is being returned to the Barangay (e.g. Blurry Documents / Missing IDs).", false);
@@ -871,7 +884,7 @@ $verifiedC     = $queueStats['verified'] ?? 0;
         }
 
         if (!confirmed) {
-            window.showCarelinkConfirm('Confirm triggering workflow state transition?', () => submitFsmTransition(action, true));
+            window.showCarelinkConfirm('Confirm this status action?', () => submitStatusAction(action, true));
             return;
         }
 
@@ -881,7 +894,7 @@ $verifiedC     = $queueStats['verified'] ?? 0;
             formData.append('action', action);
             formData.append('comments', comment);
 
-            const response = await fetch('../api/update_fsm_state.php', {
+            const response = await fetch('../api/update_workflow_status.php', {
                 method: 'POST',
                 body: formData
             });
@@ -892,15 +905,17 @@ $verifiedC     = $queueStats['verified'] ?? 0;
                 closeModal();
                 setTimeout(() => location.reload(), 900);
             } else {
-                showCarelinkResult("Workflow State Transition Error: " + result.message, false);
+                showCarelinkResult("Status update error: " + result.message, false);
             }
         } catch (err) {
             console.error(err);
-            showCarelinkResult("Connection error during state transition.", false);
+            showCarelinkResult("Connection error while updating the application status.", false);
         }
     }
 
     function getCompleteDetailsHtml(app) {
+        return window.renderApplicationVerificationDetails(app);
+        // Legacy renderer retained below only for source compatibility.
         function getFieldHtml(label, val) {
             if (val === null || val === undefined || val === '' || val === '0' || val === 0) return '';
             if (val === 1 || val === '1') val = 'Yes';

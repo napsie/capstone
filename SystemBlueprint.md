@@ -23,7 +23,7 @@ This document provides a technical overview of the CARELINK system.
 *   **Structure:** Each major feature or view is encapsulated in its own `.php` file.
 *   **Application Forms:** The system supports distinct application processes for Senior Citizens and Persons With Disabilities (PWD), each potentially requiring different forms or specific data fields to be filled.
 *   **Styling:** The application uses a combination of inline CSS and shared stylesheets. A consistent design language is established through CSS variables.
-*   **Real-time Updates:** The system uses a polling mechanism to fetch real-time data from the server. The `assets/js/realtime_updates.js` file contains the logic for fetching and updating the dashboard statistics and notifications every 5 seconds.
+*   **Real-time Updates:** Dashboard pages poll their authenticated data endpoints to refresh statistics and recent activity.
 
 ### 1.3. Data Management and Flow
 
@@ -117,34 +117,11 @@ This document provides a technical overview of the CARELINK system.
 
 ## 3. API Endpoints
 
-### `api/admin_approved_application.php`
-
-*   **Functionality:** Approves an application.
-*   **Method:** POST
-*   **Parameters:** `id` (application ID)
-
-### `api/admin_rejected_application.php`
-
-*   **Functionality:** Rejects an application.
-*   **Method:** POST
-*   **Parameters:** `id` (application ID)
-
-### `api/approve_application.php`
-
-*   **Functionality:** Approves an application.
-*   **Method:** POST
-*   **Parameters:** `id` (application ID)
-
 ### `api/delete_application.php`
 
 *   **Functionality:** Deletes an application.
 *   **Method:** POST
 *   **Parameters:** `id` (application ID)
-
-### `api/get_all_applications.php`
-
-*   **Functionality:** Retrieves all applications.
-*   **Method:** GET
 
 ### `api/get_application_details.php`
 
@@ -162,11 +139,6 @@ This document provides a technical overview of the CARELINK system.
 
 *   **Functionality:** Retrieves real-time data for the dashboard.
 *   **Method:** GET
-
-### `api/import_applications.php`
-
-*   **Functionality:** Imports applications from a CSV file.
-*   **Method:** POST
 
 ### `api/search_applications.php`
 
@@ -206,9 +178,21 @@ This document provides a technical overview of the CARELINK system.
 *   **Functionality:** This page allows administrators to edit existing user information.
 *   **Features:**
     *   Edit user details such as username and email.
-    *   Display the user's current hashed password (for administrative reference, though direct display of plain text passwords is a security risk).
     *   Option to change the user's password.
-*   **Security Note:** Displaying the raw password is a significant security vulnerability and is implemented here based on explicit user request. In a production environment, only password change functionality should be provided, without displaying the current password.
+*   **Security Note:** Existing passwords and password hashes are never displayed. Administrators may only replace a password with a newly validated, securely hashed value.
+
+### Password-reset email configuration
+
+`api/forgot_password.php` reads mail credentials from the server environment. Never store an SMTP password in the repository. Configure these values in Apache or the deployment platform:
+
+*   `APP_URL` (for example, `http://localhost/capstone`)
+*   `SMTP_HOST`
+*   `SMTP_PORT` (normally `587` for TLS or `465` for SMTPS)
+*   `SMTP_ENCRYPTION` (`tls` or `ssl`)
+*   `SMTP_USERNAME`
+*   `SMTP_PASSWORD`
+*   `MAIL_FROM_ADDRESS`
+*   `MAIL_FROM_NAME` (optional; defaults to `SeniorLink`)
 
 ### `pages/new_application.php`
 
@@ -223,7 +207,6 @@ This document provides a technical overview of the CARELINK system.
 *   **Features:**
     *   A table of all applications with search and filter functionality.
     *   A modal to view the details of a specific application.
-    *   A modal to import applications from a CSV file.
 
 ### `pages/barangay_records.php`
 
@@ -262,11 +245,7 @@ This document provides a technical overview of the CARELINK system.
 
 *   **Functionality:** This file contains the logic for showing and hiding the loading spinner.
 
-### `assets/js/realtime_updates.js`
-
-*   **Functionality:** This file contains the logic for fetching and updating the dashboard statistics and notifications in real-time.
-
-The document verification workflow is managed directly through the PHP application and manual review process. It uses a Finite State Machine (FSM) to transition application states and a Localized Compliance Engine to validate age and ordinance constraints.
+The document verification workflow is managed through the PHP application and manual staff review. Fixed business rules route applications through submission, requirement checking, verification, document validation, approval, and release. A deterministic checklist checks age and ordinance constraints, and authorized staff make the final decision.
 
 ## 7. Deployment Guide (Render)
 
@@ -285,7 +264,7 @@ Render's free databases are temporary and are PostgreSQL. To keep using MySQL fo
 1.  **Choose a Provider:** Go to a site like [freemysqlhosting.net](https://www.freemysqlhosting.net/) or [db4free.net](https://www.db4free.net/).
 2.  **Create Database:** Sign up and create a new database.
 3.  **Note Credentials:** Carefully copy the **database name**, **username**, **password**, and **server hostname**.
-4.  **Import Data:** Use their provided phpMyAdmin to import the `.sql` backup file of your `carelink_db` database.
+4.  **Import Data:** Use phpMyAdmin to import the `capstone1` SQL backup for the local deployment.
 
 ### Step 3: Prepare the PHP App with Docker
 To run PHP on Render, you must provide a `Dockerfile`.
@@ -311,28 +290,10 @@ To run PHP on Render, you must provide a `Dockerfile`.
     *   **Runtime:** Set this to **`Docker`**.
     *   **Instance Type:** `Free`.
 3.  **Add Environment Variables:** Before creating the service, click on **Advanced**. Create the following key-value pairs:
-    *   `DB_HOST`: The server hostname from your MySQL provider.
-    *   `DB_USER`: The username for your database.
-    *   `DB_PASS`: The password for your database.
-    *   `DB_NAME`: The name of your database.
+    *   `DATABASE_URL`: The complete database connection URL used by `includes/db_connect.php`.
+    *   Add the password-reset mail variables listed above if email recovery is enabled.
 
-### Step 5: Update Your PHP Code
-Edit `includes/db_connect.php` to use the Environment Variables instead of hard-coded values.
-```php
-<?php
-// Get credentials from environment variables set in Render
-$db_host = getenv('DB_HOST');
-$db_user = getenv('DB_USER');
-$db_pass = getenv('DB_PASS');
-$db_name = getenv('DB_NAME');
+### Step 5: Verify the deployment connection
 
-// Establish connection
-$conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
-
-// Check connection
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-?>
-```
+`includes/db_connect.php` already reads `DATABASE_URL` and uses the local `capstone1` MySQL database when that variable is absent. Verify the deployed database driver and import the supplied schema before opening the application.
 Commit and push this final change to GitHub. Render will automatically see the change and redeploy your PHP service. Your site should now be live at your `carelink-web` URL.

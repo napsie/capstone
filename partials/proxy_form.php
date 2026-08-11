@@ -747,7 +747,7 @@ $resetUrl = $resetUrl ?? $formAction;
 
 <?php else: ?>
 
-    <!-- ── FSM TRANSITION SUCCESS SCENARIOS ── -->
+    <!-- Rule-based workflow routing success scenarios -->
     <?php if ($proxyOption === 'new_senior'): ?>
         
         <!-- OPTION A SUCCESS: PRIORITY QUEUE TOKEN -->
@@ -796,8 +796,8 @@ $resetUrl = $resetUrl ?? $formAction;
             </div>
             <h3 style="color:#0f172a; font-weight:800; font-size:1.45rem; margin-bottom:10px;">Pension Claim Submitted</h3>
             <p style="color:#64748b; font-size:0.95rem; line-height:1.5; margin:0 0 15px 0;">
-                The pension claim has been isolated as a sub-process status labeled <strong>[Pension Benefit - Submitted]</strong>. 
-                Scan/download your distinct Benefit Tracking QR Receipt below.
+                The pension claim has been received and added to the standard review queue.
+                Scan or download the Benefit Tracking QR receipt below.
             </p>
             
             <div class="qr-image-wrapper" style="border-color:#bfdbfe; background:#f0f7ff;">

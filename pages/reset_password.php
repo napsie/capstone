@@ -27,8 +27,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['token']) && isset($_GET
         } else {
             $error = "Invalid password reset link. Please ensure you copied the full link.";
         }
-    } catch (PDOException $e) {
-        $error = "Database error: " . $e->getMessage();
+    } catch (Throwable $e) {
+        error_log('Password reset validation error: ' . $e->getMessage());
+        $error = "Unable to validate this reset link. Please try again later.";
     }
 }
 
@@ -72,8 +73,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['resetPassword'])) {
                 }
             }
         }
-    } catch (PDOException $e) {
-        $error = "Database error: " . $e->getMessage();
+    } catch (Throwable $e) {
+        error_log('Password update error: ' . $e->getMessage());
+        $error = "Unable to reset the password right now. Please try again later.";
         $showForm = true;
     }
 }
@@ -154,6 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['resetPassword'])) {
             text-decoration: none;
         }
     </style>
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=3">
 </head>
 <body>
     <div class="reset-container">

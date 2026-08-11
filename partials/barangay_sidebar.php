@@ -1,11 +1,13 @@
 <?php
 $current_page = basename($_SERVER['PHP_SELF']);
+$barangayName = $barangayName ?? ($_SESSION['barangay'] ?? '');
+$barangayLogoLabel = $barangayName !== '' ? 'Barangay ' . $barangayName . ' Logo' : 'SENIORLINK Logo';
 ?>
 <div class="sidebar">
 
     <div class="logo">
         <div class="logo-image">
-            <img src="../images/LOGO.jpg" alt="Barangay <?php echo $barangayName; ?> Logo" class="logo-image" onerror="this.style.display='none'; document.getElementById('fallback-logo').style.display='flex';">
+            <img src="../images/LOGO.jpg" alt="<?php echo htmlspecialchars($barangayLogoLabel, ENT_QUOTES, 'UTF-8'); ?>" class="logo-image">
         </div>
         <h1 class="logo-text"><span class="logo-highlight">SENIOR</span>LINK</h1>
     </div>

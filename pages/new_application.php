@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once '../includes/db_connect.php';
-require_once '../includes/crypto.php';
+require_once '../includes/proxy_token_resolver.php';
 require_once '../includes/application_types.php';
 
 // Helper function to calculate working days (excluding Sat/Sun)
@@ -32,12 +32,12 @@ $barangay = $_SESSION['barangay'] ?? '';
 // Check if loaded with a Proxy Token from scanning the QR
 $loadedProxyData = null;
 if (isset($_GET['token'])) {
-    $decrypted = ProxyCrypto::decrypt($_GET['token']);
+    $decrypted = resolveProxyToken($conn, $_GET['token']);
     if ($decrypted) {
         $loadedProxyData = $decrypted;
         $successMessage = "Representative pre-registration details loaded successfully. Priority status set to HIGH Queue.";
     } else {
-        $errorMessage = "Failed to decrypt representative token. Data is corrupted or invalid.";
+        $errorMessage = "The representative QR code is invalid, expired, or no longer linked to an application.";
     }
 }
 
@@ -58,6 +58,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $emergencyContactName = isset($_POST['emergencyContactName']) ? trim(strip_tags($_POST['emergencyContactName'])) : '';
     $barangay = $_SESSION['barangay'] ?? ''; // Barangay from session
     $oscaData = parseOscaFormPost($_POST);
+
+    // New Senior Citizens ID applications never choose their own official ID.
+    // OSCA assigns it centrally when the application reaches Approved.
+    if ($applicationType === 'senior') {
+        $oscaData['senior_id_no'] = null;
+    } elseif (!empty($oscaData['senior_id_no'])) {
+        $oscaData['senior_id_no'] = strtoupper($oscaData['senior_id_no']);
+    }
 
     $idNumber = isset($_POST['idNumber']) ? trim(strip_tags($_POST['idNumber'])) : '';
     $disabilityType = isset($_POST['disabilityType']) ? implode(', ', array_map('strip_tags', (array)$_POST['disabilityType'])) : null;
@@ -251,8 +259,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             priority_level, workflow_state, email_address, additional_notes, ' . implode(', ', $oscaCols);
                 $placeholders = implode(', ', array_fill(0, 31 + count($oscaCols), '?'));
 
-                $stmt = $conn->prepare("INSERT INTO applications ($colList) VALUES ($placeholders)");
-
                 $params = [
                     $idNumber, $fullName, $applicationType, $birthDate, $contactNumber, $completeAddress,
                     $emergencyContact, $emergencyContactName, $barangay,
@@ -266,9 +272,47 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $params[] = $oscaData[$col];
                 }
 
-                if ($stmt->execute($params)) {
+                // A representative pre-registration already owns its PRX id.
+                // Completing the form must enrich that record instead of
+                // attempting a second INSERT with the same primary key.
+                $existingProxyState = null;
+                if ($isProxy === 1 && !empty($proxyToken) && !empty($idNumber)) {
+                    $existingProxyStmt = $conn->prepare(
+                        'SELECT workflow_state FROM applications
+                         WHERE id_number = ? AND is_proxy_application = 1 AND proxy_token = ?
+                         LIMIT 1'
+                    );
+                    $existingProxyStmt->execute([$idNumber, $proxyToken]);
+                    $existingProxyState = $existingProxyStmt->fetchColumn();
+                }
+
+                $isCompletingProxyRegistration = ($existingProxyState !== false && $existingProxyState !== null);
+                if ($isCompletingProxyRegistration) {
+                    $allColumns = array_map('trim', explode(',', preg_replace('/\s+/', ' ', $colList)));
+                    $updateColumns = array_slice($allColumns, 1); // id_number remains immutable
+                    $assignments = implode(', ', array_map(static fn($column) => "$column = ?", $updateColumns));
+                    $updateParams = array_slice($params, 1);
+                    $updateParams[] = $idNumber;
+                    $updateParams[] = $proxyToken;
+                    $stmt = $conn->prepare(
+                        "UPDATE applications SET $assignments
+                         WHERE id_number = ? AND is_proxy_application = 1 AND proxy_token = ?"
+                    );
+                    $saved = $stmt->execute($updateParams);
+                } else {
+                    $stmt = $conn->prepare("INSERT INTO applications ($colList) VALUES ($placeholders)");
+                    $saved = $stmt->execute($params);
+                }
+
+                if ($saved) {
                     if ($submittedDocuments) {
-                        $documentStmt = $conn->prepare('INSERT INTO application_documents (application_id, document_key, document_label, mime_type, document_data) VALUES (?, ?, ?, ?, ?)');
+                        $driver = $conn->getAttribute(PDO::ATTR_DRIVER_NAME);
+                        $documentSql = $driver === 'pgsql'
+                            ? 'INSERT INTO application_documents (application_id, document_key, document_label, mime_type, document_data) VALUES (?, ?, ?, ?, ?)
+                               ON CONFLICT (application_id, document_key) DO UPDATE SET document_label = EXCLUDED.document_label, mime_type = EXCLUDED.mime_type, document_data = EXCLUDED.document_data, updated_at = CURRENT_TIMESTAMP'
+                            : 'INSERT INTO application_documents (application_id, document_key, document_label, mime_type, document_data) VALUES (?, ?, ?, ?, ?)
+                               ON DUPLICATE KEY UPDATE document_label = VALUES(document_label), mime_type = VALUES(mime_type), document_data = VALUES(document_data), updated_at = CURRENT_TIMESTAMP';
+                        $documentStmt = $conn->prepare($documentSql);
                         foreach ($submittedDocuments as $document) {
                             $documentStmt->bindValue(1, $idNumber, PDO::PARAM_STR);
                             $documentStmt->bindValue(2, $document['key'], PDO::PARAM_STR);
@@ -278,10 +322,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             $documentStmt->execute();
                         }
                     }
-                    // Log history
-                    $stmtHist = $conn->prepare("INSERT INTO application_history (application_id, previous_state, new_state, changed_by, comments) VALUES (?, ?, ?, ?, ?)");
-                    $userName = $_SESSION['username'] ?? 'barangay_staff';
-                    $stmtHist->execute([$idNumber, 'None', 'Received', $userName, 'Application created and received at the counter.']);
+                    // Log a state transition only for a newly created record.
+                    // The pre-registration already entered Received when it
+                    // was placed in the priority queue.
+                    if (!$isCompletingProxyRegistration) {
+                        $stmtHist = $conn->prepare("INSERT INTO application_history (application_id, previous_state, new_state, changed_by, comments) VALUES (?, ?, ?, ?, ?)");
+                        $userName = $_SESSION['username'] ?? 'barangay_staff';
+                        $stmtHist->execute([$idNumber, 'None', 'Received', $userName, 'Application created and received at the counter.']);
+                    }
 
                     $conn->commit();
 
@@ -1427,6 +1475,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
            approval. They are not part of the online application form. */
         .non-submission-preview { display: none !important; }
     </style>
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=6">
 </head>
 <body>
     <div class="container">
@@ -1496,7 +1545,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 </div>
 
                 <!-- STEP 2: Full Form (hidden until a card is selected) -->
-                <div id="formBody">
+                <div id="formBody" class="guided-application">
                     <!-- Selected type banner -->
                     <div class="selected-type-banner" id="selectedTypeBanner" style="display:none;">
                         <div class="banner-icon" id="bannerIcon"></div>
@@ -1505,6 +1554,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             <strong id="bannerLabel"></strong>
                         </div>
                         <span class="banner-state"><i class="fas fa-check-circle"></i> Form in progress</span>
+                    </div>
+
+                    <div class="guided-form-intro" aria-label="Application instructions">
+                        <span class="guided-form-intro-icon"><i class="fas fa-pen-to-square" aria-hidden="true"></i></span>
+                        <div>
+                            <h2>Complete the application</h2>
+                            <p>Answer each question carefully. Fields marked with <span aria-hidden="true">*</span> are required before submission.</p>
+                        </div>
                     </div>
 
                 <form method="POST" action="new_application.php" enctype="multipart/form-data" id="mainAppForm">
@@ -1522,7 +1579,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                          OSCA OFFICIAL FORM — Burial Assistance
                          Visible only when 'burial' application type is selected
                          ================================================================ -->
-                    <div id="burialOfficialFormCard" style="display:none; margin-bottom:28px;">
+                    <div id="burialOfficialFormCard" class="guided-benefit-form" style="display:none; margin-bottom:28px;">
                         <div style="
                             background: #fff;
                             border: 2px solid #1e3a5f;
@@ -1583,7 +1640,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Senior ID No.</label>
-                                            <input type="text" id="burialScIdNo" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="SC-XXXX-XXXX">
+                                            <input type="text" id="burialScIdNo" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'seniorIdNo')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="OSCA-YYYY-XXXXXX">
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Birth Date of Deceased</label>
@@ -1801,7 +1858,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                          OSCA OFFICIAL FORM — Home Visitation / Confirmation
                          Visible only when 'home_visit' application type is selected
                          ================================================================ -->
-                    <div id="homeVisitOfficialFormCard" style="display:none; margin-bottom:28px;">
+                    <div id="homeVisitOfficialFormCard" class="guided-benefit-form" style="display:none; margin-bottom:28px;">
                         <div style="
                             background: #fff;
                             border: 2px solid #0891b2;
@@ -1875,7 +1932,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">SC ID No.</label>
-                                            <input type="text" id="hvScIdNo" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#0891b2';" onblur="this.style.borderColor='#d0dae8';" placeholder="SC-XXXX-XXXX">
+                                            <input type="text" id="hvScIdNo" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'seniorIdNo')" onfocus="this.style.borderColor='#0891b2';" onblur="this.style.borderColor='#d0dae8';" placeholder="OSCA-YYYY-XXXXXX">
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Birth Date (MM/DD/YYYY)</label>
@@ -2085,7 +2142,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                          OSCA OFFICIAL FORM — Octogenarian / Nonagenarian / Centenarian
                          Visible only when 'milestone_gift' application type is selected
                          ================================================================ -->
-                    <div id="milestoneOfficialFormCard" style="display:none; margin-bottom:28px;">
+                    <div id="milestoneOfficialFormCard" class="guided-benefit-form" style="display:none; margin-bottom:28px;">
                         <div style="
                             background: #fff;
                             border: 2px solid #be185d;
@@ -2396,7 +2453,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                          OSCA OFFICIAL FORM — Local Senior Pension
                          Visible for 'pension' and 'national_pension' types
                          ================================================================ -->
-                    <div id="pensionOfficialFormCard" style="display:none; margin-bottom:28px;">
+                    <div id="pensionOfficialFormCard" class="guided-benefit-form" style="display:none; margin-bottom:28px;">
                         <div style="
                             background: #fff;
                             border: 2px solid #b45309;
@@ -2479,7 +2536,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Senior ID No.</label>
-                                            <input type="text" id="penScIdNo" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#b45309';" onblur="this.style.borderColor='#d0dae8';" placeholder="SC-XXXX-XXXX">
+                                            <input type="text" id="penScIdNo" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'seniorIdNo')" onfocus="this.style.borderColor='#b45309';" onblur="this.style.borderColor='#d0dae8';" placeholder="OSCA-YYYY-XXXXXX">
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">ATM No. or Temporary Cash Card Stub No.</label>
@@ -2672,7 +2729,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                          OSCA OFFICIAL FORM — Land Bank Cash Card Enrollment
                          Visible only when 'landbank' application type is selected
                          ================================================================ -->
-                    <div id="landbankOfficialFormCard" style="display:none; margin-bottom:28px;">
+                    <div id="landbankOfficialFormCard" class="guided-benefit-form" style="display:none; margin-bottom:28px;">
                         <div style="
                             background: #fff;
                             border: 2px solid #059669;
@@ -2798,7 +2855,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Senior ID No.</label>
-                                            <input type="text" id="lbSeniorIdNo" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'seniorIdNoLandbank')" onfocus="this.style.borderColor='#059669';" onblur="this.style.borderColor='#d0dae8';" placeholder="SC-XXXX-XXXX">
+                                            <input type="text" id="lbSeniorIdNo" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'seniorIdNo')" onfocus="this.style.borderColor='#059669';" onblur="this.style.borderColor='#d0dae8';" placeholder="OSCA-YYYY-XXXXXX">
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Mother's Maiden Name</label>
@@ -2887,7 +2944,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         </div>
                     </div><!-- /#landbankOfficialFormCard -->
 
-                    <div id="oscaOfficialFormCard" style="display:none; margin-bottom:28px;">
+                    <div id="oscaOfficialFormCard" class="guided-benefit-form" style="display:none; margin-bottom:28px;">
                         <div style="
                             background: #fff;
                             border: 2px solid #1e3a5f;
@@ -2985,15 +3042,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         </div>
                                     </div>
 
-                                    <!-- Senior ID generator (numbers only) -->
-                                    <div style="margin-top:10px;display:flex;gap:10px;align-items:center;">
-                                        <div style="flex:1;">
-                                            <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Senior ID No.</label>
-                                            <input type="text" id="oscaSeniorId" readonly style="width:100%;padding:8px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.9rem;color:#0f172a;background:#f8fafc;" placeholder="Numbers only (4–6 digits)" />
-                                        </div>
-                                        <div style="flex-shrink:0;">
-                                            <button type="button" class="btn" style="background:#1e90ff;padding:8px 12px;border-radius:7px;height:40px;display:inline-flex;align-items:center;gap:8px;border:none;color:#fff;cursor:pointer;" onclick="generateSeniorId()"><i class="fas fa-hashtag"></i> Generate</button>
-                                        </div>
+                                    <!-- The official OSCA ID is issued by the approval workflow, not by the applicant. -->
+                                    <div style="margin-top:10px;">
+                                        <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">OSCA ID #</label>
+                                        <input type="text" id="oscaSeniorId" readonly value="Pending approval" style="width:100%;padding:8px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.9rem;color:#64748b;background:#f8fafc;" aria-describedby="oscaSeniorIdHelp" />
+                                        <div id="oscaSeniorIdHelp" style="font-size:0.68rem;color:#64748b;margin-top:4px;">Assigned automatically by OSCA when this Senior Citizens ID application is approved.</div>
                                     </div>
                                 </div>
 
@@ -3281,6 +3334,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <input type="hidden" id="province"             name="province"             value="Metro Manila">
                     <input type="hidden" id="zipCode"              name="zipCode"              value="">
                     <input type="hidden" id="landmark"             name="landmark"             value="">
+                    <input type="hidden" id="seniorIdNo"           name="seniorIdNo"           value="<?php echo htmlspecialchars($loadedProxyData['seniorIdNo'] ?? ''); ?>">
                     <input type="hidden" id="emergencyContactName" name="emergencyContactName" value="">
                     <input type="hidden" id="emergencyContact"     name="emergencyContact"     value="">
                     <!-- Pension/Burial hidden fields — synced from official form preview cards -->
@@ -3527,6 +3581,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     document.getElementById('contactNumber').value = data.contactNumber || '';
                     document.getElementById('completeAddress').value = data.completeAddress || '';
                     document.getElementById('idNumber').value = data.transactionId || '';
+                    document.getElementById('seniorIdNo').value = data.seniorIdNo || '';
                     
                     // Application type
                     const loadedType = data.applicationType || 'senior';
@@ -3811,7 +3866,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 'idTypePresented':   'lbIdTypePresented',
                 'tin':               'lbTin',
                 'sourceOfFunds':     'lbSourceOfFunds',
-                'seniorIdNoLandbank':'lbSeniorIdNo',
+                'seniorIdNo':        'lbSeniorIdNo',
                 'nameOnCard':        'lbNameOnCard'
             };
             for (const [mainId, lbId] of Object.entries(map)) {
@@ -3927,6 +3982,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 'suffix':        'penSuffix',
                 'birthDate':     'penBirthDate',
                 'contactNumber': 'penContact',
+                'seniorIdNo':    'penScIdNo',
                 'sssNumber':     'penSssNumber',
             };
             for (const [mainId, pId] of Object.entries(map)) {
@@ -3954,41 +4010,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             ageEl.value = age >= 0 ? age : '';
         }
 
-        // Generate numeric-only Senior ID and populate visible and hidden fields
-        function generateSeniorId() {
-            // Numeric-only ID: random 4–6 digits
-            const len = Math.floor(Math.random() * 3) + 4; // 4,5,6
-            let rand = '';
-            for (let i = 0; i < len; i++) rand += Math.floor(Math.random() * 10).toString();
-            const numericId = rand; // e.g. 4321 or 12345
-
-            const visible = document.getElementById('oscaSeniorId');
-            const hidden = document.getElementById('idNumber');
-            if (visible) {
-                visible.value = numericId;
-                visible.style.background = '#e6fffb';
-            }
-            if (hidden) hidden.value = numericId;
-
-            // Mirror to other preview controls that show control no.
-            const controlNoDisp = document.getElementById('lbControlNoDisplay');
-            if (controlNoDisp) controlNoDisp.textContent = numericId;
-        }
-
-        // Validate on form submit: for senior applications, ensure generated ID is numeric-only
-        document.getElementById('mainAppForm')?.addEventListener('submit', function(e) {
-            const type = document.getElementById('applicationType')?.value;
-            if (type === 'senior') {
-                const idVal = (document.getElementById('idNumber') || {}).value || '';
-                if (!/^[0-9]{4,6}$/.test(idVal)) {
-                    e.preventDefault();
-                    window.showCarelinkResult('Please generate a numeric Senior ID (4–6 digits) before submitting. Click Generate.', false);
-                    return false;
-                }
-            }
-            return true;
-        });
-
         // Mirror main form fields into Burial card
         function mirrorMainFieldsToBurial() {
             const map = {
@@ -3998,6 +4019,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 'suffix':     'burialDeceasedExt',
                 'birthDate':  'burialDeceasedBirthDate',
                 'contactNumber': 'burialContactNo',
+                'seniorIdNo': 'burialScIdNo',
             };
             for (const [mainId, bId] of Object.entries(map)) {
                 const mainEl = document.getElementById(mainId);
@@ -4022,6 +4044,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 'firstName':      'hvFirstName',
                 'contactNumber':  'hvContact',
                 'birthDate':      'hvBirthDate',
+                'seniorIdNo':     'hvScIdNo',
             };
             for (const [mainId, hvId] of Object.entries(map)) {
                 const mainEl = document.getElementById(mainId);
@@ -4313,5 +4336,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
     </script>
 <script src="../assets/js/carelink-feedback.js?v=2"></script>
+<script src="../assets/js/vendor/html5-qrcode.min.js?v=2.3.8"></script>
+<script src="../assets/js/simple-code-scanner.js?v=3"></script>
 </body>
 </html>

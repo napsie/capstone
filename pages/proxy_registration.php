@@ -228,6 +228,7 @@ $resetUrl = 'proxy_registration.php';
             margin: 0; font-size: 0.9rem; color: #475569;
         }
     </style>
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=3">
 </head>
 <body>
     <a href="../index.php" class="back-btn">

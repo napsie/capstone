@@ -116,6 +116,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
 
 
     </style>
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=3">
 </head>
 <body>
     <div class="container">
@@ -163,10 +164,6 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                         <div class="chart-card">
                             <h3><i class="fas fa-chart-pie"></i> Status Distribution</h3>
                             <div class="chart-wrapper"><canvas id="statusChart"></canvas></div>
-                        </div>
-                        <div class="chart-card">
-                            <h3><i class="fas fa-project-diagram"></i> FSM Workflow States</h3>
-                            <div class="chart-wrapper"><canvas id="fsmChart"></canvas></div>
                         </div>
                         <div class="chart-card">
                             <h3><i class="fas fa-chart-bar"></i> Monthly Applications</h3>
@@ -408,7 +405,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
             return;
         }
 
-        // FSM workflow state → icon + color mapping
+        // Workflow status to icon and color mapping
         const stateConfig = {
             'received':   { icon: 'fa-inbox',        color: '#94a3b8', bg: 'rgba(148,163,184,0.15)', label: 'Received'   },
             'for review': { icon: 'fa-search',        color: '#3b82f6', bg: 'rgba(59,130,246,0.12)',  label: 'For Review' },
@@ -478,15 +475,15 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
         const el = id => document.getElementById(id);
         if (el('statTotal')) el('statTotal').textContent = data.total_count ?? '0';
 
-        // Map FSM state counts
-        const fsmMap = {};
-        (data.fsm_stats || []).forEach(row => {
-            fsmMap[row.workflow_state] = parseInt(row.count);
+        // Map workflow status counts
+        const workflowMap = {};
+        (data.workflow_stats || []).forEach(row => {
+            workflowMap[row.workflow_state] = parseInt(row.count);
         });
         // The Submit Application page contains all active states, not only
         // applications that are still at the first Received step.
         if (el('statReceived'))  el('statReceived').textContent  = data.queue_count ?? 0;
-        if (el('statApproved'))  el('statApproved').textContent  = fsmMap['Approved']   ?? 0;
+        if (el('statApproved'))  el('statApproved').textContent  = workflowMap['Approved'] ?? 0;
 
         // Priority banner
         const priorityCount = data.priority_count ?? 0;
@@ -505,18 +502,25 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
 
         // --- Status Chart ---
         const statusCtx = document.getElementById('statusChart')?.getContext('2d');
-        if (statusCtx && data.stats) {
-            const labels = data.stats.map(s => s.status);
-            const counts = data.stats.map(s => s.count);
-            const backgroundColors = labels.map(label => {
-                switch(label.toLowerCase()) {
-                    case 'pending': return '#f39c12';
-                    case 'verified': return '#3498db';
-                    case 'rejected': return '#e74c3c';
-                    case 'approved': return '#2ecc71';
-                    default: return '#95a5a6';
-                }
+        if (statusCtx && data.workflow_stats) {
+            const statusOrder = ['Received', 'For Review', 'Verified', 'Approved', 'Released', 'Rejected', 'Deceased'];
+            const workflowStats = [...data.workflow_stats].sort((a, b) => {
+                const aIndex = statusOrder.indexOf(a.workflow_state);
+                const bIndex = statusOrder.indexOf(b.workflow_state);
+                return (aIndex === -1 ? statusOrder.length : aIndex) - (bIndex === -1 ? statusOrder.length : bIndex);
             });
+            const labels = workflowStats.map(s => s.workflow_state);
+            const counts = workflowStats.map(s => parseInt(s.count, 10));
+            const statusColors = {
+                'Received':   '#94a3b8',
+                'For Review': '#3b82f6',
+                'Verified':   '#14b8a6',
+                'Approved':   '#22c55e',
+                'Released':   '#8b5cf6',
+                'Rejected':   '#ef4444',
+                'Deceased':   '#64748b'
+            };
+            const backgroundColors = labels.map(label => statusColors[label] || '#94a3b8');
             new Chart(statusCtx, {
                 type: 'doughnut',
                 data: { labels, datasets: [{ data: counts, backgroundColor: backgroundColors, borderWidth: 2, borderColor: isDarkMode ? '#0f1722' : '#fff' }] },
@@ -532,26 +536,6 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                         } 
                     } 
                 }
-            });
-        }
-
-        // --- FSM Workflow State Chart ---
-        const fsmCtx = document.getElementById('fsmChart')?.getContext('2d');
-        if (fsmCtx && data.fsm_stats) {
-            const fsmLabels = data.fsm_stats.map(s => s.workflow_state);
-            const fsmCounts = data.fsm_stats.map(s => parseInt(s.count));
-            const fsmColors = {
-                'Received':   '#94a3b8',
-                'For Review': '#3b82f6',
-                'Verified':   '#14b8a6',
-                'Approved':   '#22c55e',
-                'Released':   '#8b5cf6'
-            };
-            const fsmBg = fsmLabels.map(l => fsmColors[l] || '#94a3b8');
-            new Chart(fsmCtx, {
-                type: 'doughnut',
-                data: { labels: fsmLabels, datasets: [{ data: fsmCounts, backgroundColor: fsmBg, borderWidth: 2, borderColor: isDarkMode ? '#0f1722' : '#fff' }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: textColor } } } }
             });
         }
 

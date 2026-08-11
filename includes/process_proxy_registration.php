@@ -1,5 +1,4 @@
 <?php
-require_once __DIR__ . '/crypto.php';
 require_once __DIR__ . '/db_connect.php';
 
 /**
@@ -120,8 +119,9 @@ function processProxyRegistration(): array
         try {
             $conn->beginTransaction();
 
-            // Insert into applications table
-            // Set status to pending and workflow_state to Submitted
+            // A completed pre-registration is immediately available to the
+            // barangay counter. Use the same active queue state as counter
+            // applications so the HIGH-priority record is visible at once.
             $sql = "INSERT INTO applications (
                         id_number, full_name, lastName, firstName, middleName, suffix,
                         birth_date, contact_number, complete_address, barangay,
@@ -136,42 +136,20 @@ function processProxyRegistration(): array
             $stmt->execute([
                 $transactionId, $fullName, $lastName, $firstName, $middleName, $suffix,
                 $birthDate, $contactNumber, $completeAddress, $barangay,
-                'pending', 'Submitted', 1, $proxyName,
+                'pending', 'Received', 1, $proxyName,
                 $proxyRelationship, $proxyContactNumber, $transactionId, 'high', $applicationType,
                 $sssNumber, $pensionAmount, !empty($dateOfDeath) ? $dateOfDeath : null, !empty($relationshipToDeceased) ? $relationshipToDeceased : null,
                 $psaBirthCert, $barangayResidency, $comelecCert, $proofOfLife,
                 $authLetter, $proxyId, $proxyBirthCert
             ]);
 
-            // Add FSM history entry: [Draft] -> [Submitted]
+            // Add workflow history entry for the active counter queue.
             $stmtHist = $conn->prepare("INSERT INTO application_history (application_id, previous_state, new_state, changed_by, comments) VALUES (?, ?, ?, ?, ?)");
             $stmtHist->execute([
-                $transactionId, 'Draft', 'Submitted', 'Proxy Representative (Maria)', 'Pre-registration submitted via proxy portal.'
+                $transactionId, 'Draft', 'Received', 'Proxy Representative', 'Representative pre-registration received and placed in the HIGH-priority counter queue.'
             ]);
 
             $conn->commit();
-
-            // Generate Token redirect payload
-            $payload = [
-                'transactionId' => $transactionId,
-                'lastName' => $lastName,
-                'firstName' => $firstName,
-                'middleName' => $middleName,
-                'suffix' => $suffix,
-                'birthDate' => $birthDate,
-                'contactNumber' => $contactNumber,
-                'completeAddress' => $completeAddress,
-                'barangay' => $barangay,
-                'applicationType' => $applicationType,
-                'sssNumber' => $sssNumber,
-                'dateOfDeath' => $dateOfDeath,
-                'relationshipToDeceased' => $relationshipToDeceased,
-                'proxyName' => $proxyName,
-                'proxyRelationship' => $proxyRelationship,
-                'proxyContactNumber' => $proxyContactNumber,
-                'created_at' => date('Y-m-d H:i:s'),
-            ];
-            $encryptedToken = ProxyCrypto::encrypt($payload);
 
             $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443)
                 ? 'https://' : 'http://';
@@ -180,11 +158,14 @@ function processProxyRegistration(): array
             if (basename($scriptDir) !== 'pages') {
                 $scriptDir = rtrim($scriptDir, '/') . '/pages';
             }
-            $scanUrl = $protocol . $host . $scriptDir . '/scan_proxy_qr_redirect.php?token=' . urlencode($encryptedToken);
+            // Keep QR content short so ordinary webcams can read it from a
+            // phone screen or printed photo. The reference contains no PII;
+            // personal details are resolved only inside an authenticated page.
+            $scanUrl = $protocol . $host . $scriptDir . '/scan_proxy_qr_redirect.php?token=' . urlencode($transactionId);
 
             $result['success'] = true;
             $result['transactionId'] = $transactionId;
-            $result['qrCodeUrl'] = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' . urlencode($scanUrl);
+            $result['qrCodeUrl'] = 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&ecc=M&qzone=4&data=' . urlencode($scanUrl);
             $result['option'] = 'new_senior';
             $result['applicationType'] = $applicationType;
 
@@ -205,9 +186,15 @@ function processProxyRegistration(): array
         }
 
         try {
-            // Verify profile integrity (exists, is approved/verified, is a proxy application)
-            $stmtVerify = $conn->prepare("SELECT * FROM applications WHERE id_number = ? AND (workflow_state = 'Approved' OR workflow_state = 'Verified') AND is_proxy_application = 1");
-            $stmtVerify->execute([$seniorCitizenId]);
+            // Accept either the issued OSCA ID or the older transaction number.
+            $stmtVerify = $conn->prepare("SELECT * FROM applications
+                                          WHERE application_type = 'senior'
+                                            AND (senior_id_no = ? OR id_number = ?)
+                                            AND workflow_state IN ('Verified', 'Approved', 'Released')
+                                            AND is_proxy_application = 1
+                                          ORDER BY CASE WHEN senior_id_no = ? THEN 0 ELSE 1 END
+                                          LIMIT 1");
+            $stmtVerify->execute([$seniorCitizenId, $seniorCitizenId, $seniorCitizenId]);
             $senior = $stmtVerify->fetch(PDO::FETCH_ASSOC);
 
             if (!$senior) {
@@ -235,22 +222,23 @@ function processProxyRegistration(): array
                         birth_date, contact_number, complete_address, barangay,
                         status, workflow_state, is_proxy_application, proxy_name,
                         proxy_relationship, proxy_contact_number, proxy_token, priority_level, application_type,
-                        parent_senior_id, home_visitation_form, landbank_enrollment_form
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        senior_id_no, parent_senior_id, home_visitation_form, landbank_enrollment_form
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             
             $stmtPension = $conn->prepare($sql);
             $stmtPension->execute([
                 $pensionTransactionId, $senior['full_name'], $senior['lastName'], $senior['firstName'], $senior['middleName'], $senior['suffix'],
                 $senior['birth_date'], $senior['contact_number'], $senior['complete_address'], $senior['barangay'],
-                'pending', 'Pension Benefit - Submitted', 1, $senior['proxy_name'],
+                'pending', 'Received', 1, $senior['proxy_name'],
                 $senior['proxy_relationship'], $senior['proxy_contact_number'], $senior['proxy_token'], 'high', 'pension',
-                $seniorCitizenId, $homeVisitationForm, $landbankForm
+                $senior['senior_id_no'], $senior['id_number'], $homeVisitationForm, $landbankForm
             ]);
 
-            // Add FSM history entry: [Draft] -> [Pension Benefit - Submitted]
+            // Enter the standard processing queue so barangay and department
+            // screens can review this benefit claim normally.
             $stmtHist = $conn->prepare("INSERT INTO application_history (application_id, previous_state, new_state, changed_by, comments) VALUES (?, ?, ?, ?, ?)");
             $stmtHist->execute([
-                $pensionTransactionId, 'Draft', 'Pension Benefit - Submitted', 'Proxy Representative (Maria)', 'Pension benefit application submitted.'
+                $pensionTransactionId, 'Draft', 'Received', 'Proxy Representative', 'Pension benefit application received through the representative portal.'
             ]);
 
             $conn->commit();
@@ -267,7 +255,7 @@ function processProxyRegistration(): array
 
             $result['success'] = true;
             $result['transactionId'] = $pensionTransactionId;
-            $result['qrCodeUrl'] = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' . urlencode($trackerUrl);
+            $result['qrCodeUrl'] = 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&ecc=M&qzone=4&data=' . urlencode($trackerUrl);
             $result['option'] = 'existing_benefits';
             $result['applicationType'] = 'pension';
 

@@ -20,7 +20,7 @@ $purposes = array_map('trim', explode(',', $app['visit_purpose'] ?? ''));
         <?php endforeach; ?>
     </div>
     <?php oscaFieldRow(['Last Name' => $app['lastName'] ?? '', 'First Name' => $app['firstName'] ?? '', 'Middle Name' => $app['middleName'] ?? '', 'Age' => $age]); ?>
-    <?php oscaFieldRow(['SC ID No.' => $app['senior_id_no'] ?? '', 'Birth Date' => oscaFmtDate($app['birth_date'] ?? null), 'Gender' => $app['gender'] ?? '', 'Contact' => $app['contact_number'] ?? '']); ?>
+    <?php oscaFieldRow(['SC ID No.' => oscaSeniorId($app), 'Birth Date' => oscaFmtDate($app['birth_date'] ?? null), 'Gender' => $app['gender'] ?? '', 'Contact' => $app['contact_number'] ?? '']); ?>
     <?php oscaFieldRow(['Present Address' => $app['complete_address'] ?? '', 'Barangay' => $app['barangay'] ?? '']); ?>
     <div class="section-title">CONFIRMED THE FOLLOWING</div>
     <?php oscaFieldRow(['Living Arrangement' => $app['living_arrangement'] ?? '', 'Pensioner' => ($app['is_pensioner'] ?? null) === '1' || ($app['is_pensioner'] ?? null) === 1 ? 'Yes' : 'No', 'Pension Source' => $app['pension_source'] ?? '']); ?>

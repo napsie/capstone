@@ -16,7 +16,7 @@ $age = oscaAge($app['birth_date'] ?? null);
     <?php oscaFieldRow(['Last Name' => $app['lastName'] ?? '', 'Suffix' => $app['suffix'] ?? '', 'First Name' => $app['firstName'] ?? '', 'Middle Name' => $app['middleName'] ?? '']); ?>
     <?php oscaFieldRow(['Address' => $app['complete_address'] ?? '', 'Control No.' => $app['control_no'] ?? $app['id_number'] ?? '']); ?>
     <?php oscaFieldRow(['Birthdate' => oscaFmtDate($app['birth_date'] ?? null), 'Age' => $age, 'Sex' => $app['gender'] ?? '', 'Contact No.' => $app['contact_number'] ?? '']); ?>
-    <?php oscaFieldRow(['Senior ID No.' => $app['senior_id_no'] ?? '', 'ATM/Temp Card Stub No.' => $app['atm_card_no'] ?? '', "Mother's Maiden Name" => $app['mothers_maiden_name'] ?? '']); ?>
+    <?php oscaFieldRow(['Senior ID No.' => oscaSeniorId($app), 'ATM/Temp Card Stub No.' => $app['atm_card_no'] ?? '', "Mother's Maiden Name" => $app['mothers_maiden_name'] ?? '']); ?>
     <div class="section-title">ECONOMIC STATUS</div>
     <?php oscaFieldRow(['SSS Number' => $app['sss_number'] ?? '', 'Verified Pension' => isset($app['pension_amount']) ? 'P' . number_format((float)$app['pension_amount'], 2) : '', 'Pension Source' => $app['pension_source'] ?? '']); ?>
     <?php oscaFieldRow(['Permanent Income Source' => $app['income_source'] ?? '', 'Own House' => ($app['owns_house'] ?? null) ? 'Yes' : 'No', 'Renter' => ($app['is_renter'] ?? null) ? 'Yes' : 'No']); ?>

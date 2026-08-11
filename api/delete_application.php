@@ -5,7 +5,15 @@ require_once '../includes/db_connect.php';
 
 // Authentication check (ensure only authorized roles can delete)
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['barangay_staff', 'department_admin', 'super_admin'])) {
+    http_response_code(401);
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    echo json_encode(['success' => false, 'message' => 'Invalid request method.']);
     exit;
 }
 
@@ -20,7 +28,7 @@ if (isset($_POST['id'])) {
         $where = 'id_number = ?';
         $params = [$id];
         if (($_SESSION['role'] ?? '') === 'barangay_staff') {
-            $where .= ' AND barangay = ?';
+            $where .= " AND barangay = ? AND workflow_state IN ('Received', 'Submitted')";
             $params[] = $_SESSION['barangay'] ?? '';
         }
         $stmt = $conn->prepare("DELETE FROM applications WHERE $where");
@@ -30,7 +38,7 @@ if (isset($_POST['id'])) {
             if ($stmt->rowCount() > 0) {
                 echo json_encode(['success' => true, 'message' => 'Application deleted successfully.']);
             } else {
-                echo json_encode(['success' => false, 'message' => 'Application not found with the given ID.']);
+                echo json_encode(['success' => false, 'message' => 'Application was not found, is outside your barangay, or has already entered department review.']);
             }
         } else {
             // This part is for robustness, actual errors are caught below

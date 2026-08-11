@@ -33,6 +33,20 @@ try {
         exit();
     }
 
+    // Approval history is the issuance audit trail displayed on form F1.
+    if (!empty($app['senior_id_no'])) {
+        $issuedStmt = $conn->prepare(
+            "SELECT changed_by, changed_at
+             FROM application_history
+             WHERE application_id = ? AND new_state = 'Approved'
+             ORDER BY changed_at ASC LIMIT 1"
+        );
+        $issuedStmt->execute([$appId]);
+        $issuance = $issuedStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        $app['senior_id_issued_by'] = $issuance['changed_by'] ?? '';
+        $app['senior_id_issued_at'] = $issuance['changed_at'] ?? null;
+    }
+
     unset($app['proof_of_address'], $app['id_image']);
 
     $formTemplates = [

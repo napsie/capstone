@@ -60,7 +60,7 @@ body {
     background-image: url('../../images/system_background.png');
 }
 .page-bg--pages::before {
-    background-image: url('../images/system_background.png');
+    background-image: url('../../images/system_background.png');
 }
 .page-bg::after {
     content: '';

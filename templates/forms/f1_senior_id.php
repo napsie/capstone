@@ -29,6 +29,12 @@ if ($addr === ', , Pasig City') $addr = $app['complete_address'] ?? '';
     </div>
 
     <?php oscaFieldRow([
+        'OSCA ID #' => oscaSeniorId($app, 'Pending approval'),
+        'OSCA Personnel' => $app['senior_id_issued_by'] ?? '',
+        'Date Issued' => oscaFmtDate($app['senior_id_issued_at'] ?? null),
+    ]); ?>
+
+    <?php oscaFieldRow([
         'Last Name' => $app['lastName'] ?? '',
         'Ext' => $app['suffix'] ?? '',
         'First Name' => $app['firstName'] ?? '',
@@ -72,7 +78,6 @@ if ($addr === ', , Pasig City') $addr = $app['complete_address'] ?? '';
     <?php oscaFieldRow([
         'Emergency Contact' => ($app['emergency_contact_name'] ?? '') . ' — ' . ($app['emergency_contact'] ?? ''),
         'Relationship' => '',
-        'OSCA ID #' => $app['senior_id_no'] ?? $app['id_number'] ?? '',
     ]); ?>
 
     <div class="stub">

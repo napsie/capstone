@@ -545,6 +545,7 @@ require_once '../includes/db_connect.php';
             }
         }
     </style>
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=3">
 </head>
 <body>
     <div class="container">
@@ -828,7 +829,7 @@ require_once '../includes/db_connect.php';
                 return;
             }
 
-            // FSM workflow state → icon + color mapping
+            // Workflow status to icon and color mapping
             const stateConfig = {
                 'received':   { icon: 'fa-inbox',       color: '#94a3b8', bg: 'rgba(148,163,184,0.15)', label: 'Received'   },
                 'for review': { icon: 'fa-search',       color: '#3b82f6', bg: 'rgba(59,130,246,0.12)',  label: 'For Review' },

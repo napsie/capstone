@@ -17,7 +17,11 @@ if (isset($_SESSION['user_id']) && $_SESSION['role'] === 'barangay_staff') {
 $sql = "SELECT a.id_number as id, a.full_name, a.application_type, a.birth_date, a.contact_number, a.date_submitted, a.status,
                a.complete_address, a.house_no, a.street, a.city, a.province, a.zip_code, a.barangay,
                a.workflow_state, a.priority_level,
-               (SELECT h.comments FROM application_history h WHERE h.application_id = a.id_number AND h.new_state = 'Received' AND h.previous_state != 'None' ORDER BY h.changed_at DESC LIMIT 1) as return_comments
+               (SELECT h.comments FROM application_history h
+                WHERE h.application_id = a.id_number
+                  AND h.new_state = 'Received'
+                  AND h.previous_state IN ('For Review', 'Verified', 'Approved')
+                ORDER BY h.changed_at DESC LIMIT 1) as return_comments
         FROM applications a";
 $params = [];
 $where_clauses = [];

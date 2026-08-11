@@ -14,7 +14,7 @@ $response = [
     'success' => true,
     'data'    => [
         'stats'          => [],
-        'fsm_stats'      => [],
+        'workflow_stats' => [],
         'monthly'        => [],
         'notifications'  => [],
         'priority_count' => 0,
@@ -34,8 +34,8 @@ try {
     $statusStmt->execute(['barangay' => $barangay]);
     $response['data']['stats'] = $statusStmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // 2. Get FSM Workflow State Distribution Chart data
-    $fsmStmt = $conn->prepare("
+    // 2. Get workflow status distribution chart data
+    $workflowStmt = $conn->prepare("
         SELECT 
             COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') as workflow_state, 
             COUNT(*) as count 
@@ -43,8 +43,8 @@ try {
         WHERE barangay = :barangay 
         GROUP BY COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received')
     ");
-    $fsmStmt->execute(['barangay' => $barangay]);
-    $response['data']['fsm_stats'] = $fsmStmt->fetchAll(PDO::FETCH_ASSOC);
+    $workflowStmt->execute(['barangay' => $barangay]);
+    $response['data']['workflow_stats'] = $workflowStmt->fetchAll(PDO::FETCH_ASSOC);
 
     // 3. Get priority queue count (high-priority applications awaiting action)
     $priorityStmt = $conn->prepare("
@@ -100,7 +100,7 @@ try {
     $monthlyStmt->execute(['barangay' => $barangay]);
     $response['data']['monthly'] = $monthlyStmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // 6. Get recent applications for notifications (including FSM state)
+    // 6. Get recent applications for notifications (including workflow status)
     $notifStmt = $conn->prepare("
         SELECT 
             id_number as id,

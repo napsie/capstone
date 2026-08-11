@@ -19,7 +19,7 @@ if ($deceased === '') {
 <div class="form-page">
     <?php oscaPrintHeader('', 'SENIOR CITIZEN BURIAL ASSISTANCE FORM'); ?>
     <?php oscaFieldRow(['Deceased Last Name' => $app['deceased_last_name'] ?? $app['lastName'] ?? '', 'First Name' => $app['deceased_first_name'] ?? $app['firstName'] ?? '', 'Middle Name' => $app['deceased_middle_name'] ?? $app['middleName'] ?? '']); ?>
-    <?php oscaFieldRow(['Senior ID No.' => $app['senior_id_no'] ?? '', 'Birth Date of Deceased' => oscaFmtDate($app['deceased_birth_date'] ?? $app['birth_date'] ?? null), 'Date of Death' => oscaFmtDate($app['date_of_death'] ?? null)]); ?>
+    <?php oscaFieldRow(['Senior ID No.' => oscaSeniorId($app), 'Birth Date of Deceased' => oscaFmtDate($app['deceased_birth_date'] ?? $app['birth_date'] ?? null), 'Date of Death' => oscaFmtDate($app['date_of_death'] ?? null)]); ?>
     <?php oscaFieldRow(['Landbank Cash Card No.' => $app['landbank_card_no'] ?? '', 'Contact No.' => $app['contact_number'] ?? '', 'Applicant Name' => $app['applicant_name'] ?? $app['full_name'] ?? '']); ?>
     <?php oscaFieldRow(['Relationship' => $app['relationship_to_deceased'] ?? '', 'Address' => $app['complete_address'] ?? '', 'Barangay' => $app['barangay'] ?? '']); ?>
     <div class="section-title">REQUIREMENTS CHECKLIST</div>

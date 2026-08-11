@@ -63,19 +63,19 @@ try {
     $stmt->execute();
     $response['data']['total_processed'] = (int)$stmt->fetchColumn();
 
-    // FSM State Distribution (for stat cards extended)
+    // Workflow status distribution (for extended stat cards)
     $stmt = $conn->prepare("
         SELECT COALESCE(workflow_state, 'Received') as workflow_state, COUNT(*) as count
         FROM applications
         GROUP BY workflow_state
     ");
     $stmt->execute();
-    $fsmRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    $fsmMap  = [];
-    foreach ($fsmRows as $row) {
-        $fsmMap[$row['workflow_state']] = (int)$row['count'];
+    $workflowRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $workflowMap  = [];
+    foreach ($workflowRows as $row) {
+        $workflowMap[$row['workflow_state']] = (int)$row['count'];
     }
-    $response['data']['fsm_stats'] = $fsmMap;
+    $response['data']['workflow_stats'] = $workflowMap;
 
 } catch (PDOException $e) {
     $response['status']  = 'error';

@@ -22,7 +22,7 @@ $milestones = ['80' => '₱10,000', '85' => '₱15,000', '90' => '₱25,000', '9
     <?php oscaFieldRow(['Last Name' => $app['lastName'] ?? '', 'Ext' => $app['suffix'] ?? '', 'First Name' => $app['firstName'] ?? '', 'Middle Name' => $app['middleName'] ?? '']); ?>
     <?php oscaFieldRow(['Date of Birth' => oscaFmtDate($app['birth_date'] ?? null), 'Place of Birth' => $app['place_of_birth'] ?? '', 'Age' => $age]); ?>
     <?php oscaFieldRow(['Gender' => $app['gender'] ?? '', 'Civil Status' => $app['civil_status'] ?? '', 'Contact No.' => $app['contact_number'] ?? '']); ?>
-    <?php oscaFieldRow(['Complete Address' => $app['complete_address'] ?? '', 'Barangay' => $app['barangay'] ?? '', 'Senior ID No.' => $app['senior_id_no'] ?? '']); ?>
+    <?php oscaFieldRow(['Complete Address' => $app['complete_address'] ?? '', 'Barangay' => $app['barangay'] ?? '', 'Senior ID No.' => oscaSeniorId($app)]); ?>
     <div class="section-title">STAGGERED SCHEME FINANCIAL ASSISTANCE</div>
     <table class="field-table">
         <?php foreach ($milestones as $m => $amt): ?>

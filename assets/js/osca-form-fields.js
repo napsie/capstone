@@ -17,12 +17,16 @@ function toggleOscaFormFields(type, prefix = '') {
     document.querySelectorAll('.osca-type-fields').forEach(el => {
         if (!prefix || el.id.startsWith(prefix)) {
             el.style.display = 'none';
+            el.querySelectorAll('input, select, textarea').forEach(field => field.disabled = true);
         }
     });
 
     (sections[type] || []).forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.style.display = 'block';
+        if (el) {
+            el.style.display = 'block';
+            el.querySelectorAll('input, select, textarea').forEach(field => field.disabled = false);
+        }
     });
 
     // Document label updates
@@ -52,6 +56,7 @@ function populateOscaFields(app, prefix = '') {
         if (val == null || val === '') return;
         const el = document.getElementById(prefix + name);
         if (el) el.value = val;
+        document.querySelectorAll(`[data-populate-field="${name}"]`).forEach(field => { field.value = val; });
     };
     const setCheckboxes = (name, val) => {
         if (!val) return;
@@ -89,6 +94,8 @@ function populateOscaFields(app, prefix = '') {
     set('isPensioner', app.is_pensioner != null ? String(app.is_pensioner) : '');
     set('familySupport', app.family_support != null ? String(app.family_support) : '');
     set('personalIncome', app.personal_income != null ? String(app.personal_income) : '');
+    set('personalIncomeAmount', app.personal_income_amount);
+    set('familySupportAmount', app.family_support_amount);
     set('withMaintenance', app.with_maintenance != null ? String(app.with_maintenance) : '');
     set('ownsHouse', app.owns_house != null ? String(app.owns_house) : '');
     set('isRenter', app.is_renter != null ? String(app.is_renter) : '');
@@ -105,5 +112,6 @@ function populateOscaFields(app, prefix = '') {
     set('atmCardNo', app.atm_card_no);
     set('controlNo', app.control_no);
     set('incomeSource', app.income_source);
+    set('visitPurpose', app.visit_purpose);
     setCheckboxes('visit_purpose', app.visit_purpose);
 }

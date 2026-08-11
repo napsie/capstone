@@ -1,7 +1,7 @@
 -- ============================================================
 -- CPRAS (Centralized Profiling and Record Authentication System)
 -- Complete Database Schema — capstone1
--- Last Updated: 2026-07-03
+-- Last Updated: 2026-08-06
 -- ============================================================
 
 CREATE DATABASE IF NOT EXISTS `capstone1`
@@ -14,6 +14,7 @@ USE `capstone1`;
 -- Drop all tables in correct order (respect foreign keys)
 -- ============================================================
 SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS `application_documents`;
 DROP TABLE IF EXISTS `application_history`;
 DROP TABLE IF EXISTS `login_history`;
 DROP TABLE IF EXISTS `remember_tokens`;
@@ -72,7 +73,7 @@ CREATE TABLE `applications` (
   `date_submitted`             timestamp    NOT NULL DEFAULT current_timestamp(),
   `status`                     enum('pending','approved','rejected') NOT NULL DEFAULT 'pending',
 
-  -- FSM workflow
+  -- Rule-based workflow status
   `workflow_state`             varchar(50)  DEFAULT 'Received',
   `return_reason`              varchar(500) DEFAULT NULL,
 
@@ -81,6 +82,7 @@ CREATE TABLE `applications` (
   `is_proxy_application`       int(1)       DEFAULT 0,
   `proxy_name`                 varchar(255) DEFAULT NULL,
   `proxy_relationship`         varchar(100) DEFAULT NULL,
+  `proxy_contact_number`       varchar(20)  DEFAULT NULL,
   `proxy_token`                varchar(255) DEFAULT NULL,
 
   -- PWD specific
@@ -171,7 +173,6 @@ CREATE TABLE `applications` (
   `parent_senior_id`           varchar(50)  DEFAULT NULL,
 
   PRIMARY KEY (`id_number`),
-  UNIQUE KEY `uk_id_number`    (`id_number`),
   KEY `idx_barangay`           (`barangay`),
   KEY `idx_workflow_state`     (`workflow_state`),
   KEY `idx_priority`           (`priority_level`),
@@ -179,8 +180,29 @@ CREATE TABLE `applications` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ============================================================
+-- Table: application_documents
+-- Complete per-application document store
+-- ============================================================
+CREATE TABLE `application_documents` (
+  `id`               int(11)      NOT NULL AUTO_INCREMENT,
+  `application_id`   varchar(255) NOT NULL,
+  `document_key`     varchar(100) NOT NULL,
+  `document_label`   varchar(255) NOT NULL,
+  `mime_type`        varchar(100) NOT NULL,
+  `document_data`    mediumblob   NOT NULL,
+  `created_at`       timestamp    NOT NULL DEFAULT current_timestamp(),
+  `updated_at`       timestamp    NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_application_document` (`application_id`, `document_key`),
+  KEY `idx_application_documents_application` (`application_id`),
+  CONSTRAINT `fk_documents_application`
+    FOREIGN KEY (`application_id`) REFERENCES `applications` (`id_number`)
+    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ============================================================
 -- Table: application_history
--- FSM audit trail — records every workflow state transition
+-- Workflow audit trail — records every routed status update
 -- ============================================================
 CREATE TABLE `application_history` (
   `id`               int(11)      NOT NULL AUTO_INCREMENT,
@@ -210,7 +232,7 @@ CREATE TABLE `login_history` (
   `user_agent` text         NOT NULL,
   `status`     enum('success','failure') NOT NULL,
   PRIMARY KEY (`id`),
-  KEY `user_id` (`user_id`),
+  UNIQUE KEY `uq_settings_user` (`user_id`),
   CONSTRAINT `login_history_ibfk_1`
     FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
     ON DELETE SET NULL

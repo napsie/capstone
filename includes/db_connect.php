@@ -86,7 +86,10 @@ try {
             mime_type VARCHAR(100) NOT NULL,
             document_data BYTEA NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT fk_documents_application
+                FOREIGN KEY (application_id) REFERENCES applications (id_number)
+                ON DELETE CASCADE
         )");
     } else {
         $conn->exec("CREATE TABLE IF NOT EXISTS application_documents (
@@ -99,7 +102,10 @@ try {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             INDEX idx_application_documents_application (application_id),
-            UNIQUE KEY uq_application_document (application_id, document_key)
+            UNIQUE KEY uq_application_document (application_id, document_key),
+            CONSTRAINT fk_documents_application
+                FOREIGN KEY (application_id) REFERENCES applications (id_number)
+                ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     }
 
@@ -123,14 +129,14 @@ try {
         'proxy_token'                => "VARCHAR(255) DEFAULT NULL",
         'priority_level'             => "VARCHAR(20) DEFAULT 'normal'",
         'workflow_state'             => "VARCHAR(50) DEFAULT 'Received'",
-        // Columns required by import_applications.php CSV map
+        // Additional application information
         'email_address'              => "VARCHAR(255) DEFAULT NULL",
         'medical_conditions'         => "TEXT DEFAULT NULL",
         'birth_certificate_type'     => "VARCHAR(100) DEFAULT NULL",
         'medical_certificate_type'   => "VARCHAR(100) DEFAULT NULL",
         'client_identification_type' => "VARCHAR(100) DEFAULT NULL",
         'additional_notes'           => "TEXT DEFAULT NULL",
-        // Dedicated return reason for FSM document rejection tracking
+        // Dedicated return reason for document rejection tracking
         'return_reason'              => "VARCHAR(500) DEFAULT NULL",
         // OSCA official form fields
         'place_of_birth'             => "VARCHAR(255) DEFAULT NULL",
@@ -215,7 +221,7 @@ try {
         }
     }
 
-    // Create application_history table for FSM tracking
+    // Create application_history table for workflow audit tracking
     if ($driver === 'pgsql') {
         $conn->exec("
             CREATE TABLE IF NOT EXISTS application_history (

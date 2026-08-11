@@ -521,6 +521,7 @@ function getStatusClass($status) {
             color: var(--gray);
         }
     </style>
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=3">
 </head>
 <body>
 <div class="container">
@@ -644,7 +645,7 @@ function getStatusClass($status) {
                             $badgeClass  = ($statusLower === 'released') ? 'badge-released' : 'badge-approved';
                             $badgeIcon   = ($statusLower === 'released') ? 'fa-box-archive' : 'fa-circle-check';
                         ?>
-                        <tr class="record-row"
+                        <tr class="record-row" tabindex="0" role="button" aria-label="View applicant details"
                             data-id="<?php echo htmlspecialchars($app['id']); ?>"
                             data-name="<?php echo htmlspecialchars($app['full_name']); ?>"
                             data-date="<?php echo htmlspecialchars($app['date_submitted']); ?>"
@@ -692,7 +693,7 @@ function getStatusClass($status) {
         </div>
         <div class="modal-scroller">
 
-            <!-- FSM Stepper -->
+            <!-- Workflow progress stepper -->
             <div class="stepper">
                 <div class="step" id="step-Received">
                     <div class="step-circle">1</div>
@@ -716,9 +717,9 @@ function getStatusClass($status) {
                 </div>
             </div>
 
-            <!-- Compliance Engine -->
+            <!-- Recorded compliance results -->
             <div class="compliance-card">
-                <div class="compliance-title"><i class="fas fa-shield-halved"></i> Compliance & Verification Engine</div>
+                <div class="compliance-title"><i class="fas fa-clipboard-check"></i> Compliance Review Results</div>
                 <div id="complianceList">
                     <p style="color:var(--gray);font-size:0.85rem;">Loading compliance checks…</p>
                 </div>
@@ -798,6 +799,7 @@ function getStatusClass($status) {
 
 <script src="../assets/js/sidebar-toggle.js"></script>
 <script src="../assets/js/application-documents.js?v=6"></script>
+<script src="../assets/js/application-details.js?v=2"></script>
 <script src="../assets/js/carelink-feedback.js?v=2"></script>
 <script src="../assets/js/application-form-generator.js?v=2"></script>
 <script src="../assets/js/dark-mode.js"></script>
@@ -811,9 +813,24 @@ function getStatusClass($status) {
 
     /* ─── Modal open/close ──────────────────────────────────── */
     document.addEventListener('DOMContentLoaded', function() {
-        document.querySelector('.table-wrap').addEventListener('click', function(e) {
+        const tableWrap = document.querySelector('.table-wrap');
+        tableWrap.addEventListener('click', function(e) {
             const btn = e.target.closest('.view-application-btn');
-            if (btn) openApplicationModal(btn.dataset.id);
+            if (btn) {
+                openApplicationModal(btn.dataset.id);
+                return;
+            }
+            const row = e.target.closest('.record-row[data-id]');
+            if (row && !e.target.closest('a, button, input, select, textarea')) {
+                openApplicationModal(row.dataset.id);
+            }
+        });
+        tableWrap.addEventListener('keydown', function(e) {
+            const row = e.target.closest('.record-row[data-id]');
+            if (row && e.target === row && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                openApplicationModal(row.dataset.id);
+            }
         });
 
         document.getElementById('closeModalBtn').addEventListener('click', closeModal);
@@ -877,8 +894,7 @@ function getStatusClass($status) {
                 }
 
                 /* ── Title ── */
-                const seniorCitizenId = app.senior_id_no || 'Not yet issued';
-                document.getElementById('modalAppTitle').textContent = `${app.full_name} - Senior Citizen ID: ${seniorCitizenId} - ${getOfficialApplicationFormLabel(app.application_type)}`;
+                document.getElementById('modalAppTitle').textContent = `${app.full_name} - ${getOfficialApplicationFormLabel(app.application_type)}`;
                 const officialFormButton = document.getElementById('btnOfficialForm');
                 officialFormButton.disabled = false;
                 officialFormButton.onclick = () => openOfficialApplicationForm(app.id_number);
@@ -938,7 +954,7 @@ function getStatusClass($status) {
                 }
                 document.getElementById('complianceList').innerHTML = ch;
                 /* ── Dynamic Details (Complete details rendering) ── */
-                document.getElementById('dynamicDetailsSection').innerHTML = getCompleteDetailsHtml(app);
+                document.getElementById('dynamicDetailsSection').innerHTML = window.renderApplicationRecordDetails(app);
                 if (typeof window.renderApplicationDocuments === 'function') {
                     document.getElementById('allDocumentsSection').innerHTML = window.renderApplicationDocuments(app, appId);
                 } else {
@@ -1048,6 +1064,8 @@ function getStatusClass($status) {
     }
 
     function getCompleteDetailsHtml(app) {
+        return window.renderApplicationRecordDetails(app);
+        // Legacy renderer retained below only for source compatibility.
         function getFieldHtml(label, val) {
             if (val === null || val === undefined || val === '' || val === '0' || val === 0) return '';
             if (val === 1 || val === '1') val = 'Yes';

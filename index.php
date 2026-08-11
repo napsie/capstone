@@ -124,6 +124,7 @@ header('Expires: 0');
     <link rel="stylesheet" href="assets/css/loading-spinner.css">
     <link rel="stylesheet" href="assets/css/carelink-theme.css?v=4">
     <link rel="stylesheet" href="assets/css/landing.css?v=4">
+    <link rel="stylesheet" href="assets/css/seniorlink-ui.css?v=3">
 </head>
 <body>
     <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -172,7 +173,7 @@ header('Expires: 0');
                     </div>
                     <div class="portal-card-body">
                         <h4>Barangay Staff</h4>
-                        <p>Register beneficiaries, capture facial data, and manage local records.</p>
+                        <p>Register beneficiaries, capture applicant photos, and manage local records.</p>
                     </div>
                     <span class="portal-card-arrow" aria-hidden="true">
                         <i class="fas fa-arrow-right"></i>

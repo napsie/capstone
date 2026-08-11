@@ -273,6 +273,7 @@ try {
         .modal-body { padding: 10px 0; }
         #editAlert { display: none; margin-bottom: 15px; }
     </style>
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=3">
 </head>
 <body>
    <div class="container">

@@ -71,7 +71,8 @@ $oscaInputMap = [
     'place_of_birth' => 'placeOfBirth', 'gender' => 'gender', 'civil_status' => 'civilStatus',
     'mothers_maiden_name' => 'mothersMaidenName', 'house_no' => 'houseNo', 'street' => 'street',
     'city' => 'city', 'province' => 'province', 'zip_code' => 'zipCode', 'landmark' => 'landmark',
-    'health_status' => 'healthStatus', 'senior_id_no' => 'seniorIdNo', 'id_purpose' => 'idPurpose',
+    // senior_id_no is intentionally excluded: only OSCA approval may issue or change it.
+    'health_status' => 'healthStatus', 'id_purpose' => 'idPurpose',
     'milestone_age' => 'milestoneAge', 'claimant_name' => 'claimantName',
     'claimant_relationship' => 'claimantRelationship', 'claimant_contact' => 'claimantContact',
     'deceased_last_name' => 'deceasedLastName', 'deceased_first_name' => 'deceasedFirstName',
@@ -91,7 +92,7 @@ $oscaInputMap = [
 ];
 $oscaData = array_filter(
     $oscaData,
-    static fn($column) => array_key_exists($oscaInputMap[$column], $_POST),
+    static fn($column) => isset($oscaInputMap[$column]) && array_key_exists($oscaInputMap[$column], $_POST),
     ARRAY_FILTER_USE_KEY
 );
 

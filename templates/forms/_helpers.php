@@ -32,6 +32,15 @@ function oscaAge(?string $birthDate): string {
     return (string)(new DateTime())->diff($bd)->y;
 }
 
+/**
+ * Return only the official Senior Citizen identifier. Application/control
+ * numbers identify transactions and must never be substituted here.
+ */
+function oscaSeniorId(array $app, string $fallback = ''): string {
+    $id = trim((string)($app['senior_id_no'] ?? ''));
+    return $id !== '' ? $id : $fallback;
+}
+
 function oscaPrintStyles(string $formCode): string {
     return <<<CSS
     @page { size: letter; margin: 0.35in; }

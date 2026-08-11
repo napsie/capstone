@@ -8,3 +8,7 @@ python_api/venv/
 # OS-specific files
 .DS_Store
 Thumbs.db
+
+# Local database backups contain private application data
+database_backups/*.sql
+database_backups/*.zip

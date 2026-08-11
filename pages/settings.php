@@ -473,6 +473,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updatePassword'])) {
             box-shadow: 0 6px 18px rgba(16,24,40,0.06);
         }
     </style>
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=3">
 </head>
 <body>
     <div class="container">

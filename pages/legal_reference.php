@@ -252,6 +252,7 @@ $sidebarCss = ($role === 'barangay_staff') ? '../assets/css/barangay-sidebar.css
             .ra-grid { grid-template-columns: 1fr; }
         }
     </style>
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=3">
 </head>
 <body>
 <div class="container">

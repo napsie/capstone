@@ -1,0 +1,9 @@
+html5-qrcode 2.3.8
+Copyright (c) Minhaz Av
+
+Source: https://github.com/mebjas/html5-qrcode
+License: Apache License 2.0
+Distribution: https://cdnjs.com/libraries/html5-qrcode/2.3.8
+
+This unmodified browser distribution is included locally so SENIORLINK's
+QR/barcode scanner does not depend on a live CDN connection at runtime.

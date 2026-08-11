@@ -31,6 +31,9 @@ $baseCols = "a.id_number, a.full_name, a.application_type, a.birth_date, a.conta
              a.sss_number, a.pension_amount, a.date_of_death, a.relationship_to_deceased,
              a.is_proxy_application, a.proxy_name, a.proxy_relationship, a.proxy_contact_number, a.proxy_token,
              a.priority_level, a.workflow_state, a.additional_notes, a.email_address,
+             a.medical_conditions, a.return_reason,
+             a.proof_of_address_type, a.id_image_type, a.birth_certificate_type,
+             a.medical_certificate_type, a.client_identification_type,
              a.psa_birth_cert, a.barangay_residency, a.comelec_cert, a.proof_of_life,
              a.auth_letter, a.proxy_id, a.proxy_birth_cert, a.home_visitation_form,
              a.landbank_enrollment_form, a.parent_senior_id,
@@ -48,7 +51,7 @@ try {
         $sql = "SELECT $baseCols,
                        (SELECT h.comments FROM application_history h
                         WHERE h.application_id = a.id_number AND h.new_state = 'Received'
-                          AND h.previous_state != 'None'
+                          AND h.previous_state IN ('For Review', 'Verified', 'Approved')
                         ORDER BY h.changed_at DESC LIMIT 1) as return_comments
                 FROM applications a WHERE a.id_number = ? AND a.barangay = ?";
         $stmt = $conn->prepare($sql);
@@ -57,7 +60,7 @@ try {
         $sql = "SELECT $baseCols,
                        (SELECT h.comments FROM application_history h
                         WHERE h.application_id = a.id_number AND h.new_state = 'Received'
-                          AND h.previous_state != 'None'
+                          AND h.previous_state IN ('For Review', 'Verified', 'Approved')
                         ORDER BY h.changed_at DESC LIMIT 1) as return_comments
                 FROM applications a WHERE a.id_number = ?";
         $stmt = $conn->prepare($sql);
