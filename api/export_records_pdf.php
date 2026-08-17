@@ -36,14 +36,25 @@ $search = trim($_GET['search'] ?? '');
 $type = trim($_GET['type'] ?? 'all');
 $year = trim($_GET['year'] ?? 'all');
 $barangay = trim($_GET['barangay'] ?? 'all');
+$dateFrom = trim($_GET['date_from'] ?? '');
+$dateTo = trim($_GET['date_to'] ?? '');
+$status = trim($_GET['status'] ?? 'all');
+if ($dateFrom !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom)) $dateFrom = '';
+if ($dateTo !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateTo)) $dateTo = '';
+if ($status !== 'all' && !in_array($status, ['Approved', 'Released'], true)) $status = 'all';
+
 $where = [];
 $params = [];
+$statusExpr = "COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received')";
 
 if ($scope === 'department') {
     if ($reportMode === 'verification') {
-        $where[] = "COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') NOT IN ('Approved', 'Released')";
+        $where[] = "{$statusExpr} NOT IN ('Approved', 'Released')";
+    } elseif ($status === 'Approved' || $status === 'Released') {
+        $where[] = "{$statusExpr} = ?";
+        $params[] = $status;
     } else {
-        $where[] = "COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') IN ('Approved', 'Released')";
+        $where[] = "{$statusExpr} IN ('Approved', 'Released')";
     }
     if ($barangay !== '' && $barangay !== 'all') { $where[] = 'barangay = ?'; $params[] = $barangay; }
     $reportTitle = $reportMode === 'verification' ? 'Document Verification Queue - Pasig City' : 'Approved Application Records - Pasig City';
@@ -53,14 +64,34 @@ if ($scope === 'department') {
     $where[] = 'barangay = ?';
     $params[] = $assignedBarangay;
     if ($reportMode === 'queue') {
-        $where[] = "COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') NOT IN ('Approved', 'Released')";
+        $where[] = "{$statusExpr} NOT IN ('Approved', 'Released')";
+    } elseif ($status === 'Approved' || $status === 'Released') {
+        $where[] = "{$statusExpr} = ?";
+        $params[] = $status;
+    } else {
+        $where[] = "{$statusExpr} IN ('Approved', 'Released')";
     }
     $reportTitle = ($reportMode === 'queue' ? 'Applications Queue - ' : 'Application Records - ') . ($assignedBarangay ?: 'Assigned Barangay');
     $coverageLabel = 'Barangay Coverage: ' . ($assignedBarangay ?: 'Assigned Barangay');
 }
 if ($search !== '') { $where[] = '(full_name LIKE ? OR id_number LIKE ?)'; $params[] = "%{$search}%"; $params[] = "%{$search}%"; }
 if ($type !== '' && $type !== 'all') { $where[] = 'application_type = ?'; $params[] = $type; }
-if ($year !== '' && $year !== 'all' && ctype_digit($year)) { $where[] = 'YEAR(date_submitted) = ?'; $params[] = (int)$year; }
+if ($dateFrom !== '') { $where[] = 'DATE(date_submitted) >= ?'; $params[] = $dateFrom; }
+if ($dateTo !== '') { $where[] = 'DATE(date_submitted) <= ?'; $params[] = $dateTo; }
+if ($dateFrom === '' && $dateTo === '' && $year !== '' && $year !== 'all' && ctype_digit($year)) {
+    $where[] = 'YEAR(date_submitted) = ?';
+    $params[] = (int)$year;
+}
+
+$filterParts = [];
+if ($search !== '') $filterParts[] = 'Search: ' . pdfShorten($search, 40);
+if ($type !== '' && $type !== 'all') $filterParts[] = 'Type: ' . pdfShorten(applicationTypeLabel($type), 30);
+if ($dateFrom !== '' && $dateTo !== '') $filterParts[] = 'Date: ' . $dateFrom . ' to ' . $dateTo;
+elseif ($dateFrom !== '') $filterParts[] = 'From: ' . $dateFrom;
+elseif ($dateTo !== '') $filterParts[] = 'Until: ' . $dateTo;
+elseif ($year !== '' && $year !== 'all') $filterParts[] = 'Year: ' . $year;
+if ($reportMode === 'records' && $status !== 'all') $filterParts[] = 'Status: ' . $status;
+$filterLabel = $filterParts ? 'Applied Filters: ' . implode(' | ', $filterParts) : 'Applied Filters: All matching records';
 
 $sql = "SELECT id_number, full_name, application_type, barangay, date_submitted, COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') AS status FROM applications WHERE " . implode(' AND ', $where) . ' ORDER BY date_submitted DESC';
 $stmt = $conn->prepare($sql);
@@ -76,7 +107,8 @@ foreach ($pages as $pageIndex => $pageRecords) {
     $stream = pdfRect(0, 545, 842, 50, [0.06, 0.18, 0.35]);
     $stream .= pdfText(40, 564, 18, $reportTitle, true, [1, 1, 1]);
     $stream .= pdfText(40, 531, 9, $coverageLabel . '  |  Generated: ' . date('F j, Y g:i A'), false, [0.24, 0.34, 0.48]);
-    $stream .= pdfText(40, 514, 9, 'Total records: ' . number_format(count($records)), true, [0.06, 0.18, 0.35]);
+    $stream .= pdfText(40, 518, 8, pdfShorten($filterLabel, 115), false, [0.31, 0.38, 0.46]);
+    $stream .= pdfText(40, 504, 9, 'Total records: ' . number_format(count($records)), true, [0.06, 0.18, 0.35]);
     $x = 40;
     foreach ($columns as [$label, $width]) { $stream .= pdfRect($x, 486, $width, 20, [0.12, 0.31, 0.53]) . pdfText($x + 5, 492.5, 8, $label, true, [1, 1, 1]); $x += $width; }
     $y = 470;

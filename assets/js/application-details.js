@@ -91,6 +91,10 @@
                 field('SSS Number', app.sss_number),
                 field('Verified Monthly Pension', money(app.pension_amount), { raw: true }),
                 field('Pensioner', yesNo(app.is_pensioner), { raw: true }), field('Pension Source', app.pension_source),
+                ...(type === 'pension' ? [
+                    field('Home Visit Schedule', dateTime(app.home_visit_scheduled_at), { raw: true }),
+                    field('Home Visit Status', app.home_visit_status), field('SMS Notification', app.sms_notification_status)
+                ] : []),
                 field('Permanent Income', yesNo(app.is_permanent_income), { raw: true }), field('Income Source', app.income_source),
                 field('Personal Income', yesNo(app.personal_income), { raw: true }),
                 field('Personal Income Amount', money(app.personal_income_amount), { raw: true }),
@@ -157,7 +161,11 @@
             field('Application Type', typeLabels[app.application_type] || app.application_type),
             field('Processing Status', app.workflow_state || app.status || 'Received'),
             field('Date Submitted', dateTime(app.date_submitted), { raw: true }),
-            field('Priority Level', app.priority_level || 'Normal')
+            field('Priority Level', app.priority_level || 'Normal'),
+            ...(app.application_type === 'pension' ? [
+                field('Home Visit Schedule', dateTime(app.home_visit_scheduled_at), { raw: true }),
+                field('SMS Notification', app.sms_notification_status)
+            ] : [])
         ])
     ]);
 

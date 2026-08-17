@@ -194,13 +194,90 @@ try {
         'proxy_id'                   => "VARCHAR(255) DEFAULT NULL",
         'proxy_birth_cert'           => "VARCHAR(255) DEFAULT NULL",
         'home_visitation_form'       => "VARCHAR(255) DEFAULT NULL",
+        'return_reason'              => "VARCHAR(500) DEFAULT NULL",
+        // OSCA official form fields
+        'place_of_birth'             => "VARCHAR(255) DEFAULT NULL",
+        'gender'                     => "VARCHAR(20) DEFAULT NULL",
+        'civil_status'               => "VARCHAR(50) DEFAULT NULL",
+        'mothers_maiden_name'        => "VARCHAR(255) DEFAULT NULL",
+        'house_no'                   => "VARCHAR(50) DEFAULT NULL",
+        'street'                     => "VARCHAR(255) DEFAULT NULL",
+        'city'                       => "VARCHAR(100) DEFAULT 'Pasig City'",
+        'province'                   => "VARCHAR(100) DEFAULT 'Metro Manila'",
+        'zip_code'                   => "VARCHAR(10) DEFAULT NULL",
+        'landmark'                   => "VARCHAR(255) DEFAULT NULL",
+        'health_status'              => "VARCHAR(100) DEFAULT NULL",
+        'senior_id_no'               => "VARCHAR(50) DEFAULT NULL",
+        'id_purpose'                 => "VARCHAR(20) DEFAULT NULL",
+        'milestone_age'              => "VARCHAR(10) DEFAULT NULL",
+        'claimant_name'              => "VARCHAR(255) DEFAULT NULL",
+        'claimant_relationship'      => "VARCHAR(100) DEFAULT NULL",
+        'claimant_contact'           => "VARCHAR(20) DEFAULT NULL",
+        'deceased_last_name'         => "VARCHAR(255) DEFAULT NULL",
+        'deceased_first_name'        => "VARCHAR(255) DEFAULT NULL",
+        'deceased_middle_name'       => "VARCHAR(255) DEFAULT NULL",
+        'deceased_suffix'            => "VARCHAR(50) DEFAULT NULL",
+        'deceased_birth_date'        => "DATE DEFAULT NULL",
+        'landbank_card_no'           => "VARCHAR(50) DEFAULT NULL",
+        'applicant_name'             => "VARCHAR(255) DEFAULT NULL",
+        'visit_purpose'              => "VARCHAR(255) DEFAULT NULL",
+        'living_arrangement'         => "VARCHAR(100) DEFAULT NULL",
+        'is_pensioner'               => "TINYINT(1) DEFAULT NULL",
+        'pension_source'             => "VARCHAR(255) DEFAULT NULL",
+        'family_support'             => "TINYINT(1) DEFAULT NULL",
+        'family_support_amount'      => "DECIMAL(10,2) DEFAULT NULL",
+        'personal_income'            => "TINYINT(1) DEFAULT NULL",
+        'personal_income_amount'     => "DECIMAL(10,2) DEFAULT NULL",
+        'health_condition'           => "VARCHAR(255) DEFAULT NULL",
+        'with_maintenance'           => "TINYINT(1) DEFAULT NULL",
+        'maintenance_spec'           => "VARCHAR(255) DEFAULT NULL",
+        'visit_summary'              => "TEXT DEFAULT NULL",
+        'name_on_card'               => "VARCHAR(23) DEFAULT NULL",
+        'tin'                        => "VARCHAR(50) DEFAULT NULL",
+        'id_type_presented'          => "VARCHAR(100) DEFAULT NULL",
+        'nationality'                => "VARCHAR(50) DEFAULT 'Filipino'",
+        'source_of_funds'            => "VARCHAR(255) DEFAULT NULL",
+        'atm_card_no'                => "VARCHAR(50) DEFAULT NULL",
+        'control_no'                 => "VARCHAR(50) DEFAULT NULL",
+        'is_permanent_income'        => "TINYINT(1) DEFAULT NULL",
+        'income_source'              => "VARCHAR(255) DEFAULT NULL",
+        'owns_house'                 => "TINYINT(1) DEFAULT NULL",
+        'is_renter'                  => "TINYINT(1) DEFAULT NULL",
+        'psa_birth_cert'             => "VARCHAR(255) DEFAULT NULL",
+        'barangay_residency'         => "VARCHAR(255) DEFAULT NULL",
+        'comelec_cert'               => "VARCHAR(255) DEFAULT NULL",
+        'proof_of_life'              => "VARCHAR(255) DEFAULT NULL",
+        'auth_letter'                => "VARCHAR(255) DEFAULT NULL",
+        'proxy_id'                   => "VARCHAR(255) DEFAULT NULL",
+        'proxy_birth_cert'           => "VARCHAR(255) DEFAULT NULL",
+        'home_visitation_form'       => "VARCHAR(255) DEFAULT NULL",
         'landbank_enrollment_form'   => "VARCHAR(255) DEFAULT NULL",
         'parent_senior_id'           => "VARCHAR(50) DEFAULT NULL",
+        'home_visit_scheduled_at'    => ($driver === 'pgsql' ? "TIMESTAMP DEFAULT NULL" : "DATETIME DEFAULT NULL"),
+        'home_visit_status'          => "VARCHAR(30) DEFAULT NULL",
+        'sms_notification_status'    => "VARCHAR(30) DEFAULT NULL",
+        'is_archived'                => "TINYINT(1) DEFAULT 0",
+        'archived_at'                => ($driver === 'pgsql' ? "TIMESTAMP DEFAULT NULL" : "DATETIME DEFAULT NULL"),
+        'archived_by'                => "VARCHAR(100) DEFAULT NULL",
     ];
 
     foreach ($columns_to_add as $column => $definition) {
         try {
             $conn->exec("ALTER TABLE applications ADD COLUMN $column $definition");
+        } catch (PDOException $e) {
+            // Column likely already exists, ignore
+        }
+    }
+
+    // Add archive columns to users table
+    $user_columns_to_add = [
+        'is_archived'  => "TINYINT(1) DEFAULT 0",
+        'archived_at'  => ($driver === 'pgsql' ? "TIMESTAMP DEFAULT NULL" : "DATETIME DEFAULT NULL"),
+        'archived_by'  => "VARCHAR(100) DEFAULT NULL",
+    ];
+    foreach ($user_columns_to_add as $column => $definition) {
+        try {
+            $conn->exec("ALTER TABLE users ADD COLUMN $column $definition");
         } catch (PDOException $e) {
             // Column likely already exists, ignore
         }
@@ -246,6 +323,67 @@ try {
                 comments TEXT DEFAULT NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         ");
+    }
+
+    // Create audit_trail table for system activity tracking
+    if ($driver === 'pgsql') {
+        $conn->exec("CREATE TABLE IF NOT EXISTS audit_trail (
+            id SERIAL PRIMARY KEY,
+            user_id INT DEFAULT NULL,
+            username VARCHAR(100) NOT NULL,
+            role VARCHAR(50) NOT NULL,
+            barangay VARCHAR(100) DEFAULT NULL,
+            action VARCHAR(100) NOT NULL,
+            description TEXT NOT NULL,
+            ip_address VARCHAR(45) DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )");
+    } else {
+        $conn->exec("CREATE TABLE IF NOT EXISTS audit_trail (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT DEFAULT NULL,
+            username VARCHAR(100) NOT NULL,
+            role VARCHAR(50) NOT NULL,
+            barangay VARCHAR(100) DEFAULT NULL,
+            action VARCHAR(100) NOT NULL,
+            description TEXT NOT NULL,
+            ip_address VARCHAR(45) DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_audit_user (user_id),
+            INDEX idx_audit_action (action),
+            INDEX idx_audit_created_at (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    }
+
+    // Durable SMS outbox. Messages are retained when an SMS provider is not
+    // configured or temporarily unavailable, so a failed text never blocks
+    // the underlying application submission.
+    if ($driver === 'pgsql') {
+        $conn->exec("CREATE TABLE IF NOT EXISTS sms_notifications (
+            id SERIAL PRIMARY KEY,
+            application_id VARCHAR(255) NOT NULL,
+            recipient VARCHAR(20) NOT NULL,
+            message TEXT NOT NULL,
+            status VARCHAR(30) NOT NULL DEFAULT 'queued',
+            provider_reference VARCHAR(255) DEFAULT NULL,
+            error_message TEXT DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            sent_at TIMESTAMP DEFAULT NULL
+        )");
+    } else {
+        $conn->exec("CREATE TABLE IF NOT EXISTS sms_notifications (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            application_id VARCHAR(255) NOT NULL,
+            recipient VARCHAR(20) NOT NULL,
+            message TEXT NOT NULL,
+            status VARCHAR(30) NOT NULL DEFAULT 'queued',
+            provider_reference VARCHAR(255) DEFAULT NULL,
+            error_message TEXT DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            sent_at TIMESTAMP NULL DEFAULT NULL,
+            INDEX idx_sms_application (application_id),
+            INDEX idx_sms_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     }
 
 } catch(PDOException $e) {

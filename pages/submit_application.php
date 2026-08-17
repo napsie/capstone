@@ -10,6 +10,8 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'barangay_staff') {
 }
 
 $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
+$applicationSubmissionNotice = $_SESSION['application_submission_notice'] ?? '';
+unset($_SESSION['application_submission_notice']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -256,6 +258,17 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
         }
         .modal-close:hover { background: rgba(255,255,255,0.3); }
         .modal-scroller { max-height: 80vh; overflow-y: auto; padding: 28px; }
+
+        /* Export modal */
+        .export-modal-box { max-width: 520px; }
+        .export-modal-body { padding: 26px 28px 28px; }
+        .export-modal-body p { margin: 0 0 18px; color: var(--gray); font-size: .88rem; line-height: 1.55; }
+        .export-filter-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:6px; }
+        .export-filter-grid .full { grid-column:1 / -1; }
+        .export-field label { display:block; font-size:.76rem; font-weight:700; color:var(--gray); text-transform:uppercase; margin-bottom:6px; }
+        .export-field input, .export-field select { width:100%; padding:10px 11px; border:1px solid var(--border); border-radius:8px; color:var(--primary); background:#fff; font-size:.88rem; box-sizing:border-box; }
+        .export-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:20px; }
+
         .app-result-dialog { width:min(380px,100%); padding:28px 26px 24px; border-radius:16px; background:#fff; text-align:center; box-shadow:0 20px 60px rgba(15,23,42,.28); animation:resultDialogIn .2s ease-out; }
         .app-result-icon { width:54px; height:54px; margin:0 auto 12px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.35rem; }
         .app-result-dialog h3 { margin:0 0 8px; color:#0f172a; font-size:1.05rem; }
@@ -383,8 +396,8 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
         <div class="queue-card">
             <div class="queue-card-header">
                 <h2><i class="fas fa-clipboard-list"></i> Applications Queue</h2>
-                <button type="button" class="btn btn-small queue-export-btn" onclick="exportQueuePdf()">
-                    <i class="fas fa-file-pdf"></i> Export PDF
+                <button type="button" class="btn btn-small queue-export-btn" onclick="openExportModal()">
+                    <i class="fas fa-file-pdf"></i> Generate Report
                 </button>
             </div>
 
@@ -607,6 +620,58 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
     </div><!-- /.modal-box -->
 </div><!-- /#applicationModal -->
 
+<!-- Export PDF filter modal -->
+<div id="exportModal" class="modal-overlay">
+    <div class="modal-box export-modal-box">
+        <div class="modal-head">
+            <h2><i class="fas fa-file-pdf"></i> Export Queue PDF</h2>
+            <button type="button" class="modal-close" id="closeExportModalBtn">&times;</button>
+        </div>
+        <form id="exportReportForm" method="GET" action="../api/export_records_pdf.php">
+            <div class="export-modal-body">
+                <p>Set the filters for your queue PDF report. Only applications matching these criteria will be included.</p>
+                <input type="hidden" name="scope" value="barangay">
+                <input type="hidden" name="report_mode" value="queue">
+                <div class="export-filter-grid">
+                    <div class="export-field">
+                        <label for="exportType">Application Type</label>
+                        <select name="type" id="exportType">
+                            <option value="all">All Types</option>
+                            <?php foreach (getApplicationTypeOptions() as $val => $label): ?>
+                                <option value="<?php echo htmlspecialchars($val); ?>"><?php echo htmlspecialchars($label); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="export-field">
+                        <label for="exportYear">Year (if no date range)</label>
+                        <select name="year" id="exportYear">
+                            <option value="all">All Years</option>
+                            <?php
+                                $currentYear = (int)date('Y');
+                                for ($y = $currentYear; $y >= 2020; $y--) {
+                                    echo '<option value="' . $y . '">' . $y . '</option>';
+                                }
+                            ?>
+                        </select>
+                    </div>
+                    <div class="export-field">
+                        <label for="exportDateFrom">Date From</label>
+                        <input type="date" name="date_from" id="exportDateFrom">
+                    </div>
+                    <div class="export-field">
+                        <label for="exportDateTo">Date To</label>
+                        <input type="date" name="date_to" id="exportDateTo">
+                    </div>
+                </div>
+                <div class="export-actions">
+                    <button type="button" class="btn btn-ghost" id="cancelExportBtn">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-file-pdf"></i> Generate PDF</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- QR scan Modal -->
 <div id="proxyModal" class="modal-overlay">
     <div class="modal-box" style="max-width:500px; margin: 10% auto;">
@@ -750,7 +815,7 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
                             <td style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${app.complete_address}</td>
                             <td>
                                 ${state === 'Received' 
-                                    ? `<button type="button" class="btn btn-danger btn-small delete-application-btn" data-id="${app.id}"><i class="fas fa-trash"></i> Delete</button>`
+                                    ? `<button type="button" class="btn btn-warning btn-small archive-application-btn" data-id="${app.id}"><i class="fas fa-archive"></i> Archive</button>`
                                     : '<span style="color:var(--gray);font-size:0.75rem;font-style:italic;">Locked</span>'
                                 }
                             </td>
@@ -778,10 +843,10 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
             openApplicationModal(lnk.dataset.id);
             return;
         }
-        const deleteButton = e.target.closest('.delete-application-btn');
-        if (deleteButton) {
+        const archiveButton = e.target.closest('.archive-application-btn') || e.target.closest('.delete-application-btn');
+        if (archiveButton) {
             e.preventDefault();
-            deleteApplication(deleteButton.dataset.id);
+            archiveApplication(archiveButton.dataset.id);
             return;
         }
         const row = e.target.closest('.applicant-row[data-id]');
@@ -1000,6 +1065,11 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
         setTimeout(() => modal.remove(), 5000);
     }
 
+    const applicationSubmissionNotice = <?php echo json_encode($applicationSubmissionNotice, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+    if (applicationSubmissionNotice) {
+        setTimeout(() => showToast(applicationSubmissionNotice, true), 100);
+    }
+
     /* ─── Form submit handler ─── */
     document.getElementById('applicationDetailForm').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -1161,11 +1231,29 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
     };
 
     /* ─── Action Functions ─── */
+    function openExportModal() {
+        const typeVal = document.getElementById('applicationTypeFilter')?.value || '';
+        document.getElementById('exportType').value = typeVal || 'all';
+        document.getElementById('exportDateFrom').value = '';
+        document.getElementById('exportDateTo').value = '';
+        document.getElementById('exportYear').value = 'all';
+        document.getElementById('exportModal').style.display = 'block';
+    }
+
+    function closeExportModal() {
+        document.getElementById('exportModal').style.display = 'none';
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('closeExportModalBtn')?.addEventListener('click', closeExportModal);
+        document.getElementById('cancelExportBtn')?.addEventListener('click', closeExportModal);
+        document.getElementById('exportModal')?.addEventListener('click', function(e) {
+            if (e.target === this) closeExportModal();
+        });
+    });
+
     function exportQueuePdf() {
-        const search = document.getElementById('searchInput')?.value.trim() || '';
-        const type = document.getElementById('applicationTypeFilter')?.value || 'all';
-        const params = new URLSearchParams({ scope: 'barangay', report_mode: 'queue', search, type });
-        window.location.href = `../api/export_records_pdf.php?${params.toString()}`;
+        openExportModal();
     }
 
     function forwardToReviewDesk() {
@@ -1192,12 +1280,12 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
             .catch(err => { console.error(err); showCarelinkResult("Connection error during submission: " + err.message, false); });
     }
 
-    function deleteApplication(appId) {
-        window.showCarelinkConfirm('Are you sure you want to delete this application? This action is permanent.', () => deleteApplicationRequest(appId));
+    function archiveApplication(appId) {
+        window.showCarelinkConfirm('Are you sure you want to archive this application? You can restore it anytime from the Archive page.', () => archiveApplicationRequest(appId));
     }
 
-    function deleteApplicationRequest(appId) {
-        fetch('../api/delete_application.php', {
+    function archiveApplicationRequest(appId) {
+        fetch('../api/archive_application.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: `id=${encodeURIComponent(appId)}`
@@ -1205,13 +1293,13 @@ $loggedInBarangay = htmlspecialchars($_SESSION['barangay'] ?? '');
         .then(r => r.json())
         .then(data => {
             if (data.success) {
-                showCarelinkResult('Application deleted successfully.', true);
+                showCarelinkResult('Application archived successfully.', true);
                 fetchApplications();
             } else {
                 showCarelinkResult(data.message, false);
             }
         })
-        .catch(err => { console.error(err); showCarelinkResult("Connection error during deletion: " + err.message, false); });
+        .catch(err => { console.error(err); showCarelinkResult("Connection error during archiving: " + err.message, false); });
     }
 
 

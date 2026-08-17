@@ -225,33 +225,42 @@ require_once '../includes/db_connect.php';
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
+        .calendar-card {
+            width: 100%;
+            padding: 16px;
+            box-sizing: border-box;
+        }
+
         .calendar-card h2 {
             text-align: center;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             color: var(--primary);
+            font-size: 1.1rem;
         }
 
         .calendar-card h3 {
             color: var(--primary);
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             display: flex;
             align-items: center;
             gap: 10px;
+            font-size: 1rem;
         }
 
         .calendar-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 8px;
         }
 
         .calendar-header button {
             background: none;
             border: none;
-            font-size: 1.2rem;
+            font-size: 1rem;
             cursor: pointer;
             color: var(--secondary);
+            padding: 4px 6px;
         }
 
         .calendar-table {
@@ -261,8 +270,9 @@ require_once '../includes/db_connect.php';
 
         .calendar-table th,
         .calendar-table td {
-            padding: 8px;
+            padding: 5px 2px;
             border: none;
+            font-size: 0.78rem;
         }
 
         .calendar-table th {
@@ -650,7 +660,7 @@ require_once '../includes/db_connect.php';
                             </div>
 
                             <!-- Quick RA Reference Card -->
-                            <div class="notifications-card" id="raReferenceCard" style="padding:0; overflow:hidden; border-radius:12px;">
+                            <div class="notifications-card" id="raReferenceCard" hidden style="padding:0; overflow:hidden; border-radius:12px;">
                                 <div style="background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%); padding: 16px 20px; display:flex; align-items:center; gap:10px;">
                                     <div style="width:36px;height:36px;background:rgba(255,255,255,0.15);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                         <i class="fas fa-balance-scale" style="color:#f0c060;font-size:1rem;"></i>

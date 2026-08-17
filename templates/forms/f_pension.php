@@ -1,6 +1,9 @@
 <?php
 require __DIR__ . '/_helpers.php';
 $age = oscaAge($app['birth_date'] ?? null);
+$visitSchedule = !empty($app['home_visit_scheduled_at'])
+    ? (new DateTime($app['home_visit_scheduled_at']))->format('F j, Y \a\t g:i A')
+    : '';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -17,6 +20,10 @@ $age = oscaAge($app['birth_date'] ?? null);
     <?php oscaFieldRow(['Address' => $app['complete_address'] ?? '', 'Control No.' => $app['control_no'] ?? $app['id_number'] ?? '']); ?>
     <?php oscaFieldRow(['Birthdate' => oscaFmtDate($app['birth_date'] ?? null), 'Age' => $age, 'Sex' => $app['gender'] ?? '', 'Contact No.' => $app['contact_number'] ?? '']); ?>
     <?php oscaFieldRow(['Senior ID No.' => oscaSeniorId($app), 'ATM/Temp Card Stub No.' => $app['atm_card_no'] ?? '', "Mother's Maiden Name" => $app['mothers_maiden_name'] ?? '']); ?>
+    <?php if (($app['application_type'] ?? '') === 'pension'): ?>
+        <div class="section-title">HOME VISITATION</div>
+        <?php oscaFieldRow(['Scheduled Date & Time' => $visitSchedule, 'Visit Status' => $app['home_visit_status'] ?? '', 'SMS Notification' => $app['sms_notification_status'] ?? '']); ?>
+    <?php endif; ?>
     <div class="section-title">ECONOMIC STATUS</div>
     <?php oscaFieldRow(['SSS Number' => $app['sss_number'] ?? '', 'Verified Pension' => isset($app['pension_amount']) ? 'P' . number_format((float)$app['pension_amount'], 2) : '', 'Pension Source' => $app['pension_source'] ?? '']); ?>
     <?php oscaFieldRow(['Permanent Income Source' => $app['income_source'] ?? '', 'Own House' => ($app['owns_house'] ?? null) ? 'Yes' : 'No', 'Renter' => ($app['is_renter'] ?? null) ? 'Yes' : 'No']); ?>

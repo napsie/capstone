@@ -60,6 +60,14 @@ $returnCode = 0;
 exec(implode(' ', $arguments), $output, $returnCode);
 
 if ($returnCode === 0 && is_file($backupFile) && filesize($backupFile) > 0) {
+    // Keep only the newest successful dump so outdated database copies do not
+    // accumulate alongside the current backup.
+    foreach (glob($backupDir . DIRECTORY_SEPARATOR . '*.sql') ?: [] as $existingBackup) {
+        if ($existingBackup !== $backupFile && is_file($existingBackup)) {
+            unlink($existingBackup);
+        }
+    }
+
     $response['success'] = true;
     $response['message'] = 'Database backup successful. File: ' . basename($backupFile);
 } else {

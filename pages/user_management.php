@@ -166,10 +166,10 @@ try {
     $barangayFilter = isset($_GET['barangay']) ? $_GET['barangay'] : 'all';
     
     if ($barangayFilter === 'all') {
-        $stmt = $conn->prepare("SELECT id, first_name, last_name, email, role, barangay, profile_picture FROM users");
+        $stmt = $conn->prepare("SELECT id, first_name, last_name, email, role, barangay, profile_picture FROM users WHERE (is_archived = 0 OR is_archived IS NULL)");
         $stmt->execute();
     } else {
-        $stmt = $conn->prepare("SELECT id, first_name, last_name, email, role, barangay, profile_picture FROM users WHERE barangay = :barangay");
+        $stmt = $conn->prepare("SELECT id, first_name, last_name, email, role, barangay, profile_picture FROM users WHERE barangay = :barangay AND (is_archived = 0 OR is_archived IS NULL)");
         $stmt->execute(['barangay' => $barangayFilter]);
     }
     
@@ -280,7 +280,30 @@ try {
         <?php include '../partials/department_sidebar.php'; ?>
 
         <div class="main-content">
-            <div class="header"><h1>User Management</h1></div>
+            <div class="header">
+                <div class="header-content">
+                    <div class="welcome-message" data-first-name="<?php echo htmlspecialchars($_SESSION['first_name'] ?? ''); ?>" data-last-name="<?php echo htmlspecialchars($_SESSION['last_name'] ?? ''); ?>"></div>
+                    <h1>User <span>Management</span></h1>
+                </div>
+                <div class="header-actions">
+                    <div class="user-info">
+                        <div class="user-avatar">
+                            <?php
+                                $profilePic = isset($_SESSION['profile_picture']) ? $_SESSION['profile_picture'] : 'default.jpg';
+                                $profilePicPath = '../images/profile_pictures/' . $profilePic;
+                                if (!file_exists($profilePicPath) || is_dir($profilePicPath)) {
+                                    $profilePicPath = '../images/profile_pictures/default.jpg';
+                                }
+                            ?>
+                            <img src="<?php echo $profilePicPath; ?>" alt="Profile Picture" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                        </div>
+                        <div class="user-details">
+                            <h2><?php echo htmlspecialchars(($_SESSION['first_name'] ?? '') . ' ' . ($_SESSION['last_name'] ?? '')); ?></h2>
+                            <p><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $_SESSION['role'] ?? ''))) . ' · Pasig City'; ?></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <?php if ($message): ?><div class="message"><?php echo $message; ?></div><?php endif; ?>
             <?php if ($error): ?><div class="error"><?php echo $error; ?></div><?php endif; ?>
             
@@ -401,11 +424,11 @@ try {
                                     <td><?php echo htmlspecialchars($user['barangay']); ?></td>
                                     <td>
                                         <button class="btn btn-small btn-warning edit-user-btn" data-id="<?php echo $user['id']; ?>">Edit</button>
-                                        <form action="delete_user.php" method="POST" style="display:inline;" onsubmit="return confirmCarelinkSubmit(this, 'Are you sure you want to delete this user? This action is permanent.');">
-                                            <input type="hidden" name="id" value="<?php echo $user['id']; ?>">
-                                            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-                                            <button type="submit" name="deleteUser" class="btn btn-small btn-danger">Delete</button>
-                                        </form>
+                                        <form action="delete_user.php" method="POST" style="display:inline;" onsubmit="return confirmCarelinkSubmit(this, 'Are you sure you want to archive this user account? You can restore it anytime from the Archive page.');">
+                                             <input type="hidden" name="id" value="<?php echo $user['id']; ?>">
+                                             <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                             <button type="submit" name="archiveUser" class="btn btn-small btn-warning" style="background:#f59e0b;color:#fff;"><i class="fas fa-archive"></i> Archive</button>
+                                         </form>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -455,6 +478,17 @@ try {
     <script src="../assets/js/sidebar-toggle.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        function initializeWelcomeMessage() {
+            const welcomeMessage = document.querySelector('.welcome-message');
+            if (!welcomeMessage) return;
+            const firstName = welcomeMessage.dataset.firstName || '';
+            const lastName = welcomeMessage.dataset.lastName || '';
+            const hour = new Date().getHours();
+            let greeting = (hour < 12) ? "Good morning" : (hour < 18) ? "Good afternoon" : "Good evening";
+            welcomeMessage.innerHTML = `${greeting}, <strong>${firstName} ${lastName}</strong>!`;
+        }
+        initializeWelcomeMessage();
+
         // --- Global Password Toggle ---
         window.togglePasswordVisibility = function(fieldId) {
             const passwordInput = document.getElementById(fieldId);

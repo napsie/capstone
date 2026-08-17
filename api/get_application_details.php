@@ -29,6 +29,7 @@ $baseCols = "a.id_number, a.full_name, a.application_type, a.birth_date, a.conta
              (a.proof_of_address IS NOT NULL) as has_proof_of_address, (a.id_image IS NOT NULL) as has_id_image,
              a.lastName, a.firstName, a.middleName, a.suffix,
              a.sss_number, a.pension_amount, a.date_of_death, a.relationship_to_deceased,
+             a.home_visit_scheduled_at, a.home_visit_status, a.sms_notification_status,
              a.is_proxy_application, a.proxy_name, a.proxy_relationship, a.proxy_contact_number, a.proxy_token,
              a.priority_level, a.workflow_state, a.additional_notes, a.email_address,
              a.medical_conditions, a.return_reason,

@@ -2,6 +2,7 @@
 session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/application_types.php';
+require_once '../includes/barangays_list.php';
 
 // Check if user is logged in and authorized
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['department_admin', 'super_admin'])) {
@@ -16,7 +17,8 @@ $statsQuery = "SELECT
     SUM(CASE WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') = 'For Review' THEN 1 ELSE 0 END) as for_review,
     SUM(CASE WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') = 'Verified' THEN 1 ELSE 0 END) as verified
     FROM applications
-    WHERE COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') NOT IN ('Approved', 'Released')";
+    WHERE COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') NOT IN ('Approved', 'Released')
+      AND (is_archived = 0 OR is_archived IS NULL)";
 $statsStmt = $conn->prepare($statsQuery);
 $statsStmt->execute();
 $queueStats = $statsStmt->fetch(PDO::FETCH_ASSOC);
@@ -267,6 +269,27 @@ $verifiedC     = $queueStats['verified'] ?? 0;
         .modal-close:hover { background: rgba(255,255,255,0.3); }
         .modal-scroller { max-height: 80vh; overflow-y: auto; padding: 28px; }
 
+        /* Export modal */
+        .export-modal-box { max-width: 520px; }
+        .export-modal-body { padding: 26px 28px 28px; }
+        .export-modal-body p { margin: 0 0 18px; color: var(--gray); font-size: .88rem; line-height: 1.55; }
+        .export-filter-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:6px; }
+        .export-filter-grid .full { grid-column:1 / -1; }
+        .export-field label { display:block; font-size:.76rem; font-weight:700; color:var(--gray); text-transform:uppercase; margin-bottom:6px; }
+        .export-field input, .export-field select { width:100%; padding:10px 11px; border:1px solid var(--border); border-radius:8px; color:var(--primary); background:#fff; font-size:.88rem; box-sizing:border-box; }
+        .export-option { display:flex; align-items:center; gap:10px; padding:12px 14px; border:1px solid var(--border); border-radius:9px; margin-bottom:10px; cursor:pointer; }
+        .export-option:has(input:checked) { border-color:var(--accent); background:#eff6ff; }
+        .export-option input { accent-color:var(--accent); }
+        .export-option strong { display:block; font-size:.88rem; color:var(--primary); }
+        .export-option small { color:var(--gray); font-size:.76rem; }
+        .export-select-wrap { margin: 14px 0 20px; }
+        .export-select-wrap label { display:block; font-size:.76rem; font-weight:700; color:var(--gray); text-transform:uppercase; margin-bottom:6px; }
+        .export-select-wrap select { width:100%; padding:10px 11px; border:1px solid var(--border); border-radius:8px; color:var(--primary); background:#fff; }
+        .export-divider { border-top:1px solid var(--border); margin:18px 0 16px; padding-top:18px; }
+        .export-divider-title { font-size:.78rem; font-weight:700; color:var(--primary); margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+        .export-divider-title i { color:var(--accent); }
+        .export-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:20px; }
+
         /* Stepper */
         .stepper { display: flex; justify-content: space-between; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
         .step { flex: 1; text-align: center; position: relative; }
@@ -419,9 +442,9 @@ $verifiedC     = $queueStats['verified'] ?? 0;
         <div class="queue-card">
             <div class="queue-card-header">
                 <h2><i class="fas fa-list-ol"></i> Evaluation Review Queue</h2>
-                <a class="btn btn-small queue-export-btn" href="../api/export_records_pdf.php?scope=department&amp;report_mode=verification">
-                    <i class="fas fa-file-pdf"></i> Export PDF
-                </a>
+                <button type="button" class="btn btn-small queue-export-btn" onclick="openExportModal()">
+                    <i class="fas fa-file-pdf"></i> Generate Report
+                </button>
             </div>
 
             <!-- Table -->
@@ -615,6 +638,78 @@ $verifiedC     = $queueStats['verified'] ?? 0;
     </div><!-- /.modal-box -->
 </div><!-- /#applicationModal -->
 
+<!-- Export PDF filter modal -->
+<div id="exportModal" class="modal-overlay">
+    <div class="modal-box export-modal-box">
+        <div class="modal-head">
+            <h2><i class="fas fa-file-pdf"></i> Export Verification Queue PDF</h2>
+            <button type="button" class="modal-close" id="closeExportModalBtn">&times;</button>
+        </div>
+        <form id="exportReportForm" method="GET" action="../api/export_records_pdf.php">
+            <div class="export-modal-body">
+                <p>Set the filters for your verification queue PDF report. Only matching applications will be included.</p>
+                <input type="hidden" name="scope" value="department">
+                <input type="hidden" name="report_mode" value="verification">
+                <input type="hidden" name="barangay" id="exportBarangayValue" value="all">
+                <div class="export-filter-grid">
+                    <div class="export-field">
+                        <label for="exportType">Application Type</label>
+                        <select name="type" id="exportType">
+                            <option value="all">All Types</option>
+                            <?php foreach (getApplicationTypeOptions() as $val => $label): ?>
+                                <option value="<?php echo htmlspecialchars($val); ?>"><?php echo htmlspecialchars(applicationTypeLabel($val)); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="export-field">
+                        <label for="exportYear">Year (if no date range)</label>
+                        <select name="year" id="exportYear">
+                            <option value="all">All Years</option>
+                            <?php
+                                $currentYear = (int)date('Y');
+                                for ($y = $currentYear; $y >= 2020; $y--) {
+                                    echo '<option value="' . $y . '">' . $y . '</option>';
+                                }
+                            ?>
+                        </select>
+                    </div>
+                    <div class="export-field">
+                        <label for="exportDateFrom">Date From</label>
+                        <input type="date" name="date_from" id="exportDateFrom">
+                    </div>
+                    <div class="export-field">
+                        <label for="exportDateTo">Date To</label>
+                        <input type="date" name="date_to" id="exportDateTo">
+                    </div>
+                </div>
+                <div class="export-divider">
+                    <div class="export-divider-title"><i class="fas fa-map-marker-alt"></i> Barangay Coverage</div>
+                    <label class="export-option">
+                        <input type="radio" name="barangayChoice" value="all" checked>
+                        <span><strong>All Barangays</strong><small>Include all pending verification applications across Pasig City.</small></span>
+                    </label>
+                    <label class="export-option">
+                        <input type="radio" name="barangayChoice" value="selected" id="selectedBarangayRadio">
+                        <span><strong>One Barangay</strong><small>Export queue records from one barangay only.</small></span>
+                    </label>
+                    <div class="export-select-wrap" id="exportBarangayWrap" style="display:none;">
+                        <label for="exportBarangay">Select Barangay</label>
+                        <select id="exportBarangay">
+                            <?php foreach ($barangays_list as $b): ?>
+                                <option value="<?php echo htmlspecialchars($b); ?>"><?php echo htmlspecialchars($b); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="export-actions">
+                    <button type="button" class="btn btn-ghost" id="cancelExportBtn">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-file-pdf"></i> Generate PDF</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script src="../assets/js/sidebar-toggle.js"></script>
 <script src="../assets/js/application-documents.js?v=6"></script>
 <script src="../assets/js/application-details.js?v=2"></script>
@@ -657,10 +752,41 @@ $verifiedC     = $queueStats['verified'] ?? 0;
         document.getElementById('applicationModal').addEventListener('click', function(e) {
             if (e.target === this) closeModal();
         });
+        document.getElementById('closeExportModalBtn').addEventListener('click', closeExportModal);
+        document.getElementById('cancelExportBtn').addEventListener('click', closeExportModal);
+        document.getElementById('exportModal').addEventListener('click', function(e) {
+            if (e.target === this) closeExportModal();
+        });
+        document.querySelectorAll('input[name="barangayChoice"]').forEach(input => input.addEventListener('change', toggleExportBarangay));
+        document.getElementById('exportReportForm').addEventListener('submit', function() {
+            const selected = document.querySelector('input[name="barangayChoice"]:checked').value;
+            document.getElementById('exportBarangayValue').value = selected === 'selected'
+                ? document.getElementById('exportBarangay').value
+                : 'all';
+        });
     });
 
     function closeModal() {
         document.getElementById('applicationModal').style.display = 'none';
+    }
+
+    function openExportModal() {
+        document.getElementById('exportType').value = 'all';
+        document.getElementById('exportDateFrom').value = '';
+        document.getElementById('exportDateTo').value = '';
+        document.getElementById('exportYear').value = 'all';
+        document.querySelector('input[name="barangayChoice"][value="all"]').checked = true;
+        toggleExportBarangay();
+        document.getElementById('exportModal').style.display = 'block';
+    }
+
+    function closeExportModal() {
+        document.getElementById('exportModal').style.display = 'none';
+    }
+
+    function toggleExportBarangay() {
+        const oneBarangay = document.getElementById('selectedBarangayRadio').checked;
+        document.getElementById('exportBarangayWrap').style.display = oneBarangay ? 'block' : 'none';
     }
 
     /* ─── Helpers ───────────────────────────────────────────── */

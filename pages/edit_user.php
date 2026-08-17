@@ -559,9 +559,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
             <div class="header">
                 <div class="header-content">
                     <div class="welcome-message">Welcome back, <strong><?php echo htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']); ?></strong>!</div>
-                    <h1>Edit User</h1>
+                    <h1>Edit <span>User</span></h1>
                 </div>
-                <div class="user-info">
+                <div class="header-actions">
+                    <div class="user-info">
                     <div class="user-avatar">
                         <?php
                             $profilePic = isset($_SESSION['profile_picture']) ? $_SESSION['profile_picture'] : 'default.jpg';
@@ -575,6 +576,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
                     <div class="user-details">
                         <h2><?php echo htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']); ?></h2>
                         <p><?php echo ($_SESSION['role'] === 'department_admin') ? 'Department Admin · Pasig City' : htmlspecialchars(ucwords(str_replace('_', ' ', $_SESSION['role']))) . ' · ' . htmlspecialchars($_SESSION['barangay'] ?? ''); ?></p>
+                    </div>
                     </div>
                 </div>
             </div>

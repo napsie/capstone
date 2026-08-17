@@ -29,6 +29,7 @@ try {
         SELECT status, COUNT(*) as count 
         FROM applications 
         WHERE barangay = :barangay 
+          AND (is_archived = 0 OR is_archived IS NULL)
         GROUP BY status
     ");
     $statusStmt->execute(['barangay' => $barangay]);
@@ -41,6 +42,7 @@ try {
             COUNT(*) as count 
         FROM applications 
         WHERE barangay = :barangay 
+          AND (is_archived = 0 OR is_archived IS NULL)
         GROUP BY COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received')
     ");
     $workflowStmt->execute(['barangay' => $barangay]);
@@ -53,6 +55,7 @@ try {
         WHERE barangay = :barangay 
         AND priority_level = 'high'
         AND COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') = 'Received'
+        AND (is_archived = 0 OR is_archived IS NULL)
     ");
     $priorityStmt->execute(['barangay' => $barangay]);
     $priorityRow = $priorityStmt->fetch(PDO::FETCH_ASSOC);
@@ -64,6 +67,7 @@ try {
         SELECT COUNT(*) AS count
         FROM applications
         WHERE barangay = :barangay
+          AND (is_archived = 0 OR is_archived IS NULL)
           AND COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received')
               IN ('Received', 'For Review', 'Verified')
     ");
@@ -77,6 +81,7 @@ try {
         SELECT COUNT(*) as count
         FROM applications
         WHERE barangay = :barangay
+          AND (is_archived = 0 OR is_archived IS NULL)
           AND COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received')
               IN ('Received', 'For Review', 'Verified')
     ");
@@ -93,7 +98,9 @@ try {
             application_type,
             COUNT(*) as count
         FROM applications
-        WHERE barangay = :barangay AND date_submitted >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+        WHERE barangay = :barangay 
+          AND (is_archived = 0 OR is_archived IS NULL)
+          AND date_submitted >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
         GROUP BY YEAR(date_submitted), MONTH(date_submitted), MONTHNAME(date_submitted), application_type
         ORDER BY YEAR(date_submitted), MONTH(date_submitted)
     ");
@@ -112,6 +119,7 @@ try {
             date_submitted
         FROM applications
         WHERE barangay = :barangay
+          AND (is_archived = 0 OR is_archived IS NULL)
         ORDER BY CASE WHEN priority_level = 'high' THEN 0 ELSE 1 END, date_submitted DESC
         LIMIT 8
     ");

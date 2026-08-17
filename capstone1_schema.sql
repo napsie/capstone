@@ -16,6 +16,7 @@ USE `capstone1`;
 SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS `application_documents`;
 DROP TABLE IF EXISTS `application_history`;
+DROP TABLE IF EXISTS `sms_notifications`;
 DROP TABLE IF EXISTS `login_history`;
 DROP TABLE IF EXISTS `remember_tokens`;
 DROP TABLE IF EXISTS `settings`;
@@ -91,6 +92,9 @@ CREATE TABLE `applications` (
   -- Social Pension specific
   `sss_number`                 varchar(50)  DEFAULT NULL,
   `pension_amount`             decimal(10,2) DEFAULT NULL,
+  `home_visit_scheduled_at`    datetime      DEFAULT NULL,
+  `home_visit_status`          varchar(30)   DEFAULT NULL,
+  `sms_notification_status`    varchar(30)   DEFAULT NULL,
 
   -- Burial Assistance specific
   `date_of_death`              date         DEFAULT NULL,
@@ -247,6 +251,22 @@ CREATE TABLE `notifications` (
   `type`       varchar(50)  NOT NULL,
   `created_at` timestamp    NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- SMS confirmation outbox for scheduled home visits
+CREATE TABLE `sms_notifications` (
+  `id`                 int(11)      NOT NULL AUTO_INCREMENT,
+  `application_id`     varchar(255) NOT NULL,
+  `recipient`          varchar(20)  NOT NULL,
+  `message`            text         NOT NULL,
+  `status`             varchar(30)  NOT NULL DEFAULT 'queued',
+  `provider_reference` varchar(255) DEFAULT NULL,
+  `error_message`      text         DEFAULT NULL,
+  `created_at`         timestamp    NOT NULL DEFAULT current_timestamp(),
+  `sent_at`            timestamp    NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_sms_application` (`application_id`),
+  KEY `idx_sms_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ============================================================

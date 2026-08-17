@@ -20,7 +20,7 @@ $offset          = ($page - 1) * $recordsPerPage;
 
 // Build dynamic query
 $baseQuery    = "FROM applications";
-$whereClauses = ["(workflow_state IN ('Approved', 'Released') OR status = 'Approved')"];
+$whereClauses = ["(is_archived = 0 OR is_archived IS NULL)", "(workflow_state IN ('Approved', 'Released') OR status = 'Approved')"];
 $params       = [];
 
 if (!empty($search)) {
@@ -369,6 +369,13 @@ function getStatusBadge($status) {
         .export-select-wrap { margin: 14px 0 20px; }
         .export-select-wrap label { display:block; font-size:.76rem; font-weight:700; color:var(--gray); text-transform:uppercase; margin-bottom:6px; }
         .export-select-wrap select { width:100%; padding:10px 11px; border:1px solid var(--border); border-radius:8px; color:var(--primary); background:#fff; }
+        .export-filter-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:6px; }
+        .export-filter-grid .full { grid-column:1 / -1; }
+        .export-field label { display:block; font-size:.76rem; font-weight:700; color:var(--gray); text-transform:uppercase; margin-bottom:6px; }
+        .export-field input, .export-field select { width:100%; padding:10px 11px; border:1px solid var(--border); border-radius:8px; color:var(--primary); background:#fff; font-size:.88rem; box-sizing:border-box; }
+        .export-divider { border-top:1px solid var(--border); margin:18px 0 16px; padding-top:18px; }
+        .export-divider-title { font-size:.78rem; font-weight:700; color:var(--primary); margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+        .export-divider-title i { color:var(--accent); }
         .export-actions { display:flex; justify-content:flex-end; gap:10px; }
 
         /* Stepper */
@@ -499,13 +506,13 @@ function getStatusBadge($status) {
                 <h2><i class="fas fa-folder-open"></i> All Approved Records – Pasig City</h2>
                 <div class="header-actions">
                     <button type="button" class="btn btn-ghost" onclick="exportDepartmentRecords()">
-                        <i class="fas fa-file-pdf"></i> Export PDF
+                        <i class="fas fa-file-pdf"></i> Generate Report
                     </button>
                 </div>
             </div>
 
             <!-- Filter Bar -->
-            <form method="GET" action="department_records.php">
+            <form method="GET" action="department_records.php" id="recordsFilterForm">
                 <div class="filter-bar">
                     <div class="filter-group">
                         <label for="searchInput">Search</label>
@@ -516,7 +523,7 @@ function getStatusBadge($status) {
                     </div>
                     <div class="filter-group">
                         <label for="barangayFilter">Barangay</label>
-                        <select id="barangayFilter" name="barangay">
+                        <select id="barangayFilter" name="barangay" onchange="this.form.submit()">
                             <option value="all">All Barangays</option>
                             <?php foreach ($barangays_list as $b): ?>
                                 <option value="<?php echo htmlspecialchars($b); ?>" <?php echo ($barangayFilter === $b) ? 'selected' : ''; ?>><?php echo htmlspecialchars($b); ?></option>
@@ -525,14 +532,14 @@ function getStatusBadge($status) {
                     </div>
                     <div class="filter-group">
                         <label for="typeFilter">Application Type</label>
-                        <select id="typeFilter" name="type">
+                        <select id="typeFilter" name="type" onchange="this.form.submit()">
                             <option value="all">All Types</option>
                             <?php foreach (getApplicationTypeOptions() as $val => $label): ?>
                                 <option value="<?php echo htmlspecialchars($val); ?>" <?php echo ($typeFilter === $val) ? 'selected' : ''; ?>><?php echo htmlspecialchars(applicationTypeLabel($val)); ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <button type="submit" class="btn-apply"><i class="fas fa-search"></i> Apply Filters</button>
+                    <button type="submit" class="btn-apply" style="display:none;"><i class="fas fa-search"></i> Apply Filters</button>
                     <?php if (!empty($search) || $barangayFilter !== 'all' || $typeFilter !== 'all'): ?>
                         <a href="department_records.php" class="btn-apply" style="background:#64748b;text-decoration:none;"><i class="fas fa-times"></i> Clear</a>
                     <?php endif; ?>
@@ -739,16 +746,57 @@ function getStatusBadge($status) {
 <div id="exportModal" class="modal-overlay">
     <div class="modal-box export-modal-box">
         <div class="modal-head">
-            <h2><i class="fas fa-file-pdf"></i> Export PDF Report</h2>
+            <h2><i class="fas fa-file-pdf"></i> Generate Report</h2>
             <button type="button" class="modal-close" id="closeExportModalBtn">&times;</button>
         </div>
         <form id="exportReportForm" method="GET" action="../api/export_records_pdf.php">
             <div class="export-modal-body">
-                <p>Choose the barangay coverage for this report. Your current search and application-type filters will also be applied.</p>
+                <p>Choose the filters and barangay coverage for this report. Only matching records will be included in the PDF.</p>
                 <input type="hidden" name="scope" value="department">
-                <input type="hidden" name="search" id="exportSearch">
-                <input type="hidden" name="type" id="exportType">
                 <input type="hidden" name="barangay" id="exportBarangayValue" value="all">
+
+                <div class="export-filter-grid">
+                    <div class="export-field">
+                        <label for="exportType">Application Type</label>
+                        <select name="type" id="exportType">
+                            <option value="all">All Types</option>
+                            <?php foreach (getApplicationTypeOptions() as $val => $label): ?>
+                                <option value="<?php echo htmlspecialchars($val); ?>"><?php echo htmlspecialchars(applicationTypeLabel($val)); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="export-field">
+                        <label for="exportStatus">Status</label>
+                        <select name="status" id="exportStatus">
+                            <option value="all">Approved &amp; Released</option>
+                            <option value="Approved">Approved Only</option>
+                            <option value="Released">Released Only</option>
+                        </select>
+                    </div>
+                    <div class="export-field">
+                        <label for="exportDateFrom">Date From</label>
+                        <input type="date" name="date_from" id="exportDateFrom">
+                    </div>
+                    <div class="export-field">
+                        <label for="exportDateTo">Date To</label>
+                        <input type="date" name="date_to" id="exportDateTo">
+                    </div>
+                    <div class="export-field">
+                        <label for="exportYear">Year (if no date range)</label>
+                        <select name="year" id="exportYear">
+                            <option value="all">All Years</option>
+                            <?php
+                                $currentYear = (int)date('Y');
+                                for ($y = $currentYear; $y >= 2020; $y--) {
+                                    echo '<option value="' . $y . '">' . $y . '</option>';
+                                }
+                            ?>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="export-divider">
+                    <div class="export-divider-title"><i class="fas fa-map-marker-alt"></i> Barangay Coverage</div>
                 <label class="export-option">
                     <input type="radio" name="barangayChoice" value="all" checked>
                     <span><strong>All Barangays</strong><small>Include approved and released records across Pasig City.</small></span>
@@ -764,6 +812,7 @@ function getStatusBadge($status) {
                             <option value="<?php echo htmlspecialchars($b); ?>"><?php echo htmlspecialchars($b); ?></option>
                         <?php endforeach; ?>
                     </select>
+                </div>
                 </div>
                 <div class="export-actions">
                     <button type="button" class="btn btn-ghost" id="cancelExportBtn">Cancel</button>
@@ -835,8 +884,11 @@ function getStatusBadge($status) {
 
     function exportDepartmentRecords() {
         const currentBarangay = document.getElementById('barangayFilter').value;
-        document.getElementById('exportSearch').value = document.getElementById('searchInput').value.trim();
         document.getElementById('exportType').value = document.getElementById('typeFilter').value;
+        document.getElementById('exportDateFrom').value = '';
+        document.getElementById('exportDateTo').value = '';
+        document.getElementById('exportYear').value = 'all';
+        document.getElementById('exportStatus').value = 'all';
         if (currentBarangay !== 'all') {
             document.getElementById('selectedBarangayRadio').checked = true;
             document.getElementById('exportBarangay').value = currentBarangay;
@@ -1278,6 +1330,26 @@ function getStatusBadge($status) {
 
         return html;
     }
+
+    // Debounce search input submission
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('searchInput');
+        const filterForm = document.getElementById('recordsFilterForm');
+        if (searchInput && filterForm) {
+            let searchTimeout;
+            searchInput.addEventListener('input', () => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    filterForm.submit();
+                }, 400); // 400ms debounce
+            });
+
+            // Keep cursor at the end of input
+            const len = searchInput.value.length;
+            searchInput.focus();
+            searchInput.setSelectionRange(len, len);
+        }
+    });
 </script>
 </body>
 </html>

@@ -17,7 +17,7 @@ $typeFilter = $_GET['type'] ?? 'all';
 $yearFilter = $_GET['year'] ?? 'all';
 
 // Build query – only approved/released for this barangay
-$baseQuery    = "FROM applications WHERE barangay = :barangay AND (workflow_state IN ('Approved', 'Released') OR status = 'approved')";
+$baseQuery    = "FROM applications WHERE barangay = :barangay AND (is_archived = 0 OR is_archived IS NULL) AND (workflow_state IN ('Approved', 'Released') OR status = 'approved')";
 $params       = [':barangay' => $_SESSION['barangay']];
 
 // Fetch all (client-side filtering handles search/year/type)
@@ -370,6 +370,19 @@ function getStatusClass($status) {
 
         .modal-scroller { max-height: 80vh; overflow-y: auto; padding: 28px; }
 
+        /* Export modal */
+        .export-modal-box { max-width: 520px; }
+        .export-modal-body { padding: 26px 28px 28px; }
+        .export-modal-body p { margin: 0 0 18px; color: var(--gray); font-size: .88rem; line-height: 1.55; }
+        .export-filter-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:6px; }
+        .export-filter-grid .full { grid-column:1 / -1; }
+        .export-field label { display:block; font-size:.76rem; font-weight:700; color:var(--gray); text-transform:uppercase; margin-bottom:6px; }
+        .export-field input, .export-field select { width:100%; padding:10px 11px; border:1px solid var(--border); border-radius:8px; color:var(--primary); background:#fff; font-size:.88rem; box-sizing:border-box; }
+        .export-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:20px; }
+        .btn-export-cancel { background:#f1f5f9; color:var(--primary); border:1px solid var(--border); border-radius:8px; padding:9px 16px; font-size:.82rem; font-weight:700; cursor:pointer; }
+        .btn-export-submit { background:var(--accent); color:#fff; border:none; border-radius:8px; padding:9px 16px; font-size:.82rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:7px; }
+        .btn-export-submit:hover { background:#1d4ed8; }
+
         /* Stepper */
         .stepper {
             display: flex;
@@ -580,8 +593,8 @@ function getStatusClass($status) {
         <div class="records-card">
             <div class="records-card-header">
                 <h2><i class="fas fa-folder-open"></i> Application Records</h2>
-                <button class="btn-export" onclick="exportDisplayedRecords()">
-                    <i class="fas fa-file-pdf"></i> Export PDF
+                <button class="btn-export" onclick="openExportModal()">
+                    <i class="fas fa-file-pdf"></i> Generate Report
                 </button>
             </div>
 
@@ -797,6 +810,65 @@ function getStatusClass($status) {
     </div><!-- /.modal-box -->
 </div><!-- /#applicationModal -->
 
+<!-- Export PDF filter modal -->
+<div id="exportModal" class="modal-overlay">
+    <div class="modal-box export-modal-box">
+        <div class="modal-head">
+            <h2><i class="fas fa-file-pdf"></i> Generate Report</h2>
+            <button type="button" class="modal-close" id="closeExportModalBtn">&times;</button>
+        </div>
+        <form id="exportReportForm" method="GET" action="../api/export_records_pdf.php">
+            <div class="export-modal-body">
+                <p>Set the filters for your PDF report. Only records matching these criteria will be included.</p>
+                <input type="hidden" name="scope" value="barangay">
+                <div class="export-filter-grid">
+                    <div class="export-field">
+                        <label for="exportType">Application Type</label>
+                        <select name="type" id="exportType">
+                            <option value="all">All Types</option>
+                            <?php foreach (getApplicationTypeOptions() as $val => $label): ?>
+                                <option value="<?php echo htmlspecialchars($val); ?>"><?php echo htmlspecialchars(applicationTypeLabel($val)); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="export-field">
+                        <label for="exportStatus">Status</label>
+                        <select name="status" id="exportStatus">
+                            <option value="all">Approved &amp; Released</option>
+                            <option value="Approved">Approved Only</option>
+                            <option value="Released">Released Only</option>
+                        </select>
+                    </div>
+                    <div class="export-field">
+                        <label for="exportDateFrom">Date From</label>
+                        <input type="date" name="date_from" id="exportDateFrom">
+                    </div>
+                    <div class="export-field">
+                        <label for="exportDateTo">Date To</label>
+                        <input type="date" name="date_to" id="exportDateTo">
+                    </div>
+                    <div class="export-field">
+                        <label for="exportYear">Year (if no date range)</label>
+                        <select name="year" id="exportYear">
+                            <option value="all">All Years</option>
+                            <?php
+                                $currentYear = (int)date('Y');
+                                for ($y = $currentYear; $y >= 2020; $y--) {
+                                    echo '<option value="' . $y . '">' . $y . '</option>';
+                                }
+                            ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="export-actions">
+                    <button type="button" class="btn-export-cancel" id="cancelExportBtn">Cancel</button>
+                    <button type="submit" class="btn-export-submit"><i class="fas fa-file-pdf"></i> Generate PDF</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script src="../assets/js/sidebar-toggle.js"></script>
 <script src="../assets/js/application-documents.js?v=6"></script>
 <script src="../assets/js/application-details.js?v=2"></script>
@@ -837,10 +909,28 @@ function getStatusClass($status) {
         document.getElementById('applicationModal').addEventListener('click', function(e) {
             if (e.target === this) closeModal();
         });
+        document.getElementById('closeExportModalBtn').addEventListener('click', closeExportModal);
+        document.getElementById('cancelExportBtn').addEventListener('click', closeExportModal);
+        document.getElementById('exportModal').addEventListener('click', function(e) {
+            if (e.target === this) closeExportModal();
+        });
     });
 
     function closeModal() {
         document.getElementById('applicationModal').style.display = 'none';
+    }
+
+    function openExportModal() {
+        document.getElementById('exportType').value = document.getElementById('type-filter').value;
+        document.getElementById('exportYear').value = document.getElementById('year-filter').value;
+        document.getElementById('exportDateFrom').value = '';
+        document.getElementById('exportDateTo').value = '';
+        document.getElementById('exportStatus').value = 'all';
+        document.getElementById('exportModal').style.display = 'block';
+    }
+
+    function closeExportModal() {
+        document.getElementById('exportModal').style.display = 'none';
     }
 
     /* ─── Helpers ───────────────────────────────────────────── */
@@ -1052,15 +1142,9 @@ function getStatusClass($status) {
         document.getElementById('noResultsMsg').style.display = visible === 0 ? 'block' : 'none';
     }
 
-    /* ─── Export formatted Excel report ─────────────────────── */
+    /* ─── Export formatted PDF report ───────────────────────── */
     function exportDisplayedRecords() {
-        const query = new URLSearchParams({
-            scope: 'barangay',
-            search: document.getElementById('search-input').value.trim(),
-            year: document.getElementById('year-filter').value,
-            type: document.getElementById('type-filter').value
-        });
-        window.location.href = `../api/export_records_pdf.php?${query.toString()}`;
+        openExportModal();
     }
 
     function getCompleteDetailsHtml(app) {

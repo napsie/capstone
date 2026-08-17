@@ -58,15 +58,17 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
             }
         }
         .chart-card, .calendar-card, .notifications-card { background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); padding: 20px; }
+        .calendar-card { width: 100%; padding: 16px; box-sizing: border-box; }
         .chart-card h3, .calendar-card h3, .notifications-card h3 { font-size: 18px; margin-bottom: 15px; color: white; background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%); display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-radius: 10px; }
         
-        #current-time { font-size: 1.5rem; font-weight: 600; color: var(--primary); text-align: center; margin-bottom: 10px; }
-        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .calendar-header button { background: none; border: none; font-size: 1.2rem; color: var(--primary); cursor: pointer; padding: 5px; transition: color 0.3s; }
+        #current-time { font-size: 1.1rem; font-weight: 600; color: var(--primary); text-align: center; margin-bottom: 8px; }
+        .calendar-card h3 { margin-bottom: 10px; padding: 10px 14px; font-size: 1rem; }
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .calendar-header button { background: none; border: none; font-size: 1rem; color: var(--primary); cursor: pointer; padding: 4px 6px; transition: color 0.3s; }
         .calendar-header button:hover { color: var(--secondary); }
-        .calendar-header .month-year { font-size: 1.1rem; font-weight: 600; color: var(--dark); }
+        .calendar-header .month-year { font-size: 0.95rem; font-weight: 600; color: var(--dark); }
         .calendar-table { width: 100%; border-collapse: collapse; text-align: center; }
-        .calendar-table th, .calendar-table td { padding: 8px; border: 1px solid #eee; }
+        .calendar-table th, .calendar-table td { padding: 5px 2px; border: 1px solid #eee; font-size: 0.78rem; }
         .calendar-table th { background: var(--light); color: var(--dark); font-weight: 500; }
         .calendar-table td { color: var(--primary); }
         .calendar-table td.inactive { color: var(--gray); background-color: #f9f9f9; }
@@ -126,7 +128,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
             <div class="header">
                 <div class="header-content">
                     <div class="welcome-message" style="font-size:0.98rem;font-weight:500;color:#6b7280;margin-bottom:6px;font-family:'Inter',sans-serif;line-height:1.3;" data-first-name="<?php echo htmlspecialchars($_SESSION['first_name']); ?>" data-last-name="<?php echo htmlspecialchars($_SESSION['last_name']); ?>"></div>
-                    <h1>Barangay <?php echo $barangayName; ?> Dashboard</h1>
+                    <h1>Barangay <span><?php echo $barangayName; ?></span> Dashboard</h1>
                 </div>
                 <div class="header-actions">
                     
@@ -196,7 +198,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                     </div>
 
                     <!-- Quick RA Reference Card -->
-                    <div class="notifications-card" id="raReferenceCard" style="padding:0; overflow:hidden; border-radius:12px;">
+                    <div class="notifications-card" id="raReferenceCard" hidden style="padding:0; overflow:hidden; border-radius:12px;">
                         <div style="background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%); padding: 16px 20px; display:flex; align-items:center; gap:10px;">
                             <div style="width:36px;height:36px;background:rgba(255,255,255,0.15);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                 <i class="fas fa-balance-scale" style="color:#f0c060;font-size:1rem;"></i>

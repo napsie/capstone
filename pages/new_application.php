@@ -3,6 +3,7 @@ session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/proxy_token_resolver.php';
 require_once '../includes/application_types.php';
+require_once '../includes/sms_service.php';
 
 // Helper function to calculate working days (excluding Sat/Sun)
 function getWorkingDays($startDate, $endDate) {
@@ -58,6 +59,32 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $emergencyContactName = isset($_POST['emergencyContactName']) ? trim(strip_tags($_POST['emergencyContactName'])) : '';
     $barangay = $_SESSION['barangay'] ?? ''; // Barangay from session
     $oscaData = parseOscaFormPost($_POST);
+    $homeVisitScheduledAt = null;
+    $homeVisitStatus = null;
+
+    if ($applicationType === 'pension') {
+        $scheduleRaw = trim((string)($_POST['homeVisitScheduledAt'] ?? ''));
+        $timezone = new DateTimeZone('Asia/Manila');
+        $scheduled = DateTime::createFromFormat('Y-m-d\TH:i', $scheduleRaw, $timezone);
+        $scheduleErrors = DateTime::getLastErrors();
+        $scheduleIsValid = $scheduled
+            && ($scheduleErrors === false || ($scheduleErrors['warning_count'] === 0 && $scheduleErrors['error_count'] === 0));
+
+        if (!$scheduleIsValid) {
+            $errorMessage = 'Please select a valid home visitation date and time.';
+        } elseif ($scheduled <= new DateTime('now', $timezone)) {
+            $errorMessage = 'The home visitation schedule must be in the future.';
+        } elseif (in_array($scheduled->format('N'), ['6', '7'], true)) {
+            $errorMessage = 'Home visits can only be scheduled from Monday to Friday.';
+        } elseif ((int)$scheduled->format('H') < 8 || (int)$scheduled->format('H') >= 17 || !in_array($scheduled->format('i'), ['00', '30'], true)) {
+            $errorMessage = 'Choose a home visit slot from 8:00 AM to 4:30 PM, in 30-minute intervals.';
+        } elseif (normalizePhilippineMobile($contactNumber) === null) {
+            $errorMessage = 'Enter a valid Philippine cellphone number so the home visit confirmation can be sent by text.';
+        } else {
+            $homeVisitScheduledAt = $scheduled->format('Y-m-d H:i:s');
+            $homeVisitStatus = 'Scheduled';
+        }
+    }
 
     // New Senior Citizens ID applications never choose their own official ID.
     // OSCA assigns it centrally when the application reaches Approved.
@@ -256,8 +283,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             lastName, firstName, middleName, suffix, disability_type,
                             sss_number, pension_amount, date_of_death, relationship_to_deceased,
                             is_proxy_application, proxy_name, proxy_relationship, proxy_contact_number, proxy_token,
-                            priority_level, workflow_state, email_address, additional_notes, ' . implode(', ', $oscaCols);
-                $placeholders = implode(', ', array_fill(0, 31 + count($oscaCols), '?'));
+                            priority_level, workflow_state, email_address, additional_notes,
+                            home_visit_scheduled_at, home_visit_status, sms_notification_status, ' . implode(', ', $oscaCols);
+                $placeholders = implode(', ', array_fill(0, 34 + count($oscaCols), '?'));
 
                 $params = [
                     $idNumber, $fullName, $applicationType, $birthDate, $contactNumber, $completeAddress,
@@ -267,6 +295,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $sssNumber, $pensionAmount, $dateOfDeath, $relationshipToDeceased,
                     $isProxy, $proxyName, $proxyRelationship, $proxyContactNumber, $proxyToken,
                     $priorityLevel, 'Received', $emailAddress, $additionalNotes,
+                    $homeVisitScheduledAt, $homeVisitStatus, $applicationType === 'pension' ? 'queued' : null,
                 ];
                 foreach ($oscaCols as $col) {
                     $params[] = $oscaData[$col];
@@ -332,6 +361,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     }
 
                     $conn->commit();
+
+                    $submissionMessage = 'Application submitted successfully.';
+                    if ($applicationType === 'pension' && $homeVisitScheduledAt) {
+                        $visit = new DateTime($homeVisitScheduledAt, new DateTimeZone('Asia/Manila'));
+                        $visitLabel = $visit->format('F j, Y \a\t g:i A');
+                        $smsVisitLabel = $visit->format('M j, Y g:i A');
+                        $smsMessage = "SENIORLINK: Local Pension {$idNumber} received. Home visit: {$smsVisitLabel}. Please keep your phone available. Brgy {$barangay}.";
+
+                        try {
+                            $smsResult = sendOrQueueSms($conn, $idNumber, $contactNumber, $smsMessage);
+                            $smsStatusStmt = $conn->prepare('UPDATE applications SET sms_notification_status = ? WHERE id_number = ?');
+                            $smsStatusStmt->execute([$smsResult['status'], $idNumber]);
+                            $submissionMessage = "Application submitted. Home visit scheduled for {$visitLabel}. "
+                                . ($smsResult['status'] === 'sent'
+                                    ? 'A confirmation text was sent to the applicant.'
+                                    : 'The confirmation text is saved in the SMS queue.');
+                        } catch (Throwable $smsError) {
+                            $submissionMessage = "Application submitted. Home visit scheduled for {$visitLabel}. The text could not be sent yet and can be retried from the SMS queue.";
+                        }
+                    }
+
+                    $_SESSION['application_submission_notice'] = $submissionMessage;
 
                     header("Location: submit_application.php?success=1");
                     exit();
@@ -470,6 +521,53 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         /* ── Google Font ─────────────────────────────── */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
         body, .main-content { font-family: 'Inter', sans-serif; }
+
+        /* ─── Page Header ────────────────────────────────────────────────── */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+        }
+        .page-header-left .greeting {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.98rem;
+            font-weight: 500;
+            color: #6b7280;
+            margin-bottom: 6px;
+            line-height: 1.3;
+        }
+        .page-header-left .greeting strong {
+            color: #2563eb;
+            font-weight: 700;
+        }
+        .page-header-left h1 {
+            font-family: 'Inter', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: var(--primary, #0f172a);
+            margin: 0;
+            line-height: 1.05;
+        }
+        .page-header-left h1 span { color: var(--accent, #2563eb); }
+        .header-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-radius: 30px;
+            padding: 7px 13px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border: 3px solid transparent;
+            background: linear-gradient(var(--card, #ffffff), var(--card, #ffffff)) padding-box, linear-gradient(135deg, #0f172a 0%, #3498db 100%) border-box;
+        }
+        .header-user img {
+            width: 40px; height: 40px;
+            border-radius: 50%; object-fit: cover;
+            border: 2px solid var(--accent, #2563eb);
+        }
+        .header-user-info h3 { font-size: 0.9rem; font-weight: 700; color: var(--primary, #0f172a); margin: 0; }
+        .header-user-info p  { font-size: 0.75rem; color: var(--gray, #94a3b8); margin: 0; }
 
         /* ── Hero intro banner ───────────────────────── */
         .new-app-hero {
@@ -1474,18 +1572,47 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         /* Claim stubs and handwritten signature areas are printed only after
            approval. They are not part of the online application form. */
         .non-submission-preview { display: none !important; }
+
+        /* Off-screen official-form sections keep their measured space but do
+           not participate in repeated layout/paint work. This is especially
+           important while the shared sidebar animates the content width. */
+        @supports (content-visibility: auto) {
+            .guided-benefit-form .deferred-form-section {
+                content-visibility: auto;
+                contain-intrinsic-size: auto var(--section-intrinsic-height, 220px);
+            }
+        }
+
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=6">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=8">
 </head>
 <body>
     <div class="container">
         <?php include '../partials/barangay_sidebar.php'; ?>
         <div class="main-content">
-            <div class="header" style="display: flex; justify-content: space-between; align-items: center;">
-                <h1 style="color: var(--text);">New Application</h1>
-                
-            </div>
 
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="page-header-left">
+                    <div class="greeting" id="greetingMsg">Welcome back!</div>
+                    <h1>New <span>Application</span></h1>
+                </div>
+                <div class="header-user">
+                    <?php
+                        $profilePic = isset($_SESSION['profile_picture']) ? $_SESSION['profile_picture'] : 'default.jpg';
+                        $profilePicPath = '../images/profile_pictures/' . $profilePic;
+                        if (!file_exists($profilePicPath) || is_dir($profilePicPath)) {
+                            $profilePicPath = '../images/profile_pictures/default.jpg';
+                        }
+                        $barangayDisplay = htmlspecialchars($barangay);
+                    ?>
+                    <img src="<?php echo $profilePicPath; ?>" alt="Profile">
+                    <div class="header-user-info">
+                        <h3><?php echo htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']); ?></h3>
+                        <p><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $_SESSION['role'] ?? 'barangay_staff'))); ?> · <?php echo $barangayDisplay; ?></p>
+                    </div>
+                </div>
+            </div>
 
             <div class="application-form">
                 <?php if (!empty($errorMessage)): ?>
@@ -1579,6 +1706,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                          OSCA OFFICIAL FORM — Burial Assistance
                          Visible only when 'burial' application type is selected
                          ================================================================ -->
+                    <template id="burialOfficialFormCardTemplate">
                     <div id="burialOfficialFormCard" class="guided-benefit-form" style="display:none; margin-bottom:28px;">
                         <div style="
                             background: #fff;
@@ -1853,11 +1981,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             </div><!-- /form body -->
                         </div>
                     </div><!-- /#burialOfficialFormCard -->
+                    </template>
 
                     <!-- ================================================================
                          OSCA OFFICIAL FORM — Home Visitation / Confirmation
                          Visible only when 'home_visit' application type is selected
                          ================================================================ -->
+                    <template id="homeVisitOfficialFormCardTemplate">
                     <div id="homeVisitOfficialFormCard" class="guided-benefit-form" style="display:none; margin-bottom:28px;">
                         <div style="
                             background: #fff;
@@ -2137,11 +2267,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             </div><!-- /form body -->
                         </div>
                     </div><!-- /#homeVisitOfficialFormCard -->
+                    </template>
 
                     <!-- ================================================================
                          OSCA OFFICIAL FORM — Octogenarian / Nonagenarian / Centenarian
                          Visible only when 'milestone_gift' application type is selected
                          ================================================================ -->
+                    <template id="milestoneOfficialFormCardTemplate">
                     <div id="milestoneOfficialFormCard" class="guided-benefit-form" style="display:none; margin-bottom:28px;">
                         <div style="
                             background: #fff;
@@ -2448,11 +2580,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             </div><!-- /form body -->
                         </div>
                     </div><!-- /#milestoneOfficialFormCard -->
+                    </template>
 
                     <!-- ================================================================
                          OSCA OFFICIAL FORM — Local Senior Pension
                          Visible for 'pension' and 'national_pension' types
                          ================================================================ -->
+                    <template id="pensionOfficialFormCardTemplate">
                     <div id="pensionOfficialFormCard" class="guided-benefit-form" style="display:none; margin-bottom:28px;">
                         <div style="
                             background: #fff;
@@ -2578,6 +2712,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                             <input type="number" id="penPensionAmount" min="0" step="0.01" inputmode="decimal" style="width:100%;padding:8px 10px;border:1.5px solid #fdba74;border-radius:7px;font-size:0.88rem;color:#431407;background:#fff;outline:none;" oninput="syncField(this,'pensionAmount');" placeholder="e.g. 3500.00">
                                         </div>
                                     </div>
+                                </div>
+
+                                <!-- Home visitation schedule (Local Pension only) -->
+                                <div id="pensionHomeVisitSchedule" style="display:none;background:#eff6ff;border:1.5px solid #93c5fd;border-radius:12px;padding:14px 16px;margin-bottom:14px;">
+                                    <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#1e3a8a;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+                                        <i class="fas fa-house-medical" style="color:#2563eb;"></i> Home Visitation Schedule
+                                    </div>
+                                    <p style="font-size:0.78rem;color:#1e40af;line-height:1.5;margin:0 0 10px;">
+                                        Select the social worker's visit slot. After submission, SENIORLINK will text the schedule to the cellphone number above.
+                                    </p>
+                                    <label for="homeVisitScheduledAt" style="font-size:0.68rem;font-weight:700;color:#1e3a8a;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:4px;">Visit date and time <span style="color:#dc2626;">*</span></label>
+                                    <input type="datetime-local" id="homeVisitScheduledAt" name="homeVisitScheduledAt" step="1800"
+                                        style="width:100%;max-width:360px;padding:9px 10px;border:1.5px solid #93c5fd;border-radius:7px;font-size:0.88rem;color:#172554;background:#fff;outline:none;">
+                                    <div style="font-size:0.72rem;color:#64748b;margin-top:6px;"><i class="fas fa-clock" style="margin-right:4px;"></i>Monday–Friday, 8:00 AM–4:30 PM; 30-minute slots.</div>
                                 </div>
 
                                 <!-- Economic Status -->
@@ -2724,11 +2872,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             </div><!-- /form body -->
                         </div>
                     </div><!-- /#pensionOfficialFormCard -->
+                    </template>
 
                     <!-- ================================================================
                          OSCA OFFICIAL FORM — Land Bank Cash Card Enrollment
                          Visible only when 'landbank' application type is selected
                          ================================================================ -->
+                    <template id="landbankOfficialFormCardTemplate">
                     <div id="landbankOfficialFormCard" class="guided-benefit-form" style="display:none; margin-bottom:28px;">
                         <div style="
                             background: #fff;
@@ -2943,7 +3093,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             </div><!-- /form body -->
                         </div>
                     </div><!-- /#landbankOfficialFormCard -->
+                    </template>
 
+                    <template id="oscaOfficialFormCardTemplate">
                     <div id="oscaOfficialFormCard" class="guided-benefit-form" style="display:none; margin-bottom:28px;">
                         <div style="
                             background: #fff;
@@ -3318,6 +3470,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             </div><!-- /form body -->
                         </div>
                     </div><!-- /#oscaOfficialFormCard -->
+                    </template>
 
                     <!-- Hidden backing fields — values are synced from the official form preview cards above via syncField() -->
                     <input type="hidden" id="idNumber" name="idNumber" value="<?php echo htmlspecialchars($loadedProxyData['transactionId'] ?? uniqid('APP-')); ?>">
@@ -3440,8 +3593,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <script src="../assets/js/dark-mode.js"></script>
     <script src="../assets/js/osca-form-fields.js"></script>
     <script>
+        /* ─── Greeting ──────────────────────────────────────────── */
+        (function(){
+            const el = document.getElementById('greetingMsg');
+            if (!el) return;
+            const h = new Date().getHours();
+            const g = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+            el.innerHTML = `${g}, <strong><?php echo htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']); ?></strong>!`;
+        })();
+
         const BENEFIT_DETAILS = <?php echo json_encode($benefitDetails, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
         const TYPE_META = {};
+        const OFFICIAL_FORM_CARDS = Object.freeze({
+            senior: 'oscaOfficialFormCard',
+            burial: 'burialOfficialFormCard',
+            home_visit: 'homeVisitOfficialFormCard',
+            milestone_gift: 'milestoneOfficialFormCard',
+            pension: 'pensionOfficialFormCard',
+            national_pension: 'pensionOfficialFormCard',
+            landbank: 'landbankOfficialFormCard'
+        });
         document.querySelectorAll('#appTypeGrid .app-type-card').forEach(card => {
             TYPE_META[card.dataset.value] = {
                 label:  card.dataset.label,
@@ -3453,6 +3624,50 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             };
         });
         let pendingBenefitType = '';
+
+        function ensureOfficialFormCard(type) {
+            const cardId = OFFICIAL_FORM_CARDS[type];
+            if (!cardId) return null;
+
+            const existingCard = document.getElementById(cardId);
+            if (existingCard) return existingCard;
+
+            const template = document.getElementById(cardId + 'Template');
+            if (!template) return null;
+
+            template.parentNode.insertBefore(template.content.cloneNode(true), template);
+            return document.getElementById(cardId);
+        }
+
+        function optimizeOfficialFormSections(card) {
+            if (!card || card.dataset.layoutOptimized === '1') return;
+
+            const cardShell = card.firstElementChild;
+            const shellSections = cardShell ? Array.from(cardShell.children) : [];
+            const formBody = shellSections.reduce((largest, section) => {
+                if (!largest) return section;
+                return section.querySelectorAll('*').length > largest.querySelectorAll('*').length
+                    ? section
+                    : largest;
+            }, null);
+            if (!formBody) return;
+
+            // Measure once before applying containment so every deferred
+            // section preserves its exact initial space without layout jumps.
+            const sections = Array.from(formBody.children);
+            const sectionHeights = sections.map(section =>
+                Math.ceil(section.getBoundingClientRect().height)
+            );
+
+            sections.forEach((section, index) => {
+                const height = sectionHeights[index];
+                if (height > 0) {
+                    section.style.setProperty('--section-intrinsic-height', height + 'px');
+                    section.classList.add('deferred-form-section');
+                }
+            });
+            card.dataset.layoutOptimized = '1';
+        }
 
         function openBenefitModal(value) {
             pendingBenefitType = value;
@@ -3504,10 +3719,49 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             selectAppType(type);
         }
 
+        let proxyScannerAssetsPromise = null;
+
+        function loadProxyScannerAssets() {
+            if (window.Html5Qrcode && document.getElementById('simpleCodeScannerReader')) {
+                return Promise.resolve();
+            }
+            if (proxyScannerAssetsPromise) return proxyScannerAssetsPromise;
+
+            const loadScript = (src) => new Promise((resolve, reject) => {
+                const existing = document.querySelector(`script[data-lazy-src="${src}"]`);
+                if (existing) {
+                    if (existing.dataset.loaded === '1') resolve();
+                    else {
+                        existing.addEventListener('load', resolve, { once: true });
+                        existing.addEventListener('error', reject, { once: true });
+                    }
+                    return;
+                }
+
+                const script = document.createElement('script');
+                script.src = src;
+                script.dataset.lazySrc = src;
+                script.addEventListener('load', () => {
+                    script.dataset.loaded = '1';
+                    resolve();
+                }, { once: true });
+                script.addEventListener('error', reject, { once: true });
+                document.body.appendChild(script);
+            });
+
+            proxyScannerAssetsPromise = loadScript('../assets/js/vendor/html5-qrcode.min.js?v=2.3.8')
+                .then(() => loadScript('../assets/js/simple-code-scanner.js?v=3'));
+            return proxyScannerAssetsPromise;
+        }
+
         function openProxyModal() {
             document.getElementById('proxyModal').style.display = "block";
             document.getElementById('modalError').textContent = "";
             document.getElementById('modalToken').value = "";
+            loadProxyScannerAssets().catch(() => {
+                document.getElementById('modalError').textContent =
+                    'The camera scanner could not load. You can still paste the QR token manually.';
+            });
         }
 
         function setCardSectionInputsState(cardId, enabled) {
@@ -3607,8 +3861,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         document.getElementById('relationshipToDeceased').value = data.relationshipToDeceased;
                     }
 
-                    // Refresh dynamics
-                    toggleFields();
+                    // Refresh validation after the selected form is available.
                     checkAgeCompliance();
                     
                     if (data.applicationType === 'burial') {
@@ -3629,6 +3882,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         function selectAppType(value) {
             // Update hidden input
             document.getElementById('applicationType').value = value;
+            ensureOfficialFormCard(value);
 
             // Highlight selected card + aria
             document.querySelectorAll('#appTypeGrid .app-type-card').forEach(card => {
@@ -3656,29 +3910,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             const formBody = document.getElementById('formBody');
             formBody.classList.add('visible');
 
-            // Scroll smoothly to form
-            setTimeout(() => formBody.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+            // Reveal immediately; animating a very tall form makes the page feel delayed.
+            formBody.scrollIntoView({ behavior: 'auto', block: 'start' });
 
-            // Show/hide OSCA official form cards
-            const oscaCard = document.getElementById('oscaOfficialFormCard');
-            const burialCard = document.getElementById('burialOfficialFormCard');
-            const hvCard = document.getElementById('homeVisitOfficialFormCard');
-            const msCard = document.getElementById('milestoneOfficialFormCard');
-            const penCard = document.getElementById('pensionOfficialFormCard');
-            const lbCard = document.getElementById('landbankOfficialFormCard');
-            if (oscaCard)  oscaCard.style.display  = (value === 'senior')         ? 'block' : 'none';
-            if (burialCard) burialCard.style.display = (value === 'burial')         ? 'block' : 'none';
-            if (hvCard)    hvCard.style.display    = (value === 'home_visit')     ? 'block' : 'none';
-            if (msCard)    msCard.style.display    = (value === 'milestone_gift') ? 'block' : 'none';
-            if (penCard)   penCard.style.display   = (value === 'pension' || value === 'national_pension') ? 'block' : 'none';
-            if (lbCard)    lbCard.style.display    = (value === 'landbank')       ? 'block' : 'none';
-
-            setCardSectionInputsState('oscaOfficialFormCard',  value === 'senior');
-            setCardSectionInputsState('burialOfficialFormCard', value === 'burial');
-            setCardSectionInputsState('homeVisitOfficialFormCard', value === 'home_visit');
-            setCardSectionInputsState('milestoneOfficialFormCard', value === 'milestone_gift');
-            setCardSectionInputsState('pensionOfficialFormCard', value === 'pension' || value === 'national_pension');
-            setCardSectionInputsState('landbankOfficialFormCard', value === 'landbank');
+            const visitSchedule = document.getElementById('pensionHomeVisitSchedule');
+            const visitScheduleInput = document.getElementById('homeVisitScheduledAt');
+            if (visitSchedule && visitScheduleInput) {
+                const isLocalPension = value === 'pension';
+                visitSchedule.style.display = isLocalPension ? 'block' : 'none';
+                visitScheduleInput.disabled = !isLocalPension;
+                visitScheduleInput.required = isLocalPension;
+                if (isLocalPension) {
+                    const earliest = new Date();
+                    earliest.setMinutes(earliest.getMinutes() < 30 ? 30 : 60, 0, 0);
+                    const localIso = new Date(earliest.getTime() - earliest.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+                    visitScheduleInput.min = localIso;
+                }
+            }
 
             // Update pension form title for national pension
             const penTitle = document.getElementById('pensionFormTitle');
@@ -3807,6 +4055,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         function toggleFields() {
             const type = document.getElementById('applicationType').value;
+            ensureOfficialFormCard(type);
 
             document.getElementById('sssNumber')?.removeAttribute('required');
             document.getElementById('dateOfDeath')?.removeAttribute('required');
@@ -3817,23 +4066,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 document.getElementById('relationshipToDeceased')?.setAttribute('required', 'required');
             }
 
-            const cardIds = {
-                senior: 'oscaOfficialFormCard',
-                burial: 'burialOfficialFormCard',
-                home_visit: 'homeVisitOfficialFormCard',
-                milestone_gift: 'milestoneOfficialFormCard',
-                pension: 'pensionOfficialFormCard',
-                national_pension: 'pensionOfficialFormCard',
-                landbank: 'landbankOfficialFormCard'
-            };
-            Object.values(cardIds).forEach(id => {
+            new Set(Object.values(OFFICIAL_FORM_CARDS)).forEach(id => {
                 const card = document.getElementById(id);
                 if (card) card.style.display = 'none';
             });
-            const activeCard = cardIds[type];
+            const activeCard = OFFICIAL_FORM_CARDS[type];
             if (activeCard) {
                 const card = document.getElementById(activeCard);
-                if (card) card.style.display = 'block';
+                if (card) {
+                    card.style.display = 'block';
+                    optimizeOfficialFormSections(card);
+                }
             }
 
             setCardSectionInputsState('oscaOfficialFormCard', type === 'senior');
@@ -4309,13 +4552,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     return;
                 }
             }
+
+            if (type === 'pension') {
+                const visitInput = document.getElementById('homeVisitScheduledAt');
+                const visitDate = visitInput && visitInput.value ? new Date(visitInput.value) : null;
+                if (!visitDate || Number.isNaN(visitDate.getTime())) {
+                    window.showCarelinkResult('Please choose a home visitation schedule.', false);
+                    e.preventDefault();
+                    return;
+                }
+                const day = visitDate.getDay();
+                const hour = visitDate.getHours();
+                const minute = visitDate.getMinutes();
+                if (day === 0 || day === 6 || hour < 8 || hour >= 17 || ![0, 30].includes(minute)) {
+                    window.showCarelinkResult('Home visits must be Monday to Friday, 8:00 AM to 4:30 PM, in 30-minute slots.', false);
+                    e.preventDefault();
+                    return;
+                }
+            }
         });
 
-        // Auto-init: disable all hidden official form card inputs, then restore if a type is preset
+        // Restore a preset application without instantiating every other form.
         (function() {
-            ['oscaOfficialFormCard','burialOfficialFormCard','homeVisitOfficialFormCard','milestoneOfficialFormCard','pensionOfficialFormCard','landbankOfficialFormCard']
-                .forEach(id => setCardSectionInputsState(id, false));
-
             const presetType = document.getElementById('applicationType').value;
             if (presetType) {
                 selectAppType(presetType);
@@ -4336,7 +4594,5 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
     </script>
 <script src="../assets/js/carelink-feedback.js?v=2"></script>
-<script src="../assets/js/vendor/html5-qrcode.min.js?v=2.3.8"></script>
-<script src="../assets/js/simple-code-scanner.js?v=3"></script>
 </body>
 </html>

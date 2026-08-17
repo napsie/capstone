@@ -29,6 +29,7 @@ try {
             barangay,
             date_submitted
         FROM applications
+        WHERE (is_archived = 0 OR is_archived IS NULL)
         ORDER BY 
             CASE WHEN priority_level = 'high' THEN 0 ELSE 1 END,
             date_submitted DESC
@@ -38,28 +39,28 @@ try {
     $response['data']['notifications'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // ── Barangay Records Chart Data ──
-    $stmt = $conn->prepare("SELECT barangay, COUNT(*) as count FROM applications GROUP BY barangay ORDER BY count DESC");
+    $stmt = $conn->prepare("SELECT barangay, COUNT(*) as count FROM applications WHERE (is_archived = 0 OR is_archived IS NULL) GROUP BY barangay ORDER BY count DESC");
     $stmt->execute();
     $response['data']['barangay_records'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // ── Yearly Records Chart Data ──
-    $stmt = $conn->prepare("SELECT YEAR(date_submitted) as year, COUNT(*) as count FROM applications GROUP BY YEAR(date_submitted) ORDER BY year ASC");
+    $stmt = $conn->prepare("SELECT YEAR(date_submitted) as year, COUNT(*) as count FROM applications WHERE (is_archived = 0 OR is_archived IS NULL) GROUP BY YEAR(date_submitted) ORDER BY year ASC");
     $stmt->execute();
     $response['data']['yearly_records'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // ── Stat Cards ──
     // Verified Applications = workflow_state = 'Verified' OR 'Approved' OR 'Released'
-    $stmt = $conn->prepare("SELECT COUNT(*) FROM applications WHERE workflow_state IN ('Verified','Approved','Released')");
+    $stmt = $conn->prepare("SELECT COUNT(*) FROM applications WHERE workflow_state IN ('Verified','Approved','Released') AND (is_archived = 0 OR is_archived IS NULL)");
     $stmt->execute();
     $response['data']['verified_applications'] = (int)$stmt->fetchColumn();
 
     // Senior Citizen Records
-    $stmt = $conn->prepare("SELECT COUNT(*) FROM applications WHERE application_type = 'senior'");
+    $stmt = $conn->prepare("SELECT COUNT(*) FROM applications WHERE application_type = 'senior' AND (is_archived = 0 OR is_archived IS NULL)");
     $stmt->execute();
     $response['data']['senior_citizen_records'] = (int)$stmt->fetchColumn();
 
     // Total Processed
-    $stmt = $conn->prepare("SELECT COUNT(*) FROM applications");
+    $stmt = $conn->prepare("SELECT COUNT(*) FROM applications WHERE (is_archived = 0 OR is_archived IS NULL)");
     $stmt->execute();
     $response['data']['total_processed'] = (int)$stmt->fetchColumn();
 
@@ -67,6 +68,7 @@ try {
     $stmt = $conn->prepare("
         SELECT COALESCE(workflow_state, 'Received') as workflow_state, COUNT(*) as count
         FROM applications
+        WHERE (is_archived = 0 OR is_archived IS NULL)
         GROUP BY workflow_state
     ");
     $stmt->execute();

@@ -24,7 +24,7 @@ $sql = "SELECT a.id_number as id, a.full_name, a.application_type, a.birth_date,
                 ORDER BY h.changed_at DESC LIMIT 1) as return_comments
         FROM applications a";
 $params = [];
-$where_clauses = [];
+$where_clauses = ["(a.is_archived = 0 OR a.is_archived IS NULL)"];
 
 if (!empty($search_query)) {
     $where_clauses[] = "(a.full_name LIKE ? OR a.application_type LIKE ? OR a.complete_address LIKE ?)";
