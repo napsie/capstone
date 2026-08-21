@@ -1,0 +1,100 @@
+.archive-application-row {
+    cursor: pointer;
+    transition: background-color .18s ease, box-shadow .18s ease;
+}
+
+.archive-application-row:hover {
+    background: #eff6ff;
+    box-shadow: inset 4px 0 0 #2563eb;
+}
+
+.archive-application-row:focus-visible {
+    outline: 3px solid rgba(37, 99, 235, 0.28);
+    outline-offset: -3px;
+}
+
+.archive-detail-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 4000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(3, 17, 32, .74);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.archive-detail-overlay.open { display: flex; }
+
+.archive-detail-dialog {
+    width: min(1120px, 100%);
+    max-height: calc(100dvh - 48px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 20px;
+    box-shadow: 0 32px 90px rgba(2, 14, 28, .42);
+}
+
+.archive-detail-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 72px;
+    padding: 16px 20px 16px 24px;
+    color: #fff;
+    background: linear-gradient(135deg, #102f54 0%, #1769aa 72%, #16814b 145%);
+}
+
+.archive-detail-head h2 {
+    margin: 0;
+    font-size: clamp(1rem, 1.8vw, 1.2rem);
+    font-weight: 800;
+    line-height: 1.3;
+}
+
+.archive-detail-close {
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    border: 1px solid rgba(255,255,255,.25);
+    border-radius: 12px;
+    color: #fff;
+    background: rgba(255,255,255,.1);
+    font-size: 1.3rem;
+    cursor: pointer;
+}
+
+.archive-detail-close:hover { background: rgba(255,255,255,.2); }
+.archive-detail-close:focus-visible { outline: 3px solid rgba(125, 211, 252, .65); outline-offset: 2px; }
+
+.archive-detail-body {
+    min-height: 180px;
+    padding: 24px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: #f4f7fb;
+}
+
+.archive-detail-loading,
+.archive-detail-error {
+    padding: 42px 20px;
+    text-align: center;
+    color: #64748b;
+}
+
+.archive-detail-error { color: #b91c1c; }
+
+body.archive-modal-open { overflow: hidden; }
+
+@media (max-width: 640px) {
+    .archive-detail-overlay { padding: 0; align-items: stretch; }
+    .archive-detail-dialog { width: 100vw; max-height: 100dvh; border: 0; border-radius: 0; }
+    .archive-detail-head { min-height: 64px; padding: 10px 12px 10px 16px; }
+    .archive-detail-body { padding: 16px 12px 24px; }
+}

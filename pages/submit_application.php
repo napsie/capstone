@@ -20,9 +20,9 @@ unset($_SESSION['application_submission_notice']);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Queue – Barangay <?php echo $loggedInBarangay; ?></title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=1.1">
+    <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=4">
     <link rel="stylesheet" href="../assets/css/main-dark-mode.css?v=1.1">
-    <link rel="stylesheet" href="../assets/css/application-documents.css?v=6">
+    <link rel="stylesheet" href="../assets/css/application-documents.css?v=7">
     <style>
         /* ─── Variables ─────────────────────────────────────────────────── */
         :root {
@@ -354,7 +354,11 @@ unset($_SESSION['application_submission_notice']);
         /* Footer */
         .page-footer { text-align:center; padding:24px; font-size:0.78rem; color:var(--gray); }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=3">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=13">
+    <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
+    <script src="../assets/js/table-pagination.js?v=1" defer></script>
+    <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
+    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=2">
 </head>
 <body>
 <div class="container">
@@ -438,7 +442,7 @@ unset($_SESSION['application_submission_notice']);
                             <th>Action</th>
                         </tr>
                     </thead>
-                    <tbody id="applicationsTableBody">
+                    <tbody id="applicationsTableBody" data-paginate="10" data-pagination-label="Submitted application pages">
                         <tr><td colspan="9" style="text-align:center; padding: 20px; color:var(--gray);">Loading applications…</td></tr>
                     </tbody>
                 </table>
@@ -452,11 +456,11 @@ unset($_SESSION['application_submission_notice']);
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- Application Detail Modal                                             -->
 <!-- ──────────────────────────────────────────────────────────────────── -->
-<div id="applicationModal" class="modal-overlay">
-    <div class="modal-box">
+<div id="applicationModal" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modalAppTitle">
+    <div class="modal-box" role="document">
         <div class="modal-head">
             <h2><i class="fas fa-file-invoice"></i> <span id="modalAppTitle">Application Profile Details</span></h2>
-            <button class="modal-close" id="closeModalBtn">&times;</button>
+            <button type="button" class="modal-close" id="closeModalBtn" aria-label="Close application details">&times;</button>
         </div>
         <div class="modal-scroller">
 
@@ -695,11 +699,11 @@ unset($_SESSION['application_submission_notice']);
     </div>
 </div>
 
-<script src="../assets/js/sidebar-toggle.js"></script>
+<script src="../assets/js/sidebar-toggle.js?v=3"></script>
 <script src="../assets/js/dark-mode.js"></script>
 <script src="../assets/js/osca-form-fields.js?v=2"></script>
-<script src="../assets/js/application-documents.js?v=6"></script>
-<script src="../assets/js/application-details.js?v=2"></script>
+<script src="../assets/js/application-documents.js?v=7"></script>
+<script src="../assets/js/application-details.js?v=5"></script>
 <script src="../assets/js/carelink-feedback.js?v=2"></script>
 <script src="../assets/js/application-form-generator.js?v=1"></script>
 <script>
@@ -870,7 +874,7 @@ unset($_SESSION['application_submission_notice']);
     function openApplicationModal(appId) {
         currentAppId = appId;
         document.getElementById('applicationDetailForm').reset();
-        document.getElementById('applicationModal').style.display = 'block';
+        document.getElementById('applicationModal').style.display = 'flex';
         document.querySelector('#applicationModal .modal-scroller').scrollTop = 0;
 
         // Clear previews / warning
@@ -1019,22 +1023,8 @@ unset($_SESSION['application_submission_notice']);
                 }
                 document.getElementById('modalFormActions').innerHTML = btns;
 
-                // Audit History
-                let th = '';
-                if (app.history && app.history.length > 0) {
-                    app.history.forEach(log => {
-                        const t = new Date((log.changed_at || '').replace(' ','T')).toLocaleString();
-                        th += `<div class="timeline-event">
-                            <div class="timeline-time">${t}</div>
-                            <div class="timeline-title">${log.previous_state} &rarr; ${log.new_state}</div>
-                            <div class="timeline-by">By: ${log.changed_by}</div>
-                            ${log.comments ? `<div class="timeline-note">&ldquo;${log.comments}&rdquo;</div>` : ''}
-                        </div>`;
-                    });
-                } else {
-                    th = '<p style="color:var(--gray);font-size:0.85rem;font-style:italic;">No transition records logged.</p>';
-                }
-                document.getElementById('timelineList').innerHTML = th;
+                // Paginated Audit History
+                window.renderApplicationAuditHistory(app.history, 'timelineList', { pageSize: 5 });
             })
             .catch(err => { console.error(err); window.showCarelinkResult("Connection or network error: " + err.message, false); });
     }

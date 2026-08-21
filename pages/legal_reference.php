@@ -20,14 +20,14 @@ $sidebarCss = ($role === 'barangay_staff') ? '../assets/css/barangay-sidebar.css
     <title>SENIORLINK — Legal Reference & Compliance</title>
     <meta name="description" content="Key Philippine Senior Citizen Laws: RA 9994, RA 11916, RA 11982 — Legal reference guide for SENIORLINK staff.">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="<?= $sidebarCss ?>?v=1.1">
+    <link rel="stylesheet" href="<?= $sidebarCss ?>?v=4">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
             font-family: 'Inter', 'Segoe UI', sans-serif;
-            background: #f0f4f8;
+            background-color: #f0f4f8;
             color: #1e293b;
             line-height: 1.6;
         }
@@ -76,7 +76,7 @@ $sidebarCss = ($role === 'barangay_staff') ? '../assets/css/barangay-sidebar.css
             flex-shrink: 0;
         }
         .hero-icon i { font-size: 1.9rem; color: #f0c060; }
-        .hero-text h1 { font-size: 1.85rem; font-weight: 800; color: #fff; margin-bottom: 6px; }
+        .hero-text h2 { font-size: 1.35rem; font-weight: 800; color: #fff; margin-bottom: 6px; }
         .hero-text p { font-size: .9rem; color: rgba(255,255,255,0.65); max-width: 600px; }
         .hero-badge {
             margin-left: auto;
@@ -252,7 +252,9 @@ $sidebarCss = ($role === 'barangay_staff') ? '../assets/css/barangay-sidebar.css
             .ra-grid { grid-template-columns: 1fr; }
         }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=3">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=11">
+    <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
+    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=2">
 </head>
 <body>
 <div class="container">
@@ -260,11 +262,36 @@ $sidebarCss = ($role === 'barangay_staff') ? '../assets/css/barangay-sidebar.css
 
     <div class="main-content">
 
-        <!-- Hero Banner -->
+        <!-- Shared Page Header -->
+        <div class="page-header">
+            <div class="page-header-left">
+                <div class="greeting">Welcome back, <strong><?= htmlspecialchars(($_SESSION['first_name'] ?? '') . ' ' . ($_SESSION['last_name'] ?? '')) ?></strong>!</div>
+                <h1>Legal <span>Reference</span></h1>
+            </div>
+            <div class="header-user">
+                <?php
+                    $profilePic = $_SESSION['profile_picture'] ?? 'default.jpg';
+                    $profilePicPath = '../images/profile_pictures/' . $profilePic;
+                    if (!file_exists($profilePicPath) || is_dir($profilePicPath)) {
+                        $profilePicPath = '../images/profile_pictures/default.jpg';
+                    }
+                    $locationLabel = $role === 'barangay_staff'
+                        ? ($_SESSION['barangay'] ?? 'Pasig City')
+                        : 'Pasig City';
+                ?>
+                <img src="<?= htmlspecialchars($profilePicPath) ?>" alt="Profile">
+                <div class="header-user-info">
+                    <h3><?= htmlspecialchars(($_SESSION['first_name'] ?? '') . ' ' . ($_SESSION['last_name'] ?? '')) ?></h3>
+                    <p><?= htmlspecialchars(ucwords(str_replace('_', ' ', $role))) ?> &middot; <?= htmlspecialchars($locationLabel) ?></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Legal overview -->
         <div class="page-hero">
             <div class="hero-icon"><i class="fas fa-balance-scale"></i></div>
             <div class="hero-text">
-                <h1>Legal Reference & Compliance</h1>
+                <h2>Legal Reference &amp; Compliance</h2>
                 <p>Comprehensive overview of the key Philippine Senior Citizen Laws governing SENIORLINK's operations. Use this guide to verify applicant eligibility, benefit rates, and documentary requirements.</p>
             </div>
             <div class="hero-badge"><i class="fas fa-gavel"></i>&nbsp; Philippine Republic Acts</div>
@@ -526,7 +553,7 @@ $sidebarCss = ($role === 'barangay_staff') ? '../assets/css/barangay-sidebar.css
     </div><!-- /main-content -->
 </div><!-- /container -->
 
-<script src="../assets/js/sidebar-toggle.js"></script>
+<script src="../assets/js/sidebar-toggle.js?v=3"></script>
 <script>
 function toggleAccordion(header) {
     const body = header.nextElementSibling;

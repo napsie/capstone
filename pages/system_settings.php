@@ -90,7 +90,7 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>System Settings - SENIORLINK</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=1.1">
+    <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=4">
     <style>
         * {
             margin: 0;
@@ -494,7 +494,9 @@ try {
             }
         }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=3">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=11">
+    <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
+    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=2">
 </head>
 <body>
 <div class="container">
@@ -606,7 +608,7 @@ try {
     </div>
 </div>
 
-<script src="../assets/js/sidebar-toggle.js"></script>
+<script src="../assets/js/sidebar-toggle.js?v=3"></script>
 <script src="../assets/js/dark-mode.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {

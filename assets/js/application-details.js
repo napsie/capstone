@@ -177,6 +177,13 @@
     // Record viewing adds profile facts that are not already in the modal's applicant summary.
     window.renderApplicationRecordDetails = app => wrap([
         applicationIdentity(app, 'Record Reference'),
+        String(app.is_archived) === '1'
+            ? section('fa-box-archive', 'Archive Information', [
+                field('Archive Status', 'Archived', { raw: true }),
+                field('Archived Date', dateTime(app.archived_at), { raw: true }),
+                field('Archived By', app.archived_by)
+            ])
+            : '',
         section('fa-address-card', 'Additional Profile Information', [
             field('Email Address', app.email_address), field('Place of Birth', app.place_of_birth),
             field('Gender', app.gender), field('Civil Status', app.civil_status), field('Nationality', app.nationality),
@@ -188,4 +195,119 @@
             ? section('fa-note-sticky', 'Correction History', [field('Return / Correction Reason', app.return_reason || app.return_comments, { wide: true })])
             : ''
     ]);
+
+    window.renderApplicationAuditHistory = (history, target = 'timelineList', options = {}) => {
+        const container = typeof target === 'string' ? document.getElementById(target) : target;
+        if (!container) return;
+
+        const records = Array.isArray(history) ? [...history].reverse() : [];
+        if (!records.length) {
+            container.innerHTML = '<div class="audit-history-empty"><i class="fas fa-clock-rotate-left" aria-hidden="true"></i><span>No transition history found.</span></div>';
+            return;
+        }
+
+        const requestedPageSize = Number(options.pageSize || 5);
+        const pageSize = Number.isFinite(requestedPageSize) && requestedPageSize > 0 ? Math.floor(requestedPageSize) : 5;
+        const pageCount = Math.ceil(records.length / pageSize);
+        let currentPage = 1;
+
+        const renderPage = () => {
+            const start = (currentPage - 1) * pageSize;
+            const visibleRecords = records.slice(start, start + pageSize);
+            const firstRecord = start + 1;
+            const lastRecord = Math.min(start + pageSize, records.length);
+            const events = visibleRecords.map(log => {
+                const parsedDate = new Date(String(log.changed_at || '').replace(' ', 'T'));
+                const changedAt = Number.isNaN(parsedDate.getTime())
+                    ? display(log.changed_at)
+                    : parsedDate.toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' });
+                return `<div class="timeline-event">
+                    <div class="timeline-time">${escapeHtml(changedAt)}</div>
+                    <div class="timeline-title">${escapeHtml(display(log.previous_state, 'None'))} <span aria-hidden="true">&rarr;</span><span class="sr-only"> to </span> ${escapeHtml(display(log.new_state))}</div>
+                    <div class="timeline-by"><i class="fas fa-user-pen" aria-hidden="true"></i> ${escapeHtml(display(log.changed_by, 'System'))}</div>
+                    ${hasValue(log.comments) ? `<div class="timeline-note">${escapeHtml(log.comments)}</div>` : ''}
+                </div>`;
+            }).join('');
+
+            const pagination = pageCount > 1 ? `<nav class="audit-pagination" aria-label="Audit history pages">
+                <button type="button" class="audit-pagination__button" data-audit-page="previous" ${currentPage === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left" aria-hidden="true"></i> Previous</button>
+                <span class="audit-pagination__page" aria-live="polite">Page ${currentPage} of ${pageCount}</span>
+                <button type="button" class="audit-pagination__button" data-audit-page="next" ${currentPage === pageCount ? 'disabled' : ''}>Next <i class="fas fa-chevron-right" aria-hidden="true"></i></button>
+            </nav>` : '';
+
+            container.innerHTML = `<div class="audit-history-summary"><span>Showing ${firstRecord}&ndash;${lastRecord} of ${records.length} records</span><span>Most recent first</span></div>${events}${pagination}`;
+            container.querySelector('[data-audit-page="previous"]')?.addEventListener('click', () => {
+                currentPage = Math.max(1, currentPage - 1);
+                renderPage();
+                container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            });
+            container.querySelector('[data-audit-page="next"]')?.addEventListener('click', () => {
+                currentPage = Math.min(pageCount, currentPage + 1);
+                renderPage();
+                container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            });
+        };
+
+        renderPage();
+    };
+
+    function enhanceApplicationDialog() {
+        const modal = document.getElementById('applicationModal');
+        if (!modal) return;
+
+        const dialog = modal.querySelector('.modal-box');
+        const closeButton = modal.querySelector('.modal-close');
+        let returnFocus = null;
+        let wasOpen = false;
+
+        if (dialog) dialog.setAttribute('tabindex', '-1');
+        modal.setAttribute('aria-hidden', 'true');
+
+        const isOpen = () => getComputedStyle(modal).display !== 'none';
+        const syncState = () => {
+            const open = isOpen();
+            modal.setAttribute('aria-hidden', open ? 'false' : 'true');
+            document.body.classList.toggle('application-modal-open', open);
+
+            if (open && !wasOpen) {
+                returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+                requestAnimationFrame(() => (closeButton || dialog)?.focus());
+            } else if (!open && wasOpen && returnFocus?.isConnected) {
+                returnFocus.focus();
+            }
+            wasOpen = open;
+        };
+
+        new MutationObserver(syncState).observe(modal, { attributes: true, attributeFilter: ['style', 'class'] });
+        syncState();
+
+        document.addEventListener('keydown', event => {
+            if (!isOpen()) return;
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closeButton?.click();
+                return;
+            }
+            if (event.key !== 'Tab') return;
+
+            const focusable = [...modal.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+                .filter(element => element.offsetParent !== null);
+            if (!focusable.length) return;
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', enhanceApplicationDialog, { once: true });
+    } else {
+        enhanceApplicationDialog();
+    }
 })();

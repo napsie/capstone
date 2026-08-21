@@ -34,7 +34,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && (isset($_POST['deleteUser']) || isse
 
             if (!$isPermanent) {
                 // Soft-delete (archive)
-                $username = $_SESSION['username'] ?? 'System Admin';
+                $username = trim(($_SESSION['first_name'] ?? '') . ' ' . ($_SESSION['last_name'] ?? ''));
+                if ($username === '') $username = $_SESSION['username'] ?? 'System Admin';
                 $stmt = $conn->prepare("UPDATE users SET is_archived = 1, archived_at = NOW(), archived_by = :archived_by WHERE id = :id");
                 $stmt->execute(['archived_by' => $username, 'id' => $id]);
 

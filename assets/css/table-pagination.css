@@ -1,0 +1,50 @@
+.table-pagination__hidden { display: none !important; }
+
+.table-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 14px;
+    padding: 14px 16px;
+    color: #52667d;
+    background: #f8fafc;
+    border: 1px solid #dce5ef;
+    border-radius: 12px;
+}
+
+.table-pagination[hidden] { display: none !important; }
+.table-pagination__summary { font-size: .78rem; font-weight: 750; white-space: nowrap; }
+.table-pagination__controls { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+
+.table-pagination__page {
+    min-width: 40px;
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 8px 11px;
+    color: #17466f;
+    background: #fff;
+    border: 1px solid #c7d4e1;
+    border-radius: 9px;
+    font: inherit;
+    font-size: .77rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.table-pagination__page:hover:not(:disabled),
+.table-pagination__page:focus-visible { color: #fff; background: #1769aa; border-color: #1769aa; }
+.table-pagination__page:focus-visible { outline: 3px solid rgba(37, 99, 235, .2); outline-offset: 2px; }
+.table-pagination__page.is-current { color: #fff; background: #173b67; border-color: #173b67; }
+.table-pagination__page:disabled { color: #9aa9b8; background: #eef2f6; border-color: #d8e0e8; cursor: not-allowed; }
+.table-pagination__direction { min-width: 98px; }
+
+@media (max-width: 620px) {
+    .table-pagination { align-items: stretch; flex-direction: column; padding: 13px; }
+    .table-pagination__summary { text-align: center; }
+    .table-pagination__controls { justify-content: center; flex-wrap: wrap; }
+    .table-pagination__direction { flex: 1 1 110px; }
+}

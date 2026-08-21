@@ -312,7 +312,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SENIORLINK — Edit User</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=1.1">
+    <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=4">
     <style>
         * {
             margin: 0;
@@ -547,7 +547,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
             border: 2px solid #ddd;
         }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=3">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=11">
+    <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
+    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=2">
 </head>
 <body>
    <div class="container">
@@ -743,7 +745,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
             roleSelect.addEventListener('change', toggleBarangayField);
         });
     </script>
-    <script src="../assets/js/sidebar-toggle.js"></script>
+    <script src="../assets/js/sidebar-toggle.js?v=3"></script>
 </body>
 </html>
 <?php else: // If modal=true, only output the form content ?>

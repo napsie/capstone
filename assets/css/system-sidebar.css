@@ -1,0 +1,314 @@
+/* Authoritative sidebar layout shared by Barangay and Department pages. */
+:root {
+    --system-sidebar-expanded: 220px;
+    --system-sidebar-collapsed: 80px;
+}
+
+.system-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: var(--system-sidebar-expanded);
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 18px 14px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    color: #fff;
+    background: linear-gradient(160deg, #0f172a 0%, #173251 100%);
+    border-radius: 0 14px 14px 0;
+    box-shadow: 4px 0 18px rgba(2, 12, 27, .2);
+    scrollbar-color: rgba(255,255,255,.25) transparent;
+    scrollbar-width: thin;
+    transition: width .18s ease-out, padding .18s ease-out;
+    z-index: 1000;
+}
+
+.system-sidebar .sidebar-header {
+    margin: 0;
+    padding: 0;
+}
+
+.system-sidebar .logo {
+    min-height: 58px;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    margin: 0;
+    padding: 0 3px 13px;
+    border-bottom: 1px solid rgba(255,255,255,.12);
+}
+
+.system-sidebar .logo > .logo-image:not(img) {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+}
+
+.system-sidebar .logo img,
+.system-sidebar .logo .logo-image img {
+    width: 42px;
+    height: 42px;
+    max-width: 42px;
+    flex: 0 0 42px;
+    display: block;
+    object-fit: cover;
+    border: 2px solid rgba(255,255,255,.75);
+    border-radius: 10px;
+}
+
+.system-sidebar .logo-text {
+    min-width: 0;
+    margin: 0;
+    color: #fff;
+    font-family: Inter, "Segoe UI", sans-serif;
+    font-size: 1.03rem;
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -.02em;
+    white-space: nowrap;
+}
+
+.system-sidebar .sidebar-toggle-control {
+    width: 100%;
+    min-height: 40px;
+    flex: 0 0 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 0;
+    padding: 8px 10px;
+    color: rgba(255,255,255,.86);
+    background: rgba(255,255,255,.075);
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 9px;
+    font-family: Inter, "Segoe UI", sans-serif;
+    font-size: .7rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.system-sidebar .sidebar-toggle-control:hover {
+    color: #fff;
+    background: rgba(255,255,255,.14);
+    border-color: rgba(255,255,255,.25);
+}
+
+.system-sidebar .sidebar-toggle-control:focus-visible {
+    outline: 3px solid rgba(255,255,255,.32);
+    outline-offset: 2px;
+}
+
+.system-sidebar :is(.nav-links, .sidebar-menu) {
+    min-height: 0;
+    flex: 1 1 auto;
+    margin: 0;
+    padding: 0;
+}
+
+.system-sidebar :is(.nav-links, .sidebar-menu ul) {
+    width: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.system-sidebar :is(.nav-links, .sidebar-menu) li {
+    position: relative;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 9px;
+    transform: none;
+}
+
+.system-sidebar :is(.nav-links, .sidebar-menu) li:hover {
+    background: rgba(255,255,255,.075);
+    transform: none;
+}
+
+.system-sidebar :is(.nav-links, .sidebar-menu) li.active {
+    color: #fff;
+    background: #2386c8;
+    box-shadow: inset 3px 0 0 rgba(255,255,255,.9);
+}
+
+.system-sidebar :is(.nav-links, .sidebar-menu) li.active::before {
+    display: none;
+}
+
+.system-sidebar :is(.nav-links, .sidebar-menu) a {
+    width: 100%;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 10px 12px;
+    color: rgba(255,255,255,.9);
+    border-radius: 9px;
+    font-family: Inter, "Segoe UI", sans-serif;
+    font-size: .95rem;
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: 0;
+    text-decoration: none;
+}
+
+.system-sidebar :is(.nav-links, .sidebar-menu) a:hover,
+.system-sidebar :is(.nav-links, .sidebar-menu) li.active a {
+    color: #fff;
+}
+
+.system-sidebar :is(.nav-links, .sidebar-menu) a:focus-visible {
+    outline: 3px solid rgba(255,255,255,.25);
+    outline-offset: -2px;
+}
+
+.system-sidebar :is(.nav-links, .sidebar-menu) a > i {
+    width: 22px;
+    flex: 0 0 22px;
+    color: inherit;
+    font-size: 1.1rem;
+    text-align: center;
+}
+
+.system-sidebar .link-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.system-sidebar :is(.nav-links, .sidebar-menu) .logout-item {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255,255,255,.13);
+    border-radius: 0;
+}
+
+.system-sidebar :is(.nav-links, .sidebar-menu) .logout-item:hover {
+    background: transparent;
+}
+
+.system-sidebar :is(.nav-links, .sidebar-menu) .logout-item a {
+    color: #fecaca;
+    background: rgba(239,68,68,.08);
+}
+
+.system-sidebar :is(.nav-links, .sidebar-menu) .logout-item a:hover,
+.system-sidebar :is(.nav-links, .sidebar-menu) .logout-item a:focus-visible {
+    color: #fff;
+    background: rgba(239,68,68,.2);
+}
+
+.system-sidebar.collapsed {
+    width: var(--system-sidebar-collapsed);
+    padding-inline: 10px;
+}
+
+.system-sidebar.collapsed .logo {
+    justify-content: center;
+    padding-inline: 0;
+}
+
+.system-sidebar.collapsed .logo img,
+.system-sidebar.collapsed .logo .logo-image img {
+    width: 42px;
+    height: 42px;
+    max-width: 42px;
+}
+
+.system-sidebar.collapsed :is(.logo-text, .link-text, .toggle-label) {
+    display: none;
+}
+
+.system-sidebar.collapsed .sidebar-toggle-control i {
+    transform: rotate(180deg);
+}
+
+.system-sidebar.collapsed :is(.nav-links, .sidebar-menu) a {
+    justify-content: center;
+    gap: 0;
+    padding-inline: 8px;
+}
+
+@media (max-width: 768px) {
+    .system-sidebar,
+    .system-sidebar.collapsed {
+        position: sticky;
+        inset: 0 auto auto 0;
+        width: 100%;
+        height: auto;
+        min-height: 58px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 0;
+        padding: 7px 9px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        border-radius: 0;
+        box-shadow: 0 4px 14px rgba(2, 12, 27, .18);
+    }
+
+    .system-sidebar :is(.logo, .sidebar-header, .sidebar-toggle-control) {
+        display: none;
+    }
+
+    .system-sidebar :is(.nav-links, .sidebar-menu) {
+        width: 100%;
+        min-width: 0;
+        flex: 1 1 auto;
+        overflow-x: auto;
+    }
+
+    .system-sidebar :is(.nav-links, .sidebar-menu ul) {
+        width: max-content;
+        min-height: auto;
+        flex-direction: row;
+        gap: 4px;
+    }
+
+    .system-sidebar :is(.nav-links, .sidebar-menu) li,
+    .system-sidebar :is(.nav-links, .sidebar-menu) .logout-item {
+        width: auto;
+        flex: 0 0 auto;
+        margin: 0;
+        padding-top: 0;
+        border-top: 0;
+    }
+
+    .system-sidebar :is(.nav-links, .sidebar-menu) a,
+    .system-sidebar.collapsed :is(.nav-links, .sidebar-menu) a {
+        min-width: 44px;
+        min-height: 44px;
+        justify-content: center;
+        padding: 9px 11px;
+    }
+
+    .system-sidebar .link-text {
+        display: none;
+    }
+
+    .system-sidebar :is(.nav-links, .sidebar-menu) li.active {
+        box-shadow: inset 0 -3px 0 rgba(255,255,255,.95);
+    }
+
+    body > .container > :is(.main, .main-content),
+    .container > :is(.main, .main-content) {
+        margin-left: 0 !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .system-sidebar {
+        transition: none;
+    }
+}

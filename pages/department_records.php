@@ -67,8 +67,8 @@ function getStatusBadge($status) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Department Records – SENIORLINK</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=1.1">
-    <link rel="stylesheet" href="../assets/css/application-documents.css?v=6">
+    <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=4">
+    <link rel="stylesheet" href="../assets/css/application-documents.css?v=7">
     <style>
         /* ─── Variables ─────────────────────────────────────────────────── */
         :root {
@@ -438,7 +438,9 @@ function getStatusBadge($status) {
         /* Footer */
         .page-footer { text-align:center; padding:24px; font-size:0.78rem; color:var(--gray); }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=3">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=13">
+    <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
+    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=2">
 </head>
 <body>
 <div class="container">
@@ -644,11 +646,11 @@ function getStatusBadge($status) {
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- Application Detail Modal                                             -->
 <!-- ──────────────────────────────────────────────────────────────────── -->
-<div id="applicationModal" class="modal-overlay">
-    <div class="modal-box">
+<div id="applicationModal" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modalAppTitle">
+    <div class="modal-box" role="document">
         <div class="modal-head">
             <h2><i class="fas fa-file-shield"></i> <span id="modalAppTitle">Application Details</span></h2>
-            <button class="modal-close" id="closeModalBtn">&times;</button>
+            <button type="button" class="modal-close" id="closeModalBtn" aria-label="Close application details">&times;</button>
         </div>
         <div class="modal-scroller">
 
@@ -823,9 +825,9 @@ function getStatusBadge($status) {
     </div>
 </div>
 
-<script src="../assets/js/sidebar-toggle.js"></script>
-<script src="../assets/js/application-documents.js?v=6"></script>
-<script src="../assets/js/application-details.js?v=2"></script>
+<script src="../assets/js/sidebar-toggle.js?v=3"></script>
+<script src="../assets/js/application-documents.js?v=7"></script>
+<script src="../assets/js/application-details.js?v=5"></script>
 <script src="../assets/js/carelink-feedback.js?v=2"></script>
 <script src="../assets/js/application-form-generator.js?v=2"></script>
 <script>
@@ -940,7 +942,7 @@ function getStatusBadge($status) {
             if (el) el.className = 'step';
         });
 
-        document.getElementById('applicationModal').style.display = 'block';
+        document.getElementById('applicationModal').style.display = 'flex';
         document.querySelector('#applicationModal .modal-scroller').scrollTop = 0;
 
         fetch(`../api/get_application_details.php?id=${encodeURIComponent(appId)}`)
@@ -1029,22 +1031,8 @@ function getStatusBadge($status) {
                 /* ── All Documents ── */
                 document.getElementById('allDocumentsSection').innerHTML = buildAllDocumentsHtml(app, appId);
 
-                /* ── Timeline ── */
-                let th = '';
-                if (app.history && app.history.length > 0) {
-                    app.history.forEach(log => {
-                        const t = new Date((log.changed_at || '').replace(' ','T')).toLocaleString();
-                        th += `<div class="timeline-event">
-                            <div class="timeline-time">${t}</div>
-                            <div class="timeline-title">${log.previous_state} &rarr; ${log.new_state}</div>
-                            <div class="timeline-by">By: ${log.changed_by}</div>
-                            ${log.comments ? `<div class="timeline-note">&ldquo;${log.comments}&rdquo;</div>` : ''}
-                        </div>`;
-                    });
-                } else {
-                    th = '<p style="color:var(--gray);font-size:0.85rem;">No transition history found.</p>';
-                }
-                document.getElementById('timelineList').innerHTML = th;
+                /* ── Paginated Timeline ── */
+                window.renderApplicationAuditHistory(app.history, 'timelineList', { pageSize: 5 });
             })
             .catch(err => {
                 console.error(err);

@@ -95,6 +95,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['resetPassword'])) {
             align-items: center;
             min-height: 100vh;
             background-color: var(--bg);
+            background-image:
+                linear-gradient(rgba(15, 23, 34, 0.84), rgba(15, 23, 34, 0.88)),
+                url('../images/landing-background-new3.png');
+            background-size: cover;
+            background-position: left bottom;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
             color: var(--text);
         }
         .reset-container {
@@ -156,7 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['resetPassword'])) {
             text-decoration: none;
         }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=3">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=11">
 </head>
 <body>
     <div class="reset-container">

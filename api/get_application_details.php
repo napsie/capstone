@@ -32,6 +32,8 @@ $baseCols = "a.id_number, a.full_name, a.application_type, a.birth_date, a.conta
              a.home_visit_scheduled_at, a.home_visit_status, a.sms_notification_status,
              a.is_proxy_application, a.proxy_name, a.proxy_relationship, a.proxy_contact_number, a.proxy_token,
              a.priority_level, a.workflow_state, a.additional_notes, a.email_address,
+             a.is_archived, a.archived_at,
+             COALESCE((SELECT NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), '') FROM users u WHERE u.username = a.archived_by LIMIT 1), a.archived_by) AS archived_by,
              a.medical_conditions, a.return_reason,
              a.proof_of_address_type, a.id_image_type, a.birth_certificate_type,
              a.medical_certificate_type, a.client_identification_type,
@@ -106,7 +108,19 @@ try {
         $documentsStmt = $conn->prepare('SELECT id, document_key, document_label, mime_type FROM application_documents WHERE application_id = ? ORDER BY id');
         $documentsStmt->execute([$appId]);
     }
-    $application['documents'] = $documentsStmt->fetchAll(PDO::FETCH_ASSOC);
+    // Older databases may contain repeated rows from before the
+    // (application_id, document_key) unique index was introduced. Keep only
+    // the newest copy of each requirement so every details modal presents one
+    // document card per requirement.
+    $documentsByKey = [];
+    foreach ($documentsStmt->fetchAll(PDO::FETCH_ASSOC) as $document) {
+        $key = trim((string)($document['document_key'] ?? ''));
+        if ($key === '') {
+            $key = 'document_' . (string)($document['id'] ?? count($documentsByKey));
+        }
+        $documentsByKey[$key] = $document;
+    }
+    $application['documents'] = array_values($documentsByKey);
 
     echo json_encode($application);
 

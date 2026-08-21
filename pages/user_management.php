@@ -187,7 +187,7 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SENIORLINK — User Management</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=1.1">
+    <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=4">
     <style>
         /* Existing styles remain unchanged */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -262,18 +262,51 @@ try {
             display: none;
         }
 
-        /* Modal Styles */
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
-        .modal-content { background-color: #fefefe; margin: auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 700px; border-radius: 10px; box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19); position: relative; }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e0e0e0; padding-bottom: 10px; margin-bottom: 15px; }
-        .modal-header h2 { margin: 0; color: var(--primary); font-size: 1.5rem; }
-        .modal-header h2 i { margin-right: 10px; color: var(--secondary); }
-        .close-button { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
-        .close-button:hover, .close-button:focus { color: #000; }
-        .modal-body { padding: 10px 0; }
-        #editAlert { display: none; margin-bottom: 15px; }
+        /* Edit user modal */
+        #editUserModal { display: none; position: fixed; z-index: 1000; inset: 0; width: 100%; height: 100%; padding: 24px; overflow: hidden; background: rgba(2, 6, 23, 0.62); justify-content: center; align-items: center; }
+        #editUserModal .modal-content { display: flex; flex-direction: column; width: min(760px, 100%); max-width: 760px; max-height: calc(100dvh - 48px); margin: 0; padding: 0; overflow: hidden; background: #fff; border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 18px; box-shadow: 0 28px 70px rgba(2, 6, 23, 0.3); }
+        #editUserModal .modal-header { display: flex; flex: 0 0 auto; justify-content: space-between; align-items: center; min-height: 76px; margin: 0; padding: 18px 24px; border-bottom: 1px solid #e2e8f0; background: #fff; }
+        #editUserModal .modal-header h2 { display: flex; align-items: center; gap: 12px; margin: 0; color: var(--primary); font-size: 1.35rem; line-height: 1.25; }
+        #editUserModal .modal-header h2 i { display: grid; place-items: center; width: 40px; height: 40px; margin: 0; color: #1d4ed8; background: #eff6ff; border-radius: 10px; }
+        #editUserModal .modal-close { display: grid; place-items: center; width: 40px; min-width: 40px; height: 40px; padding: 0; color: #64748b; background: transparent; border: 0; border-radius: 10px; cursor: pointer; font-size: 1.25rem; transition: background-color .2s ease, color .2s ease; }
+        #editUserModal .modal-close:hover, #editUserModal .modal-close:focus-visible { color: #0f172a; background: #f1f5f9; outline: none; }
+        #editUserModal .modal-body { min-height: 0; padding: 0; overflow: hidden; }
+        #editUserForm { display: flex; flex-direction: column; max-height: calc(100dvh - 125px); }
+        #editUserModal .modal-form-fields { padding: 22px 24px 8px; overflow-y: auto; overscroll-behavior: contain; }
+        #editUserModal .form-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        #editUserModal .form-group { margin-bottom: 16px; }
+        #editUserModal .form-group label { margin-bottom: 7px; font-weight: 650; color: #334155; }
+        #editUserModal .form-group input:not([type="file"]), #editUserModal .form-group select { min-height: 46px; padding: 10px 12px; color: #0f172a; background: #fff; border: 1px solid #cbd5e1; border-radius: 9px; transition: border-color .2s ease, box-shadow .2s ease; }
+        #editUserModal .form-group input:focus, #editUserModal .form-group select:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, .12); outline: none; }
+        #editUserModal .profile-upload { display: grid; grid-template-columns: 72px minmax(0, 1fr); align-items: center; gap: 16px; padding: 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; }
+        #editUserModal .profile-upload .profile-picture-preview { width: 72px; height: 72px; margin: 0; padding: 2px; border-width: 1px; box-shadow: 0 2px 8px rgba(15, 23, 42, .1); }
+        #editUserModal .profile-upload input[type="file"] { width: 100%; background: #fff; }
+        #editUserModal .field-help { display: block; margin-top: 6px; color: #64748b; font-size: 12px; line-height: 1.4; }
+        #editAlert { display: none; margin: 18px 24px 0; }
+        #editUserModal .modal-actions { display: flex; flex: 0 0 auto; justify-content: flex-end; gap: 10px; margin: 0; padding: 16px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; }
+        #editUserModal .modal-actions .btn { display: inline-flex; align-items: center; justify-content: center; min-width: 122px; min-height: 44px; padding: 10px 18px; border-radius: 9px; font-size: 14px; font-weight: 700; }
+        #editUserModal .modal-actions .btn-secondary { color: #334155; background: #fff; border: 1px solid #cbd5e1; }
+        #editUserModal .modal-actions .btn-secondary:hover { background: #f1f5f9; }
+
+        @media (max-width: 640px) {
+            #editUserModal { padding: 0 !important; align-items: stretch !important; }
+            #editUserModal .modal-content { height: 100dvh; max-height: 100dvh !important; overflow: hidden !important; border-radius: 0 !important; }
+            #editUserModal .modal-header { min-height: 68px; padding: 14px 16px !important; }
+            #editUserModal .modal-body { max-height: none !important; padding: 0 !important; overflow: hidden !important; }
+            #editUserForm { max-height: calc(100dvh - 70px); }
+            #editUserModal .modal-form-fields { padding: 18px 16px 6px; }
+            #editUserModal .form-row { grid-template-columns: minmax(0, 1fr); gap: 0; }
+            #editUserModal .profile-upload { grid-template-columns: 60px minmax(0, 1fr); gap: 12px; }
+            #editUserModal .profile-upload .profile-picture-preview { width: 60px; height: 60px; }
+            #editUserModal .modal-actions { padding: 14px 16px; }
+            #editUserModal .modal-actions .btn { flex: 1 1 0; min-width: 0; }
+        }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=3">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=11">
+    <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
+    <script src="../assets/js/table-pagination.js?v=1" defer></script>
+    <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
+    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=2">
 </head>
 <body>
    <div class="container">
@@ -405,7 +438,7 @@ try {
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="usersTableBody">
+                        <tbody id="usersTableBody" data-paginate="10" data-pagination-label="User account pages">
                             <?php foreach ($users as $user): ?>
                                 <tr>
                                     <td>
@@ -439,43 +472,53 @@ try {
         </div>
     </div>
 
-    <!-- Edit User Modal (structure remains the same) -->
-    <div id="editUserModal" class="modal">
+    <!-- Edit User Modal -->
+    <div id="editUserModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="editUserModalTitle">
         <div class="modal-content">
             <div class="modal-header">
-                <h2><i class="fas fa-user-edit"></i> Edit User</h2>
-                <span class="close-button">&times;</span>
+                <h2 id="editUserModalTitle"><i class="fas fa-user-edit" aria-hidden="true"></i> Edit User</h2>
+                <button type="button" class="modal-close" aria-label="Close edit user dialog"><i class="fas fa-times" aria-hidden="true"></i></button>
             </div>
             <div class="modal-body">
                 <div id="editAlert" class="error"></div>
                 <form id="editUserForm" method="post" enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                     <input type="hidden" name="id" id="editUserId">
-                    <!-- Form fields for edit modal -->
-                    <div class="form-row">
-                        <div class="form-group"><label for="editFirstName">First Name</label><input type="text" id="editFirstName" name="firstName" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')" required></div>
-                        <div class="form-group"><label for="editLastName">Last Name</label><input type="text" id="editLastName" name="lastName" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')" required></div>
+                    <div class="modal-form-fields">
+                        <div class="form-row">
+                            <div class="form-group"><label for="editFirstName">First Name</label><input type="text" id="editFirstName" name="firstName" autocomplete="given-name" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')" required></div>
+                            <div class="form-group"><label for="editLastName">Last Name</label><input type="text" id="editLastName" name="lastName" autocomplete="family-name" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')" required></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label for="editEmail">Email</label><input type="email" id="editEmail" name="email" autocomplete="email" required></div>
+                            <div class="form-group"><label for="editUsername">Username</label><input type="text" id="editUsername" name="username" autocomplete="username" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')" required></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label for="editRole">Role</label><select id="editRole" name="role" required><option value="department_admin">Administrator</option><option value="barangay_staff">Barangay Staff</option></select></div>
+                            <div class="form-group" id="editBarangayFormGroup"><label for="editBarangay">Barangay</label><select id="editBarangay" name="barangay"><option value="">Select barangay...</option><?php foreach ($barangays_list as $b): ?><option value="<?php echo htmlspecialchars($b); ?>"><?php echo htmlspecialchars($b); ?></option><?php endforeach; ?></select></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="editProfilePicture">Profile Picture <span class="field-help" style="display:inline;">(optional)</span></label>
+                            <div class="profile-upload">
+                                <img id="editProfilePicturePreview" class="profile-picture-preview" src="../images/LOGO.jpg" alt="Current profile picture">
+                                <div>
+                                    <input type="file" id="editProfilePicture" name="profile_picture" accept="image/png,image/jpeg,image/gif">
+                                    <span class="field-help">JPG, PNG, or GIF. Choose a file to replace the current photo.</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label for="editNewPassword">New Password</label><input type="password" id="editNewPassword" name="newPassword" autocomplete="new-password"><span class="field-help">Leave blank to keep the current password.</span></div>
+                            <div class="form-group"><label for="editConfirmPassword">Confirm New Password</label><input type="password" id="editConfirmPassword" name="confirmPassword" autocomplete="new-password"></div>
+                        </div>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group"><label for="editEmail">Email</label><input type="email" id="editEmail" name="email" required></div>
-                        <div class="form-group"><label for="editUsername">Username</label><input type="text" id="editUsername" name="username" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')" required></div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group"><label for="editRole">Role</label><select id="editRole" name="role" required><option value="department_admin">Administrator</option><option value="barangay_staff">Barangay Staff</option></select></div>
-                        <div class="form-group" id="editBarangayFormGroup"><label for="editBarangay">Barangay</label><select id="editBarangay" name="barangay"><option value="">Select barangay...</option><?php foreach ($barangays_list as $b): ?><option value="<?php echo htmlspecialchars($b); ?>"><?php echo htmlspecialchars($b); ?></option><?php endforeach; ?></select></div>
-                    </div>
-                    <div class="form-group"><label for="editProfilePicture">Profile Picture (optional)</label><input type="file" id="editProfilePicture" name="profile_picture" accept="image/*"><img id="editProfilePicturePreview" class="profile-picture-preview" src="../images/LOGO.jpg" alt="Profile picture preview"></div>
-                    <div class="form-row">
-                        <div class="form-group"><label for="editNewPassword">New Password (leave blank to keep)</label><input type="password" id="editNewPassword" name="newPassword"></div>
-                        <div class="form-group"><label for="editConfirmPassword">Confirm New Password</label><input type="password" id="editConfirmPassword" name="confirmPassword"></div>
-                    </div>
-                    <div class="actions"><button type="submit" name="updateUser" class="btn btn-success">Update User</button><button type="button" class="btn close-button">Cancel</button></div>
+                    <div class="modal-actions"><button type="button" class="btn btn-secondary modal-cancel">Cancel</button><button type="submit" name="updateUser" class="btn btn-success"><i class="fas fa-check" aria-hidden="true"></i>&nbsp; Update User</button></div>
                 </form>
             </div>
         </div>
     </div>
 
-    <script src="../assets/js/sidebar-toggle.js"></script>
+    <script src="../assets/js/sidebar-toggle.js?v=3"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         function initializeWelcomeMessage() {
@@ -652,7 +695,7 @@ try {
         // --- Edit User Modal Logic ---
         const editUserModal = document.getElementById('editUserModal');
         const editUserForm = document.getElementById('editUserForm');
-        const closeButtons = document.querySelectorAll('.close-button');
+        const closeButtons = editUserModal.querySelectorAll('.modal-close, .modal-cancel');
         const usersTableBody = document.getElementById('usersTableBody');
         const editAlert = document.getElementById('editAlert');
 
@@ -688,6 +731,8 @@ try {
                                 document.getElementById('editConfirmPassword').value = '';
                                 toggleBarangayField(editRoleSelect, editBarangayGroup);
                                 editUserModal.style.display = 'flex';
+                                document.body.style.overflow = 'hidden';
+                                document.getElementById('editFirstName').focus();
                             } else {
                                 window.showCarelinkResult('Error: ' + data.message, false);
                             }
@@ -735,16 +780,33 @@ try {
             });
         }
 
-        closeButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                if(editUserModal) editUserModal.style.display = 'none';
-            });
-        });
+        function closeEditUserModal() {
+            if (!editUserModal) return;
+            editUserModal.style.display = 'none';
+            document.body.style.overflow = '';
+            editUserForm.reset();
+        }
+
+        closeButtons.forEach(btn => btn.addEventListener('click', closeEditUserModal));
 
         window.addEventListener('click', function(event) {
             if (event.target == editUserModal) {
-                editUserModal.style.display = 'none';
+                closeEditUserModal();
             }
+        });
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' && editUserModal.style.display === 'flex') closeEditUserModal();
+        });
+
+        const editProfilePictureInput = document.getElementById('editProfilePicture');
+        const editProfilePicturePreview = document.getElementById('editProfilePicturePreview');
+        editProfilePictureInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = event => { editProfilePicturePreview.src = event.target.result; };
+            reader.readAsDataURL(file);
         });
     });
     </script>

@@ -47,7 +47,8 @@ if (isset($_POST['id'])) {
 
         if (!$isPermanent) {
             // Soft delete (archive) by default
-            $username = $_SESSION['username'] ?? 'Unknown User';
+            $username = trim(($_SESSION['first_name'] ?? '') . ' ' . ($_SESSION['last_name'] ?? ''));
+            if ($username === '') $username = $_SESSION['username'] ?? 'Unknown User';
             $stmt = $conn->prepare("UPDATE applications SET is_archived = 1, archived_at = NOW(), archived_by = ? WHERE $where");
             $updateParams = array_merge([$username], $params);
             

@@ -256,6 +256,13 @@ try {
         'home_visit_scheduled_at'    => ($driver === 'pgsql' ? "TIMESTAMP DEFAULT NULL" : "DATETIME DEFAULT NULL"),
         'home_visit_status'          => "VARCHAR(30) DEFAULT NULL",
         'sms_notification_status'    => "VARCHAR(30) DEFAULT NULL",
+        'home_visit_eligibility'     => "VARCHAR(20) DEFAULT NULL",
+        'home_visit_eligibility_reason' => "VARCHAR(255) DEFAULT NULL",
+        'home_visit_personnel_id'    => "INT DEFAULT NULL",
+        'home_visit_assessed_by'     => "INT DEFAULT NULL",
+        'home_visit_assessed_at'     => ($driver === 'pgsql' ? "TIMESTAMP DEFAULT NULL" : "DATETIME DEFAULT NULL"),
+        'home_visit_notes'           => "TEXT DEFAULT NULL",
+        'home_visit_completed_at'    => ($driver === 'pgsql' ? "TIMESTAMP DEFAULT NULL" : "DATETIME DEFAULT NULL"),
         'is_archived'                => "TINYINT(1) DEFAULT 0",
         'archived_at'                => ($driver === 'pgsql' ? "TIMESTAMP DEFAULT NULL" : "DATETIME DEFAULT NULL"),
         'archived_by'                => "VARCHAR(100) DEFAULT NULL",
@@ -383,6 +390,91 @@ try {
             sent_at TIMESTAMP NULL DEFAULT NULL,
             INDEX idx_sms_application (application_id),
             INDEX idx_sms_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    }
+
+    // Field personnel can be assigned to visits without requiring a system login.
+    if ($driver === 'pgsql') {
+        $conn->exec("CREATE TABLE IF NOT EXISTS home_visit_personnel (
+            id SERIAL PRIMARY KEY,
+            full_name VARCHAR(150) NOT NULL,
+            position VARCHAR(100) DEFAULT NULL,
+            contact_number VARCHAR(30) DEFAULT NULL,
+            barangay VARCHAR(100) DEFAULT NULL,
+            is_active INT NOT NULL DEFAULT 1,
+            created_by INT DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )");
+    } else {
+        $conn->exec("CREATE TABLE IF NOT EXISTS home_visit_personnel (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            full_name VARCHAR(150) NOT NULL,
+            position VARCHAR(100) DEFAULT NULL,
+            contact_number VARCHAR(30) DEFAULT NULL,
+            barangay VARCHAR(100) DEFAULT NULL,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            created_by INT DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_visit_personnel_active (is_active),
+            INDEX idx_visit_personnel_barangay (barangay)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    }
+
+    // Physical document transmittals are tracked as batches with item-level receipt results.
+    if ($driver === 'pgsql') {
+        $conn->exec("CREATE TABLE IF NOT EXISTS hardcopy_batches (
+            id SERIAL PRIMARY KEY,
+            batch_code VARCHAR(40) NOT NULL UNIQUE,
+            barangay VARCHAR(100) NOT NULL,
+            handover_date DATE NOT NULL,
+            status VARCHAR(30) NOT NULL DEFAULT 'Draft',
+            submitted_by_name VARCHAR(150) NOT NULL,
+            created_by_user_id INT NOT NULL,
+            released_at TIMESTAMP DEFAULT NULL,
+            received_by_user_id INT DEFAULT NULL,
+            received_at TIMESTAMP DEFAULT NULL,
+            remarks TEXT DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )");
+        $conn->exec("CREATE TABLE IF NOT EXISTS hardcopy_batch_items (
+            id SERIAL PRIMARY KEY,
+            batch_id INT NOT NULL,
+            application_id VARCHAR(255) NOT NULL,
+            document_status VARCHAR(30) NOT NULL DEFAULT 'Pending',
+            remarks TEXT DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(batch_id, application_id)
+        )");
+    } else {
+        $conn->exec("CREATE TABLE IF NOT EXISTS hardcopy_batches (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            batch_code VARCHAR(40) NOT NULL UNIQUE,
+            barangay VARCHAR(100) NOT NULL,
+            handover_date DATE NOT NULL,
+            status VARCHAR(30) NOT NULL DEFAULT 'Draft',
+            submitted_by_name VARCHAR(150) NOT NULL,
+            created_by_user_id INT NOT NULL,
+            released_at DATETIME DEFAULT NULL,
+            received_by_user_id INT DEFAULT NULL,
+            received_at DATETIME DEFAULT NULL,
+            remarks TEXT DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_hardcopy_barangay (barangay),
+            INDEX idx_hardcopy_status (status),
+            INDEX idx_hardcopy_handover (handover_date)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        $conn->exec("CREATE TABLE IF NOT EXISTS hardcopy_batch_items (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            batch_id INT NOT NULL,
+            application_id VARCHAR(255) NOT NULL,
+            document_status VARCHAR(30) NOT NULL DEFAULT 'Pending',
+            remarks TEXT DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_hardcopy_batch_item (batch_id, application_id),
+            INDEX idx_hardcopy_item_application (application_id),
+            CONSTRAINT fk_hardcopy_item_batch FOREIGN KEY (batch_id) REFERENCES hardcopy_batches(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     }
 

@@ -1,9 +1,16 @@
 <?php
 session_start();
 require_once 'includes/db_connect.php';
+require_once 'includes/audit_logger.php';
 
 // Logout logic
 if (isset($_GET['logout']) && $_GET['logout'] == 'true') {
+    if (isset($_SESSION['user_id'])) {
+        $logoutRole = ucwords(str_replace('_', ' ', (string)($_SESSION['role'] ?? 'user')));
+        $logoutLocation = !empty($_SESSION['barangay']) ? " for Barangay {$_SESSION['barangay']}" : '';
+        logAudit($conn, 'LOGOUT', "Logged out as {$logoutRole}{$logoutLocation}.");
+    }
+
     // Clear session variables
     $_SESSION = array();
     session_destroy();
@@ -26,16 +33,18 @@ if (isset($_GET['logout']) && $_GET['logout'] == 'true') {
 
 // Check for remember me cookie (new secure one)
 if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
-    list($selector, $validator) = explode(':', $_COOKIE['remember_me']);
+    $rememberParts = explode(':', (string)$_COOKIE['remember_me'], 2);
+    $selector = $rememberParts[0] ?? '';
+    $validator = $rememberParts[1] ?? '';
 
     $stmt = $conn->prepare("SELECT * FROM remember_tokens WHERE selector = :selector AND expires > NOW()");
     $stmt->execute(['selector' => $selector]);
     $token = $stmt->fetch();
 
-    if ($token) {
+    if ($token && $validator !== '') {
         if (hash_equals($token['validator_hash'], hash('sha256', $validator))) {
             // Token is valid, log in the user
-            $stmt = $conn->prepare("SELECT * FROM users WHERE id = :id");
+            $stmt = $conn->prepare("SELECT * FROM users WHERE id = :id AND (is_archived = 0 OR is_archived IS NULL)");
             $stmt->execute(['id' => $token['user_id']]);
             $user = $stmt->fetch();
 
@@ -45,6 +54,7 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
                 $_SESSION['first_name'] = $user['first_name'];
                 $_SESSION['last_name'] = $user['last_name'];
                 $_SESSION['role'] = $user['role'];
+                $_SESSION['barangay'] = $user['barangay'];
                 $_SESSION['profile_picture'] = $user['profile_picture'];
 
                 // Regenerate token to prevent theft
@@ -60,6 +70,12 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
                 ]);
 
                 setcookie('remember_me', $selector . ':' . $newValidator, time() + (86400 * 30), "/", "", false, true);
+
+                $rememberedRole = $user['role'] === 'barangay_staff' ? 'Barangay Staff' : 'Department Administrator';
+                $rememberedLocation = $user['role'] === 'barangay_staff' ? " for Barangay {$user['barangay']}" : '';
+                if (logAudit($conn, 'LOGIN', "Restored remembered login as {$rememberedRole}{$rememberedLocation}.")) {
+                    $_SESSION['login_audit_recorded'] = true;
+                }
 
                 if ($user['role'] === 'barangay_staff') {
                     header("Location: pages/Barangay_Dash.php");
@@ -122,9 +138,9 @@ header('Expires: 0');
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/loading-spinner.css">
-    <link rel="stylesheet" href="assets/css/carelink-theme.css?v=4">
-    <link rel="stylesheet" href="assets/css/landing.css?v=4">
-    <link rel="stylesheet" href="assets/css/seniorlink-ui.css?v=3">
+    <link rel="stylesheet" href="assets/css/carelink-theme.css?v=5">
+    <link rel="stylesheet" href="assets/css/landing.css?v=8">
+    <link rel="stylesheet" href="assets/css/seniorlink-ui.css?v=11">
 </head>
 <body>
     <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -132,46 +148,62 @@ header('Expires: 0');
     <div class="page-bg page-bg--root" aria-hidden="true"></div>
 
     <header class="site-header">
-        <div class="brand">
-            <img class="brand-logo" src="images/LOGO.jpg" alt="SENIORLINK logo">
-            <div class="brand-text">
-                <h1>SENIORLINK</h1>
-                <p>Centralized Profiling System</p>
-            </div>
+        <div class="site-header-inner">
+            <a class="brand" href="index.php" aria-label="SENIORLINK home">
+                <img class="brand-logo" src="images/LOGO.jpg" alt="SENIORLINK logo">
+                <div class="brand-text">
+                    <h1>SENIORLINK</h1>
+                    <p>Centralized Profiling System</p>
+                </div>
+            </a>
+            <nav class="site-nav" aria-label="Main navigation">
+                <a href="#" id="aboutLink" aria-haspopup="dialog">About</a>
+                <a href="pages/signup.php" class="btn-primary">
+                    <span>Sign Up</span>
+                    <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                </a>
+            </nav>
         </div>
-        <nav class="site-nav" aria-label="Main navigation">
-            <a href="#" id="aboutLink" aria-haspopup="dialog">About</a>
-            <a href="pages/signup.php" class="btn-primary">Sign Up</a>
-        </nav>
     </header>
 
     <div class="landing-wrapper">
         <div id="main-content" class="landing-main">
         <section class="hero-content" aria-labelledby="hero-title">
+            <span class="hero-kicker">City of Pasig</span>
             <div class="hero-badge">
                 <i class="fas fa-shield-alt" aria-hidden="true"></i>
                 Government Services Portal
             </div>
             <h2 id="hero-title">Secure profiling for <span>Seniors &amp; Community Members</span></h2>
             <p class="hero-sub">SENIORLINK is a centralized profiling and record authentication system for efficient government service delivery.</p>
-            <p class="hero-audience">
-                <i class="fas fa-users" aria-hidden="true"></i>
-                Built for senior citizens and eligible residents
-            </p>
+            <div class="hero-assurance" aria-label="System features">
+                <span><i class="fas fa-lock" aria-hidden="true"></i> Secure access</span>
+                <span><i class="fas fa-database" aria-hidden="true"></i> Centralized records</span>
+                <span><i class="fas fa-check-circle" aria-hidden="true"></i> Verified profiles</span>
+            </div>
         </section>
 
         <section class="portal-panel" aria-labelledby="portal-heading">
             <div class="portal-panel-header">
-                <h3 id="portal-heading">Select your portal</h3>
-                <p>Choose the login option that matches your role</p>
+                <div>
+                    <span class="portal-eyebrow">Get started</span>
+                    <h3 id="portal-heading">Choose your portal</h3>
+                    <p>Select the workspace that matches your role.</p>
+                </div>
+                <span class="portal-security" title="Secure role-based access">
+                    <i class="fas fa-shield-alt" aria-hidden="true"></i>
+                    Secure
+                </span>
             </div>
             <div class="portal-cards">
                 <a href="pages/Barangay_Staff_LogInPage.php" class="portal-card" id="staffCard"
                    aria-label="Barangay Staff login — register beneficiaries and manage local records">
+                    <span class="portal-card-number" aria-hidden="true">01</span>
                     <div class="portal-card-icon staff" aria-hidden="true">
                         <i class="fas fa-user-shield"></i>
                     </div>
                     <div class="portal-card-body">
+                        <span class="portal-role">Local operations</span>
                         <h4>Barangay Staff</h4>
                         <p>Register beneficiaries, capture applicant photos, and manage local records.</p>
                     </div>
@@ -182,10 +214,12 @@ header('Expires: 0');
 
                 <a href="pages/Department_Admin_LogIn_Page.php" class="portal-card" id="adminCard"
                    aria-label="Department Admin login — oversee operations and monitor authentication">
+                    <span class="portal-card-number" aria-hidden="true">02</span>
                     <div class="portal-card-icon admin" aria-hidden="true">
                         <i class="fas fa-user-cog"></i>
                     </div>
                     <div class="portal-card-body">
+                        <span class="portal-role">Citywide oversight</span>
                         <h4>Department Admin</h4>
                         <p>Oversee system operations, generate reports, and monitor authentication.</p>
                     </div>
@@ -196,10 +230,12 @@ header('Expires: 0');
 
                 <a href="pages/proxy_registration.php" class="portal-card" id="proxyCard"
                    aria-label="Representative pre-registration for bedridden seniors">
+                    <span class="portal-card-number" aria-hidden="true">03</span>
                     <div class="portal-card-icon proxy" aria-hidden="true">
                         <i class="fas fa-qrcode"></i>
                     </div>
                     <div class="portal-card-body">
+                        <span class="portal-role">Public service</span>
                         <h4>Representative Pre-Registration</h4>
                         <p>Pre-register for bedridden seniors and get a priority queue QR token.</p>
                     </div>
@@ -212,7 +248,7 @@ header('Expires: 0');
         </div>
 
         <footer class="site-footer">
-            <p>&copy; 2025 SENIORLINK — Centralized Profiling System. All Rights Reserved.</p>
+            <p>&copy; <?= date('Y') ?> SENIORLINK <span aria-hidden="true">&bull;</span> Centralized Profiling System</p>
         </footer>
     </div>
 

@@ -2,17 +2,20 @@
 session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/barangays_list.php';
+require_once '../includes/audit_logger.php';
 
 if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
-    list($selector, $validator) = explode(':', $_COOKIE['remember_me']);
+    $rememberParts = explode(':', (string)$_COOKIE['remember_me'], 2);
+    $selector = $rememberParts[0] ?? '';
+    $validator = $rememberParts[1] ?? '';
 
-    $stmt = $conn->prepare("SELECT * FROM remember_tokens WHERE selector = :selector");
+    $stmt = $conn->prepare("SELECT * FROM remember_tokens WHERE selector = :selector AND expires > NOW()");
     $stmt->execute(['selector' => $selector]);
     $token = $stmt->fetch();
 
-    if ($token) {
+    if ($token && $validator !== '') {
         if (hash_equals($token['validator_hash'], hash('sha256', $validator))) {
-            $stmt = $conn->prepare("SELECT * FROM users WHERE id = :id");
+            $stmt = $conn->prepare("SELECT * FROM users WHERE id = :id AND role = 'barangay_staff' AND (is_archived = 0 OR is_archived IS NULL)");
             $stmt->execute(['id' => $token['user_id']]);
             $user = $stmt->fetch();
 
@@ -23,6 +26,7 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
                 $_SESSION['last_name'] = $user['last_name'];
                 $_SESSION['role'] = $user['role'];
                 $_SESSION['barangay'] = $user['barangay'];
+                $_SESSION['profile_picture'] = $user['profile_picture'];
 
                 $newValidator = bin2hex(random_bytes(32));
                 $newValidatorHash = hash('sha256', $newValidator);
@@ -36,6 +40,9 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
                 ]);
 
                 setcookie('remember_me', $selector . ':' . $newValidator, time() + (86400 * 30), "/", "", false, true);
+                if (logAudit($conn, 'LOGIN', "Restored remembered login as Barangay Staff for Barangay {$user['barangay']}.")) {
+                    $_SESSION['login_audit_recorded'] = true;
+                }
                 header("Location: Barangay_Dash.php");
                 exit;
             }
@@ -56,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $error = 'Please fill in all fields.';
     } else {
         try {
-            $stmt = $conn->prepare("SELECT * FROM users WHERE username = :username AND barangay = :barangay AND role = 'barangay_staff'");
+            $stmt = $conn->prepare("SELECT * FROM users WHERE username = :username AND barangay = :barangay AND role = 'barangay_staff' AND (is_archived = 0 OR is_archived IS NULL)");
             $stmt->execute(['username' => $staffId, 'barangay' => $barangay]);
             $user = $stmt->fetch();
 
@@ -86,9 +93,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     setcookie('remember_me', $selector . ':' . $validator, time() + (86400 * 30), "/", "", false, true);
                 }
 
+                if (logAudit($conn, 'LOGIN', "Logged in as Barangay Staff for Barangay {$user['barangay']}.")) {
+                    $_SESSION['login_audit_recorded'] = true;
+                }
                 header("Location: Barangay_Dash.php");
                 exit;
             } else {
+                logAudit($conn, 'FAILED_LOGIN', "Failed Barangay Staff login attempt for username '{$staffId}' in Barangay {$barangay}.", $user ? (int)$user['id'] : null, [
+                    'username' => $staffId ?: 'Unknown',
+                    'role' => 'barangay_staff',
+                    'barangay' => $barangay,
+                ]);
                 $error = 'Invalid Staff ID, password, or barangay.';
             }
         } catch (PDOException $e) {
@@ -107,8 +122,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/carelink-theme.css?v=3">
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=3">
+    <link rel="stylesheet" href="../assets/css/carelink-theme.css?v=7">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=11">
 </head>
 <body class="auth-page">
     <div class="page-bg page-bg--pages" aria-hidden="true"></div>
@@ -121,8 +136,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <div class="auth-container">
         <div class="auth-card">
             <div class="auth-card-header">
-                <div class="auth-icon staff" aria-hidden="true">
-                    <i class="fas fa-user-shield"></i>
+                <div class="auth-header-topline">
+                    <div class="auth-icon staff" aria-hidden="true">
+                        <i class="fas fa-user-shield"></i>
+                    </div>
+                    <span class="auth-eyebrow">Secure staff access</span>
                 </div>
                 <h1>Barangay Staff Login</h1>
                 <p>Access your local records and beneficiary management system</p>
@@ -142,7 +160,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <label for="staffPassword">Password</label>
                     <div class="password-field">
                         <input type="password" id="staffPassword" name="password" class="form-control" placeholder="Enter your password" required>
-                        <i class="fas fa-eye toggle-password" id="toggleStaffPassword" aria-hidden="true"></i>
+                        <button type="button" class="toggle-password" id="toggleStaffPassword" aria-label="Show password" aria-pressed="false">
+                            <i class="fas fa-eye" aria-hidden="true"></i>
+                        </button>
                     </div>
                 </div>
 
@@ -194,7 +214,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         toggleStaffPassword.addEventListener('click', function () {
             const type = staffPassword.getAttribute('type') === 'password' ? 'text' : 'password';
             staffPassword.setAttribute('type', type);
-            this.classList.toggle('fa-eye-slash');
+            const isVisible = type === 'text';
+            this.querySelector('i').classList.toggle('fa-eye-slash', isVisible);
+            this.setAttribute('aria-pressed', String(isVisible));
+            this.setAttribute('aria-label', isVisible ? 'Hide password' : 'Show password');
         });
 
         const forgotPasswordLink = document.querySelector('.forgot-password a');

@@ -1,17 +1,20 @@
 <?php
 session_start();
 require_once '../includes/db_connect.php';
+require_once '../includes/audit_logger.php';
 
 if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
-    list($selector, $validator) = explode(':', $_COOKIE['remember_me']);
+    $rememberParts = explode(':', (string)$_COOKIE['remember_me'], 2);
+    $selector = $rememberParts[0] ?? '';
+    $validator = $rememberParts[1] ?? '';
 
     $stmt = $conn->prepare("SELECT * FROM remember_tokens WHERE selector = :selector AND expires > NOW()");
     $stmt->execute(['selector' => $selector]);
     $token = $stmt->fetch();
 
-    if ($token) {
+    if ($token && $validator !== '') {
         if (hash_equals($token['validator_hash'], hash('sha256', $validator))) {
-            $stmt = $conn->prepare("SELECT * FROM users WHERE id = :id");
+            $stmt = $conn->prepare("SELECT * FROM users WHERE id = :id AND role = 'department_admin' AND (is_archived = 0 OR is_archived IS NULL)");
             $stmt->execute(['id' => $token['user_id']]);
             $user = $stmt->fetch();
 
@@ -22,6 +25,7 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
                 $_SESSION['last_name'] = $user['last_name'];
                 $_SESSION['role'] = $user['role'];
                 $_SESSION['barangay'] = $user['barangay'];
+                $_SESSION['profile_picture'] = $user['profile_picture'];
 
                 $newValidator = bin2hex(random_bytes(32));
                 $newValidatorHash = hash('sha256', $newValidator);
@@ -35,6 +39,9 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
                 ]);
 
                 setcookie('remember_me', $selector . ':' . $newValidator, time() + (86400 * 30), "/", "", false, true);
+                if (logAudit($conn, 'LOGIN', 'Restored remembered login as Department Administrator.')) {
+                    $_SESSION['login_audit_recorded'] = true;
+                }
                 header("Location: Department_Dashboard.php");
                 exit;
             }
@@ -54,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $error = 'Please fill in all fields.';
     } else {
         try {
-            $stmt = $conn->prepare("SELECT * FROM users WHERE username = :username AND role = 'department_admin'");
+            $stmt = $conn->prepare("SELECT * FROM users WHERE username = :username AND role = 'department_admin' AND (is_archived = 0 OR is_archived IS NULL)");
             $stmt->execute(['username' => $username]);
             $user = $stmt->fetch();
 
@@ -84,9 +91,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     setcookie('remember_me', $selector . ':' . $validator, time() + (86400 * 30), "/", "", false, true);
                 }
 
+                if (logAudit($conn, 'LOGIN', 'Logged in as Department Administrator.')) {
+                    $_SESSION['login_audit_recorded'] = true;
+                }
                 header("Location: Department_Dashboard.php");
                 exit;
             } else {
+                logAudit($conn, 'FAILED_LOGIN', "Failed Department Administrator login attempt for username '{$username}'.", $user ? (int)$user['id'] : null, [
+                    'username' => $username ?: 'Unknown',
+                    'role' => 'department_admin',
+                    'barangay' => null,
+                ]);
                 $error = 'Invalid username or password.';
             }
         } catch (PDOException $e) {
@@ -105,8 +120,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/carelink-theme.css?v=3">
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=3">
+    <link rel="stylesheet" href="../assets/css/carelink-theme.css?v=7">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=11">
 </head>
 <body class="auth-page">
     <div class="page-bg page-bg--pages" aria-hidden="true"></div>
@@ -119,8 +134,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <div class="auth-container">
         <div class="auth-card">
             <div class="auth-card-header">
-                <div class="auth-icon admin" aria-hidden="true">
-                    <i class="fas fa-user-cog"></i>
+                <div class="auth-header-topline">
+                    <div class="auth-icon admin" aria-hidden="true">
+                        <i class="fas fa-user-cog"></i>
+                    </div>
+                    <span class="auth-eyebrow">Secure administrator access</span>
                 </div>
                 <h1>Department Admin Login</h1>
                 <p>Access system administration and management tools</p>
@@ -140,7 +158,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <label for="adminPassword">Password</label>
                     <div class="password-field">
                         <input type="password" id="adminPassword" name="adminPassword" class="form-control" placeholder="Enter admin password" required>
-                        <i class="fas fa-eye toggle-password" id="toggleAdminPassword" aria-hidden="true"></i>
+                        <button type="button" class="toggle-password" id="toggleAdminPassword" aria-label="Show password" aria-pressed="false">
+                            <i class="fas fa-eye" aria-hidden="true"></i>
+                        </button>
                     </div>
                 </div>
 
@@ -182,7 +202,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         toggleAdminPassword.addEventListener('click', function () {
             const type = adminPassword.getAttribute('type') === 'password' ? 'text' : 'password';
             adminPassword.setAttribute('type', type);
-            this.classList.toggle('fa-eye-slash');
+            const isVisible = type === 'text';
+            this.querySelector('i').classList.toggle('fa-eye-slash', isVisible);
+            this.setAttribute('aria-pressed', String(isVisible));
+            this.setAttribute('aria-label', isVisible ? 'Hide password' : 'Show password');
         });
 
         const forgotPasswordLink = document.querySelector('.forgot-password a');

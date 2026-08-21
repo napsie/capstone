@@ -63,10 +63,25 @@
     flex-direction: column;
     gap: 18px;
     z-index: 1000;
-    transition: width 0.3s, box-shadow 0.3s;
+    transition: width 0.18s ease-out;
     border-top-right-radius: 15px;
     border-bottom-right-radius: 15px;
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3); /* Synced */
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,.28) transparent;
+}
+
+body {
+    background-color: #f5f7fa;
+    background-image:
+        linear-gradient(rgba(245, 247, 250, 0.91), rgba(238, 244, 249, 0.93)),
+        url('../../images/landing-background-new3.png');
+    background-size: cover;
+    background-position: left bottom;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
 }
 
 .sidebar .logo {
@@ -154,7 +169,7 @@
     margin-left: var(--sidebar-width);
     padding: 20px;
     min-height: 100vh;
-    transition: margin-left 0.3s;
+    transition: margin-left 0.18s ease-out;
     flex: 1;
     width: 100%;
 }
@@ -223,6 +238,44 @@
 
 .main-content.collapsed {
     margin-left: 80px;
+}
+
+.sidebar-toggle-control {
+    width: 100%;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    padding: 8px 10px;
+    color: rgba(255,255,255,.88);
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 9px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .14s ease, border-color .14s ease;
+}
+
+.sidebar-toggle-control:hover {
+    background: rgba(255,255,255,.15);
+    border-color: rgba(255,255,255,.25);
+}
+
+.sidebar-toggle-control:focus-visible {
+    outline: 3px solid rgba(255,255,255,.32);
+    outline-offset: 2px;
+}
+
+.sidebar-toggle-control i { transition: transform .18s ease; }
+.sidebar.collapsed .sidebar-toggle-control i { transform: rotate(180deg); }
+.sidebar.collapsed .sidebar-toggle-control { padding-inline: 6px; }
+.sidebar.collapsed .toggle-label { display: none; }
+
+@media (max-width: 768px) {
+    .sidebar-toggle-control { display: none; }
 }
 
 .btn {

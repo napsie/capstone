@@ -28,6 +28,63 @@ $highPCount    = $queueStats['high_priority_count'] ?? 0;
 $forReviewC    = $queueStats['for_review'] ?? 0;
 $verifiedC     = $queueStats['verified'] ?? 0;
 
+// Verification queue filters
+$queueFilters = [
+    'search'    => trim((string)($_GET['search'] ?? '')),
+    'type'      => trim((string)($_GET['type'] ?? 'all')),
+    'barangay'  => trim((string)($_GET['barangay'] ?? 'all')),
+    'priority'  => trim((string)($_GET['priority'] ?? 'all')),
+];
+
+$applicationTypeOptions = getApplicationTypeOptions();
+
+if ($queueFilters['type'] !== 'all' && !array_key_exists($queueFilters['type'], $applicationTypeOptions)) {
+    $queueFilters['type'] = 'all';
+}
+if ($queueFilters['barangay'] !== 'all' && !in_array($queueFilters['barangay'], $barangays_list, true)) {
+    $queueFilters['barangay'] = 'all';
+}
+if (!in_array($queueFilters['priority'], ['all', 'high', 'normal'], true)) {
+    $queueFilters['priority'] = 'all';
+}
+
+$queueConditions = [
+    "COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') NOT IN ('Approved', 'Released')",
+    '(is_archived = 0 OR is_archived IS NULL)',
+];
+$queueParams = [];
+
+if ($queueFilters['search'] !== '') {
+    $queueConditions[] = '(full_name LIKE :queue_search OR id_number LIKE :queue_search)';
+    $queueParams['queue_search'] = '%' . $queueFilters['search'] . '%';
+}
+if ($queueFilters['type'] !== 'all') {
+    $queueConditions[] = 'application_type = :queue_type';
+    $queueParams['queue_type'] = $queueFilters['type'];
+}
+if ($queueFilters['barangay'] !== 'all') {
+    $queueConditions[] = 'barangay = :queue_barangay';
+    $queueParams['queue_barangay'] = $queueFilters['barangay'];
+}
+if ($queueFilters['priority'] !== 'all') {
+    $queueConditions[] = "COALESCE(NULLIF(priority_level, ''), 'normal') = :queue_priority";
+    $queueParams['queue_priority'] = $queueFilters['priority'];
+}
+
+$queueSql = "SELECT id_number as id, full_name, application_type, barangay, date_submitted, status, workflow_state, priority_level,
+                    COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') AS effective_state
+             FROM applications
+             WHERE " . implode(' AND ', $queueConditions) . "
+             ORDER BY CASE WHEN priority_level = 'high' THEN 0 ELSE 1 END, date_submitted DESC";
+$queueStmt = $conn->prepare($queueSql);
+$queueStmt->execute($queueParams);
+$result = $queueStmt->fetchAll(PDO::FETCH_ASSOC);
+$filteredQueueCount = count($result);
+$hasQueueFilters = $queueFilters['search'] !== ''
+    || $queueFilters['type'] !== 'all'
+    || $queueFilters['barangay'] !== 'all'
+    || $queueFilters['priority'] !== 'all';
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -36,8 +93,8 @@ $verifiedC     = $queueStats['verified'] ?? 0;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SENIORLINK — Document Verification Terminal</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=1.1">
-    <link rel="stylesheet" href="../assets/css/application-documents.css?v=6">
+    <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=4">
+    <link rel="stylesheet" href="../assets/css/application-documents.css?v=7">
     <style>
         /* ─── Variables ─────────────────────────────────────────────────── */
         :root {
@@ -142,6 +199,36 @@ $verifiedC     = $queueStats['verified'] ?? 0;
         .queue-card-header h2 i { color: #60a5fa; }
         .queue-export-btn { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.38); color:#fff; }
         .queue-export-btn:hover { background:rgba(255,255,255,.22); color:#fff; }
+
+        /* Queue filters */
+        .queue-filters { padding: 20px 24px; background: #f8fafc; border-bottom: 1px solid var(--border); }
+        .queue-filter-grid { display: grid; grid-template-columns: minmax(240px, 1.5fr) repeat(3, minmax(160px, 1fr)); gap: 14px; align-items: end; }
+        .queue-filter-field { min-width: 0; }
+        .queue-filter-field label { display: block; margin-bottom: 6px; color: #64748b; font-size: .72rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+        .queue-filter-field input, .queue-filter-field select { width: 100%; min-height: 42px; padding: 9px 11px; color: #0f172a; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; font: inherit; font-size: .84rem; }
+        .queue-filter-field input:focus, .queue-filter-field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37, 99, 235, .1); outline: none; }
+        .queue-search-wrap { position: relative; }
+        .queue-search-wrap i { position: absolute; top: 50%; left: 12px; color: #94a3b8; transform: translateY(-50%); pointer-events: none; }
+        .queue-search-wrap input { padding-left: 36px; }
+        .queue-filter-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; }
+        .queue-result-count { color: #64748b; font-size: .82rem; }
+        .queue-result-count strong { color: #0f172a; }
+        .queue-filter-buttons { display: flex; min-height: 40px; gap: 9px; }
+        .queue-filter-buttons .btn { min-height: 40px; text-decoration: none; }
+        .btn-filter-clear { color: #475569; background: #fff; border: 1px solid #cbd5e1; }
+        .btn-filter-clear:hover { color: #0f172a; background: #f1f5f9; }
+        .table-wrap.is-filtering { opacity: .55; pointer-events: none; transition: opacity .15s ease; }
+
+        @media (max-width: 1180px) {
+            .queue-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 720px) {
+            .queue-filters { padding: 16px; }
+            .queue-filter-grid { grid-template-columns: minmax(0, 1fr); }
+            .queue-filter-actions { align-items: stretch; flex-direction: column; }
+            .queue-filter-buttons { width: 100%; }
+            .queue-filter-buttons .btn { flex: 1 1 0; justify-content: center; }
+        }
 
         /* Priority badge */
         .priority-badge {
@@ -376,7 +463,11 @@ $verifiedC     = $queueStats['verified'] ?? 0;
         /* Footer */
         .page-footer { text-align:center; padding:24px; font-size:0.78rem; color:var(--gray); }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=3">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=13">
+    <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
+    <script src="../assets/js/table-pagination.js?v=1" defer></script>
+    <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
+    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=2">
 </head>
 <body>
 <div class="container">
@@ -447,6 +538,52 @@ $verifiedC     = $queueStats['verified'] ?? 0;
                 </button>
             </div>
 
+            <form class="queue-filters" id="queueFilterForm" method="GET" action="verify_document.php" aria-label="Filter verification queue">
+                <div class="queue-filter-grid">
+                    <div class="queue-filter-field">
+                        <label for="queueSearch">Search applicant or ID</label>
+                        <div class="queue-search-wrap">
+                            <i class="fas fa-search" aria-hidden="true"></i>
+                            <input type="search" id="queueSearch" name="search" value="<?php echo htmlspecialchars($queueFilters['search']); ?>" placeholder="Name or application ID">
+                        </div>
+                    </div>
+                    <div class="queue-filter-field">
+                        <label for="queueType">Application Type</label>
+                        <select id="queueType" name="type">
+                            <option value="all">All Types</option>
+                            <?php foreach ($applicationTypeOptions as $value => $label): ?>
+                                <option value="<?php echo htmlspecialchars($value); ?>" <?php echo $queueFilters['type'] === $value ? 'selected' : ''; ?>><?php echo htmlspecialchars(applicationTypeLabel($value)); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="queue-filter-field">
+                        <label for="queueBarangay">Barangay</label>
+                        <select id="queueBarangay" name="barangay">
+                            <option value="all">All Barangays</option>
+                            <?php foreach ($barangays_list as $barangay): ?>
+                                <option value="<?php echo htmlspecialchars($barangay); ?>" <?php echo $queueFilters['barangay'] === $barangay ? 'selected' : ''; ?>><?php echo htmlspecialchars($barangay); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="queue-filter-field">
+                        <label for="queuePriority">Priority</label>
+                        <select id="queuePriority" name="priority">
+                            <option value="all" <?php echo $queueFilters['priority'] === 'all' ? 'selected' : ''; ?>>All Priorities</option>
+                            <option value="high" <?php echo $queueFilters['priority'] === 'high' ? 'selected' : ''; ?>>High Priority</option>
+                            <option value="normal" <?php echo $queueFilters['priority'] === 'normal' ? 'selected' : ''; ?>>Normal Priority</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="queue-filter-actions">
+                    <div class="queue-result-count" id="queueResultCount" aria-live="polite">
+                        Showing <strong><?php echo number_format($filteredQueueCount); ?></strong> of <strong><?php echo number_format((int)$totalQCount); ?></strong> active applications
+                    </div>
+                    <div class="queue-filter-buttons">
+                        <a class="btn btn-filter-clear" id="clearQueueFilters" href="verify_document.php" <?php echo $hasQueueFilters ? '' : 'hidden'; ?>><i class="fas fa-rotate-left"></i> Clear Filters</a>
+                    </div>
+                </div>
+            </form>
+
             <!-- Table -->
             <div class="table-wrap">
                 <table class="records-tbl">
@@ -461,22 +598,14 @@ $verifiedC     = $queueStats['verified'] ?? 0;
                             <th>Action</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody data-paginate="10" data-pagination-label="Verification queue pages">
                         <?php
-                        $sql = "SELECT id_number as id, full_name, application_type, barangay, date_submitted, status, workflow_state, priority_level,
-                                       COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') AS effective_state
-                                FROM applications
-                                WHERE COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') NOT IN ('Approved', 'Released')
-                                ORDER BY CASE WHEN priority_level = 'high' THEN 0 ELSE 1 END, date_submitted DESC";
-                        $stmt = $conn->prepare($sql);
-                        $stmt->execute();
-                        $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                        
                         if (count($result) === 0): ?>
                             <tr><td colspan="7">
                                 <div class="empty-state">
-                                    <i class="fas fa-folder-open"></i>
-                                    <p>No active applications in the review queue</p>
+                                    <i class="fas fa-<?php echo $hasQueueFilters ? 'filter-circle-xmark' : 'folder-open'; ?>"></i>
+                                    <p><?php echo $hasQueueFilters ? 'No applications match the selected filters' : 'No active applications in the review queue'; ?></p>
+                                    <?php if ($hasQueueFilters): ?><a class="btn btn-filter-clear" href="verify_document.php">Clear all filters</a><?php endif; ?>
                                 </div>
                             </td></tr>
                         <?php else:
@@ -531,11 +660,11 @@ $verifiedC     = $queueStats['verified'] ?? 0;
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- Application Detail Modal                                             -->
 <!-- ──────────────────────────────────────────────────────────────────── -->
-<div id="applicationModal" class="modal-overlay">
-    <div class="modal-box">
+<div id="applicationModal" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modalAppTitle">
+    <div class="modal-box" role="document">
         <div class="modal-head">
             <h2><i class="fas fa-file-shield"></i> <span id="modalAppTitle">Review Application Profile</span></h2>
-            <button class="modal-close" id="closeModalBtn">&times;</button>
+            <button type="button" class="modal-close" id="closeModalBtn" aria-label="Close application details">&times;</button>
         </div>
         <div class="modal-scroller">
 
@@ -710,9 +839,9 @@ $verifiedC     = $queueStats['verified'] ?? 0;
     </div>
 </div>
 
-<script src="../assets/js/sidebar-toggle.js"></script>
-<script src="../assets/js/application-documents.js?v=6"></script>
-<script src="../assets/js/application-details.js?v=2"></script>
+<script src="../assets/js/sidebar-toggle.js?v=3"></script>
+<script src="../assets/js/application-documents.js?v=7"></script>
+<script src="../assets/js/application-details.js?v=5"></script>
 <script src="../assets/js/carelink-feedback.js?v=2"></script>
 <script src="../assets/js/application-form-generator.js?v=2"></script>
 <script>
@@ -728,6 +857,80 @@ $verifiedC     = $queueStats['verified'] ?? 0;
     let currentWorkflowStatus = 'Received';
 
     document.addEventListener('DOMContentLoaded', function() {
+        const queueFilterForm = document.getElementById('queueFilterForm');
+        const queueSearch = document.getElementById('queueSearch');
+        const clearQueueFilters = document.getElementById('clearQueueFilters');
+        let filterTimer = null;
+        let filterRequest = null;
+
+        function hasActiveQueueFilters() {
+            return queueSearch.value.trim() !== ''
+                || document.getElementById('queueType').value !== 'all'
+                || document.getElementById('queueBarangay').value !== 'all'
+                || document.getElementById('queuePriority').value !== 'all';
+        }
+
+        async function refreshVerificationQueue() {
+            if (filterRequest) filterRequest.abort();
+            const requestController = new AbortController();
+            filterRequest = requestController;
+
+            const params = new URLSearchParams(new FormData(queueFilterForm));
+            params.set('search', queueSearch.value.trim());
+            for (const [key, value] of [...params.entries()]) {
+                if (value === '' || value === 'all') params.delete(key);
+            }
+
+            const url = new URL(queueFilterForm.action, window.location.href);
+            url.search = params.toString();
+            const tableWrap = document.querySelector('.queue-card > .table-wrap');
+            tableWrap.classList.add('is-filtering');
+            tableWrap.setAttribute('aria-busy', 'true');
+
+            try {
+                const response = await fetch(url, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    signal: requestController.signal
+                });
+                if (!response.ok) throw new Error('Unable to load filtered records.');
+
+                const html = await response.text();
+                const nextDocument = new DOMParser().parseFromString(html, 'text/html');
+                const nextTableBody = nextDocument.querySelector('.records-tbl tbody');
+                const nextResultCount = nextDocument.getElementById('queueResultCount');
+                if (!nextTableBody || !nextResultCount) throw new Error('Invalid filter response.');
+
+                document.querySelector('.records-tbl tbody').innerHTML = nextTableBody.innerHTML;
+                document.getElementById('queueResultCount').innerHTML = nextResultCount.innerHTML;
+                clearQueueFilters.hidden = !hasActiveQueueFilters();
+                window.history.replaceState({}, '', url);
+            } catch (error) {
+                if (error.name !== 'AbortError') window.location.assign(url);
+            } finally {
+                if (!requestController.signal.aborted) {
+                    tableWrap.classList.remove('is-filtering');
+                    tableWrap.removeAttribute('aria-busy');
+                }
+            }
+        }
+
+        queueFilterForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            refreshVerificationQueue();
+        });
+        queueSearch.addEventListener('input', function() {
+            window.clearTimeout(filterTimer);
+            filterTimer = window.setTimeout(refreshVerificationQueue, 350);
+        });
+        ['queueType', 'queueBarangay', 'queuePriority'].forEach(id => {
+            document.getElementById(id).addEventListener('change', refreshVerificationQueue);
+        });
+        clearQueueFilters.addEventListener('click', function(event) {
+            event.preventDefault();
+            queueFilterForm.reset();
+            refreshVerificationQueue();
+        });
+
         const recordsTable = document.querySelector('.records-tbl');
         recordsTable.addEventListener('click', function(e) {
             const btn = e.target.closest('.view-details-btn');
@@ -823,7 +1026,7 @@ $verifiedC     = $queueStats['verified'] ?? 0;
             if (el) el.className = 'step';
         });
 
-        document.getElementById('applicationModal').style.display = 'block';
+        document.getElementById('applicationModal').style.display = 'flex';
         document.querySelector('#applicationModal .modal-scroller').scrollTop = 0;
 
         fetch(`../api/get_application_details.php?id=${encodeURIComponent(appId)}`)
@@ -978,22 +1181,8 @@ $verifiedC     = $queueStats['verified'] ?? 0;
                     btnReturn.style.display = 'none';
                 }
 
-                /* ── Timeline ── */
-                let th = '';
-                if (app.history && app.history.length > 0) {
-                    app.history.forEach(log => {
-                        const t = new Date((log.changed_at || '').replace(' ','T')).toLocaleString();
-                        th += `<div class="timeline-event">
-                            <div class="timeline-time">${t}</div>
-                            <div class="timeline-title">${log.previous_state} &rarr; ${log.new_state}</div>
-                            <div class="timeline-by">By: ${log.changed_by}</div>
-                            ${log.comments ? `<div class="timeline-note">&ldquo;${log.comments}&rdquo;</div>` : ''}
-                        </div>`;
-                    });
-                } else {
-                    th = '<p style="color:var(--gray);font-size:0.85rem;">No transition history logged.</p>';
-                }
-                document.getElementById('timelineList').innerHTML = th;
+                /* ── Paginated Timeline ── */
+                window.renderApplicationAuditHistory(app.history, 'timelineList', { pageSize: 5 });
             })
             .catch(err => {
                 console.error(err);

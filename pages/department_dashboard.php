@@ -1,6 +1,19 @@
 <?php
 session_start();
 require_once '../includes/db_connect.php';
+require_once '../includes/audit_logger.php';
+
+if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'department_admin') {
+    header('Location: ../index.php');
+    exit;
+}
+
+// Backfill one audit event for sessions established before login auditing was enabled.
+if (empty($_SESSION['login_audit_recorded'])) {
+    if (logAudit($conn, 'LOGIN', 'Active Department Administrator session confirmed.')) {
+        $_SESSION['login_audit_recorded'] = true;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -9,7 +22,7 @@ require_once '../includes/db_connect.php';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Centralized Profiling and Record Authentication System</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=1.1">
+    <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=4">
     <style>
         :root {
             --primary: #0f172a;
@@ -555,9 +568,12 @@ require_once '../includes/db_connect.php';
             }
         }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=3">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=11">
+    <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
+    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=2">
+    <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=3">
 </head>
-<body>
+<body class="dashboard-page department-dashboard">
     <div class="container">
         <?php include '../partials/department_sidebar.php'; ?>
         
@@ -587,64 +603,80 @@ require_once '../includes/db_connect.php';
                     </div>
                 </div>
             </div>
+
+            <section class="dashboard-command-bar" aria-labelledby="departmentOverviewTitle">
+                <div class="command-copy">
+                    <span class="command-eyebrow"><i class="fas fa-building-columns" aria-hidden="true"></i> Citywide administration</span>
+                    <h2 id="departmentOverviewTitle">Operations at a glance</h2>
+                    <p>Monitor all barangays, verify submitted documents, and resolve records that require department action.</p>
+                </div>
+                <nav class="dashboard-quick-actions" aria-label="Department quick actions">
+                    <a class="quick-action primary" href="verify_document.php"><i class="fas fa-file-circle-check" aria-hidden="true"></i><span><strong>Verify documents</strong><small>Open review workspace</small></span></a>
+                    <a class="quick-action" href="department_records.php"><i class="fas fa-database" aria-hidden="true"></i><span><strong>Citywide records</strong><small>Browse all barangays</small></span></a>
+                    <a class="quick-action" href="field_operations.php#batches"><i class="fas fa-boxes-stacked" aria-hidden="true"></i><span><strong>Hardcopy batches</strong><small>Confirm submissions</small></span></a>
+                </nav>
+            </section>
             
             <!-- Stats Cards -->
             <div class="stats-container">
-                <div class="stat-card">
+                <a class="stat-card stat-card-link stat-blue" href="verify_document.php" aria-label="Open verified applications and document review">
                     <div class="stat-icon bg-primary">
                         <i class="fas fa-check-circle"></i>
                     </div>
                     <div class="stat-info">
                         <h3>142</h3>
-                        <p>Verified Applications</p>
+                        <p>Verified applications</p><small>Review document activity</small>
                     </div>
-                </div>
+                    <i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i>
+                </a>
                 
-                <div class="stat-card">
+                <a class="stat-card stat-card-link stat-green" href="department_records.php" aria-label="Open senior citizen records from all barangays">
                     <div class="stat-icon bg-success">
                         <i class="fas fa-user-check"></i>
                     </div>
                     <div class="stat-info">
                         <h3>89</h3>
-                        <p>Senior Citizen Records</p>
+                        <p>Senior citizen records</p><small>Browse citywide profiles</small>
                     </div>
-                </div>
+                    <i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i>
+                </a>
                 
-                <div class="stat-card">
+                <a class="stat-card stat-card-link stat-violet" href="department_records.php" aria-label="Open all processed records">
                     <div class="stat-icon bg-danger">
                         <i class="fas fa-chart-line"></i>
                     </div>
                     <div class="stat-info">
                         <h3>1,284</h3>
-                        <p>Total Processed</p>
+                        <p>Total processed</p><small>View complete workload</small>
                     </div>
-                </div>
+                    <i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i>
+                </a>
             </div>
             
-            <h2 style="color: var(--primary); margin-bottom: 20px;">Application Statistics</h2>
+            <div class="dashboard-section-heading"><div><span>Citywide performance</span><h2>Application insights</h2><p>Compare barangay activity and track long-term record trends.</p></div></div>
             <div class="dashboard-panels">
                         <div class="left-panel">
                             <div class="charts-container">
                                 <div class="chart-card">
-                                    <h3><i class="fas fa-chart-bar"></i> Barangay Records Chart</h3>
-                                    <div class="chart-wrapper"><canvas id="barangayRecordsChart"></canvas></div>
+                                    <h3><span><i class="fas fa-chart-bar"></i> Records by barangay</span><small>Compare verified records across Pasig City</small></h3>
+                                    <div class="chart-wrapper"><canvas id="barangayRecordsChart" aria-label="Chart comparing records across barangays" role="img">Barangay records chart</canvas></div>
                                 </div>
                                 <div class="chart-card">
-                                    <h3><i class="fas fa-chart-bar"></i> Yearly Records Chart</h3>
-                                    <div class="chart-wrapper"><canvas id="yearlyRecordsChart"></canvas></div>
+                                    <h3><span><i class="fas fa-chart-line"></i> Yearly records</span><small>Record growth and processing trends over time</small></h3>
+                                    <div class="chart-wrapper"><canvas id="yearlyRecordsChart" aria-label="Chart of yearly records and processing trends" role="img">Yearly records chart</canvas></div>
                                 </div>
                             </div>
                         </div>
         
                         <div class="right-panel">
                             <div class="calendar-card">
-                                <h2 id="current-time"></h2>
-                                <h3><i class="fas fa-calendar-alt"></i> Calendar</h3>
+                                <h2 id="current-time" aria-live="polite"></h2>
+                                <h3><span><i class="fas fa-calendar-alt"></i> Calendar</span><small>Navigate dates and schedules</small></h3>
                                 <div class="calendar-body">
                                     <div class="calendar-header">
-                                        <button id="prev-month"><i class="fas fa-chevron-left"></i></button>
+                                        <button id="prev-month" type="button" aria-label="Show previous month"><i class="fas fa-chevron-left"></i></button>
                                         <span id="month-year"></span>
-                                        <button id="next-month"><i class="fas fa-chevron-right"></i></button>
+                                        <button id="next-month" type="button" aria-label="Show next month"><i class="fas fa-chevron-right"></i></button>
                                     </div>
                                     <table class="calendar-table">
                                         <thead><tr><th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th></tr></thead>
@@ -653,8 +685,8 @@ require_once '../includes/db_connect.php';
                                 </div>
                             </div>
                             <div class="notifications-card recent-apps-card">
-                                <h3><i class="fas fa-bell"></i> Recent Applications</h3>
-                                <div class="notifications-list" id="realtime-notifications-list">
+                                <h3><span class="notification-heading"><span><i class="fas fa-bell"></i> Recent applications</span><b class="important-label"><i class="fas fa-circle" aria-hidden="true"></i> Important updates</b></span><small>Latest activity from all barangays — review new items promptly</small></h3>
+                                <div class="notifications-list" id="realtime-notifications-list" aria-live="polite">
                                     <p>Loading notifications...</p>
                                 </div>
                             </div>
@@ -734,11 +766,11 @@ require_once '../includes/db_connect.php';
                         </div>
                     </div>
         
-                    <div class="footer">                <p>Centralized Profiling and Record Authentication System | Department Admin &copy; 2024</p>
+                    <div class="footer">                <p>Centralized Profiling and Record Authentication System | Department Admin &copy; <?php echo date('Y'); ?></p>
             </div>
         </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="../assets/js/sidebar-toggle.js"></script>
+    <script src="../assets/js/sidebar-toggle.js?v=3"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             initializeWelcomeMessage();

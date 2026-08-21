@@ -29,6 +29,14 @@ function getWorkingDays($startDate, $endDate) {
 $errorMessage = "";
 $successMessage = "";
 $barangay = $_SESSION['barangay'] ?? '';
+$personnelStmt = $conn->prepare(
+    "SELECT id, full_name, position, barangay
+     FROM home_visit_personnel
+     WHERE is_active = 1 AND (barangay IS NULL OR barangay = '' OR barangay = ?)
+     ORDER BY full_name"
+);
+$personnelStmt->execute([$barangay]);
+$homeVisitPersonnel = $personnelStmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Check if loaded with a Proxy Token from scanning the QR
 $loadedProxyData = null;
@@ -61,28 +69,63 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $oscaData = parseOscaFormPost($_POST);
     $homeVisitScheduledAt = null;
     $homeVisitStatus = null;
+    $homeVisitEligibility = null;
+    $homeVisitEligibilityReason = null;
+    $homeVisitPersonnelId = null;
 
     if ($applicationType === 'pension') {
-        $scheduleRaw = trim((string)($_POST['homeVisitScheduledAt'] ?? ''));
-        $timezone = new DateTimeZone('Asia/Manila');
-        $scheduled = DateTime::createFromFormat('Y-m-d\TH:i', $scheduleRaw, $timezone);
-        $scheduleErrors = DateTime::getLastErrors();
-        $scheduleIsValid = $scheduled
-            && ($scheduleErrors === false || ($scheduleErrors['warning_count'] === 0 && $scheduleErrors['error_count'] === 0));
+        $eligibilityRaw = trim((string)($_POST['homeVisitEligibility'] ?? ''));
+        $homeVisitEligibilityReason = trim(strip_tags((string)($_POST['homeVisitEligibilityReason'] ?? '')));
 
-        if (!$scheduleIsValid) {
-            $errorMessage = 'Please select a valid home visitation date and time.';
-        } elseif ($scheduled <= new DateTime('now', $timezone)) {
-            $errorMessage = 'The home visitation schedule must be in the future.';
-        } elseif (in_array($scheduled->format('N'), ['6', '7'], true)) {
-            $errorMessage = 'Home visits can only be scheduled from Monday to Friday.';
-        } elseif ((int)$scheduled->format('H') < 8 || (int)$scheduled->format('H') >= 17 || !in_array($scheduled->format('i'), ['00', '30'], true)) {
-            $errorMessage = 'Choose a home visit slot from 8:00 AM to 4:30 PM, in 30-minute intervals.';
-        } elseif (normalizePhilippineMobile($contactNumber) === null) {
-            $errorMessage = 'Enter a valid Philippine cellphone number so the home visit confirmation can be sent by text.';
+        if (!in_array($eligibilityRaw, ['eligible', 'not_eligible'], true)) {
+            $errorMessage = 'Please indicate whether the senior is eligible for a home visit.';
+        } elseif ($eligibilityRaw === 'not_eligible') {
+            $homeVisitEligibility = 'Not Eligible';
+            $homeVisitStatus = 'Not Eligible';
         } else {
-            $homeVisitScheduledAt = $scheduled->format('Y-m-d H:i:s');
-            $homeVisitStatus = 'Scheduled';
+            $homeVisitEligibility = 'Eligible';
+            $homeVisitPersonnelId = filter_var($_POST['homeVisitPersonnelId'] ?? null, FILTER_VALIDATE_INT) ?: null;
+            $scheduleRaw = trim((string)($_POST['homeVisitScheduledAt'] ?? ''));
+            $timezone = new DateTimeZone('Asia/Manila');
+            $scheduled = DateTime::createFromFormat('Y-m-d\TH:i', $scheduleRaw, $timezone);
+            $scheduleErrors = DateTime::getLastErrors();
+            $scheduleIsValid = $scheduled
+                && ($scheduleErrors === false || ($scheduleErrors['warning_count'] === 0 && $scheduleErrors['error_count'] === 0));
+
+            if ($homeVisitEligibilityReason === '') {
+                $errorMessage = 'Please enter the reason the senior qualifies for a home visit.';
+            } elseif (!$homeVisitPersonnelId) {
+                $errorMessage = 'Please assign home visit personnel.';
+            } elseif (!$scheduleIsValid) {
+                $errorMessage = 'Please select a valid home visitation date and time.';
+            } elseif ($scheduled <= new DateTime('now', $timezone)) {
+                $errorMessage = 'The home visitation schedule must be in the future.';
+            } elseif (in_array($scheduled->format('N'), ['6', '7'], true)) {
+                $errorMessage = 'Home visits can only be scheduled from Monday to Friday.';
+            } elseif ((int)$scheduled->format('H') < 8 || (int)$scheduled->format('H') >= 17 || !in_array($scheduled->format('i'), ['00', '30'], true)) {
+                $errorMessage = 'Choose a home visit slot from 8:00 AM to 4:30 PM, in 30-minute intervals.';
+            } elseif (normalizePhilippineMobile($contactNumber) === null) {
+                $errorMessage = 'Enter a valid Philippine cellphone number so the home visit confirmation can be sent by text.';
+            } else {
+                $personCheck = $conn->prepare("SELECT COUNT(*) FROM home_visit_personnel WHERE id = ? AND is_active = 1 AND (barangay IS NULL OR barangay = '' OR barangay = ?)");
+                $personCheck->execute([$homeVisitPersonnelId, $barangay]);
+                $conflictCheck = $conn->prepare(
+                    "SELECT COUNT(*) FROM applications
+                     WHERE home_visit_personnel_id = ? AND home_visit_scheduled_at = ?
+                       AND COALESCE(home_visit_status, '') NOT IN ('Cancelled', 'Completed')"
+                );
+                $formattedSchedule = $scheduled->format('Y-m-d H:i:s');
+                $conflictCheck->execute([$homeVisitPersonnelId, $formattedSchedule]);
+
+                if ((int)$personCheck->fetchColumn() === 0) {
+                    $errorMessage = 'The selected home visit personnel is not available.';
+                } elseif ((int)$conflictCheck->fetchColumn() > 0) {
+                    $errorMessage = 'The selected personnel already has a visit at that date and time.';
+                } else {
+                    $homeVisitScheduledAt = $formattedSchedule;
+                    $homeVisitStatus = 'Scheduled';
+                }
+            }
         }
     }
 
@@ -295,7 +338,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $sssNumber, $pensionAmount, $dateOfDeath, $relationshipToDeceased,
                     $isProxy, $proxyName, $proxyRelationship, $proxyContactNumber, $proxyToken,
                     $priorityLevel, 'Received', $emailAddress, $additionalNotes,
-                    $homeVisitScheduledAt, $homeVisitStatus, $applicationType === 'pension' ? 'queued' : null,
+                    $homeVisitScheduledAt, $homeVisitStatus, $homeVisitScheduledAt ? 'queued' : null,
                 ];
                 foreach ($oscaCols as $col) {
                     $params[] = $oscaData[$col];
@@ -334,6 +377,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 }
 
                 if ($saved) {
+                    if ($applicationType === 'pension') {
+                        $visitAssessmentStmt = $conn->prepare(
+                            'UPDATE applications
+                             SET home_visit_eligibility = ?, home_visit_eligibility_reason = ?,
+                                 home_visit_personnel_id = ?, home_visit_assessed_by = ?,
+                                 home_visit_assessed_at = CURRENT_TIMESTAMP
+                             WHERE id_number = ?'
+                        );
+                        $visitAssessmentStmt->execute([
+                            $homeVisitEligibility,
+                            $homeVisitEligibilityReason !== '' ? $homeVisitEligibilityReason : null,
+                            $homeVisitPersonnelId,
+                            $_SESSION['user_id'] ?? null,
+                            $idNumber,
+                        ]);
+                    }
                     if ($submittedDocuments) {
                         $driver = $conn->getAttribute(PDO::ATTR_DRIVER_NAME);
                         $documentSql = $driver === 'pgsql'
@@ -409,7 +468,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CPRAS - New Application</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=1.1">
+    <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=4">
     <link rel="stylesheet" href="../assets/css/main-dark-mode.css?v=1.1">
     <style>
         .compliance-badge {
@@ -1301,6 +1360,71 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         #cardSelectorSection.hidden { display: none; }
 
+        /* Reusable document upload preview shown in every application form. */
+        .document-upload-preview {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-height: 110px;
+            margin-top: 8px;
+            padding: 10px;
+            overflow: hidden;
+            color: #64748b;
+            background: rgba(255, 255, 255, .76);
+            border: 1.5px dashed #b8c8dc;
+            border-radius: 10px;
+            transition: border-color .2s ease, background-color .2s ease, box-shadow .2s ease;
+        }
+        .document-upload-preview.has-file {
+            color: #334155;
+            background: #fff;
+            border-style: solid;
+            border-color: #86efac;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, .06);
+        }
+        .document-preview-visual {
+            display: grid;
+            place-items: center;
+            width: 90px;
+            min-width: 90px;
+            height: 90px;
+            overflow: hidden;
+            color: #94a3b8;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1.4rem;
+        }
+        .document-upload-preview.has-file .document-preview-visual { color: #dc2626; background: #f8fafc; }
+        .document-preview-visual img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
+        .document-preview-details { min-width: 0; flex: 1; }
+        .document-preview-title { color: #334155; font-size: .78rem; font-weight: 800; line-height: 1.35; }
+        .document-preview-file-name { margin-top: 2px; overflow: hidden; color: #0f172a; font-size: .78rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+        .document-preview-meta { margin-top: 2px; color: #64748b; font-size: .7rem; }
+        .document-preview-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+        .document-preview-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            min-height: 30px;
+            padding: 5px 9px;
+            color: #1d4ed8;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 6px;
+            font-size: .7rem;
+            font-weight: 800;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        button.document-preview-action { color: #b91c1c; background: #fff; border-color: #fecaca; }
+        .document-preview-action:hover { filter: brightness(.97); }
+
+        @media (max-width: 560px) {
+            .document-upload-preview { align-items: flex-start; min-height: 82px; }
+            .document-preview-visual { width: 60px; min-width: 60px; height: 60px; }
+        }
+
         /* Benefit details modal */
         #benefitModal {
             align-items: center;
@@ -1584,7 +1708,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=8">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=11">
+    <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
+    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=2">
 </head>
 <body>
     <div class="container">
@@ -2720,11 +2846,30 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         <i class="fas fa-house-medical" style="color:#2563eb;"></i> Home Visitation Schedule
                                     </div>
                                     <p style="font-size:0.78rem;color:#1e40af;line-height:1.5;margin:0 0 10px;">
-                                        Select the social worker's visit slot. After submission, SENIORLINK will text the schedule to the cellphone number above.
+                                        Complete the eligibility decision first. Scheduling and personnel assignment are required only for eligible seniors.
                                     </p>
+                                    <fieldset style="border:0;margin:0 0 10px;padding:0;">
+                                        <legend style="font-size:0.68rem;font-weight:700;color:#1e3a8a;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px;">Eligible for home visit? <span style="color:#dc2626;">*</span></legend>
+                                        <label style="display:inline-flex;align-items:center;gap:6px;margin-right:18px;font-size:0.84rem;font-weight:600;"><input type="radio" name="homeVisitEligibility" value="eligible" onchange="toggleHomeVisitEligibility()"> Yes</label>
+                                        <label style="display:inline-flex;align-items:center;gap:6px;font-size:0.84rem;font-weight:600;"><input type="radio" name="homeVisitEligibility" value="not_eligible" onchange="toggleHomeVisitEligibility()"> No</label>
+                                    </fieldset>
+                                    <label for="homeVisitEligibilityReason" style="font-size:0.68rem;font-weight:700;color:#1e3a8a;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:4px;">Assessment reason</label>
+                                    <input type="text" id="homeVisitEligibilityReason" name="homeVisitEligibilityReason" maxlength="255" placeholder="e.g. Bedridden or unable to visit the office"
+                                        style="width:100%;padding:9px 10px;border:1.5px solid #93c5fd;border-radius:7px;font-size:0.88rem;color:#172554;background:#fff;outline:none;margin-bottom:10px;">
+                                    <div id="homeVisitScheduleHelp" style="font-size:0.75rem;color:#1d4ed8;background:#dbeafe;border-radius:7px;padding:8px 10px;margin-bottom:8px;"><i class="fas fa-info-circle"></i> Choose <strong>Yes</strong> above to enable the calendar and personnel assignment.</div>
+                                    <div id="homeVisitAssignmentFields" style="display:block;opacity:0.55;transition:opacity .2s;">
                                     <label for="homeVisitScheduledAt" style="font-size:0.68rem;font-weight:700;color:#1e3a8a;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:4px;">Visit date and time <span style="color:#dc2626;">*</span></label>
                                     <input type="datetime-local" id="homeVisitScheduledAt" name="homeVisitScheduledAt" step="1800"
+                                        onclick="if (this.showPicker && !this.disabled) this.showPicker()"
                                         style="width:100%;max-width:360px;padding:9px 10px;border:1.5px solid #93c5fd;border-radius:7px;font-size:0.88rem;color:#172554;background:#fff;outline:none;">
+                                    <label for="homeVisitPersonnelId" style="font-size:0.68rem;font-weight:700;color:#1e3a8a;text-transform:uppercase;letter-spacing:0.05em;display:block;margin:8px 0 4px;">Assigned personnel <span style="color:#dc2626;">*</span></label>
+                                    <select id="homeVisitPersonnelId" name="homeVisitPersonnelId" style="width:100%;max-width:360px;padding:9px 10px;border:1.5px solid #93c5fd;border-radius:7px;font-size:0.88rem;color:#172554;background:#fff;outline:none;">
+                                        <option value="">Select personnel</option>
+                                        <?php foreach ($homeVisitPersonnel as $person): ?>
+                                            <option value="<?= (int)$person['id'] ?>"><?= htmlspecialchars($person['full_name'] . (!empty($person['position']) ? ' - ' . $person['position'] : '')) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    </div>
                                     <div style="font-size:0.72rem;color:#64748b;margin-top:6px;"><i class="fas fa-clock" style="margin-right:4px;"></i>Monday–Friday, 8:00 AM–4:30 PM; 30-minute slots.</div>
                                 </div>
 
@@ -3589,7 +3734,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </div>
     </div>
 
-    <script src="../assets/js/sidebar-toggle.js"></script>
+    <script src="../assets/js/sidebar-toggle.js?v=3"></script>
     <script src="../assets/js/dark-mode.js"></script>
     <script src="../assets/js/osca-form-fields.js"></script>
     <script>
@@ -3625,18 +3770,147 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         });
         let pendingBenefitType = '';
 
+        const DOCUMENT_PREVIEW_SKIP_IDS = new Set(['lbIdPhoto', 'oscaIdPhoto']);
+
+        function formatDocumentFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        function createDocumentPreviewHolder(input) {
+            if (!input || DOCUMENT_PREVIEW_SKIP_IDS.has(input.id) || input.dataset.previewReady === '1') return null;
+
+            const holder = document.createElement('div');
+            holder.className = 'document-upload-preview';
+            holder.dataset.previewFor = input.id || input.name;
+            holder.setAttribute('aria-live', 'polite');
+            input.insertAdjacentElement('afterend', holder);
+            input.dataset.previewReady = '1';
+            renderDocumentUploadPreview(input);
+            return holder;
+        }
+
+        function renderDocumentUploadPreview(input) {
+            const holder = input.nextElementSibling?.classList.contains('document-upload-preview')
+                ? input.nextElementSibling
+                : createDocumentPreviewHolder(input);
+            if (!holder) return;
+
+            if (input._documentPreviewUrl) {
+                URL.revokeObjectURL(input._documentPreviewUrl);
+                input._documentPreviewUrl = '';
+            }
+
+            holder.replaceChildren();
+            holder.classList.remove('has-file');
+            const file = input.files && input.files[0];
+
+            const visual = document.createElement('div');
+            visual.className = 'document-preview-visual';
+            const details = document.createElement('div');
+            details.className = 'document-preview-details';
+
+            if (!file) {
+                visual.innerHTML = '<i class="fas fa-image" aria-hidden="true"></i>';
+                details.innerHTML = '<div class="document-preview-title">Document preview</div><div class="document-preview-meta">The selected image or PDF will appear here.</div>';
+                holder.append(visual, details);
+                return;
+            }
+
+            const objectUrl = URL.createObjectURL(file);
+            input._documentPreviewUrl = objectUrl;
+            holder.classList.add('has-file');
+
+            if (file.type.startsWith('image/')) {
+                const image = document.createElement('img');
+                image.src = objectUrl;
+                image.alt = 'Preview of ' + file.name;
+                visual.appendChild(image);
+            } else {
+                visual.innerHTML = '<i class="fas fa-file-pdf" aria-hidden="true"></i>';
+            }
+
+            const title = document.createElement('div');
+            title.className = 'document-preview-title';
+            title.textContent = file.type.startsWith('image/') ? 'Image ready to upload' : 'PDF ready to upload';
+            const fileName = document.createElement('div');
+            fileName.className = 'document-preview-file-name';
+            fileName.title = file.name;
+            fileName.textContent = file.name;
+            const meta = document.createElement('div');
+            meta.className = 'document-preview-meta';
+            meta.textContent = formatDocumentFileSize(file.size);
+            const actions = document.createElement('div');
+            actions.className = 'document-preview-actions';
+
+            const viewLink = document.createElement('a');
+            viewLink.className = 'document-preview-action';
+            viewLink.href = objectUrl;
+            viewLink.target = '_blank';
+            viewLink.rel = 'noopener';
+            viewLink.innerHTML = '<i class="fas fa-up-right-from-square" aria-hidden="true"></i> View';
+
+            const clearButton = document.createElement('button');
+            clearButton.type = 'button';
+            clearButton.className = 'document-preview-action';
+            clearButton.innerHTML = '<i class="fas fa-xmark" aria-hidden="true"></i> Remove';
+            clearButton.addEventListener('click', function() {
+                input.value = '';
+                checkFileSize(input);
+                renderDocumentUploadPreview(input);
+            });
+
+            actions.append(viewLink, clearButton);
+            details.append(title, fileName, meta, actions);
+            holder.append(visual, details);
+        }
+
+        function initializeDocumentUploadPreviews(root = document) {
+            root.querySelectorAll('input[type="file"]').forEach(createDocumentPreviewHolder);
+        }
+
+        document.addEventListener('change', function(event) {
+            const input = event.target;
+            if (input instanceof HTMLInputElement
+                && input.type === 'file'
+                && !DOCUMENT_PREVIEW_SKIP_IDS.has(input.id)) {
+                renderDocumentUploadPreview(input);
+            }
+        });
+
+        document.getElementById('mainAppForm').addEventListener('reset', function() {
+            window.setTimeout(() => initializeDocumentUploadPreviews(this), 0);
+            window.setTimeout(() => {
+                this.querySelectorAll('input[type="file"]').forEach(input => {
+                    if (!DOCUMENT_PREVIEW_SKIP_IDS.has(input.id)) renderDocumentUploadPreview(input);
+                });
+            }, 0);
+        });
+
+        window.addEventListener('beforeunload', function() {
+            document.querySelectorAll('input[type="file"]').forEach(input => {
+                if (input._documentPreviewUrl) URL.revokeObjectURL(input._documentPreviewUrl);
+            });
+        });
+
         function ensureOfficialFormCard(type) {
             const cardId = OFFICIAL_FORM_CARDS[type];
             if (!cardId) return null;
 
             const existingCard = document.getElementById(cardId);
-            if (existingCard) return existingCard;
+            if (existingCard) {
+                initializeDocumentUploadPreviews(existingCard);
+                return existingCard;
+            }
 
             const template = document.getElementById(cardId + 'Template');
             if (!template) return null;
 
             template.parentNode.insertBefore(template.content.cloneNode(true), template);
-            return document.getElementById(cardId);
+            const card = document.getElementById(cardId);
+            if (card) initializeDocumentUploadPreviews(card);
+            return card;
         }
 
         function optimizeOfficialFormSections(card) {
@@ -3919,13 +4193,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 const isLocalPension = value === 'pension';
                 visitSchedule.style.display = isLocalPension ? 'block' : 'none';
                 visitScheduleInput.disabled = !isLocalPension;
-                visitScheduleInput.required = isLocalPension;
+                document.querySelectorAll('input[name="homeVisitEligibility"]').forEach((radio) => {
+                    radio.disabled = !isLocalPension;
+                    radio.required = isLocalPension;
+                    if (!isLocalPension) radio.checked = false;
+                });
                 if (isLocalPension) {
                     const earliest = new Date();
                     earliest.setMinutes(earliest.getMinutes() < 30 ? 30 : 60, 0, 0);
                     const localIso = new Date(earliest.getTime() - earliest.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
                     visitScheduleInput.min = localIso;
                 }
+                toggleHomeVisitEligibility();
             }
 
             // Update pension form title for national pension
@@ -3949,6 +4228,30 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 for (const r of purposeRadios) if (r.checked) selPurpose = r.value;
                 updateRequirementsByPurpose(selPurpose || 'new');
             } catch (e) { /* ignore if not present */ }
+        }
+
+        function toggleHomeVisitEligibility() {
+            const selected = document.querySelector('input[name="homeVisitEligibility"]:checked');
+            const assignmentFields = document.getElementById('homeVisitAssignmentFields');
+            const scheduleInput = document.getElementById('homeVisitScheduledAt');
+            const personnelInput = document.getElementById('homeVisitPersonnelId');
+            const reasonInput = document.getElementById('homeVisitEligibilityReason');
+            const eligible = selected && selected.value === 'eligible';
+
+            const help = document.getElementById('homeVisitScheduleHelp');
+            if (assignmentFields) assignmentFields.style.opacity = eligible ? '1' : '0.55';
+            if (help) help.style.display = eligible ? 'none' : 'block';
+            if (scheduleInput) {
+                scheduleInput.required = !!eligible;
+                scheduleInput.disabled = !eligible;
+                if (!eligible) scheduleInput.value = '';
+            }
+            if (personnelInput) {
+                personnelInput.required = !!eligible;
+                personnelInput.disabled = !eligible;
+                if (!eligible) personnelInput.value = '';
+            }
+            if (reasonInput) reasonInput.required = !!eligible;
         }
 
         // Update the Requirements Reference Guide and toggle required file inputs based on OSCA purpose
@@ -4554,6 +4857,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
 
             if (type === 'pension') {
+                const eligibility = document.querySelector('input[name="homeVisitEligibility"]:checked');
+                if (!eligibility) {
+                    window.showCarelinkResult('Please indicate whether the senior is eligible for a home visit.', false);
+                    e.preventDefault();
+                    return;
+                }
+                if (eligibility.value !== 'eligible') return;
                 const visitInput = document.getElementById('homeVisitScheduledAt');
                 const visitDate = visitInput && visitInput.value ? new Date(visitInput.value) : null;
                 if (!visitDate || Number.isNaN(visitDate.getTime())) {

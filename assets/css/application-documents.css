@@ -1,40 +1,83 @@
-/* One consistent document presentation for every application modal. */
-.application-documents { margin-top: 20px; }
-.application-documents__title { display:flex; align-items:center; gap:8px; margin:0 0 12px; color:var(--primary,#0f172a); font-size:.95rem; font-weight:800; }
-.application-documents__hint { margin:-4px 0 12px; color:var(--gray,#64748b); font-size:.78rem; }
-.application-documents__grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
-.application-document { padding:10px; border:1px solid var(--border,#e2e8f0); border-radius:10px; background:#fff; }
-.application-document__name { min-height:34px; color:var(--gray,#64748b); font-size:.72rem; font-weight:700; line-height:1.35; }
-.application-document__preview { height:138px; display:flex; align-items:center; justify-content:center; overflow:hidden; border:1px dashed #dbe3ef; border-radius:8px; background:#f8fafc; }
-.application-document__preview img { max-width:100%; max-height:100%; object-fit:contain; }
-.application-document__preview .fa-file-pdf { color:#ef4444; font-size:2.6rem; }
-.application-document__selected-file { margin-left:6px; color:#64748b; font-size:.72rem; font-weight:700; }
-/* Keep document actions consistent with the navy modal and sidebar theme. */
-.application-document__actions { display:grid; grid-template-columns:1fr; gap:8px; margin-top:8px; }
-.application-document__actions.has-replacement { grid-template-columns:1fr 1fr; }
-.application-document__view {
-    width:100%;
-    justify-content:center;
-    margin-top:0;
-    background:#1e3a5f !important;
-    border-color:#1e3a5f !important;
-    color:#fff !important;
+/* One consistent, accessible document presentation for every application modal. */
+.application-documents {
+    margin-top: 22px;
+    padding: 18px;
+    border: 1px solid var(--border, #dbe4ef);
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, .05);
 }
-.application-document__view:hover,
-.application-document__view:focus-visible {
-    background:#0f172a !important;
-    border-color:#0f172a !important;
-    color:#fff !important;
-}
-.application-document__replacement { margin-top:9px; display:grid; gap:6px; }
-.application-document__replacement label { color:#64748b; font-size:.68rem; font-weight:700; }
-.application-document__replacement input { display:block; width:100%; margin-top:3px; font-size:.68rem; }
-.application-document__replace-button { width:100%; border:0; border-radius:6px; padding:6px 8px; background:#10b981; color:#fff; font-size:.71rem; font-weight:700; cursor:pointer; }
-.application-document__replace-button:hover { background:#059669; }
-.application-documents__empty { padding:14px; color:var(--gray,#64748b); font-size:.82rem; text-align:center; border:1px dashed #cbd5e1; border-radius:8px; }
 
-@media (max-width: 520px) {
+.application-documents__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 15px;
+}
+
+.application-documents__title {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 0;
+    color: var(--primary, #0f172a);
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.application-documents__title i { color: #1d6fc2; }
+.application-documents__hint { margin: 5px 0 0; color: var(--gray, #64748b); font-size: .8rem; line-height: 1.5; }
+
+.application-documents__count {
+    flex: 0 0 auto;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: #eaf3ff;
+    color: #165ea8;
+    font-size: .72rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.application-documents__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.application-document { min-width: 0; padding: 12px; border: 1px solid #dce5ef; border-radius: 13px; background: #fbfdff; transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
+.application-document:hover { border-color: #9fc4e9; box-shadow: 0 8px 18px rgba(30, 58, 95, .08); transform: translateY(-1px); }
+
+.application-document__meta { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; min-height: 42px; margin-bottom: 9px; }
+.application-document__name { color: #24364a; font-size: .8rem; font-weight: 800; line-height: 1.4; overflow-wrap: anywhere; }
+.application-document__type { flex: 0 0 auto; padding: 3px 7px; border-radius: 999px; background: #edf2f7; color: #64748b; font-size: .62rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+
+.application-document__preview { height: 150px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #dfe7f0; border-radius: 10px; background: #f3f7fb; }
+.application-document__preview img { width: 100%; height: 100%; object-fit: contain; }
+.application-document__preview .fa-file-pdf { color: #dc3545; font-size: 3rem; }
+.application-document__selected-file { display: block; margin-top: 6px; color: #52667d; font-size: .72rem; font-weight: 700; overflow-wrap: anywhere; }
+
+.application-document__actions { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 10px; }
+.application-document__actions.has-replacement { grid-template-columns: 1fr 1fr; }
+.application-document__view { width: 100%; min-height: 38px; justify-content: center; margin: 0; background: #1e3a5f !important; border-color: #1e3a5f !important; color: #fff !important; }
+.application-document__view:hover,
+.application-document__view:focus-visible { background: #102943 !important; border-color: #102943 !important; color: #fff !important; }
+
+.application-document__replacement { margin-top: 10px; }
+.application-document__replacement label { display: block; color: #465b72; font-size: .72rem; font-weight: 800; }
+.application-document__replacement input { display: block; width: 100%; margin-top: 5px; padding: 6px; border: 1px solid #cbd8e6; border-radius: 8px; background: #fff; font-size: .7rem; }
+.application-document__replace-button { width: 100%; min-height: 38px; border: 0; border-radius: 8px; padding: 8px 10px; background: #138a4b; color: #fff; font-size: .72rem; font-weight: 800; cursor: pointer; }
+.application-document__replace-button:hover { background: #08743b; }
+.application-document__view:focus-visible,
+.application-document__replace-button:focus-visible,
+.application-document__replacement input:focus-visible { outline: 3px solid rgba(29, 111, 194, .28); outline-offset: 2px; }
+
+.application-documents__empty { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 90px; padding: 16px; color: var(--gray, #64748b); font-size: .84rem; text-align: center; border: 1px dashed #bdcad9; border-radius: 11px; background: #f8fafc; }
+.application-documents__empty i { color: #8da0b5; font-size: 1.25rem; }
+
+@media (max-width: 760px) {
+    .application-documents { padding: 14px; }
     .application-documents__grid { grid-template-columns: 1fr; }
-    .application-document__preview { height: 180px; }
-    .application-document__actions { grid-template-columns: 1fr; }
+    .application-document__preview { height: 190px; }
+}
+
+@media (max-width: 420px) {
+    .application-documents__header { flex-direction: column; gap: 8px; }
+    .application-document__actions.has-replacement { grid-template-columns: 1fr; }
 }

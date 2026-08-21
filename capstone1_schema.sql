@@ -17,6 +17,9 @@ SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS `application_documents`;
 DROP TABLE IF EXISTS `application_history`;
 DROP TABLE IF EXISTS `sms_notifications`;
+DROP TABLE IF EXISTS `hardcopy_batch_items`;
+DROP TABLE IF EXISTS `hardcopy_batches`;
+DROP TABLE IF EXISTS `home_visit_personnel`;
 DROP TABLE IF EXISTS `login_history`;
 DROP TABLE IF EXISTS `remember_tokens`;
 DROP TABLE IF EXISTS `settings`;
@@ -95,6 +98,13 @@ CREATE TABLE `applications` (
   `home_visit_scheduled_at`    datetime      DEFAULT NULL,
   `home_visit_status`          varchar(30)   DEFAULT NULL,
   `sms_notification_status`    varchar(30)   DEFAULT NULL,
+  `home_visit_eligibility`     varchar(20)   DEFAULT NULL,
+  `home_visit_eligibility_reason` varchar(255) DEFAULT NULL,
+  `home_visit_personnel_id`    int(11)       DEFAULT NULL,
+  `home_visit_assessed_by`     int(11)       DEFAULT NULL,
+  `home_visit_assessed_at`     datetime      DEFAULT NULL,
+  `home_visit_notes`           text          DEFAULT NULL,
+  `home_visit_completed_at`    datetime      DEFAULT NULL,
 
   -- Burial Assistance specific
   `date_of_death`              date         DEFAULT NULL,
@@ -267,6 +277,61 @@ CREATE TABLE `sms_notifications` (
   PRIMARY KEY (`id`),
   KEY `idx_sms_application` (`application_id`),
   KEY `idx_sms_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ============================================================
+-- Home visit field personnel
+-- ============================================================
+CREATE TABLE `home_visit_personnel` (
+  `id`             int(11)      NOT NULL AUTO_INCREMENT,
+  `full_name`      varchar(150) NOT NULL,
+  `position`       varchar(100) DEFAULT NULL,
+  `contact_number` varchar(30)  DEFAULT NULL,
+  `barangay`       varchar(100) DEFAULT NULL,
+  `is_active`      tinyint(1)   NOT NULL DEFAULT 1,
+  `created_by`     int(11)      DEFAULT NULL,
+  `created_at`     timestamp    NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_visit_personnel_active` (`is_active`),
+  KEY `idx_visit_personnel_barangay` (`barangay`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ============================================================
+-- Physical hardcopy handover monitoring
+-- ============================================================
+CREATE TABLE `hardcopy_batches` (
+  `id`                 int(11)      NOT NULL AUTO_INCREMENT,
+  `batch_code`         varchar(40)  NOT NULL,
+  `barangay`           varchar(100) NOT NULL,
+  `handover_date`      date         NOT NULL,
+  `status`             varchar(30)  NOT NULL DEFAULT 'Draft',
+  `submitted_by_name`  varchar(150) NOT NULL,
+  `created_by_user_id` int(11)      NOT NULL,
+  `released_at`        datetime     DEFAULT NULL,
+  `received_by_user_id` int(11)     DEFAULT NULL,
+  `received_at`        datetime     DEFAULT NULL,
+  `remarks`            text         DEFAULT NULL,
+  `created_at`         timestamp    NOT NULL DEFAULT current_timestamp(),
+  `updated_at`         timestamp    NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_hardcopy_batch_code` (`batch_code`),
+  KEY `idx_hardcopy_barangay` (`barangay`),
+  KEY `idx_hardcopy_status` (`status`),
+  KEY `idx_hardcopy_handover` (`handover_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `hardcopy_batch_items` (
+  `id`              int(11)      NOT NULL AUTO_INCREMENT,
+  `batch_id`        int(11)      NOT NULL,
+  `application_id`  varchar(255) NOT NULL,
+  `document_status` varchar(30)  NOT NULL DEFAULT 'Pending',
+  `remarks`         text         DEFAULT NULL,
+  `created_at`      timestamp    NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_hardcopy_batch_item` (`batch_id`, `application_id`),
+  KEY `idx_hardcopy_item_application` (`application_id`),
+  CONSTRAINT `fk_hardcopy_item_batch` FOREIGN KEY (`batch_id`) REFERENCES `hardcopy_batches` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_hardcopy_item_application` FOREIGN KEY (`application_id`) REFERENCES `applications` (`id_number`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ============================================================

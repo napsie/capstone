@@ -1,11 +1,20 @@
 <?php
 session_start();
 require_once '../includes/db_connect.php';
+require_once '../includes/audit_logger.php';
 
 // Redirect if not logged in or not barangay staff
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'barangay_staff') {
     header('Location: ../index.php');
     exit;
+}
+
+// Backfill one audit event for sessions established before login auditing was enabled.
+if (empty($_SESSION['login_audit_recorded'])) {
+    $sessionBarangay = (string)($_SESSION['barangay'] ?? 'Unknown Barangay');
+    if (logAudit($conn, 'LOGIN', "Active Barangay Staff session confirmed for Barangay {$sessionBarangay}.")) {
+        $_SESSION['login_audit_recorded'] = true;
+    }
 }
 
 $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
@@ -17,7 +26,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CPRAS Dashboard - Barangay <?php echo $barangayName; ?></title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=1.2">
+    <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=4">
     <link rel="stylesheet" href="../assets/css/main-dark-mode.css?v=1.2">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -118,9 +127,12 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
 
 
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=3">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=11">
+    <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
+    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=2">
+    <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=3">
 </head>
-<body>
+<body class="dashboard-page barangay-dashboard">
     <div class="container">
         <?php include '../partials/barangay_sidebar.php'; ?>
 
@@ -144,8 +156,21 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                 </div>
             </div>
 
+            <section class="dashboard-command-bar" aria-labelledby="barangayOverviewTitle">
+                <div class="command-copy">
+                    <span class="command-eyebrow"><i class="fas fa-location-dot" aria-hidden="true"></i> Barangay operations</span>
+                    <h2 id="barangayOverviewTitle">Today’s service overview</h2>
+                    <p>Review the local queue, register applicants, and monitor records that need attention.</p>
+                </div>
+                <nav class="dashboard-quick-actions" aria-label="Barangay quick actions">
+                    <a class="quick-action primary" href="new_application.php"><i class="fas fa-user-plus" aria-hidden="true"></i><span><strong>New application</strong><small>Register an applicant</small></span></a>
+                    <a class="quick-action" href="submit_application.php"><i class="fas fa-clipboard-list" aria-hidden="true"></i><span><strong>Open queue</strong><small>Continue processing</small></span></a>
+                    <a class="quick-action" href="field_operations.php#batches"><i class="fas fa-boxes-stacked" aria-hidden="true"></i><span><strong>Hardcopy batches</strong><small>Prepare handover</small></span></a>
+                </nav>
+            </section>
+
             <!-- Priority Queue Alert Banner (shown when high-priority applications are pending) -->
-            <div id="priorityAlertBanner" class="priority-alert hidden">
+            <div id="priorityAlertBanner" class="priority-alert hidden" role="status" aria-live="polite">
                 <div class="priority-alert-text">
                     <i class="fas fa-star"></i>&nbsp; <span id="priorityCountDisplay">0</span> High-Priority (Bedridden Senior) application(s) awaiting counter assistance
                 </div>
@@ -154,35 +179,35 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
 
             <!-- Summary Stats Strip -->
             <div class="stats-strip" id="statsStrip">
-                <a class="stat-card stat-card-link" href="submit_application.php" aria-label="Open active applications"><div class="stat-icon" style="color:#3b82f6;"><i class="fas fa-file-alt"></i></div><div><div class="stat-label">Total Applications</div><div class="stat-value" id="statTotal">—</div></div></a>
-                <a class="stat-card stat-card-link" href="submit_application.php" aria-label="Open received applications"><div class="stat-icon" style="color:#f59e0b;"><i class="fas fa-inbox"></i></div><div><div class="stat-label">Received</div><div class="stat-value" id="statReceived">—</div></div></a>
-                <a class="stat-card stat-card-link" href="barangay_records.php" aria-label="Open approved application records"><div class="stat-icon" style="color:#10b981;"><i class="fas fa-check-double"></i></div><div><div class="stat-label">Approved</div><div class="stat-value" id="statApproved">—</div></div></a>
+                <a class="stat-card stat-card-link stat-blue" href="submit_application.php" aria-label="Open all active applications"><div class="stat-icon"><i class="fas fa-file-lines" aria-hidden="true"></i></div><div class="stat-info"><div class="stat-label">Active applications</div><div class="stat-value" id="statTotal" aria-live="polite">—</div><small>View local workload</small></div><i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i></a>
+                <a class="stat-card stat-card-link stat-amber" href="submit_application.php" aria-label="Open received applications"><div class="stat-icon"><i class="fas fa-inbox" aria-hidden="true"></i></div><div class="stat-info"><div class="stat-label">Awaiting action</div><div class="stat-value" id="statReceived" aria-live="polite">—</div><small>Received in queue</small></div><i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i></a>
+                <a class="stat-card stat-card-link stat-green" href="barangay_records.php" aria-label="Open approved application records"><div class="stat-icon"><i class="fas fa-circle-check" aria-hidden="true"></i></div><div class="stat-info"><div class="stat-label">Approved records</div><div class="stat-value" id="statApproved" aria-live="polite">—</div><small>Browse verified records</small></div><i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i></a>
             </div>
 
-            <h2 style="color: var(--text); margin-bottom: 20px;">Application Statistics</h2>
+            <div class="dashboard-section-heading"><div><span>Performance and activity</span><h2>Application insights</h2><p>Use these summaries to identify workload patterns and recent changes.</p></div></div>
             <div class="dashboard-panels">
                 <div class="left-panel">
                     <div class="charts-container">
                         <div class="chart-card">
-                            <h3><i class="fas fa-chart-pie"></i> Status Distribution</h3>
-                            <div class="chart-wrapper"><canvas id="statusChart"></canvas></div>
+                            <h3><span><i class="fas fa-chart-pie"></i> Status distribution</span><small>Current applications by workflow stage</small></h3>
+                            <div class="chart-wrapper"><canvas id="statusChart" aria-label="Chart of barangay applications by workflow status" role="img">Application status chart</canvas></div>
                         </div>
                         <div class="chart-card">
-                            <h3><i class="fas fa-chart-bar"></i> Monthly Applications</h3>
-                            <div class="chart-wrapper"><canvas id="monthlyChart"></canvas></div>
+                            <h3><span><i class="fas fa-chart-column"></i> Monthly applications</span><small>Submission volume during the last 12 months</small></h3>
+                            <div class="chart-wrapper"><canvas id="monthlyChart" aria-label="Chart of monthly barangay application volume" role="img">Monthly application chart</canvas></div>
                         </div>
                     </div>
                 </div>
 
                 <div class="right-panel">
                     <div class="calendar-card">
-                        <h2 id="current-time"></h2>
-                        <h3><i class="fas fa-calendar-alt"></i> Calendar</h3>
+                        <h2 id="current-time" aria-live="polite"></h2>
+                        <h3><span><i class="fas fa-calendar-alt"></i> Calendar</span><small>Navigate dates and schedules</small></h3>
                         <div class="calendar-body">
                             <div class="calendar-header">
-                                <button id="prev-month"><i class="fas fa-chevron-left"></i></button>
+                                <button id="prev-month" type="button" aria-label="Show previous month"><i class="fas fa-chevron-left"></i></button>
                                 <span id="month-year"></span>
-                                <button id="next-month"><i class="fas fa-chevron-right"></i></button>
+                                <button id="next-month" type="button" aria-label="Show next month"><i class="fas fa-chevron-right"></i></button>
                             </div>
                             <table class="calendar-table">
                                 <thead><tr><th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th></tr></thead>
@@ -191,8 +216,8 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                         </div>
                     </div>
                     <div class="notifications-card recent-apps-card">
-                        <h3><i class="fas fa-bell"></i> Recent Applications</h3>
-                        <div class="notifications-list" id="realtime-notifications-list">
+                        <h3><span class="notification-heading"><span><i class="fas fa-bell"></i> Recent applications</span><b class="important-label"><i class="fas fa-circle" aria-hidden="true"></i> Important updates</b></span><small>Latest local workflow activity — review new items promptly</small></h3>
+                        <div class="notifications-list" id="realtime-notifications-list" aria-live="polite">
                             <p>Loading notifications...</p>
                         </div>
                     </div>
@@ -307,12 +332,12 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
             </div>
 
             <div class="footer">
-                <p>Centralized Profiling and Record Authentication System | Barangay <?php echo $barangayName; ?> &copy; 2024</p>
+                <p>Centralized Profiling and Record Authentication System | Barangay <?php echo $barangayName; ?> &copy; <?php echo date('Y'); ?></p>
             </div>
         </div>
     </div>
 
-    <script src="../assets/js/sidebar-toggle.js"></script>
+    <script src="../assets/js/sidebar-toggle.js?v=3"></script>
     <script src="../assets/js/dark-mode.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {

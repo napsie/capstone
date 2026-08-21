@@ -81,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updatePassword'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Settings - SENIORLINK</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=1.1">
+    <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=4">
     <link rel="stylesheet" href="../assets/css/main-dark-mode.css?v=1.1">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -354,7 +354,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updatePassword'])) {
             font-weight: 600;
         }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=3">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=11">
+    <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
+    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=2">
 </head>
 <body>
 <div class="container">
@@ -487,7 +489,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updatePassword'])) {
     </div>
 </div>
 
-<script src="../assets/js/sidebar-toggle.js"></script>
+<script src="../assets/js/sidebar-toggle.js?v=3"></script>
 <script src="../assets/js/dark-mode.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {

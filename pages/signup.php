@@ -117,113 +117,186 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             align-items: center;
             padding: 0;
             overflow: hidden;
+            isolation: isolate;
         }
 
         .background-image {
             position: fixed;
             inset: 0;
-            z-index: -1;
-            background-image: url('../images/system_background.png'); /* Adjusted path */
+            z-index: 0;
+            background-image: url('../images/landing-background-new3.png');
             background-size: cover;
-            background-position: center;
-            opacity: 0.3;
-            animation: kenburns 30s ease-in-out infinite;
+            background-position: left bottom;
+            opacity: 0.82;
         }
 
-        @keyframes kenburns {
-            0% {
-                transform: scale(1) translate(0, 0);
-                opacity: 0.3;
-            }
-            50% {
-                transform: scale(1.2) translate(-5%, 5%);
-                opacity: 0.4;
-            }
-            100% {
-                transform: scale(1) translate(0, 0);
-                opacity: 0.3;
-            }
+        .background-image::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, rgba(6, 24, 48, 0.48), rgba(9, 39, 72, 0.32) 55%, rgba(6, 24, 48, 0.58));
         }
 
         .signup-container {
             position: fixed;
             inset: 0;
+            z-index: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 12px;
-            overflow: hidden;
+            padding: 24px 0 24px 50%;
+            overflow: auto;
         }
 
         .signup-card {
-            background: #ffffff;
-            border-radius: 24px;
-            padding: 28px;
+            background: rgba(255, 255, 255, 0.97);
+            border: 1px solid rgba(255, 255, 255, 0.88);
+            border-radius: 22px;
+            padding: 26px 28px 28px;
             width: 100%;
-            max-width: 400px;
-            max-height: calc(100dvh - 24px);
-            box-shadow: 0 20px 60px rgba(8, 28, 58, 0.2);
+            max-width: 560px;
+            max-height: calc(100dvh - 48px);
+            box-shadow: 0 24px 70px rgba(6, 24, 48, 0.3);
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            transform: translateX(clamp(-80px, -5vw, -48px));
+            scrollbar-width: thin;
+            scrollbar-color: #b8c7d7 transparent;
         }
 
         .signup-header {
-            text-align: center;
-            margin-bottom: 12px;
+            text-align: left;
+            margin-bottom: 18px;
             flex-shrink: 0;
         }
 
+        .signup-header-topline {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            margin-bottom: 12px;
+        }
+
+        .signup-header-icon {
+            width: 42px;
+            height: 42px;
+            display: grid;
+            place-items: center;
+            flex: 0 0 42px;
+            color: #ffffff;
+            background: linear-gradient(145deg, #2375ce, #15508f);
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(21, 80, 143, 0.24);
+        }
+
+        .signup-eyebrow {
+            display: block;
+            color: #14763f;
+            font-size: 0.7rem;
+            font-weight: 800;
+            letter-spacing: 0.09em;
+            text-transform: uppercase;
+        }
+
         .signup-header h1 {
-            font-size: 1.5rem;
+            font-size: 1.65rem;
             color: #0f1c2e;
-            margin-bottom: 2px;
+            margin-bottom: 5px;
+            line-height: 1.2;
+        }
+
+        .signup-header p {
+            max-width: 390px;
+            color: #5f7185;
+            font-size: 0.86rem;
+            line-height: 1.5;
+        }
+
+        .required-note {
+            margin-top: 9px;
+            color: #6b7f94;
+            font-size: 0.75rem;
+        }
+
+        .required-note span {
+            color: #b42318;
+            font-weight: 800;
         }
 
         .form-row {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
         }
 
         .form-group {
-            flex: 1;
+            min-width: 0;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 3px;
-            font-weight: 500;
-            font-size: 0.8rem;
+            margin-bottom: 6px;
+            font-weight: 650;
+            font-size: 0.875rem;
             color: #0f1c2e;
+        }
+
+        .form-group label::after {
+            content: ' *';
+            color: #b42318;
         }
 
         .form-control {
             width: 100%;
-            padding: 6px 8px;
-            border: 1px solid #dde4ed;
-            border-radius: 8px;
-            background: #f4f7fb;
+            min-height: 44px;
+            padding: 9px 11px;
+            border: 1px solid #cbd7e3;
+            border-radius: 9px;
+            background: #f8fafc;
             color: #0f1c2e !important;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
+            transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+        }
+
+        .form-control:hover {
+            border-color: #9fb1c4;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #1769aa;
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(23, 105, 170, 0.2);
         }
 
         .btn {
-            padding: 8px 16px;
+            min-height: 46px;
+            padding: 10px 18px;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
-            font-weight: 600;
-            font-size: 0.9rem;
+            font-weight: 750;
+            font-size: 0.92rem;
             width: 100%;
             background: #1b8a4a;
             color: white;
             flex-shrink: 0;
-            transition: background 0.2s;
+            box-shadow: 0 8px 18px rgba(27, 138, 74, 0.22);
+            transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
         }
 
         .btn:hover {
             background: #157a40;
+            transform: translateY(-1px);
+            box-shadow: 0 10px 22px rgba(27, 138, 74, 0.28);
+        }
+
+        .btn:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(27, 138, 74, 0.3), 0 8px 18px rgba(27, 138, 74, 0.22);
         }
 
         .message {
@@ -249,15 +322,37 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         .error-message-inline {
             color: #b91c1c;
-            font-size: 0.7rem;
-            margin-top: 2px;
+            font-size: 0.75rem;
+            line-height: 1.35;
+            margin-top: 4px;
             display: none; /* Hidden by default */
         }
 
+        .form-hint {
+            display: block;
+            margin-top: 5px;
+            color: #6b7f94;
+            font-size: 0.75rem;
+            line-height: 1.35;
+        }
+
         form {
+            min-height: 0;
             display: flex;
+            flex: 1;
             flex-direction: column;
-            gap: 8px;
+            gap: 14px;
+        }
+
+        .form-fields {
+            min-height: 0;
+            display: grid;
+            gap: 13px;
+            padding-right: 7px;
+            overflow-x: hidden;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #b8c7d7 transparent;
         }
 
         .back-btn {
@@ -290,8 +385,47 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             outline: none;
             box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.45);
         }
+
+        @media (max-width: 760px) {
+            body { overflow: auto; }
+
+            .signup-container {
+                position: relative;
+                min-height: 100dvh;
+                justify-content: center;
+                padding: 78px 16px 20px;
+                overflow: visible;
+            }
+
+            .signup-card {
+                max-width: 520px;
+                max-height: none;
+                padding: 24px 20px 26px;
+                overflow: visible;
+                transform: none;
+            }
+
+            form,
+            .form-fields {
+                overflow: visible;
+            }
+
+            .background-image { background-position: 22% bottom; }
+        }
+
+        @media (max-width: 520px) {
+            .form-row { grid-template-columns: 1fr; }
+            .signup-header h1 { font-size: 1.45rem; }
+            .back-btn { top: 14px; left: 14px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .btn,
+            .back-btn,
+            .form-control { transition: none; }
+        }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=3">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=11">
 </head>
 <body>
     <!-- Back Button -->
@@ -304,59 +438,67 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <div class="signup-container">
         <div class="signup-card">
             <div class="signup-header">
-                <h1>Create Account</h1>
+                <div class="signup-header-topline">
+                    <span class="signup-header-icon" aria-hidden="true"><i class="fas fa-user-plus"></i></span>
+                    <span class="signup-eyebrow">Authorized registration</span>
+                </div>
+                <h1>Create staff account</h1>
+                <p>Enter the staff member's details and assign the correct access role.</p>
+                <p class="required-note"><span>*</span> All fields are required.</p>
             </div>
 
             <?php if ($success): ?>
-                <div class="message success"><?php echo $success; ?></div>
+                <div class="message success" role="status"><?php echo $success; ?></div>
             <?php endif; ?>
             <?php if ($error): ?>
-                <div class="message error"><?php echo $error; ?></div>
+                <div class="message error" role="alert"><?php echo $error; ?></div>
             <?php endif; ?>
 
             <form method="post" action="">
+                <div class="form-fields">
                 <div class="form-row">
                     <div class="form-group">
                         <label for="firstName">First Name</label>
-                        <input type="text" id="firstName" name="firstName" class="form-control" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')" required>
-                        <span id="firstNameError" class="error-message-inline"></span>
+                        <input type="text" id="firstName" name="firstName" class="form-control" autocomplete="given-name" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')" required>
+                        <span id="firstNameError" class="error-message-inline" aria-live="polite"></span>
                     </div>
                     <div class="form-group">
                         <label for="lastName">Last Name</label>
-                        <input type="text" id="lastName" name="lastName" class="form-control" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')" required>
-                        <span id="lastNameError" class="error-message-inline"></span>
+                        <input type="text" id="lastName" name="lastName" class="form-control" autocomplete="family-name" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')" required>
+                        <span id="lastNameError" class="error-message-inline" aria-live="polite"></span>
                     </div>
                 </div>
-                <div class="form-group" style="margin-bottom: 10px;">
+                <div class="form-group">
                     <label for="email">Email</label>
-                    <input type="email" id="email" name="email" class="form-control" required>
-                    <span id="emailError" class="error-message-inline"></span>
+                    <input type="email" id="email" name="email" class="form-control" autocomplete="email" required>
+                    <span id="emailError" class="error-message-inline" aria-live="polite"></span>
                 </div>
-                <div class="form-group" style="margin-bottom: 10px;">
+                <div class="form-group">
                     <label for="username">Username</label>
-                    <input type="text" id="username" name="username" class="form-control" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')" required>
-                    <span id="usernameError" class="error-message-inline"></span>
+                    <input type="text" id="username" name="username" class="form-control" autocomplete="username" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')" required>
+                    <span id="usernameError" class="error-message-inline" aria-live="polite"></span>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label for="password">Password</label>
-                        <input type="password" id="password" name="password" class="form-control" required>
-                        <span id="passwordError" class="error-message-inline"></span>
+                        <input type="password" id="password" name="password" class="form-control" autocomplete="new-password" aria-describedby="passwordHint passwordError" required>
+                        <span id="passwordHint" class="form-hint">Use 8+ characters with uppercase, lowercase, number, and symbol.</span>
+                        <span id="passwordError" class="error-message-inline" aria-live="polite"></span>
                     </div>
                     <div class="form-group">
                         <label for="confirmPassword">Confirm Password</label>
-                        <input type="password" id="confirmPassword" name="confirmPassword" class="form-control" required>
-                        <span id="confirmPasswordError" class="error-message-inline"></span>
+                        <input type="password" id="confirmPassword" name="confirmPassword" class="form-control" autocomplete="new-password" required>
+                        <span id="confirmPasswordError" class="error-message-inline" aria-live="polite"></span>
                     </div>
                 </div>
-                <div class="form-group" style="margin-bottom: 10px;">
+                <div class="form-group">
                     <label for="role">Role</label>
                     <select id="role" name="role" class="form-control" onchange="toggleBarangayField()" required>
                         <option value="barangay_staff">Barangay Staff</option>
                         <option value="department_admin">Department Admin</option>
                     </select>
                 </div>
-                <div class="form-group" id="barangayField" style="margin-bottom: 10px;">
+                <div class="form-group" id="barangayField">
                     <label for="barangay">Barangay</label>
                     <select id="barangay" name="barangay" class="form-control">
                         <option value="">Select barangay</option>
@@ -364,13 +506,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <option value="<?php echo htmlspecialchars($b); ?>"><?php echo htmlspecialchars($b); ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <span id="barangayError" class="error-message-inline"></span>
+                    <span id="barangayError" class="error-message-inline" aria-live="polite"></span>
                 </div>
-                 <div class="form-group" style="margin-bottom: 10px;">
+                 <div class="form-group">
                     <label for="masterPassword">Master Password</label>
-                    <input type="password" id="masterPassword" name="masterPassword" class="form-control" required>
+                    <input type="password" id="masterPassword" name="masterPassword" class="form-control" autocomplete="current-password" aria-describedby="masterPasswordHint" required>
+                    <span id="masterPasswordHint" class="form-hint">Use the authorization password provided by the system administrator.</span>
                 </div>
-                <button type="submit" class="btn btn-primary">Sign Up</button>
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus" aria-hidden="true"></i> Create account</button>
             </form>
         </div>
     </div>
