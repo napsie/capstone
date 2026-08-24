@@ -570,7 +570,7 @@ if (empty($_SESSION['login_audit_recorded'])) {
     </style>
     <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=11">
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
-    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=2">
+    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
     <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=3">
 </head>
 <body class="dashboard-page department-dashboard">
@@ -624,7 +624,7 @@ if (empty($_SESSION['login_audit_recorded'])) {
                         <i class="fas fa-check-circle"></i>
                     </div>
                     <div class="stat-info">
-                        <h3>142</h3>
+                        <h3 class="dashboard-loading" aria-live="polite" aria-label="Loading verified applications">0</h3>
                         <p>Verified applications</p><small>Review document activity</small>
                     </div>
                     <i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i>
@@ -635,7 +635,7 @@ if (empty($_SESSION['login_audit_recorded'])) {
                         <i class="fas fa-user-check"></i>
                     </div>
                     <div class="stat-info">
-                        <h3>89</h3>
+                        <h3 class="dashboard-loading" aria-live="polite" aria-label="Loading senior citizen records">0</h3>
                         <p>Senior citizen records</p><small>Browse citywide profiles</small>
                     </div>
                     <i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i>
@@ -646,7 +646,7 @@ if (empty($_SESSION['login_audit_recorded'])) {
                         <i class="fas fa-chart-line"></i>
                     </div>
                     <div class="stat-info">
-                        <h3>1,284</h3>
+                        <h3 class="dashboard-loading" aria-live="polite" aria-label="Loading total processed records">0</h3>
                         <p>Total processed</p><small>View complete workload</small>
                     </div>
                     <i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i>
@@ -659,11 +659,11 @@ if (empty($_SESSION['login_audit_recorded'])) {
                             <div class="charts-container">
                                 <div class="chart-card">
                                     <h3><span><i class="fas fa-chart-bar"></i> Records by barangay</span><small>Compare verified records across Pasig City</small></h3>
-                                    <div class="chart-wrapper"><canvas id="barangayRecordsChart" aria-label="Chart comparing records across barangays" role="img">Barangay records chart</canvas></div>
+                                    <div class="chart-wrapper is-loading"><canvas id="barangayRecordsChart" aria-label="Chart comparing records across barangays" role="img">Barangay records chart</canvas></div>
                                 </div>
                                 <div class="chart-card">
                                     <h3><span><i class="fas fa-chart-line"></i> Yearly records</span><small>Record growth and processing trends over time</small></h3>
-                                    <div class="chart-wrapper"><canvas id="yearlyRecordsChart" aria-label="Chart of yearly records and processing trends" role="img">Yearly records chart</canvas></div>
+                                    <div class="chart-wrapper is-loading"><canvas id="yearlyRecordsChart" aria-label="Chart of yearly records and processing trends" role="img">Yearly records chart</canvas></div>
                                 </div>
                             </div>
                         </div>
@@ -778,30 +778,46 @@ if (empty($_SESSION['login_audit_recorded'])) {
             updateTime();
             setInterval(updateTime, 1000);
 
-            // Fetch dynamic data for charts and notifications
-            fetch('../api/get_realtime_data.php')
-                .then(response => response.json())
+            loadDashboardData();
+        });
+
+        function loadDashboardData() {
+            const list = document.getElementById('realtime-notifications-list');
+            if (list) list.innerHTML = '<div class="dashboard-state" role="status">Updating dashboard…</div>';
+            document.querySelectorAll('.chart-wrapper').forEach(el => el.classList.add('is-loading'));
+            fetch('../api/get_realtime_data.php', { headers: { 'Accept': 'application/json' } })
+                .then(response => {
+                    if (!response.ok) throw new Error(`Request failed (${response.status})`);
+                    return response.json();
+                })
                 .then(result => {
                     if (result.status === 'success') {
                         renderNotifications(result.data.notifications);
                         initializeDepartmentCharts(result.data);
                         updateStatCards(result.data); // Call new function to update stat cards
                     } else {
-                        console.error('Failed to load dashboard data:', result.message);
-                        document.getElementById('realtime-notifications-list').innerHTML = '<p>Could not load notifications.</p>';
+                        throw new Error(result.message || 'Dashboard data is unavailable');
                     }
                 })
                 .catch(error => {
                     console.error('Error fetching dashboard data:', error);
-                    document.getElementById('realtime-notifications-list').innerHTML = '<p>Error loading notifications.</p>';
+                    showDashboardError();
                 });
-        });
+        }
+
+        function showDashboardError() {
+            document.querySelectorAll('.dashboard-loading').forEach(el => { el.classList.remove('dashboard-loading'); el.textContent = '—'; el.removeAttribute('aria-label'); });
+            document.querySelectorAll('.chart-wrapper').forEach(el => el.classList.remove('is-loading'));
+            const list = document.getElementById('realtime-notifications-list');
+            if (list) list.innerHTML = '<div class="dashboard-state" role="alert"><span>Dashboard updates could not be loaded.</span><button class="dashboard-retry" type="button" onclick="loadDashboardData()">Try again</button></div>';
+        }
 
         function updateStatCards(data) {
             // Update stat card values from live API data
             document.querySelector('.stat-card:nth-child(1) h3').textContent = data.verified_applications ?? 0;
             document.querySelector('.stat-card:nth-child(2) h3').textContent = data.senior_citizen_records ?? 0;
             document.querySelector('.stat-card:nth-child(3) h3').textContent = data.total_processed ?? 0;
+            document.querySelectorAll('.dashboard-loading').forEach(node => { node.classList.remove('dashboard-loading'); node.removeAttribute('aria-label'); });
         }
 
         function updateTime() {
@@ -973,6 +989,7 @@ if (empty($_SESSION['login_audit_recorded'])) {
                         indexAxis: 'y', // Makes it a horizontal bar chart
                         responsive: true,
                         maintainAspectRatio: false,
+                        animation: { duration: 180 },
                         plugins: {
                             legend: { display: false }
                         },
@@ -1004,6 +1021,7 @@ if (empty($_SESSION['login_audit_recorded'])) {
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        animation: { duration: 180 },
                         plugins: {
                             legend: { display: false }
                         },
@@ -1013,6 +1031,7 @@ if (empty($_SESSION['login_audit_recorded'])) {
                     }
                 });
             }
+            document.querySelectorAll('.chart-wrapper').forEach(el => el.classList.remove('is-loading'));
         }
     </script>
 </body>

@@ -21,7 +21,6 @@ unset($_SESSION['application_submission_notice']);
     <title>Queue – Barangay <?php echo $loggedInBarangay; ?></title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=4">
-    <link rel="stylesheet" href="../assets/css/main-dark-mode.css?v=1.1">
     <link rel="stylesheet" href="../assets/css/application-documents.css?v=7">
     <style>
         /* ─── Variables ─────────────────────────────────────────────────── */
@@ -354,11 +353,13 @@ unset($_SESSION['application_submission_notice']);
         /* Footer */
         .page-footer { text-align:center; padding:24px; font-size:0.78rem; color:var(--gray); }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=13">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=15">
+    <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
     <script src="../assets/js/table-pagination.js?v=1" defer></script>
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
-    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=2">
+    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
+    <link rel="stylesheet" href="../assets/css/applicant-modal.css?v=1">
 </head>
 <body>
 <div class="container">
@@ -442,11 +443,12 @@ unset($_SESSION['application_submission_notice']);
                             <th>Action</th>
                         </tr>
                     </thead>
-                    <tbody id="applicationsTableBody" data-paginate="10" data-pagination-label="Submitted application pages">
+                    <tbody id="applicationsTableBody">
                         <tr><td colspan="9" style="text-align:center; padding: 20px; color:var(--gray);">Loading applications…</td></tr>
                     </tbody>
                 </table>
             </div>
+            <nav id="serverPagination" class="server-pagination" aria-label="Application result pages" style="display:flex;align-items:center;justify-content:center;gap:12px;padding:16px;"></nav>
         </div>
 
         <div class="page-footer">Centralized Profiling and Record Authentication System &bull; Barangay <?php echo $loggedInBarangay; ?> &copy; <?php echo date('Y'); ?></div>
@@ -456,13 +458,13 @@ unset($_SESSION['application_submission_notice']);
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- Application Detail Modal                                             -->
 <!-- ──────────────────────────────────────────────────────────────────── -->
-<div id="applicationModal" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modalAppTitle">
-    <div class="modal-box" role="document">
+<div id="applicationModal" class="modal-overlay applicant-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modalAppTitle">
+    <div class="modal-box applicant-modal-dialog" role="document">
         <div class="modal-head">
-            <h2><i class="fas fa-file-invoice"></i> <span id="modalAppTitle">Application Profile Details</span></h2>
-            <button type="button" class="modal-close" id="closeModalBtn" aria-label="Close application details">&times;</button>
+            <div class="applicant-modal-heading"><span class="applicant-modal-eyebrow">Applicant record</span><h2><i class="fas fa-file-invoice"></i> <span id="modalAppTitle">Application Profile Details</span></h2><p>Review applicant information, submitted requirements, and processing history.</p></div>
+            <button type="button" class="modal-close" id="closeModalBtn" aria-label="Close application details"><i class="fas fa-xmark" aria-hidden="true"></i></button>
         </div>
-        <div class="modal-scroller">
+        <div class="modal-scroller applicant-modal-body">
 
             <!-- Workflow progress stepper -->
             <div class="stepper">
@@ -480,7 +482,7 @@ unset($_SESSION['application_submission_notice']);
                 <p style="margin-top: 10px; font-weight: bold; text-decoration: underline;">Please upload clean, high-resolution scans below and save changes to update.</p>
             </div>
 
-            <div class="modal-grid">
+            <div class="modal-grid applicant-modal-layout">
                 <!-- LEFT: Details Form -->
                 <div>
                     <form id="applicationDetailForm" method="POST" action="../api/update_application.php" enctype="multipart/form-data">
@@ -625,11 +627,11 @@ unset($_SESSION['application_submission_notice']);
 </div><!-- /#applicationModal -->
 
 <!-- Export PDF filter modal -->
-<div id="exportModal" class="modal-overlay">
+<div id="exportModal" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="exportModalTitle">
     <div class="modal-box export-modal-box">
         <div class="modal-head">
-            <h2><i class="fas fa-file-pdf"></i> Export Queue PDF</h2>
-            <button type="button" class="modal-close" id="closeExportModalBtn">&times;</button>
+            <h2 id="exportModalTitle"><i class="fas fa-file-pdf"></i> Export Queue PDF</h2>
+            <button type="button" class="modal-close" id="closeExportModalBtn" aria-label="Close export dialog">&times;</button>
         </div>
         <form id="exportReportForm" method="GET" action="../api/export_records_pdf.php">
             <div class="export-modal-body">
@@ -677,11 +679,11 @@ unset($_SESSION['application_submission_notice']);
 </div>
 
 <!-- QR scan Modal -->
-<div id="proxyModal" class="modal-overlay">
+<div id="proxyModal" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="proxyModalTitle">
     <div class="modal-box" style="max-width:500px; margin: 10% auto;">
         <div class="modal-head">
-            <h2><i class="fas fa-qrcode"></i> Scan Representative QR Token</h2>
-            <button class="modal-close" onclick="closeProxyModal()">&times;</button>
+            <h2 id="proxyModalTitle"><i class="fas fa-qrcode"></i> Scan Representative QR Token</h2>
+            <button type="button" class="modal-close" onclick="closeProxyModal()" aria-label="Close QR scanner dialog">&times;</button>
         </div>
         <div class="modal-scroller" style="padding:20px;">
             <p style="font-size:0.82rem; color:var(--gray); margin-bottom:14px;">
@@ -700,11 +702,10 @@ unset($_SESSION['application_submission_notice']);
 </div>
 
 <script src="../assets/js/sidebar-toggle.js?v=3"></script>
-<script src="../assets/js/dark-mode.js"></script>
 <script src="../assets/js/osca-form-fields.js?v=2"></script>
 <script src="../assets/js/application-documents.js?v=7"></script>
 <script src="../assets/js/application-details.js?v=5"></script>
-<script src="../assets/js/carelink-feedback.js?v=2"></script>
+<script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 <script src="../assets/js/application-form-generator.js?v=1"></script>
 <script>
     const TYPE_LABELS = <?php echo json_encode(getApplicationTypeOptions()); ?>;
@@ -730,6 +731,8 @@ unset($_SESSION['application_submission_notice']);
     const applicationTypeFilter = document.getElementById('applicationTypeFilter');
     const tableBody             = document.getElementById('applicationsTableBody');
     const userBarangay          = "<?php echo $loggedInBarangay; ?>";
+    const serverPagination      = document.getElementById('serverPagination');
+    let applicationsPage        = 1;
 
     function buildAddressFromParts(app = {}) {
         return [
@@ -766,10 +769,11 @@ unset($_SESSION['application_submission_notice']);
         setVisibility(emergencyRow, showEmergency);
     }
 
-    function fetchApplications() {
+    function fetchApplications(page = applicationsPage) {
+        applicationsPage = page;
         tableBody.innerHTML = '<tr><td colspan="9" style="text-align:center;">Loading applications…</td></tr>';
         
-        let url = `../api/search_applications.php?query=${encodeURIComponent(searchInput.value)}`;
+        let url = `../api/search_applications.php?query=${encodeURIComponent(searchInput.value)}&page=${applicationsPage}&per_page=25`;
         if (applicationTypeFilter.value) url += `&type=${encodeURIComponent(applicationTypeFilter.value)}`;
         // Finalized records belong in Barangay Records, which shows only
         // Approved and Released applications. This queue keeps active work.
@@ -778,10 +782,13 @@ unset($_SESSION['application_submission_notice']);
 
         fetch(url)
             .then(r => r.json())
-            .then(apps => {
+            .then(result => {
+                if (!result.success) throw new Error(result.message || 'Unable to load applications');
+                const apps = result.data || [];
                 tableBody.innerHTML = '';
                 if (!apps.length) {
                     tableBody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray);">No applications found.</td></tr>';
+                    renderServerPagination(result.pagination);
                     return;
                 }
 
@@ -825,6 +832,7 @@ unset($_SESSION['application_submission_notice']);
                             </td>
                         </tr>`;
                 });
+                renderServerPagination(result.pagination);
             })
             .catch(err => {
                 console.error(err);
@@ -832,11 +840,26 @@ unset($_SESSION['application_submission_notice']);
             });
     }
 
-    applicationTypeFilter.addEventListener('change', fetchApplications);
+    function renderServerPagination(pagination) {
+        if (!serverPagination || !pagination || pagination.total_pages <= 1) {
+            if (serverPagination) serverPagination.innerHTML = '';
+            return;
+        }
+        serverPagination.innerHTML = `
+            <button type="button" class="btn btn-small" ${pagination.has_previous ? '' : 'disabled'} data-page="${pagination.page - 1}">Previous</button>
+            <span>Page ${pagination.page} of ${pagination.total_pages} · ${pagination.total} applications</span>
+            <button type="button" class="btn btn-small" ${pagination.has_next ? '' : 'disabled'} data-page="${pagination.page + 1}">Next</button>`;
+    }
+    serverPagination.addEventListener('click', event => {
+        const button = event.target.closest('button[data-page]');
+        if (button && !button.disabled) fetchApplications(Number(button.dataset.page));
+    });
+
+    applicationTypeFilter.addEventListener('change', () => fetchApplications(1));
     let searchTimer;
     searchInput.addEventListener('input', () => {
         clearTimeout(searchTimer);
-        searchTimer = setTimeout(fetchApplications, 250);
+        searchTimer = setTimeout(() => fetchApplications(1), 250);
     });
 
     // Open the application from the name, View button, or anywhere on its row.
@@ -1050,9 +1073,9 @@ unset($_SESSION['application_submission_notice']);
                 <p>${String(message).replace(/[<>]/g, '')}</p>
                 <button type="button" class="btn btn-primary app-result-close" style="background:${color};" onclick="document.getElementById('appResultModal')?.remove()">OK</button>
             </div>`;
-        modal.style.cssText = 'position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,.58);backdrop-filter:blur(3px);';
+        modal.style.cssText = 'position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,.58);';
         document.body.appendChild(modal);
-        setTimeout(() => modal.remove(), 5000);
+        modal.querySelector('.app-result-close')?.focus();
     }
 
     const applicationSubmissionNotice = <?php echo json_encode($applicationSubmissionNotice, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
@@ -1227,11 +1250,18 @@ unset($_SESSION['application_submission_notice']);
         document.getElementById('exportDateFrom').value = '';
         document.getElementById('exportDateTo').value = '';
         document.getElementById('exportYear').value = 'all';
-        document.getElementById('exportModal').style.display = 'block';
+        const modal = document.getElementById('exportModal');
+        modal._returnFocus = document.activeElement;
+        modal.style.display = 'flex';
+        modal.setAttribute('aria-hidden', 'false');
+        modal.querySelector('.modal-close')?.focus();
     }
 
     function closeExportModal() {
-        document.getElementById('exportModal').style.display = 'none';
+        const modal = document.getElementById('exportModal');
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+        modal._returnFocus?.focus();
     }
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -1295,13 +1325,20 @@ unset($_SESSION['application_submission_notice']);
 
     /* ─── Proxy QR Scanner Modals ─── */
     function openProxyModal() {
-        document.getElementById('proxyModal').style.display = 'block';
+        const modal = document.getElementById('proxyModal');
+        modal._returnFocus = document.activeElement;
+        modal.style.display = 'flex';
+        modal.setAttribute('aria-hidden', 'false');
         document.getElementById('modalToken').value = '';
         document.getElementById('modalError').textContent = '';
+        document.getElementById('modalToken').focus();
     }
 
     function closeProxyModal() {
-        document.getElementById('proxyModal').style.display = 'none';
+        const modal = document.getElementById('proxyModal');
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+        modal._returnFocus?.focus();
     }
 
     async function searchByQrToken() {

@@ -17,7 +17,7 @@
     background-size: cover;
     background-position: left bottom;
     background-repeat: no-repeat;
-    background-attachment: fixed;
+    background-attachment: scroll;
 }
 
 .dashboard-page .main-content {
@@ -26,7 +26,7 @@
     background:
         radial-gradient(circle at 96% 2%, rgba(23, 105, 170, .07), transparent 25%),
         linear-gradient(rgba(238, 243, 247, 0.9), rgba(238, 243, 247, 0.92)),
-        url('../../images/landing-background-new3.png') left bottom / cover fixed;
+        url('../../images/landing-background-new3.png') left bottom / cover scroll;
 }
 
 .dashboard-command-bar {
@@ -110,9 +110,19 @@
     background: rgba(255, 255, 255, .1);
     border: 1px solid rgba(255, 255, 255, .17);
     border-radius: 11px;
-    backdrop-filter: blur(8px);
     transition: transform .18s, background .18s, border-color .18s, box-shadow .18s;
 }
+
+/* Stable, low-cost loading feedback prevents blank panels and layout shifts. */
+.dashboard-page .dashboard-loading { position: relative; overflow: hidden; color: transparent !important; user-select: none; }
+.dashboard-page .dashboard-loading::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, #e7eef3 25%, #f7fafc 50%, #e7eef3 75%); background-size: 200% 100%; border-radius: 7px; animation: dashboardSkeleton 1.2s ease-in-out infinite; }
+.dashboard-page .stat-value.dashboard-loading,
+.dashboard-page .stat-info h3.dashboard-loading { width: 64px; min-height: 1.7rem; }
+.dashboard-page .chart-wrapper.is-loading::before { content: 'Loading chart…'; position: absolute; z-index: 2; inset: 14px 17px 17px; display: grid; place-items: center; color: #61778a; background: linear-gradient(90deg, #eef3f7 25%, #f9fbfc 50%, #eef3f7 75%); background-size: 200% 100%; border-radius: 9px; animation: dashboardSkeleton 1.2s ease-in-out infinite; }
+.dashboard-page .dashboard-state { min-height: 92px; display: grid; place-items: center; gap: 8px; padding: 18px; color: #61778a; font-size: .75rem; text-align: center; }
+.dashboard-page .dashboard-retry { min-height: 40px; padding: 8px 14px; color: #fff; background: var(--dash-blue); border: 0; border-radius: 8px; cursor: pointer; font-weight: 700; }
+.dashboard-page .dashboard-retry:focus-visible { outline: 3px solid rgba(23, 105, 170, .28); outline-offset: 2px; }
+@keyframes dashboardSkeleton { to { background-position: -200% 0; } }
 
 .quick-action.primary {
     color: #173e58;
@@ -623,37 +633,6 @@
     text-align: center;
 }
 
-body.dark-mode.dashboard-page {
-    --dash-text: #e7eef5;
-    --dash-muted: #9db0bf;
-    --dash-line: #34485b;
-    --dash-surface: #1a2735;
-    --dash-soft: #162331;
-    background: #111c28;
-}
-
-body.dark-mode.dashboard-page .main-content {
-    background: #111c28;
-}
-
-body.dark-mode.dashboard-page :is(.stat-card, .chart-card, .calendar-card, .notifications-card),
-body.dark-mode.dashboard-page :is(.chart-card, .calendar-card, .notifications-card) > h3 {
-    background: #1a2735;
-    border-color: #34485b;
-}
-
-body.dark-mode.dashboard-page .recent-apps-card,
-body.dark-mode.dashboard-page .recent-apps-card > h3,
-body.dark-mode.dashboard-page .notification-item:first-child {
-    background: #2b271d;
-    border-color: #6d572d;
-}
-
-body.dark-mode.dashboard-page :is(.stat-value, .stat-info h3, .dashboard-section-heading h2),
-body.dark-mode.dashboard-page :is(.chart-card, .calendar-card, .notifications-card) > h3 {
-    color: #e7eef5;
-}
-
 @media (max-width: 1100px) {
     .dashboard-command-bar {
         grid-template-columns: 1fr;
@@ -722,4 +701,5 @@ body.dark-mode.dashboard-page :is(.chart-card, .calendar-card, .notifications-ca
     .dashboard-page :is(.quick-action, .stat-card, .stat-arrow) {
         transition: none;
     }
+    .dashboard-page :is(.dashboard-loading::after, .chart-wrapper.is-loading::before) { animation: none; }
 }

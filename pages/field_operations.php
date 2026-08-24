@@ -546,7 +546,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
         }
     </style>
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
-    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=2">
+    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
 </head>
 <body>
 <div class="container">

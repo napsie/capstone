@@ -101,22 +101,6 @@
     font: 500 0.72rem/1.25 'Inter', 'Segoe UI', sans-serif !important;
 }
 
-body.dark-mode .main-content > :is(.header, .page-header) {
-    background: #111c2b !important;
-    border-color: rgba(148, 163, 184, 0.2) !important;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24) !important;
-}
-
-body.dark-mode .main-content > :is(.header, .page-header) h1,
-body.dark-mode .main-content > :is(.header, .page-header) :is(.user-details h2, .header-user-info h3) {
-    color: #e2e8f0 !important;
-}
-
-body.dark-mode .main-content > :is(.header, .page-header) :is(.user-info, .header-user) {
-    background: #182538 !important;
-    border-color: rgba(148, 163, 184, 0.24) !important;
-}
-
 @media (max-width: 768px) {
     .main-content > :is(.header, .page-header) {
         align-items: flex-start !important;

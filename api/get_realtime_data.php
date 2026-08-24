@@ -48,21 +48,20 @@ try {
     $stmt->execute();
     $response['data']['yearly_records'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // ── Stat Cards ──
-    // Verified Applications = workflow_state = 'Verified' OR 'Approved' OR 'Released'
-    $stmt = $conn->prepare("SELECT COUNT(*) FROM applications WHERE workflow_state IN ('Verified','Approved','Released') AND (is_archived = 0 OR is_archived IS NULL)");
+    // ── Stat Cards: one aggregate scan for all summary values ──
+    $stmt = $conn->prepare("
+        SELECT
+            SUM(CASE WHEN workflow_state IN ('Verified','Approved','Released') THEN 1 ELSE 0 END) AS verified_applications,
+            SUM(CASE WHEN application_type = 'senior' THEN 1 ELSE 0 END) AS senior_citizen_records,
+            COUNT(*) AS total_processed
+        FROM applications
+        WHERE (is_archived = 0 OR is_archived IS NULL)
+    ");
     $stmt->execute();
-    $response['data']['verified_applications'] = (int)$stmt->fetchColumn();
-
-    // Senior Citizen Records
-    $stmt = $conn->prepare("SELECT COUNT(*) FROM applications WHERE application_type = 'senior' AND (is_archived = 0 OR is_archived IS NULL)");
-    $stmt->execute();
-    $response['data']['senior_citizen_records'] = (int)$stmt->fetchColumn();
-
-    // Total Processed
-    $stmt = $conn->prepare("SELECT COUNT(*) FROM applications WHERE (is_archived = 0 OR is_archived IS NULL)");
-    $stmt->execute();
-    $response['data']['total_processed'] = (int)$stmt->fetchColumn();
+    $summary = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+    $response['data']['verified_applications'] = (int)($summary['verified_applications'] ?? 0);
+    $response['data']['senior_citizen_records'] = (int)($summary['senior_citizen_records'] ?? 0);
+    $response['data']['total_processed'] = (int)($summary['total_processed'] ?? 0);
 
     // Workflow status distribution (for extended stat cards)
     $stmt = $conn->prepare("

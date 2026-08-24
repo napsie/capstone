@@ -67,6 +67,7 @@
         return section('fa-clipboard-list', title, [
             field('Application ID', app.id_number),
             field('Application Type', typeLabels[app.application_type] || app.application_type),
+            field('Requested Benefit / Service', app.requested_benefit),
             field('Senior Citizen ID No.', seniorId(app), { raw: true }),
             field('Processing Status', app.workflow_state || app.status || 'Received'),
             field('Date Submitted', dateTime(app.date_submitted), { raw: true }),
@@ -79,7 +80,7 @@
         const type = app.application_type || '';
 
         if (type === 'senior') {
-            sections.push(section('fa-id-card', 'Senior ID Registration', [
+            sections.push(section('fa-id-card', app.requested_benefit === 'Senior Citizen ID Registration' ? 'Senior ID Registration' : 'Senior Pre-registration Profile', [
                 field('Application Purpose', app.id_purpose), field('Control Number', app.control_no),
                 field('ID Type Presented', app.id_type_presented), field('TIN', app.tin),
                 field('Health Status', app.health_status)
@@ -148,7 +149,55 @@
         if (String(app.is_proxy_application) !== '1' && ![app.proxy_name, app.proxy_relationship].some(hasValue)) return '';
         return section('fa-user-shield', 'Authorized Representative', [
             field('Representative Name', app.proxy_name), field('Relationship', app.proxy_relationship),
-            field('Contact Number', app.proxy_contact_number), field('Linked Senior Application', app.parent_senior_id)
+            field('Birth Date', date(app.proxy_birth_date), { raw: true }),
+            field('Contact Number', app.proxy_contact_number), field('Email Address', app.proxy_email),
+            field('Complete Address', app.proxy_address, { wide: true }),
+            field('Government ID Type', app.proxy_id_type), field('Government ID Number', app.proxy_id_number),
+            field('Linked Senior Application', app.parent_senior_id)
+        ]);
+    }
+
+    function requestedBenefitSection(app) {
+        const benefit = app.requested_benefit || '';
+        if (!hasValue(benefit)) return '';
+
+        if (benefit === 'Senior Citizen ID Registration') {
+            return section('fa-id-card', 'Requested Senior ID Service', [
+                field('ID Application Purpose', app.id_purpose)
+            ]);
+        }
+        if (benefit === 'Home Visitation / Confirmation') {
+            return section('fa-house-medical', 'Requested Home Visit', [
+                field('Visit Purpose', app.visit_purpose, { wide: true }),
+                field('Visit Instructions', app.visit_summary, { wide: true }),
+                field('Living Arrangement', app.living_arrangement), field('Health Condition', app.health_condition)
+            ]);
+        }
+        if (benefit.includes('Social Pension')) {
+            return section('fa-wallet', 'Requested Pension Assessment', [
+                field('Pensioner', yesNo(app.is_pensioner), { raw: true }), field('Pension Source', app.pension_source),
+                field('SSS / GSIS Number', app.sss_number), field('Current Monthly Pension', money(app.pension_amount), { raw: true }),
+                field('Family Support', yesNo(app.family_support), { raw: true }),
+                field('Family Support Amount', money(app.family_support_amount), { raw: true }),
+                field('Personal Income', yesNo(app.personal_income), { raw: true }),
+                field('Personal Income Amount', money(app.personal_income_amount), { raw: true })
+            ]);
+        }
+        if (benefit === 'Land Bank Cash Card Enrollment') {
+            return section('fa-building-columns', 'Requested Land Bank Enrollment', [
+                field('Name on Card', app.name_on_card), field('TIN', app.tin),
+                field('Nationality', app.nationality), field('Senior ID Presented', app.id_type_presented),
+                field('Source of Funds', app.source_of_funds, { wide: true })
+            ]);
+        }
+        if (benefit === 'Milestone Cash Gift') {
+            return section('fa-cake-candles', 'Requested Milestone Cash Gift', [
+                field('Milestone Age', app.milestone_age), field('Claimant Name', app.claimant_name),
+                field('Claimant Relationship', app.claimant_relationship), field('Claimant Contact', app.claimant_contact)
+            ]);
+        }
+        return section('fa-hand-holding-heart', 'Requested OSCA Assistance', [
+            field('Assistance Details', app.additional_notes, { wide: true })
         ]);
     }
 
@@ -171,7 +220,8 @@
 
     // Verification shows only the reference and facts needed to assess this application type.
     window.renderApplicationVerificationDetails = app => wrap([
-        applicationIdentity(app, 'Verification Reference'), ...typeSpecificSections(app), representativeSection(app)
+        applicationIdentity(app, 'Verification Reference'), ...typeSpecificSections(app),
+        requestedBenefitSection(app), representativeSection(app)
     ]);
 
     // Record viewing adds profile facts that are not already in the modal's applicant summary.
@@ -190,7 +240,7 @@
             field('Emergency Contact', app.emergency_contact_name),
             field('Emergency Contact Number', app.emergency_contact), field('Landmark', app.landmark)
         ]),
-        ...typeSpecificSections(app), representativeSection(app),
+        ...typeSpecificSections(app), requestedBenefitSection(app), representativeSection(app),
         hasValue(app.return_reason || app.return_comments)
             ? section('fa-note-sticky', 'Correction History', [field('Return / Correction Reason', app.return_reason || app.return_comments, { wide: true })])
             : ''

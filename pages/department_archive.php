@@ -166,7 +166,8 @@ $auditHasFilters = $search !== '' || $barangayFilter !== 'all' || $auditEventFil
     <title>SENIORLINK — Department Master Archive</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=4">
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=12">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=15">
+    <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', 'Segoe UI', sans-serif; }
         :root { --primary:#0f172a; --secondary:#1e3a5f; --accent:#2563eb; --success:#10b981; --gray:#94a3b8; --bg:#f1f5f9; --card:#ffffff; }
@@ -226,7 +227,7 @@ $auditHasFilters = $search !== '' || $barangayFilter !== 'all' || $auditEventFil
     </style>
     <link rel="stylesheet" href="../assets/css/archive-details.css?v=2">
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
-    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=2">
+    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
     <link rel="stylesheet" href="../assets/css/audit-log.css?v=2">
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
     <script src="../assets/js/table-pagination.js?v=1" defer></script>
@@ -526,8 +527,8 @@ $auditHasFilters = $search !== '' || $barangayFilter !== 'all' || $auditEventFil
     <div id="archiveApplicationModal" class="archive-detail-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="archiveApplicationModalTitle">
         <div class="archive-detail-dialog">
             <div class="archive-detail-head">
-                <h2 id="archiveApplicationModalTitle"><i class="fas fa-box-archive"></i> Archived Application Details</h2>
-                <button type="button" class="archive-detail-close" id="closeArchiveApplicationModal" aria-label="Close application details">&times;</button>
+                <div class="archive-detail-heading"><span>Archived applicant record</span><h2 id="archiveApplicationModalTitle"><i class="fas fa-box-archive"></i> Archived Application Details</h2><p>Review the preserved application information before restoring the record.</p></div>
+                <button type="button" class="archive-detail-close" id="closeArchiveApplicationModal" aria-label="Close application details"><i class="fas fa-xmark" aria-hidden="true"></i></button>
             </div>
             <div class="archive-detail-body" id="archiveApplicationModalBody"></div>
         </div>
@@ -536,7 +537,7 @@ $auditHasFilters = $search !== '' || $barangayFilter !== 'all' || $auditEventFil
     <script src="../assets/js/sidebar-toggle.js?v=3"></script>
     <script src="../assets/js/application-details.js?v=4"></script>
     <script src="../assets/js/archive-application-modal.js?v=2"></script>
-    <script src="../assets/js/carelink-feedback.js?v=2"></script>
+    <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
     <script>
         (function(){
             const h = new Date().getHours();

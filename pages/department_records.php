@@ -438,9 +438,11 @@ function getStatusBadge($status) {
         /* Footer */
         .page-footer { text-align:center; padding:24px; font-size:0.78rem; color:var(--gray); }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=13">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=15">
+    <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
-    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=2">
+    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
+    <link rel="stylesheet" href="../assets/css/applicant-modal.css?v=1">
 </head>
 <body>
 <div class="container">
@@ -646,13 +648,13 @@ function getStatusBadge($status) {
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- Application Detail Modal                                             -->
 <!-- ──────────────────────────────────────────────────────────────────── -->
-<div id="applicationModal" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modalAppTitle">
-    <div class="modal-box" role="document">
+<div id="applicationModal" class="modal-overlay applicant-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modalAppTitle">
+    <div class="modal-box applicant-modal-dialog" role="document">
         <div class="modal-head">
-            <h2><i class="fas fa-file-shield"></i> <span id="modalAppTitle">Application Details</span></h2>
-            <button type="button" class="modal-close" id="closeModalBtn" aria-label="Close application details">&times;</button>
+            <div class="applicant-modal-heading"><span class="applicant-modal-eyebrow">Applicant record</span><h2><i class="fas fa-file-shield"></i> <span id="modalAppTitle">Application Details</span></h2><p>View citywide record information, documents, and complete processing history.</p></div>
+            <button type="button" class="modal-close" id="closeModalBtn" aria-label="Close application details"><i class="fas fa-xmark" aria-hidden="true"></i></button>
         </div>
-        <div class="modal-scroller">
+        <div class="modal-scroller applicant-modal-body">
 
             <!-- Workflow progress stepper -->
             <div class="stepper">
@@ -687,7 +689,7 @@ function getStatusBadge($status) {
             </div>
 
             <!-- Two-column grid -->
-            <div class="modal-grid">
+            <div class="modal-grid applicant-modal-layout">
                 <!-- LEFT: Details -->
                 <div>
                     <div class="section-title"><i class="fas fa-user"></i> Applicant Information</div>
@@ -745,11 +747,11 @@ function getStatusBadge($status) {
 </div><!-- /#applicationModal -->
 
 <!-- Export scope modal -->
-<div id="exportModal" class="modal-overlay">
+<div id="exportModal" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="exportModalTitle">
     <div class="modal-box export-modal-box">
         <div class="modal-head">
-            <h2><i class="fas fa-file-pdf"></i> Generate Report</h2>
-            <button type="button" class="modal-close" id="closeExportModalBtn">&times;</button>
+            <h2 id="exportModalTitle"><i class="fas fa-file-pdf"></i> Generate Report</h2>
+            <button type="button" class="modal-close" id="closeExportModalBtn" aria-label="Close report dialog">&times;</button>
         </div>
         <form id="exportReportForm" method="GET" action="../api/export_records_pdf.php">
             <div class="export-modal-body">
@@ -828,7 +830,7 @@ function getStatusBadge($status) {
 <script src="../assets/js/sidebar-toggle.js?v=3"></script>
 <script src="../assets/js/application-documents.js?v=7"></script>
 <script src="../assets/js/application-details.js?v=5"></script>
-<script src="../assets/js/carelink-feedback.js?v=2"></script>
+<script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 <script src="../assets/js/application-form-generator.js?v=2"></script>
 <script>
     /* ─── Greeting ──────────────────────────────────────────── */
@@ -898,7 +900,11 @@ function getStatusBadge($status) {
             document.querySelector('input[name="barangayChoice"][value="all"]').checked = true;
         }
         toggleExportBarangay();
-        document.getElementById('exportModal').style.display = 'block';
+        const modal = document.getElementById('exportModal');
+        modal._returnFocus = document.activeElement;
+        modal.style.display = 'flex';
+        modal.setAttribute('aria-hidden', 'false');
+        modal.querySelector('.modal-close')?.focus();
     }
 
     function toggleExportBarangay() {
@@ -907,7 +913,10 @@ function getStatusBadge($status) {
     }
 
     function closeExportModal() {
-        document.getElementById('exportModal').style.display = 'none';
+        const modal = document.getElementById('exportModal');
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+        modal._returnFocus?.focus();
     }
 
     /* ─── Helpers ───────────────────────────────────────────── */
@@ -1237,9 +1246,27 @@ function getStatusBadge($status) {
         // 10. Proxy Details
         let proxyHtml = "";
         if (app.is_proxy_application == 1) {
+            proxyHtml += getFieldHtml("Requested Benefit / Service", app.requested_benefit);
+            proxyHtml += getFieldHtml("ID Application Purpose", app.id_purpose);
+            proxyHtml += getFieldHtml("Home Visit Instructions", app.visit_summary);
+            proxyHtml += getFieldHtml("Pension Source", app.pension_source);
+            proxyHtml += getFieldHtml("Current Monthly Pension", app.pension_amount);
+            proxyHtml += getFieldHtml("Monthly Family Support", app.family_support_amount);
+            proxyHtml += getFieldHtml("Monthly Personal Income", app.personal_income_amount);
+            proxyHtml += getFieldHtml("Name on Cash Card", app.name_on_card);
+            proxyHtml += getFieldHtml("TIN", app.tin);
+            proxyHtml += getFieldHtml("Senior ID Presented", app.id_type_presented);
+            proxyHtml += getFieldHtml("Source of Funds", app.source_of_funds);
+            proxyHtml += getFieldHtml("Milestone Age", app.milestone_age);
+            proxyHtml += getFieldHtml("Other Assistance Details", app.additional_notes);
             proxyHtml += getFieldHtml("Representative Name", app.proxy_name);
             proxyHtml += getFieldHtml("Relationship", app.proxy_relationship);
             proxyHtml += getFieldHtml("Representative Contact", app.proxy_contact_number);
+            proxyHtml += getFieldHtml("Representative Birth Date", app.proxy_birth_date);
+            proxyHtml += getFieldHtml("Representative Email", app.proxy_email);
+            proxyHtml += getFieldHtml("Representative Address", app.proxy_address);
+            proxyHtml += getFieldHtml("Government ID Type", app.proxy_id_type);
+            proxyHtml += getFieldHtml("Government ID Number", app.proxy_id_number);
             proxyHtml += getFieldHtml("Representative Token", app.proxy_token);
         }
         if (proxyHtml) {

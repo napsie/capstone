@@ -43,7 +43,7 @@ if ($currentIndex === false) $currentIndex = -1;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex,nofollow">
     <title>Benefit Claim Tracker — SENIORLINK</title>
-    <link rel="stylesheet" href="../assets/css/carelink-theme.css?v=5">
+    <link rel="stylesheet" href="../assets/css/seniorlink-public.css?v=1">
     <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=11">
     <style>
         body { margin:0; min-height:100vh; background-color:#eef3f9; background-image:linear-gradient(rgba(238,243,249,.9),rgba(238,243,249,.93)),url('../images/landing-background-new3.png'); background-size:cover; background-position:left bottom; background-repeat:no-repeat; background-attachment:fixed; color:#172033; font-family:Inter,"Segoe UI",Arial,sans-serif; }

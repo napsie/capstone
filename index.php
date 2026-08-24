@@ -132,15 +132,16 @@ header('Expires: 0');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <title>CARELINK - Centralized Profiling System</title>
+    <title>SENIORLINK - Centralized Profiling System</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/loading-spinner.css">
-    <link rel="stylesheet" href="assets/css/carelink-theme.css?v=5">
-    <link rel="stylesheet" href="assets/css/landing.css?v=8">
-    <link rel="stylesheet" href="assets/css/seniorlink-ui.css?v=11">
+    <link rel="stylesheet" href="assets/css/seniorlink-public.css?v=1">
+    <link rel="stylesheet" href="assets/css/landing.css?v=9">
+    <link rel="stylesheet" href="assets/css/seniorlink-ui.css?v=15">
+    <script src="assets/js/modal-hci.js?v=2" defer></script>
 </head>
 <body>
     <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -152,12 +153,22 @@ header('Expires: 0');
             <a class="brand" href="index.php" aria-label="SENIORLINK home">
                 <img class="brand-logo" src="images/LOGO.jpg" alt="SENIORLINK logo">
                 <div class="brand-text">
-                    <h1>SENIORLINK</h1>
+                    <h1><span>SENIOR</span><span>LINK</span></h1>
                     <p>Centralized Profiling System</p>
                 </div>
             </a>
+            <div class="header-context" aria-label="Official Pasig City senior services portal">
+                <span class="header-context-icon" aria-hidden="true"><i class="fas fa-landmark"></i></span>
+                <span>
+                    <strong>Official City Portal</strong>
+                    <small>Pasig City Senior Services</small>
+                </span>
+            </div>
             <nav class="site-nav" aria-label="Main navigation">
-                <a href="#" id="aboutLink" aria-haspopup="dialog">About</a>
+                <button type="button" class="nav-about" id="aboutLink" aria-haspopup="dialog" aria-controls="aboutModal">
+                    <i class="far fa-circle-question" aria-hidden="true"></i>
+                    <span>About</span>
+                </button>
                 <a href="pages/signup.php" class="btn-primary">
                     <span>Sign Up</span>
                     <i class="fas fa-arrow-right" aria-hidden="true"></i>
@@ -196,7 +207,7 @@ header('Expires: 0');
                 </span>
             </div>
             <div class="portal-cards">
-                <a href="pages/Barangay_Staff_LogInPage.php" class="portal-card" id="staffCard"
+                <a href="pages/barangay_staff_login_page.php" class="portal-card" id="staffCard"
                    aria-label="Barangay Staff login — register beneficiaries and manage local records">
                     <span class="portal-card-number" aria-hidden="true">01</span>
                     <div class="portal-card-icon staff" aria-hidden="true">
@@ -212,7 +223,7 @@ header('Expires: 0');
                     </span>
                 </a>
 
-                <a href="pages/Department_Admin_LogIn_Page.php" class="portal-card" id="adminCard"
+                <a href="pages/department_admin_login_page.php" class="portal-card" id="adminCard"
                    aria-label="Department Admin login — oversee operations and monitor authentication">
                     <span class="portal-card-number" aria-hidden="true">02</span>
                     <div class="portal-card-icon admin" aria-hidden="true">

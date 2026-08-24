@@ -302,11 +302,12 @@ try {
             #editUserModal .modal-actions .btn { flex: 1 1 0; min-width: 0; }
         }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=11">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=15">
+    <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
     <script src="../assets/js/table-pagination.js?v=1" defer></script>
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
-    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=2">
+    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
 </head>
 <body>
    <div class="container">
@@ -473,7 +474,7 @@ try {
     </div>
 
     <!-- Edit User Modal -->
-    <div id="editUserModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="editUserModalTitle">
+    <div id="editUserModal" class="modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="editUserModalTitle">
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="editUserModalTitle"><i class="fas fa-user-edit" aria-hidden="true"></i> Edit User</h2>
@@ -730,7 +731,9 @@ try {
                                 document.getElementById('editNewPassword').value = '';
                                 document.getElementById('editConfirmPassword').value = '';
                                 toggleBarangayField(editRoleSelect, editBarangayGroup);
+                                editUserModal._returnFocus = editButton;
                                 editUserModal.style.display = 'flex';
+                                editUserModal.setAttribute('aria-hidden', 'false');
                                 document.body.style.overflow = 'hidden';
                                 document.getElementById('editFirstName').focus();
                             } else {
@@ -783,8 +786,10 @@ try {
         function closeEditUserModal() {
             if (!editUserModal) return;
             editUserModal.style.display = 'none';
+            editUserModal.setAttribute('aria-hidden', 'true');
             document.body.style.overflow = '';
             editUserForm.reset();
+            editUserModal._returnFocus?.focus();
         }
 
         closeButtons.forEach(btn => btn.addEventListener('click', closeEditUserModal));
@@ -810,7 +815,7 @@ try {
         });
     });
     </script>
-<script src="../assets/js/carelink-feedback.js?v=2"></script>
+<script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 <?php if ($message !== ''): ?>
 <script>window.addEventListener('DOMContentLoaded', () => window.showCarelinkResult(<?= json_encode($message) ?>, true));</script>
 <?php elseif ($error !== ''): ?>

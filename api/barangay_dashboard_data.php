@@ -48,46 +48,23 @@ try {
     $workflowStmt->execute(['barangay' => $barangay]);
     $response['data']['workflow_stats'] = $workflowStmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // 3. Get priority queue count (high-priority applications awaiting action)
-    $priorityStmt = $conn->prepare("
-        SELECT COUNT(*) as count 
+    // 3. Compute summary counts in one scan instead of three near-identical queries.
+    $summaryStmt = $conn->prepare("
+        SELECT
+            SUM(CASE WHEN priority_level = 'high'
+                AND COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') = 'Received'
+                THEN 1 ELSE 0 END) AS priority_count,
+            SUM(CASE WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received')
+                IN ('Received', 'For Review', 'Verified') THEN 1 ELSE 0 END) AS queue_count
         FROM applications 
         WHERE barangay = :barangay 
-        AND priority_level = 'high'
-        AND COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') = 'Received'
-        AND (is_archived = 0 OR is_archived IS NULL)
-    ");
-    $priorityStmt->execute(['barangay' => $barangay]);
-    $priorityRow = $priorityStmt->fetch(PDO::FETCH_ASSOC);
-    $response['data']['priority_count'] = (int)($priorityRow['count'] ?? 0);
-
-    // Match the Barangay Submit Application page: it contains every active
-    // application that has not yet been finalized in the records section.
-    $queueStmt = $conn->prepare("
-        SELECT COUNT(*) AS count
-        FROM applications
-        WHERE barangay = :barangay
           AND (is_archived = 0 OR is_archived IS NULL)
-          AND COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received')
-              IN ('Received', 'For Review', 'Verified')
     ");
-    $queueStmt->execute(['barangay' => $barangay]);
-    $queueRow = $queueStmt->fetch(PDO::FETCH_ASSOC);
-    $response['data']['queue_count'] = (int)($queueRow['count'] ?? 0);
-
-    // 4. Dashboard total follows the Submit Application queue. Finalized
-    // records are intentionally excluded because they appear in Barangay Records.
-    $totalStmt = $conn->prepare("
-        SELECT COUNT(*) as count
-        FROM applications
-        WHERE barangay = :barangay
-          AND (is_archived = 0 OR is_archived IS NULL)
-          AND COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received')
-              IN ('Received', 'For Review', 'Verified')
-    ");
-    $totalStmt->execute(['barangay' => $barangay]);
-    $totalRow = $totalStmt->fetch(PDO::FETCH_ASSOC);
-    $response['data']['total_count'] = (int)($totalRow['count'] ?? 0);
+    $summaryStmt->execute(['barangay' => $barangay]);
+    $summary = $summaryStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+    $response['data']['priority_count'] = (int)($summary['priority_count'] ?? 0);
+    $response['data']['queue_count'] = (int)($summary['queue_count'] ?? 0);
+    $response['data']['total_count'] = $response['data']['queue_count'];
 
     // 5. Get data for Monthly Applications Chart (last 12 months)
     $monthlyStmt = $conn->prepare("

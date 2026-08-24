@@ -5,6 +5,16 @@ require_once '../includes/proxy_token_resolver.php';
 require_once '../includes/application_types.php';
 require_once '../includes/sms_service.php';
 
+if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'barangay_staff') {
+    header('Location: ../index.php');
+    exit;
+}
+
+$sessionDisplayName = trim((string)($_SESSION['first_name'] ?? '') . ' ' . (string)($_SESSION['last_name'] ?? ''));
+if ($sessionDisplayName === '') {
+    $sessionDisplayName = (string)($_SESSION['username'] ?? 'Barangay Staff');
+}
+
 // Helper function to calculate working days (excluding Sat/Sun)
 function getWorkingDays($startDate, $endDate) {
     $begin = new DateTime($startDate);
@@ -469,7 +479,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <title>CPRAS - New Application</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=4">
-    <link rel="stylesheet" href="../assets/css/main-dark-mode.css?v=1.1">
     <style>
         .compliance-badge {
             display: inline-flex;
@@ -1673,26 +1682,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             background: rgba(15, 23, 42, 0.06);
         }
 
-        /* Keep benefit modal light and readable even in dark mode */
-        .dark-mode #benefitModal .modal-content,
-        .dark-mode #benefitModal .benefit-modal-body,
-        .dark-mode #benefitModal .benefit-modal-actions {
-            background: #ffffff !important;
-            color: #1e293b !important;
-        }
-        .dark-mode #benefitModal .benefit-modal-header h2 {
-            color: #0f172a !important;
-        }
-        .dark-mode #benefitModal .benefit-modal-header p {
-            color: #64748b !important;
-        }
-        .dark-mode #benefitModal .benefit-detail-list li {
-            color: #334155 !important;
-        }
-        .dark-mode #benefitModal .benefit-ack-row {
-            color: #92400e !important;
-        }
-
         /* Claim stubs and handwritten signature areas are printed only after
            approval. They are not part of the online application form. */
         .non-submission-preview { display: none !important; }
@@ -1708,9 +1697,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=11">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=15">
+    <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
-    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=2">
+    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
 </head>
 <body>
     <div class="container">
@@ -1734,7 +1724,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     ?>
                     <img src="<?php echo $profilePicPath; ?>" alt="Profile">
                     <div class="header-user-info">
-                        <h3><?php echo htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']); ?></h3>
+                        <h3><?php echo htmlspecialchars($sessionDisplayName); ?></h3>
                         <p><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $_SESSION['role'] ?? 'barangay_staff'))); ?> · <?php echo $barangayDisplay; ?></p>
                     </div>
                 </div>
@@ -3678,9 +3668,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </div>
 
     <!-- Benefit Details Modal -->
-    <div id="benefitModal" class="modal" role="dialog" aria-labelledby="benefitModalTitle" aria-modal="true">
+    <div id="benefitModal" class="modal" role="dialog" aria-labelledby="benefitModalTitle" aria-modal="true" aria-hidden="true">
         <div class="modal-content">
-            <span class="close" onclick="closeBenefitModal()" aria-label="Close">&times;</span>
+            <button type="button" class="close" onclick="closeBenefitModal()" aria-label="Close benefit details">&times;</button>
             <div class="benefit-modal-header">
                 <div class="benefit-modal-icon" id="benefitModalIcon"></div>
                 <div>
@@ -3716,10 +3706,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </div>
 
     <!-- Scan Representative QR Modal -->
-    <div id="proxyModal" class="modal">
+    <div id="proxyModal" class="modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="proxyModalTitle">
         <div class="modal-content">
-            <span class="close" onclick="closeProxyModal()">&times;</span>
-            <h2 style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px; color: #3498db;"><i class="fas fa-qrcode"></i> Scan Representative QR Token</h2>
+            <button type="button" class="close" onclick="closeProxyModal()" aria-label="Close QR scanner dialog">&times;</button>
+            <h2 id="proxyModalTitle" style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px; color: #3498db;"><i class="fas fa-qrcode"></i> Scan Representative QR Token</h2>
             <p style="margin-bottom: 15px; font-size: 0.9rem; color: #94a3b8;">
                 Paste or scan the encrypted representative QR token URL/payload generated by the relatives portal to retrieve details and place the senior in the High-Priority Queue.
             </p>
@@ -3735,7 +3725,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </div>
 
     <script src="../assets/js/sidebar-toggle.js?v=3"></script>
-    <script src="../assets/js/dark-mode.js"></script>
     <script src="../assets/js/osca-form-fields.js"></script>
     <script>
         /* ─── Greeting ──────────────────────────────────────────── */
@@ -3744,7 +3733,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             if (!el) return;
             const h = new Date().getHours();
             const g = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
-            el.innerHTML = `${g}, <strong><?php echo htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']); ?></strong>!`;
+            el.innerHTML = `${g}, <strong><?php echo htmlspecialchars($sessionDisplayName); ?></strong>!`;
         })();
 
         const BENEFIT_DETAILS = <?php echo json_encode($benefitDetails, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
@@ -3971,14 +3960,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             ack.checked = false;
             toggleProceedButton();
 
-            document.getElementById('benefitModal').style.display = 'flex';
+            const modal = document.getElementById('benefitModal');
+            modal._returnFocus = document.activeElement;
+            modal.style.display = 'flex';
+            modal.setAttribute('aria-hidden', 'false');
             document.body.style.overflow = 'hidden';
+            modal.querySelector('.close')?.focus();
         }
 
         function closeBenefitModal() {
-            document.getElementById('benefitModal').style.display = 'none';
+            const modal = document.getElementById('benefitModal');
+            modal.style.display = 'none';
+            modal.setAttribute('aria-hidden', 'true');
             document.body.style.overflow = '';
             pendingBenefitType = '';
+            modal._returnFocus?.focus();
         }
 
         function toggleProceedButton() {
@@ -4029,9 +4025,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         function openProxyModal() {
-            document.getElementById('proxyModal').style.display = "block";
+            const modal = document.getElementById('proxyModal');
+            modal._returnFocus = document.activeElement;
+            modal.style.display = 'flex';
+            modal.setAttribute('aria-hidden', 'false');
             document.getElementById('modalError').textContent = "";
             document.getElementById('modalToken').value = "";
+            document.getElementById('modalToken').focus();
             loadProxyScannerAssets().catch(() => {
                 document.getElementById('modalError').textContent =
                     'The camera scanner could not load. You can still paste the QR token manually.';
@@ -4060,7 +4060,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         function closeProxyModal() {
-            document.getElementById('proxyModal').style.display = "none";
+            const modal = document.getElementById('proxyModal');
+            modal.style.display = 'none';
+            modal.setAttribute('aria-hidden', 'true');
+            modal._returnFocus?.focus();
         }
 
         // Close modals when clicking outside
@@ -4903,6 +4906,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
         }
     </script>
-<script src="../assets/js/carelink-feedback.js?v=2"></script>
+    <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 </body>
 </html>

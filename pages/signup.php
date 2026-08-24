@@ -77,9 +77,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             $conn->commit();
 
                             if ($role === 'barangay_staff') {
-                                $login_page = 'Barangay_Staff_LogInPage.php';
+                                $login_page = 'barangay_staff_login_page.php';
                             } else {
-                                $login_page = 'Department_Admin_LogIn_Page.php';
+                                $login_page = 'department_admin_login_page.php';
                             }
                             $success = "User registered successfully! You can now <a href='$login_page'>login</a>.";
                         }

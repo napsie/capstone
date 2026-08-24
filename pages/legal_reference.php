@@ -254,7 +254,7 @@ $sidebarCss = ($role === 'barangay_staff') ? '../assets/css/barangay-sidebar.css
     </style>
     <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=11">
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
-    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=2">
+    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
 </head>
 <body>
 <div class="container">

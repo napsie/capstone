@@ -1,6 +1,8 @@
 <?php
 session_start();
 require_once '../includes/db_connect.php';
+require_once '../includes/request_security.php';
+requireSameOriginMutation();
 
 header('Content-Type: application/json');
 

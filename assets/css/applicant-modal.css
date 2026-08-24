@@ -1,0 +1,266 @@
+/* Unified applicant record dialog shared by queue, records, and verification pages. */
+.applicant-modal {
+    --am-ink: #172d40;
+    --am-muted: #607487;
+    --am-line: #dce6ee;
+    --am-soft: #f4f8fb;
+    --am-blue: #1769aa;
+    --am-navy: #123c67;
+    --am-green: #16814b;
+}
+
+#applicationModal.applicant-modal {
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 24px !important;
+    overflow: hidden !important;
+    background: rgba(9, 25, 40, .72) !important;
+}
+
+#applicationModal.applicant-modal .applicant-modal-dialog {
+    width: min(1180px, calc(100vw - 48px)) !important;
+    max-width: 1180px !important;
+    height: min(900px, calc(100dvh - 48px)) !important;
+    max-height: calc(100dvh - 48px) !important;
+    margin: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    color: var(--am-ink) !important;
+    background: var(--am-soft) !important;
+    border: 1px solid rgba(255, 255, 255, .8) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 30px 80px rgba(2, 15, 27, .38) !important;
+}
+
+#applicationModal.applicant-modal .modal-head {
+    min-height: 84px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 20px !important;
+    padding: 14px 18px 14px 24px !important;
+    color: #fff !important;
+    background: linear-gradient(120deg, var(--am-navy), var(--am-blue) 70%, #197769 140%) !important;
+    border: 0 !important;
+    box-shadow: inset 0 -1px rgba(255, 255, 255, .12) !important;
+}
+
+.applicant-modal-heading { min-width: 0; }
+.applicant-modal-eyebrow {
+    display: block;
+    margin-bottom: 3px;
+    color: #b9def8;
+    font-size: .61rem;
+    font-weight: 850;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+}
+
+#applicationModal.applicant-modal .applicant-modal-heading h2 {
+    display: flex !important;
+    align-items: center !important;
+    gap: 9px !important;
+    margin: 0 !important;
+    color: #fff !important;
+    font-size: clamp(1.05rem, 1.8vw, 1.28rem) !important;
+    font-weight: 800 !important;
+    line-height: 1.25 !important;
+}
+
+#applicationModal.applicant-modal .applicant-modal-heading h2 i { color: #8dd7ff !important; }
+.applicant-modal-heading p {
+    margin: 3px 0 0;
+    overflow: hidden;
+    color: rgba(255, 255, 255, .76);
+    font-size: .7rem;
+    font-weight: 550;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#applicationModal.applicant-modal .modal-close {
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    display: grid !important;
+    place-items: center !important;
+    color: #fff !important;
+    background: rgba(255, 255, 255, .1) !important;
+    border: 1px solid rgba(255, 255, 255, .24) !important;
+    border-radius: 11px !important;
+    font-size: 1rem !important;
+}
+#applicationModal.applicant-modal .modal-close:hover { background: rgba(255, 255, 255, .2) !important; }
+#applicationModal.applicant-modal .modal-close:focus-visible { outline: 3px solid rgba(141, 215, 255, .6) !important; outline-offset: 2px; }
+
+#applicationModal.applicant-modal .applicant-modal-body {
+    min-height: 0 !important;
+    flex: 1 1 auto !important;
+    max-height: none !important;
+    padding: 20px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    scrollbar-gutter: stable;
+    overscroll-behavior: contain;
+    background: var(--am-soft) !important;
+}
+
+#applicationModal.applicant-modal .stepper {
+    position: sticky;
+    z-index: 5;
+    top: -20px;
+    margin: -20px -20px 18px !important;
+    padding: 13px clamp(14px, 3vw, 34px) 16px !important;
+    background: rgba(255, 255, 255, .97) !important;
+    border: 0 !important;
+    border-bottom: 1px solid var(--am-line) !important;
+    border-radius: 0 !important;
+    box-shadow: 0 5px 14px rgba(20, 47, 70, .06) !important;
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: space-between !important;
+}
+
+#applicationModal.applicant-modal .step {
+    position: relative;
+    min-width: 0;
+    flex: 1 1 0;
+    text-align: center;
+}
+#applicationModal.applicant-modal .step::after {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    top: 15px;
+    left: calc(50% + 17px);
+    width: calc(100% - 34px);
+    height: 2px;
+    background: #d7e2ea;
+}
+#applicationModal.applicant-modal .step:last-child::after { display: none; }
+
+#applicationModal.applicant-modal .step-circle {
+    width: 31px !important;
+    height: 31px !important;
+    font-size: .7rem !important;
+    box-shadow: 0 0 0 4px #fff;
+    position: relative;
+    z-index: 1;
+    margin: 0 auto;
+    display: grid !important;
+    place-items: center;
+    color: #65798a;
+    background: #e7eef3;
+    border-radius: 50%;
+}
+#applicationModal.applicant-modal .step.completed .step-circle,
+#applicationModal.applicant-modal .step.active .step-circle { color: #fff; background: var(--am-blue); }
+#applicationModal.applicant-modal .step.completed::after { background: var(--am-blue); }
+#applicationModal.applicant-modal .step-label { margin-top: 6px !important; font-size: .64rem !important; font-weight: 750 !important; }
+
+#applicationModal.applicant-modal .applicant-modal-layout {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.45fr) minmax(310px, .75fr) !important;
+    align-items: start !important;
+    gap: 18px !important;
+}
+#applicationModal.applicant-modal .applicant-modal-layout > * { min-width: 0; }
+#applicationModal.applicant-modal .applicant-modal-layout > :last-child {
+    position: sticky;
+    top: 66px;
+    max-height: calc(100dvh - 210px);
+    padding: 16px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid var(--am-line);
+    border-radius: 14px;
+    box-shadow: 0 5px 18px rgba(18, 50, 75, .05);
+}
+
+#applicationModal.applicant-modal :is(.compliance-card, .form-section, .application-detail-section, .document-section) {
+    margin-bottom: 14px !important;
+    padding: 16px !important;
+    background: #fff !important;
+    border: 1px solid var(--am-line) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 4px 14px rgba(18, 50, 75, .04) !important;
+}
+#applicationModal.applicant-modal .compliance-card { margin-bottom: 18px !important; }
+
+#applicationModal.applicant-modal :is(.section-title, .form-section h3, .workflow-control h3, .compliance-title) {
+    color: #24465f !important;
+    font-size: .76rem !important;
+    font-weight: 850 !important;
+    letter-spacing: .035em !important;
+    text-transform: uppercase;
+}
+#applicationModal.applicant-modal :is(.section-title, .form-section h3, .workflow-control h3, .compliance-title) i { color: var(--am-blue) !important; }
+
+#applicationModal.applicant-modal .info-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px !important; }
+#applicationModal.applicant-modal .info-item.wide { grid-column: 1 / -1; }
+#applicationModal.applicant-modal .info-item {
+    padding: 11px 12px !important;
+    background: #fff !important;
+    border: 1px solid #e0e8ef !important;
+    border-radius: 10px !important;
+}
+#applicationModal.applicant-modal .info-item label { display: block; margin-bottom: 4px; color: #687b8c !important; font-size: .65rem !important; }
+#applicationModal.applicant-modal .info-item span { display: block; color: var(--am-ink) !important; font-size: .84rem !important; overflow-wrap: anywhere; }
+
+#applicationModal.applicant-modal .form-row { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px !important; }
+#applicationModal.applicant-modal .form-group { min-width: 0; margin-bottom: 12px; }
+#applicationModal.applicant-modal .form-group label { display: block; margin-bottom: 5px; color: #52697b; font-size: .72rem; font-weight: 750; }
+#applicationModal.applicant-modal .form-group :is(input, select, textarea) { width: 100%; box-sizing: border-box; }
+
+#applicationModal.applicant-modal :is(input, select, textarea) {
+    min-height: 42px;
+    color: var(--am-ink) !important;
+    background: #fff !important;
+    border: 1px solid #ccd9e3 !important;
+    border-radius: 9px !important;
+}
+#applicationModal.applicant-modal textarea { min-height: 78px; resize: vertical; }
+#applicationModal.applicant-modal :is(input, select, textarea):focus {
+    border-color: var(--am-blue) !important;
+    box-shadow: 0 0 0 3px rgba(23, 105, 170, .14) !important;
+    outline: none !important;
+}
+
+#applicationModal.applicant-modal .workflow-control {
+    margin-bottom: 18px;
+    padding: 15px;
+    background: #f8fbfd;
+    border: 1px solid #cfdee8;
+    border-radius: 12px;
+}
+#applicationModal.applicant-modal .workflow-buttons { display: grid !important; grid-template-columns: 1fr 1fr; gap: 8px !important; }
+#applicationModal.applicant-modal .workflow-buttons .btn:first-child { grid-column: 1 / -1; }
+#applicationModal.applicant-modal .timeline { max-height: none !important; overflow: visible !important; }
+
+@media (max-width: 900px) {
+    #applicationModal.applicant-modal { padding: 12px !important; }
+    #applicationModal.applicant-modal .applicant-modal-dialog { width: calc(100vw - 24px) !important; height: calc(100dvh - 24px) !important; max-height: calc(100dvh - 24px) !important; border-radius: 16px !important; }
+    #applicationModal.applicant-modal .applicant-modal-layout { grid-template-columns: 1fr !important; }
+    #applicationModal.applicant-modal .applicant-modal-layout > :last-child { position: static; max-height: none; overflow: visible; }
+}
+
+@media (max-width: 600px) {
+    #applicationModal.applicant-modal { align-items: flex-end !important; padding: 0 !important; }
+    #applicationModal.applicant-modal .applicant-modal-dialog { width: 100vw !important; height: 100dvh !important; max-height: 100dvh !important; border: 0 !important; border-radius: 0 !important; }
+    #applicationModal.applicant-modal .modal-head { min-height: 76px !important; padding: 12px 12px 12px 16px !important; }
+    .applicant-modal-heading p { max-width: calc(100vw - 84px); }
+    #applicationModal.applicant-modal .applicant-modal-body { padding: 14px !important; }
+    #applicationModal.applicant-modal .stepper { top: -14px; margin: -14px -14px 14px !important; padding-inline: 8px !important; overflow-x: hidden; }
+    #applicationModal.applicant-modal .step { min-width: 0; }
+    #applicationModal.applicant-modal .step-label { font-size: .56rem !important; }
+    #applicationModal.applicant-modal .applicant-modal-layout > :last-child { padding: 12px; }
+    #applicationModal.applicant-modal :is(.modal-grid, .info-grid, .form-row) { grid-template-columns: 1fr !important; }
+    #applicationModal.applicant-modal .workflow-buttons { grid-template-columns: 1fr !important; }
+    #applicationModal.applicant-modal .workflow-buttons .btn:first-child { grid-column: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #applicationModal.applicant-modal * { scroll-behavior: auto !important; }
+}

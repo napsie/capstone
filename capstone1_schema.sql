@@ -16,6 +16,7 @@ USE `capstone1`;
 SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS `application_documents`;
 DROP TABLE IF EXISTS `application_history`;
+DROP TABLE IF EXISTS `audit_trail`;
 DROP TABLE IF EXISTS `sms_notifications`;
 DROP TABLE IF EXISTS `hardcopy_batch_items`;
 DROP TABLE IF EXISTS `hardcopy_batches`;
@@ -45,6 +46,9 @@ CREATE TABLE `users` (
   `profile_picture`    varchar(255) DEFAULT 'default.jpg',
   `reset_token`        varchar(255) DEFAULT NULL,
   `reset_token_expiry` datetime     DEFAULT NULL,
+  `is_archived`        tinyint(1)   NOT NULL DEFAULT 0,
+  `archived_at`        datetime     DEFAULT NULL,
+  `archived_by`        varchar(100) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`),
   UNIQUE KEY `email`    (`email`)
@@ -79,6 +83,7 @@ CREATE TABLE `applications` (
 
   -- Rule-based workflow status
   `workflow_state`             varchar(50)  DEFAULT 'Received',
+  `requested_benefit`          varchar(150) DEFAULT NULL,
   `return_reason`              varchar(500) DEFAULT NULL,
 
   -- Priority & proxy
@@ -87,6 +92,11 @@ CREATE TABLE `applications` (
   `proxy_name`                 varchar(255) DEFAULT NULL,
   `proxy_relationship`         varchar(100) DEFAULT NULL,
   `proxy_contact_number`       varchar(20)  DEFAULT NULL,
+  `proxy_birth_date`           date         DEFAULT NULL,
+  `proxy_email`                varchar(255) DEFAULT NULL,
+  `proxy_address`              text         DEFAULT NULL,
+  `proxy_id_type`              varchar(100) DEFAULT NULL,
+  `proxy_id_number`            varchar(100) DEFAULT NULL,
   `proxy_token`                varchar(255) DEFAULT NULL,
 
   -- PWD specific
@@ -185,12 +195,18 @@ CREATE TABLE `applications` (
   `home_visitation_form`       varchar(255) DEFAULT NULL,
   `landbank_enrollment_form`   varchar(255) DEFAULT NULL,
   `parent_senior_id`           varchar(50)  DEFAULT NULL,
+  `is_archived`                tinyint(1)   NOT NULL DEFAULT 0,
+  `archived_at`                datetime     DEFAULT NULL,
+  `archived_by`                varchar(100) DEFAULT NULL,
 
   PRIMARY KEY (`id_number`),
   KEY `idx_barangay`           (`barangay`),
   KEY `idx_workflow_state`     (`workflow_state`),
   KEY `idx_priority`           (`priority_level`),
-  KEY `idx_date_submitted`     (`date_submitted`)
+  KEY `idx_date_submitted`     (`date_submitted`),
+  KEY `idx_dashboard_barangay_workflow` (`barangay`, `is_archived`, `workflow_state`),
+  KEY `idx_dashboard_barangay_date` (`barangay`, `is_archived`, `date_submitted`),
+  KEY `idx_dashboard_priority_date` (`is_archived`, `priority_level`, `date_submitted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ============================================================
@@ -235,6 +251,25 @@ CREATE TABLE `application_history` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ============================================================
+-- Table: audit_trail
+-- ============================================================
+CREATE TABLE `audit_trail` (
+  `id`          bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id`     int(11)      DEFAULT NULL,
+  `username`    varchar(100) NOT NULL,
+  `role`        varchar(50)  NOT NULL,
+  `barangay`    varchar(100) DEFAULT NULL,
+  `action`      varchar(100) NOT NULL,
+  `description` text         NOT NULL,
+  `ip_address`  varchar(45)  DEFAULT NULL,
+  `created_at`  timestamp    NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_audit_user` (`user_id`),
+  KEY `idx_audit_action` (`action`),
+  KEY `idx_audit_created_id` (`created_at`, `id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ============================================================
 -- Table: login_history
 -- ============================================================
 CREATE TABLE `login_history` (
@@ -246,7 +281,7 @@ CREATE TABLE `login_history` (
   `user_agent` text         NOT NULL,
   `status`     enum('success','failure') NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_settings_user` (`user_id`),
+  KEY `idx_login_history_user` (`user_id`),
   CONSTRAINT `login_history_ibfk_1`
     FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
     ON DELETE SET NULL
@@ -357,11 +392,10 @@ CREATE TABLE `remember_tokens` (
 CREATE TABLE `settings` (
   `id`            int(11)     NOT NULL AUTO_INCREMENT,
   `user_id`       int(11)     NOT NULL,
-  `theme`         varchar(50) NOT NULL DEFAULT 'light',
   `language`      varchar(50) NOT NULL DEFAULT 'en',
   `notifications` varchar(50) NOT NULL DEFAULT 'all',
   PRIMARY KEY (`id`),
-  KEY `user_id` (`user_id`),
+  UNIQUE KEY `uq_settings_user` (`user_id`),
   CONSTRAINT `settings_ibfk_1`
     FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
     ON DELETE CASCADE

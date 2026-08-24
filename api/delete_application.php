@@ -3,6 +3,8 @@ session_start();
 header('Content-Type: application/json');
 require_once '../includes/db_connect.php';
 require_once '../includes/audit_logger.php';
+require_once '../includes/request_security.php';
+requireSameOriginMutation();
 
 // Authentication check (ensure only authorized roles can delete/archive)
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['barangay_staff', 'department_admin', 'super_admin'])) {

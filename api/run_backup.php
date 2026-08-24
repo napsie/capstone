@@ -3,6 +3,8 @@ session_start();
 header('Content-Type: application/json');
 
 require_once '../includes/db_connect.php';
+require_once '../includes/request_security.php';
+requireSameOriginMutation();
 
 $response = ['success' => false, 'message' => ''];
 

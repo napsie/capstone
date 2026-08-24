@@ -12,21 +12,47 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'barangay_staff') {
 $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
 
 // Get filter parameters
-$search     = $_GET['search'] ?? '';
+$search     = trim((string)($_GET['search'] ?? ''));
 $typeFilter = $_GET['type'] ?? 'all';
 $yearFilter = $_GET['year'] ?? 'all';
+$recordsPage = max(1, (int)($_GET['page'] ?? 1));
+$recordsPerPage = 25;
 
 // Build query – only approved/released for this barangay
 $baseQuery    = "FROM applications WHERE barangay = :barangay AND (is_archived = 0 OR is_archived IS NULL) AND (workflow_state IN ('Approved', 'Released') OR status = 'approved')";
 $params       = [':barangay' => $_SESSION['barangay']];
+if ($search !== '') {
+    $baseQuery .= ' AND (full_name LIKE :search OR id_number LIKE :search)';
+    $params[':search'] = '%' . $search . '%';
+}
+if ($typeFilter !== 'all' && array_key_exists($typeFilter, getApplicationTypeOptions())) {
+    $baseQuery .= ' AND application_type = :type';
+    $params[':type'] = $typeFilter;
+} else {
+    $typeFilter = 'all';
+}
+if ($yearFilter !== 'all' && preg_match('/^20\d{2}$/', (string)$yearFilter)) {
+    $baseQuery .= ' AND date_submitted >= :year_start AND date_submitted < :year_end';
+    $params[':year_start'] = $yearFilter . '-01-01';
+    $params[':year_end'] = ((int)$yearFilter + 1) . '-01-01';
+} else {
+    $yearFilter = 'all';
+}
 
-// Fetch all (client-side filtering handles search/year/type)
-$recordsQuery = "SELECT id_number as id, full_name, application_type, date_submitted, COALESCE(workflow_state, status) as status " . $baseQuery . " ORDER BY date_submitted DESC";
+$countStmt = $conn->prepare('SELECT COUNT(*) ' . $baseQuery);
+$countStmt->execute($params);
+$totalRecords = (int)$countStmt->fetchColumn();
+$recordsTotalPages = max(1, (int)ceil($totalRecords / $recordsPerPage));
+$recordsPage = min($recordsPage, $recordsTotalPages);
+$recordsOffset = ($recordsPage - 1) * $recordsPerPage;
+
+$recordsQuery = "SELECT id_number as id, full_name, application_type, date_submitted, COALESCE(workflow_state, status) as status " . $baseQuery . " ORDER BY date_submitted DESC, id_number DESC LIMIT :limit OFFSET :offset";
 $recordsStmt  = $conn->prepare($recordsQuery);
-$recordsStmt->execute($params);
+$recordsStmt->bindValue(':limit', $recordsPerPage, PDO::PARAM_INT);
+$recordsStmt->bindValue(':offset', $recordsOffset, PDO::PARAM_INT);
+foreach ($params as $key => $value) $recordsStmt->bindValue($key, $value, PDO::PARAM_STR);
+$recordsStmt->execute();
 $applications = $recordsStmt->fetchAll(PDO::FETCH_ASSOC);
-
-$totalRecords = count($applications);
 
 function getStatusClass($status) {
     switch (strtolower($status)) {
@@ -46,7 +72,6 @@ function getStatusClass($status) {
     <title>Records – Barangay <?php echo $barangayName; ?></title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=4">
-    <link rel="stylesheet" href="../assets/css/main-dark-mode.css?v=1.1">
     <link rel="stylesheet" href="../assets/css/application-documents.css?v=7">
     <style>
         /* ─── Variables ─────────────────────────────────────────────────── */
@@ -534,11 +559,13 @@ function getStatusClass($status) {
             color: var(--gray);
         }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=13">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=15">
+    <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
     <script src="../assets/js/table-pagination.js?v=1" defer></script>
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
-    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=2">
+    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
+    <link rel="stylesheet" href="../assets/css/applicant-modal.css?v=1">
 </head>
 <body>
 <div class="container">
@@ -603,17 +630,17 @@ function getStatusClass($status) {
             </div>
 
             <!-- Filter Bar -->
-            <div class="filter-bar">
+            <form class="filter-bar" method="get">
                 <div class="filter-group">
                     <label for="search-input">Search</label>
                     <div class="search-input-wrap">
                         <i class="fas fa-search"></i>
-                        <input id="search-input" type="text" placeholder="Name or ID…" oninput="applyFilters()">
+                        <input id="search-input" name="search" type="search" value="<?php echo htmlspecialchars($search); ?>" placeholder="Name or ID…">
                     </div>
                 </div>
                 <div class="filter-group">
                     <label for="year-filter">Year</label>
-                    <select id="year-filter" onchange="applyFilters()">
+                    <select id="year-filter" name="year">
                         <option value="all">All Years</option>
                         <?php
                             $currentYear = date("Y");
@@ -626,14 +653,16 @@ function getStatusClass($status) {
                 </div>
                 <div class="filter-group">
                     <label for="type-filter">Application Type</label>
-                    <select id="type-filter" onchange="applyFilters()">
+                    <select id="type-filter" name="type">
                         <option value="all">All Types</option>
                         <?php foreach (getApplicationTypeOptions() as $val => $label): ?>
-                            <option value="<?php echo htmlspecialchars($val); ?>"><?php echo htmlspecialchars(applicationTypeLabel($val)); ?></option>
+                            <option value="<?php echo htmlspecialchars($val); ?>" <?php echo $typeFilter === $val ? 'selected' : ''; ?>><?php echo htmlspecialchars(applicationTypeLabel($val)); ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
-            </div>
+                <button class="btn-view" type="submit"><i class="fas fa-filter"></i> Apply</button>
+                <a class="btn-view" href="barangay_records.php">Clear</a>
+            </form>
 
             <!-- Table -->
             <div class="table-wrap">
@@ -647,7 +676,7 @@ function getStatusClass($status) {
                             <th>Action</th>
                         </tr>
                     </thead>
-                    <tbody id="tableBody" data-paginate="10" data-pagination-label="Barangay records pages">
+                    <tbody id="tableBody">
                     <?php if (empty($applications)): ?>
                         <tr><td colspan="5">
                             <div class="empty-state">
@@ -687,6 +716,15 @@ function getStatusClass($status) {
                     </tbody>
                 </table>
             </div>
+            <?php if ($recordsTotalPages > 1): $recordQuery = $_GET; ?>
+            <nav class="server-pagination" aria-label="Barangay record pages" style="display:flex;align-items:center;justify-content:center;gap:12px;padding:16px;">
+                <?php $recordQuery['page'] = max(1, $recordsPage - 1); ?>
+                <a class="btn-view" <?php echo $recordsPage > 1 ? 'href="?' . htmlspecialchars(http_build_query($recordQuery)) . '"' : 'aria-disabled="true"'; ?>>Previous</a>
+                <span>Page <?php echo $recordsPage; ?> of <?php echo $recordsTotalPages; ?> · <?php echo number_format($totalRecords); ?> records</span>
+                <?php $recordQuery['page'] = min($recordsTotalPages, $recordsPage + 1); ?>
+                <a class="btn-view" <?php echo $recordsPage < $recordsTotalPages ? 'href="?' . htmlspecialchars(http_build_query($recordQuery)) . '"' : 'aria-disabled="true"'; ?>>Next</a>
+            </nav>
+            <?php endif; ?>
 
             <!-- No results row (injected by JS) -->
             <div id="noResultsMsg" style="display:none; text-align:center; padding:40px 20px; color:var(--gray);">
@@ -702,13 +740,13 @@ function getStatusClass($status) {
 <!-- ──────────────────────────────────────────────────────────────────── -->
 <!-- Application Detail Modal                                             -->
 <!-- ──────────────────────────────────────────────────────────────────── -->
-<div id="applicationModal" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modalAppTitle">
-    <div class="modal-box" role="document">
+<div id="applicationModal" class="modal-overlay applicant-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modalAppTitle">
+    <div class="modal-box applicant-modal-dialog" role="document">
         <div class="modal-head">
-            <h2><i class="fas fa-file-shield"></i> <span id="modalAppTitle">Application Details</span></h2>
-            <button type="button" class="modal-close" id="closeModalBtn" aria-label="Close application details">&times;</button>
+            <div class="applicant-modal-heading"><span class="applicant-modal-eyebrow">Applicant record</span><h2><i class="fas fa-file-shield"></i> <span id="modalAppTitle">Application Details</span></h2><p>View verified information, documents, compliance results, and record history.</p></div>
+            <button type="button" class="modal-close" id="closeModalBtn" aria-label="Close application details"><i class="fas fa-xmark" aria-hidden="true"></i></button>
         </div>
-        <div class="modal-scroller">
+        <div class="modal-scroller applicant-modal-body">
 
             <!-- Workflow progress stepper -->
             <div class="stepper">
@@ -743,7 +781,7 @@ function getStatusClass($status) {
             </div>
 
             <!-- Two-column grid -->
-            <div class="modal-grid">
+            <div class="modal-grid applicant-modal-layout">
                 <!-- LEFT: Applicant details -->
                 <div>
                     <div class="section-title"><i class="fas fa-user"></i> Applicant Information</div>
@@ -815,11 +853,11 @@ function getStatusClass($status) {
 </div><!-- /#applicationModal -->
 
 <!-- Export PDF filter modal -->
-<div id="exportModal" class="modal-overlay">
+<div id="exportModal" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="exportModalTitle">
     <div class="modal-box export-modal-box">
         <div class="modal-head">
-            <h2><i class="fas fa-file-pdf"></i> Generate Report</h2>
-            <button type="button" class="modal-close" id="closeExportModalBtn">&times;</button>
+            <h2 id="exportModalTitle"><i class="fas fa-file-pdf"></i> Generate Report</h2>
+            <button type="button" class="modal-close" id="closeExportModalBtn" aria-label="Close report dialog">&times;</button>
         </div>
         <form id="exportReportForm" method="GET" action="../api/export_records_pdf.php">
             <div class="export-modal-body">
@@ -876,9 +914,8 @@ function getStatusClass($status) {
 <script src="../assets/js/sidebar-toggle.js?v=3"></script>
 <script src="../assets/js/application-documents.js?v=7"></script>
 <script src="../assets/js/application-details.js?v=5"></script>
-<script src="../assets/js/carelink-feedback.js?v=2"></script>
+<script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 <script src="../assets/js/application-form-generator.js?v=2"></script>
-<script src="../assets/js/dark-mode.js"></script>
 <script>
     /* ─── Greeting ──────────────────────────────────────────── */
     (function(){
@@ -930,11 +967,18 @@ function getStatusClass($status) {
         document.getElementById('exportDateFrom').value = '';
         document.getElementById('exportDateTo').value = '';
         document.getElementById('exportStatus').value = 'all';
-        document.getElementById('exportModal').style.display = 'block';
+        const modal = document.getElementById('exportModal');
+        modal._returnFocus = document.activeElement;
+        modal.style.display = 'flex';
+        modal.setAttribute('aria-hidden', 'false');
+        modal.querySelector('.modal-close')?.focus();
     }
 
     function closeExportModal() {
-        document.getElementById('exportModal').style.display = 'none';
+        const modal = document.getElementById('exportModal');
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+        modal._returnFocus?.focus();
     }
 
     /* ─── Helpers ───────────────────────────────────────────── */
@@ -1306,9 +1350,27 @@ function getStatusClass($status) {
         // 10. Proxy Details
         let proxyHtml = "";
         if (app.is_proxy_application == 1) {
+            proxyHtml += getFieldHtml("Requested Benefit / Service", app.requested_benefit);
+            proxyHtml += getFieldHtml("ID Application Purpose", app.id_purpose);
+            proxyHtml += getFieldHtml("Home Visit Instructions", app.visit_summary);
+            proxyHtml += getFieldHtml("Pension Source", app.pension_source);
+            proxyHtml += getFieldHtml("Current Monthly Pension", app.pension_amount);
+            proxyHtml += getFieldHtml("Monthly Family Support", app.family_support_amount);
+            proxyHtml += getFieldHtml("Monthly Personal Income", app.personal_income_amount);
+            proxyHtml += getFieldHtml("Name on Cash Card", app.name_on_card);
+            proxyHtml += getFieldHtml("TIN", app.tin);
+            proxyHtml += getFieldHtml("Senior ID Presented", app.id_type_presented);
+            proxyHtml += getFieldHtml("Source of Funds", app.source_of_funds);
+            proxyHtml += getFieldHtml("Milestone Age", app.milestone_age);
+            proxyHtml += getFieldHtml("Other Assistance Details", app.additional_notes);
             proxyHtml += getFieldHtml("Representative Name", app.proxy_name);
             proxyHtml += getFieldHtml("Relationship", app.proxy_relationship);
             proxyHtml += getFieldHtml("Representative Contact", app.proxy_contact_number);
+            proxyHtml += getFieldHtml("Representative Birth Date", app.proxy_birth_date);
+            proxyHtml += getFieldHtml("Representative Email", app.proxy_email);
+            proxyHtml += getFieldHtml("Representative Address", app.proxy_address);
+            proxyHtml += getFieldHtml("Government ID Type", app.proxy_id_type);
+            proxyHtml += getFieldHtml("Government ID Number", app.proxy_id_number);
             proxyHtml += getFieldHtml("Representative Token", app.proxy_token);
         }
         if (proxyHtml) {

@@ -67,7 +67,6 @@ This document provides a technical overview of the CARELINK system.
 | --- | --- | --- | --- |
 | id | INT(11) | NOT NULL, AUTO_INCREMENT, PRIMARY KEY | Unique identifier for each setting |
 | user_id | INT(11) | NOT NULL, FOREIGN KEY | Foreign key to the `users` table |
-| theme | VARCHAR(50) | NOT NULL, DEFAULT 'light' | User's preferred theme (light, dark, auto) |
 | language | VARCHAR(50) | NOT NULL, DEFAULT 'en' | User's preferred language (en, fil) |
 | notifications | VARCHAR(50) | NOT NULL, DEFAULT 'all' | User's notification preferences (all, important, none) |
 
@@ -159,7 +158,7 @@ This document provides a technical overview of the CARELINK system.
 *   **Validation:** The page performs validation to ensure that all required fields are filled, the passwords match, the password is at least 8 characters long, and the email format is valid.
 *   **User Creation:** Upon successful validation, a new user is created in the `users` table, and a corresponding default entry is created in the `settings` table.
 
-### `pages/Barangay_Staff_LogInPage.php` and `pages/Department_Admin_LogIn_Page.php`
+### `pages/barangay_staff_login_page.php` and `pages/department_admin_login_page.php`
 
 *   **Functionality:** These pages allow users to log in to their accounts.
 *   **Validation:** The pages perform validation to ensure that all required fields are filled and that the user exists in the database.
@@ -170,7 +169,7 @@ This document provides a technical overview of the CARELINK system.
 
 *   **Functionality:** This page allows users to manage their profile, system, and security settings.
 *   **Profile Settings:** Users can edit their display name, email, and phone number.
-*   **System Settings:** Users can customize the theme, language, and notification preferences.
+*   **System Settings:** Users can customize language and notification preferences.
 *   **Security Settings:** Users can change their password by providing their current password and a new password.
 
 ### `pages/edit_user.php`
@@ -275,8 +274,8 @@ To run PHP on Render, you must provide a `Dockerfile`.
     # Use an official PHP image with an Apache web server
     FROM php:8.2-apache
 
-    # Install the MySQLi extension that your PHP code needs
-    RUN docker-php-ext-install mysqli && docker-php-ext-enable mysqli
+    # Install the PDO MySQL driver used by the application
+    RUN docker-php-ext-install pdo_mysql
 
     # Copy all your project files into the web server's root directory
     COPY . /var/www/html/
@@ -295,5 +294,5 @@ To run PHP on Render, you must provide a `Dockerfile`.
 
 ### Step 5: Verify the deployment connection
 
-`includes/db_connect.php` already reads `DATABASE_URL` and uses the local `capstone1` MySQL database when that variable is absent. Verify the deployed database driver and import the supplied schema before opening the application.
+`includes/db_connect.php` reads `DATABASE_URL` and uses the local `capstone1` MySQL database when that variable is absent. Import `capstone1_schema.sql` for a new database, then run `php scripts/migrate.php` during every deployment before serving traffic. Normal web requests never modify the schema.
 Commit and push this final change to GitHub. Render will automatically see the change and redeploy your PHP service. Your site should now be live at your `carelink-web` URL.

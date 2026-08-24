@@ -120,8 +120,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/carelink-theme.css?v=7">
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=11">
+    <link rel="stylesheet" href="../assets/css/seniorlink-public.css?v=1">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=15">
+    <script src="../assets/js/modal-hci.js?v=2" defer></script>
 </head>
 <body class="auth-page">
     <div class="page-bg page-bg--pages" aria-hidden="true"></div>
@@ -178,7 +179,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </div>
     </div>
 
-    <div id="forgotPasswordModal" class="cl-modal" role="dialog" aria-modal="true" aria-labelledby="forgot-title">
+    <div id="forgotPasswordModal" class="cl-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="forgot-title">
         <div class="cl-modal-content">
             <div class="cl-modal-header">
                 <h2 id="forgot-title">Forgot Password</h2>
@@ -217,17 +218,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         forgotPasswordLink.addEventListener('click', function(e) {
             e.preventDefault();
             forgotPasswordModal.classList.add('is-open');
+            forgotPasswordModal.setAttribute('aria-hidden', 'false');
             forgotPasswordMessage.innerHTML = '';
             forgotPasswordForm.reset();
+            document.getElementById('resetEmail').focus();
         });
 
         closeForgotPasswordModalBtn.addEventListener('click', function() {
             forgotPasswordModal.classList.remove('is-open');
+            forgotPasswordModal.setAttribute('aria-hidden', 'true');
+            forgotPasswordLink.focus();
         });
 
         window.addEventListener('click', function(event) {
             if (event.target === forgotPasswordModal) {
                 forgotPasswordModal.classList.remove('is-open');
+                forgotPasswordModal.setAttribute('aria-hidden', 'true');
+                forgotPasswordLink.focus();
             }
         });
 

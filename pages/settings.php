@@ -15,7 +15,7 @@ $error = '';
 
 // Fetch user data and settings
 try {
-    $stmt = $conn->prepare("SELECT u.*, s.theme, s.language, s.notifications FROM users u LEFT JOIN settings s ON u.id = s.user_id WHERE u.id = :id");
+    $stmt = $conn->prepare("SELECT u.*, s.language, s.notifications FROM users u LEFT JOIN settings s ON u.id = s.user_id WHERE u.id = :id");
     $stmt->execute(['id' => $user_id]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateProfile'])) {
         $stmt = $conn->prepare("UPDATE users SET first_name = :first_name, last_name = :last_name, email = :email WHERE id = :id");
         $stmt->execute(['first_name' => $firstName, 'last_name' => $lastName, 'email' => $email, 'id' => $user_id]);
         $message = "Profile updated successfully!";
-        $stmt = $conn->prepare("SELECT u.*, s.theme, s.language, s.notifications FROM users u LEFT JOIN settings s ON u.id = s.user_id WHERE u.id = :id");
+        $stmt = $conn->prepare("SELECT u.*, s.language, s.notifications FROM users u LEFT JOIN settings s ON u.id = s.user_id WHERE u.id = :id");
         $stmt->execute(['id' => $user_id]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
@@ -82,7 +82,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updatePassword'])) {
     <title>User Settings - SENIORLINK</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=4">
-    <link rel="stylesheet" href="../assets/css/main-dark-mode.css?v=1.1">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 
@@ -211,30 +210,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updatePassword'])) {
         .profile-info h2 { color: var(--primary); font-size: 1.15rem; margin-bottom: 2px; }
         .profile-info p { color: var(--gray); font-size: 13px; }
 
-        .theme-toggle-wrap { display: flex; align-items: center; gap: 10px; }
-        .theme-toggle-wrap label { font-size: 13px; font-weight: 600; color: var(--primary); }
-
-        .theme-toggle {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: var(--card-bg);
-            border: 1px solid #cbd5e1;
-            color: var(--primary);
-            cursor: pointer;
-            transition: all 0.2s ease;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-        }
-
-        .theme-toggle:hover {
-            background: var(--accent);
-            color: white;
-            border-color: var(--accent);
-        }
-
         /* Settings Grid */
         .settings-grid {
             display: grid;
@@ -356,7 +331,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updatePassword'])) {
     </style>
     <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=11">
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
-    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=2">
+    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
 </head>
 <body>
 <div class="container">
@@ -407,12 +382,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updatePassword'])) {
                     <h2><?php echo htmlspecialchars(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? '')); ?></h2>
                     <p><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', ($user['role'] ?? '')))); ?><?php if (($user['role'] ?? '') !== 'department_admin' && !empty($user['barangay'])): ?> • <?php echo htmlspecialchars($user['barangay']); ?><?php endif; ?></p>
                 </div>
-            </div>
-            <div class="theme-toggle-wrap">
-                <label for="themeToggle">Dark Mode</label>
-                <button id="themeToggle" class="theme-toggle" title="Toggle theme" aria-pressed="false">
-                    <i id="themeIcon" class="fas fa-moon"></i>
-                </button>
             </div>
         </div>
 
@@ -490,7 +459,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updatePassword'])) {
 </div>
 
 <script src="../assets/js/sidebar-toggle.js?v=3"></script>
-<script src="../assets/js/dark-mode.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const welcomeMessage = document.querySelector('.welcome-message');

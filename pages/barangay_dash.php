@@ -27,7 +27,6 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
     <title>CPRAS Dashboard - Barangay <?php echo $barangayName; ?></title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=4">
-    <link rel="stylesheet" href="../assets/css/main-dark-mode.css?v=1.2">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* Page-specific styles for dashboard */
@@ -129,7 +128,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
     </style>
     <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=11">
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
-    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=2">
+    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
     <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=3">
 </head>
 <body class="dashboard-page barangay-dashboard">
@@ -179,9 +178,9 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
 
             <!-- Summary Stats Strip -->
             <div class="stats-strip" id="statsStrip">
-                <a class="stat-card stat-card-link stat-blue" href="submit_application.php" aria-label="Open all active applications"><div class="stat-icon"><i class="fas fa-file-lines" aria-hidden="true"></i></div><div class="stat-info"><div class="stat-label">Active applications</div><div class="stat-value" id="statTotal" aria-live="polite">—</div><small>View local workload</small></div><i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i></a>
-                <a class="stat-card stat-card-link stat-amber" href="submit_application.php" aria-label="Open received applications"><div class="stat-icon"><i class="fas fa-inbox" aria-hidden="true"></i></div><div class="stat-info"><div class="stat-label">Awaiting action</div><div class="stat-value" id="statReceived" aria-live="polite">—</div><small>Received in queue</small></div><i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i></a>
-                <a class="stat-card stat-card-link stat-green" href="barangay_records.php" aria-label="Open approved application records"><div class="stat-icon"><i class="fas fa-circle-check" aria-hidden="true"></i></div><div class="stat-info"><div class="stat-label">Approved records</div><div class="stat-value" id="statApproved" aria-live="polite">—</div><small>Browse verified records</small></div><i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i></a>
+                <a class="stat-card stat-card-link stat-blue" href="submit_application.php" aria-label="Open all active applications"><div class="stat-icon"><i class="fas fa-file-lines" aria-hidden="true"></i></div><div class="stat-info"><div class="stat-label">Active applications</div><div class="stat-value dashboard-loading" id="statTotal" aria-live="polite" aria-label="Loading active applications">0</div><small>View local workload</small></div><i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i></a>
+                <a class="stat-card stat-card-link stat-amber" href="submit_application.php" aria-label="Open received applications"><div class="stat-icon"><i class="fas fa-inbox" aria-hidden="true"></i></div><div class="stat-info"><div class="stat-label">Awaiting action</div><div class="stat-value dashboard-loading" id="statReceived" aria-live="polite" aria-label="Loading applications awaiting action">0</div><small>Received in queue</small></div><i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i></a>
+                <a class="stat-card stat-card-link stat-green" href="barangay_records.php" aria-label="Open approved application records"><div class="stat-icon"><i class="fas fa-circle-check" aria-hidden="true"></i></div><div class="stat-info"><div class="stat-label">Approved records</div><div class="stat-value dashboard-loading" id="statApproved" aria-live="polite" aria-label="Loading approved records">0</div><small>Browse verified records</small></div><i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i></a>
             </div>
 
             <div class="dashboard-section-heading"><div><span>Performance and activity</span><h2>Application insights</h2><p>Use these summaries to identify workload patterns and recent changes.</p></div></div>
@@ -190,11 +189,11 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                     <div class="charts-container">
                         <div class="chart-card">
                             <h3><span><i class="fas fa-chart-pie"></i> Status distribution</span><small>Current applications by workflow stage</small></h3>
-                            <div class="chart-wrapper"><canvas id="statusChart" aria-label="Chart of barangay applications by workflow status" role="img">Application status chart</canvas></div>
+                            <div class="chart-wrapper is-loading"><canvas id="statusChart" aria-label="Chart of barangay applications by workflow status" role="img">Application status chart</canvas></div>
                         </div>
                         <div class="chart-card">
                             <h3><span><i class="fas fa-chart-column"></i> Monthly applications</span><small>Submission volume during the last 12 months</small></h3>
-                            <div class="chart-wrapper"><canvas id="monthlyChart" aria-label="Chart of monthly barangay application volume" role="img">Monthly application chart</canvas></div>
+                            <div class="chart-wrapper is-loading"><canvas id="monthlyChart" aria-label="Chart of monthly barangay application volume" role="img">Monthly application chart</canvas></div>
                         </div>
                     </div>
                 </div>
@@ -338,7 +337,6 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
     </div>
 
     <script src="../assets/js/sidebar-toggle.js?v=3"></script>
-    <script src="../assets/js/dark-mode.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         initializeWelcomeMessage();
@@ -346,24 +344,40 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
         updateTime();
         setInterval(updateTime, 1000);
 
-        // Fetch dynamic data for charts, stats and notifications
-        fetch('../api/barangay_dashboard_data.php')
-            .then(response => response.json())
+        loadDashboardData();
+    });
+
+    function loadDashboardData() {
+        const list = document.getElementById('realtime-notifications-list');
+        if (list) list.innerHTML = '<div class="dashboard-state" role="status">Updating dashboard…</div>';
+        document.querySelectorAll('.chart-wrapper').forEach(el => el.classList.add('is-loading'));
+
+        fetch('../api/barangay_dashboard_data.php', { headers: { 'Accept': 'application/json' } })
+            .then(response => {
+                if (!response.ok) throw new Error(`Request failed (${response.status})`);
+                return response.json();
+            })
             .then(result => {
                 if (result.success) {
                     initializeCharts(result.data);
                     renderNotifications(result.data.notifications);
                     renderStatsStrip(result.data);
                 } else {
-                    console.error('Failed to load dashboard data:', result.message);
-                    document.getElementById('realtime-notifications-list').innerHTML = '<p>Could not load notifications.</p>';
+                    throw new Error(result.message || 'Dashboard data is unavailable');
                 }
             })
             .catch(error => {
                 console.error('Error fetching dashboard data:', error);
-                document.getElementById('realtime-notifications-list').innerHTML = '<p>Error loading notifications.</p>';
+                showDashboardError();
             });
-    });
+    }
+
+    function showDashboardError() {
+        document.querySelectorAll('.dashboard-loading').forEach(el => { el.classList.remove('dashboard-loading'); el.textContent = '—'; el.removeAttribute('aria-label'); });
+        document.querySelectorAll('.chart-wrapper').forEach(el => el.classList.remove('is-loading'));
+        const list = document.getElementById('realtime-notifications-list');
+        if (list) list.innerHTML = '<div class="dashboard-state" role="alert"><span>Dashboard updates could not be loaded.</span><button class="dashboard-retry" type="button" onclick="loadDashboardData()">Try again</button></div>';
+    }
 
     function updateTime() {
         const timeEl = document.getElementById('current-time');
@@ -511,6 +525,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
         // applications that are still at the first Received step.
         if (el('statReceived'))  el('statReceived').textContent  = data.queue_count ?? 0;
         if (el('statApproved'))  el('statApproved').textContent  = workflowMap['Approved'] ?? 0;
+        document.querySelectorAll('.dashboard-loading').forEach(node => { node.classList.remove('dashboard-loading'); node.removeAttribute('aria-label'); });
 
         // Priority banner
         const priorityCount = data.priority_count ?? 0;
@@ -523,9 +538,8 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
     }
 
     function initializeCharts(data) {
-        const isDarkMode = document.body.classList.contains('dark-mode');
-        const textColor = isDarkMode ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)';
-        const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+        const textColor = 'rgba(0, 0, 0, 0.8)';
+        const gridColor = 'rgba(0, 0, 0, 0.1)';
 
         // --- Status Chart ---
         const statusCtx = document.getElementById('statusChart')?.getContext('2d');
@@ -550,10 +564,11 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
             const backgroundColors = labels.map(label => statusColors[label] || '#94a3b8');
             new Chart(statusCtx, {
                 type: 'doughnut',
-                data: { labels, datasets: [{ data: counts, backgroundColor: backgroundColors, borderWidth: 2, borderColor: isDarkMode ? '#0f1722' : '#fff' }] },
+                data: { labels, datasets: [{ data: counts, backgroundColor: backgroundColors, borderWidth: 2, borderColor: '#fff' }] },
                 options: { 
                     responsive: true, 
                     maintainAspectRatio: false, 
+                    animation: { duration: 180 },
                     plugins: { 
                         legend: { 
                             position: 'right',
@@ -613,6 +628,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        animation: { duration: 180 },
                         plugins: {
                             legend: {
                                 labels: {
@@ -642,6 +658,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                     }
                 });
             }
+            document.querySelectorAll('.chart-wrapper').forEach(el => el.classList.remove('is-loading'));
     }
     </script>
 </body>
