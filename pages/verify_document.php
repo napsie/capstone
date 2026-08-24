@@ -869,6 +869,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
 <script src="../assets/js/application-details.js?v=5"></script>
 <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 <script src="../assets/js/application-form-generator.js?v=2"></script>
+<script src="../assets/js/report-validation.js?v=1"></script>
 <script>
     /* ─── Greeting ──────────────────────────────────────────── */
     (function(){

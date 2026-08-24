@@ -120,6 +120,11 @@
     list-style: none;
 }
 
+/* Let the last action use the remaining vertical space in both sidebar variants. */
+.system-sidebar .sidebar-menu ul {
+    min-height: 100%;
+}
+
 .system-sidebar :is(.nav-links, .sidebar-menu) li {
     position: relative;
     width: 100%;
@@ -195,7 +200,7 @@
 }
 
 .system-sidebar :is(.nav-links, .sidebar-menu) .logout-item {
-    margin-top: 12px;
+    margin-top: auto;
     padding-top: 12px;
     border-top: 1px solid rgba(255,255,255,.13);
     border-radius: 0;

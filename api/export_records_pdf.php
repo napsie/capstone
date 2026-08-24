@@ -2,6 +2,7 @@
 session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/application_types.php';
+require_once '../includes/barangays_list.php';
 
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'] ?? '', ['barangay_staff', 'department_admin', 'super_admin'], true)) {
     http_response_code(401);
@@ -28,10 +29,17 @@ function pdfLine(float $x1, float $y1, float $x2, float $y2, array $color = [0.8
 }
 
 $role = $_SESSION['role'];
-$scope = $_GET['scope'] ?? ($role === 'barangay_staff' ? 'barangay' : 'department');
+$scope = trim($_GET['scope'] ?? ($role === 'barangay_staff' ? 'barangay' : 'department'));
+if (!in_array($scope, ['barangay', 'department'], true)) { http_response_code(400); exit('Invalid report scope.'); }
 if ($scope === 'department' && $role === 'barangay_staff') { http_response_code(403); exit('Access denied.'); }
+if ($scope === 'barangay' && $role !== 'barangay_staff') { http_response_code(403); exit('Access denied.'); }
 $reportMode = $_GET['report_mode'] ?? 'records';
-if (!in_array($reportMode, ['records', 'queue', 'verification'], true)) $reportMode = 'records';
+if (!in_array($reportMode, ['records', 'queue', 'verification'], true)) { http_response_code(400); exit('Invalid report mode.'); }
+if (($scope === 'barangay' && !in_array($reportMode, ['records', 'queue'], true)) ||
+    ($scope === 'department' && !in_array($reportMode, ['records', 'verification'], true))) {
+    http_response_code(400);
+    exit('The selected report mode is not valid for this scope.');
+}
 $search = trim($_GET['search'] ?? '');
 $type = trim($_GET['type'] ?? 'all');
 $year = trim($_GET['year'] ?? 'all');
@@ -39,9 +47,25 @@ $barangay = trim($_GET['barangay'] ?? 'all');
 $dateFrom = trim($_GET['date_from'] ?? '');
 $dateTo = trim($_GET['date_to'] ?? '');
 $status = trim($_GET['status'] ?? 'all');
-if ($dateFrom !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom)) $dateFrom = '';
-if ($dateTo !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateTo)) $dateTo = '';
-if ($status !== 'all' && !in_array($status, ['Approved', 'Released'], true)) $status = 'all';
+$allowedTypes = array_keys(getApplicationTypeOptions());
+if ($type !== 'all' && !in_array($type, $allowedTypes, true)) { http_response_code(400); exit('Invalid application type.'); }
+if ($status !== 'all' && !in_array($status, ['Approved', 'Released'], true)) { http_response_code(400); exit('Invalid report status.'); }
+if (mb_strlen($search) > 100) { http_response_code(400); exit('Search text is too long.'); }
+
+$parseReportDate = static function (string $value): ?DateTimeImmutable {
+    if ($value === '') return null;
+    $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+    return $date && $date->format('Y-m-d') === $value ? $date : null;
+};
+$fromDate = $parseReportDate($dateFrom);
+$toDate = $parseReportDate($dateTo);
+if (($dateFrom !== '' && !$fromDate) || ($dateTo !== '' && !$toDate)) { http_response_code(400); exit('Use valid report dates in YYYY-MM-DD format.'); }
+if (($fromDate && !$toDate) || (!$fromDate && $toDate)) { http_response_code(400); exit('Select both the start and end dates.'); }
+if ($fromDate && $toDate && $fromDate > $toDate) { http_response_code(400); exit('The report end date cannot be earlier than the start date.'); }
+$today = new DateTimeImmutable('today');
+if (($fromDate && $fromDate > $today) || ($toDate && $toDate > $today)) { http_response_code(400); exit('Report dates cannot be in the future.'); }
+if ($year !== 'all' && (!ctype_digit($year) || (int)$year < 2020 || (int)$year > (int)date('Y'))) { http_response_code(400); exit('Invalid report year.'); }
+if ($scope === 'department' && $barangay !== 'all' && !in_array($barangay, $barangays_list, true)) { http_response_code(400); exit('Invalid barangay selection.'); }
 
 $where = [];
 $params = [];
@@ -97,10 +121,13 @@ $sql = "SELECT id_number, full_name, application_type, barangay, date_submitted,
 $stmt = $conn->prepare($sql);
 $stmt->execute($params);
 $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+if (!$records) {
+    http_response_code(422);
+    exit('No records match the selected report filters. Adjust the filters and try again.');
+}
 
 $rowsPerPage = 23;
 $pages = array_chunk($records, $rowsPerPage);
-if (!$pages) $pages = [[]];
 $columns = [['#', 30], ['Applicant Name', 165], ['Application ID', 112], ['Application Type', 150], ['Barangay', 115], ['Date Submitted', 88], ['Status', 90]];
 $streams = [];
 foreach ($pages as $pageIndex => $pageRecords) {

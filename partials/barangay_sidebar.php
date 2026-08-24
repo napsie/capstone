@@ -22,7 +22,7 @@ $barangayLogoLabel = $barangayName !== '' ? 'Barangay ' . $barangayName . ' Logo
         <li class="<?php echo ($current_page == 'field_operations.php') ? 'active' : ''; ?>"><a href="field_operations.php" data-tooltip="Field Operations" aria-label="Field Operations"><i class="fas fa-house-medical"></i> <span class="link-text">Field Operations</span></a></li>
         <li class="<?php echo ($current_page == 'barangay_archive.php') ? 'active' : ''; ?>"><a href="barangay_archive.php" data-tooltip="Archive" aria-label="Archive"><i class="fas fa-archive"></i> <span class="link-text">Archive</span></a></li>
         <li class="<?php echo ($current_page == 'settings.php') ? 'active' : ''; ?>"><a href="settings.php" data-tooltip="Settings" aria-label="Settings"><i class="fas fa-cog"></i> <span class="link-text">Settings</span></a></li>
-        <li class="<?php echo ($current_page == 'legal_reference.php') ? 'active' : ''; ?>"><a href="legal_reference.php" data-tooltip="Legal Reference" aria-label="Legal Reference"><i class="fas fa-balance-scale"></i> <span class="link-text">Legal Reference</span></a></li>
         <li class="logout-item"><a href="../index.php?logout=true" data-tooltip="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i> <span class="link-text">Logout</span></a></li>
     </ul>
 </div>
+<?php include_once __DIR__ . '/legal_quick_access.php'; ?>

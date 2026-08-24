@@ -374,7 +374,6 @@ unset($_SESSION['application_submission_notice']);
                 <h1>Barangay <span>Queue</span></h1>
             </div>
             <div class="header-actions">
-                <a href="new_application.php" class="btn btn-primary"><i class="fas fa-plus"></i> Add Application</a>
                 <div class="header-user">
                     <?php
                         $profilePic = isset($_SESSION['profile_picture']) ? $_SESSION['profile_picture'] : 'default.jpg';
@@ -707,6 +706,7 @@ unset($_SESSION['application_submission_notice']);
 <script src="../assets/js/application-details.js?v=5"></script>
 <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 <script src="../assets/js/application-form-generator.js?v=1"></script>
+<script src="../assets/js/report-validation.js?v=1"></script>
 <script>
     const TYPE_LABELS = <?php echo json_encode(getApplicationTypeOptions()); ?>;
     
@@ -1265,6 +1265,12 @@ unset($_SESSION['application_submission_notice']);
     }
 
     document.addEventListener('DOMContentLoaded', function() {
+        if (new URLSearchParams(window.location.search).get('openScanner') === '1') {
+            const cleanUrl = new URL(window.location.href);
+            cleanUrl.searchParams.delete('openScanner');
+            window.history.replaceState({}, document.title, cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
+            openProxyModal();
+        }
         document.getElementById('closeExportModalBtn')?.addEventListener('click', closeExportModal);
         document.getElementById('cancelExportBtn')?.addEventListener('click', closeExportModal);
         document.getElementById('exportModal')?.addEventListener('click', function(e) {
