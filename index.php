@@ -71,7 +71,7 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
 
                 setcookie('remember_me', $selector . ':' . $newValidator, time() + (86400 * 30), "/", "", false, true);
 
-                $rememberedRole = $user['role'] === 'barangay_staff' ? 'Barangay Staff' : 'Department Administrator';
+                $rememberedRole = $user['role'] === 'barangay_staff' ? 'SHDO' : 'Department Administrator';
                 $rememberedLocation = $user['role'] === 'barangay_staff' ? " for Barangay {$user['barangay']}" : '';
                 if (logAudit($conn, 'LOGIN', "Restored remembered login as {$rememberedRole}{$rememberedLocation}.")) {
                     $_SESSION['login_audit_recorded'] = true;
@@ -137,10 +137,9 @@ header('Expires: 0');
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="assets/css/loading-spinner.css">
     <link rel="stylesheet" href="assets/css/seniorlink-public.css?v=1">
-    <link rel="stylesheet" href="assets/css/landing.css?v=9">
-    <link rel="stylesheet" href="assets/css/seniorlink-ui.css?v=15">
+    <link rel="stylesheet" href="assets/css/landing.css?v=19">
+    <link rel="stylesheet" href="assets/css/seniorlink-ui.css?v=17">
     <script src="assets/js/modal-hci.js?v=2" defer></script>
 </head>
 <body>
@@ -192,6 +191,7 @@ header('Expires: 0');
                 <span><i class="fas fa-database" aria-hidden="true"></i> Centralized records</span>
                 <span><i class="fas fa-check-circle" aria-hidden="true"></i> Verified profiles</span>
             </div>
+
         </section>
 
         <section class="portal-panel" aria-labelledby="portal-heading">
@@ -206,16 +206,24 @@ header('Expires: 0');
                     Secure
                 </span>
             </div>
+            <a href="pages/benefit_tracker.php" class="portal-track-card" id="trackLink" aria-haspopup="dialog" aria-controls="trackModal">
+                <span class="portal-track-card-icon" aria-hidden="true"><i class="fas fa-magnifying-glass"></i></span>
+                <span class="portal-track-card-copy">
+                    <strong>Track your application</strong>
+                    <small>Use your PRX or PEN token to check its current processing status.</small>
+                </span>
+                <i class="fas fa-arrow-right portal-track-card-arrow" aria-hidden="true"></i>
+            </a>
             <div class="portal-cards">
                 <a href="pages/barangay_staff_login_page.php" class="portal-card" id="staffCard"
-                   aria-label="Barangay Staff login — register beneficiaries and manage local records">
+                   aria-label="SHDO login — register beneficiaries and manage local records">
                     <span class="portal-card-number" aria-hidden="true">01</span>
                     <div class="portal-card-icon staff" aria-hidden="true">
                         <i class="fas fa-user-shield"></i>
                     </div>
                     <div class="portal-card-body">
                         <span class="portal-role">Local operations</span>
-                        <h4>Barangay Staff</h4>
+                        <h4>SHDO</h4>
                         <p>Register beneficiaries, capture applicant photos, and manage local records.</p>
                     </div>
                     <span class="portal-card-arrow" aria-hidden="true">
@@ -240,21 +248,23 @@ header('Expires: 0');
                 </a>
 
                 <a href="pages/proxy_registration.php" class="portal-card" id="proxyCard"
-                   aria-label="Representative pre-registration for bedridden seniors">
+                   aria-label="Public new application service for senior citizens">
                     <span class="portal-card-number" aria-hidden="true">03</span>
                     <div class="portal-card-icon proxy" aria-hidden="true">
                         <i class="fas fa-qrcode"></i>
                     </div>
                     <div class="portal-card-body">
                         <span class="portal-role">Public service</span>
-                        <h4>Representative Pre-Registration</h4>
-                        <p>Pre-register for bedridden seniors and get a priority queue QR token.</p>
+                        <h4>New Senior Application</h4>
+                        <p>Public online application for every eligible senior citizen, with assistance from a family member or authorized representative when needed.</p>
                     </div>
                     <span class="portal-card-arrow" aria-hidden="true">
                         <i class="fas fa-arrow-right"></i>
                     </span>
                 </a>
+
             </div>
+
         </section>
         </div>
 
@@ -295,6 +305,28 @@ header('Expires: 0');
         </div>
     </div>
 
+    <div class="about-modal" id="trackModal" role="dialog" aria-modal="true"
+         aria-labelledby="track-title" aria-hidden="true">
+        <div class="about-content track-content">
+            <div class="about-header">
+                <div>
+                    <span class="portal-eyebrow">Public tracking</span>
+                    <h3 id="track-title">Track Your Application Status</h3>
+                </div>
+                <button class="close-btn" type="button" aria-label="Close application tracker">&times;</button>
+            </div>
+            <p class="track-intro">Use the PRX or PEN token you received after registration to view your current status and processing updates.</p>
+            <form class="portal-tracker track-modal-form" action="pages/benefit_tracker.php" method="get">
+                <label for="landingTrackerToken">Application token</label>
+                <div class="portal-tracker-controls">
+                    <input id="landingTrackerToken" name="token" type="text" placeholder="PRX-ABC123 or PEN-ABC123" maxlength="24" autocomplete="off" spellcheck="false" required>
+                    <button type="submit"><span>Check Status</span><i class="fas fa-arrow-right" aria-hidden="true"></i></button>
+                </div>
+                <small class="track-help"><i class="fas fa-shield-halved" aria-hidden="true"></i> Secure lookup—your token is used only to find your application status.</small>
+            </form>
+        </div>
+    </div>
+
     <script>
         const aboutLink = document.getElementById('aboutLink');
         const aboutModal = document.getElementById('aboutModal');
@@ -325,12 +357,44 @@ header('Expires: 0');
             if (e.target === aboutModal) closeModal();
         });
 
+        const trackLink = document.getElementById('trackLink');
+        const trackModal = document.getElementById('trackModal');
+        const trackCloseBtn = trackModal?.querySelector('.close-btn');
+        const trackerInput = document.getElementById('landingTrackerToken');
+
+        function openTrackModal() {
+            lastFocusedElement = document.activeElement;
+            if (!trackModal || !trackerInput) return;
+            trackModal.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+            trackerInput.focus();
+        }
+
+        function closeTrackModal() {
+            if (!trackModal) return;
+            trackModal.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+            if (lastFocusedElement) lastFocusedElement.focus();
+        }
+
+        trackLink?.addEventListener('click', (event) => {
+            if (!trackModal || !trackerInput) return;
+            event.preventDefault();
+            openTrackModal();
+        });
+        trackCloseBtn?.addEventListener('click', closeTrackModal);
+        trackModal?.addEventListener('click', (e) => {
+            if (e.target === trackModal) closeTrackModal();
+        });
+
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && aboutModal.getAttribute('aria-hidden') === 'false') {
                 closeModal();
             }
+            if (e.key === 'Escape' && trackModal?.getAttribute('aria-hidden') === 'false') {
+                closeTrackModal();
+            }
         });
     </script>
-    <script src="assets/js/dynamic-loader.js"></script>
 </body>
 </html>

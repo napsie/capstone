@@ -138,7 +138,7 @@ $auditHasFilters = ($activeTab === 'audit' && $search !== '') || $auditEventFilt
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=4">
     <link rel="stylesheet" href="../assets/css/seniorlink-public.css?v=1">
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=15">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
@@ -452,7 +452,7 @@ $auditHasFilters = ($activeTab === 'audit' && $search !== '') || $auditEventFilt
 </div>
 
     <script src="../assets/js/sidebar-toggle.js?v=3"></script>
-    <script src="../assets/js/application-details.js?v=4"></script>
+    <script src="../assets/js/application-details.js?v=9"></script>
     <script src="../assets/js/archive-application-modal.js?v=2"></script>
     <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
     <script>

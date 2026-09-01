@@ -39,14 +39,6 @@ function getWorkingDays($startDate, $endDate) {
 $errorMessage = "";
 $successMessage = "";
 $barangay = $_SESSION['barangay'] ?? '';
-$personnelStmt = $conn->prepare(
-    "SELECT id, full_name, position, barangay
-     FROM home_visit_personnel
-     WHERE is_active = 1 AND (barangay IS NULL OR barangay = '' OR barangay = ?)
-     ORDER BY full_name"
-);
-$personnelStmt->execute([$barangay]);
-$homeVisitPersonnel = $personnelStmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Check if loaded with a Proxy Token from scanning the QR
 $loadedProxyData = null;
@@ -78,69 +70,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $barangay = $_SESSION['barangay'] ?? ''; // Barangay from session
     $oscaData = parseOscaFormPost($_POST);
     $homeVisitScheduledAt = null;
-    $homeVisitStatus = null;
-    $homeVisitEligibility = null;
-    $homeVisitEligibilityReason = null;
-    $homeVisitPersonnelId = null;
+    $homeVisitStatus = $applicationType === 'pension' ? 'Waiting for Home Visit' : null;
 
-    if ($applicationType === 'pension') {
-        $eligibilityRaw = trim((string)($_POST['homeVisitEligibility'] ?? ''));
-        $homeVisitEligibilityReason = trim(strip_tags((string)($_POST['homeVisitEligibilityReason'] ?? '')));
-
-        if (!in_array($eligibilityRaw, ['eligible', 'not_eligible'], true)) {
-            $errorMessage = 'Please indicate whether the senior is eligible for a home visit.';
-        } elseif ($eligibilityRaw === 'not_eligible') {
-            $homeVisitEligibility = 'Not Eligible';
-            $homeVisitStatus = 'Not Eligible';
-        } else {
-            $homeVisitEligibility = 'Eligible';
-            $homeVisitPersonnelId = filter_var($_POST['homeVisitPersonnelId'] ?? null, FILTER_VALIDATE_INT) ?: null;
-            $scheduleRaw = trim((string)($_POST['homeVisitScheduledAt'] ?? ''));
-            $timezone = new DateTimeZone('Asia/Manila');
-            $scheduled = DateTime::createFromFormat('Y-m-d\TH:i', $scheduleRaw, $timezone);
-            $scheduleErrors = DateTime::getLastErrors();
-            $scheduleIsValid = $scheduled
-                && ($scheduleErrors === false || ($scheduleErrors['warning_count'] === 0 && $scheduleErrors['error_count'] === 0));
-
-            if ($homeVisitEligibilityReason === '') {
-                $errorMessage = 'Please enter the reason the senior qualifies for a home visit.';
-            } elseif (!$homeVisitPersonnelId) {
-                $errorMessage = 'Please assign home visit personnel.';
-            } elseif (!$scheduleIsValid) {
-                $errorMessage = 'Please select a valid home visitation date and time.';
-            } elseif ($scheduled <= new DateTime('now', $timezone)) {
-                $errorMessage = 'The home visitation schedule must be in the future.';
-            } elseif (in_array($scheduled->format('N'), ['6', '7'], true)) {
-                $errorMessage = 'Home visits can only be scheduled from Monday to Friday.';
-            } elseif ((int)$scheduled->format('H') < 8 || (int)$scheduled->format('H') >= 17 || !in_array($scheduled->format('i'), ['00', '30'], true)) {
-                $errorMessage = 'Choose a home visit slot from 8:00 AM to 4:30 PM, in 30-minute intervals.';
-            } elseif (normalizePhilippineMobile($contactNumber) === null) {
-                $errorMessage = 'Enter a valid Philippine cellphone number so the home visit confirmation can be sent by text.';
-            } else {
-                $personCheck = $conn->prepare("SELECT COUNT(*) FROM home_visit_personnel WHERE id = ? AND is_active = 1 AND (barangay IS NULL OR barangay = '' OR barangay = ?)");
-                $personCheck->execute([$homeVisitPersonnelId, $barangay]);
-                $conflictCheck = $conn->prepare(
-                    "SELECT COUNT(*) FROM applications
-                     WHERE home_visit_personnel_id = ? AND home_visit_scheduled_at = ?
-                       AND COALESCE(home_visit_status, '') NOT IN ('Cancelled', 'Completed')"
-                );
-                $formattedSchedule = $scheduled->format('Y-m-d H:i:s');
-                $conflictCheck->execute([$homeVisitPersonnelId, $formattedSchedule]);
-
-                if ((int)$personCheck->fetchColumn() === 0) {
-                    $errorMessage = 'The selected home visit personnel is not available.';
-                } elseif ((int)$conflictCheck->fetchColumn() > 0) {
-                    $errorMessage = 'The selected personnel already has a visit at that date and time.';
-                } else {
-                    $homeVisitScheduledAt = $formattedSchedule;
-                    $homeVisitStatus = 'Scheduled';
-                }
-            }
-        }
-    }
+    // Every Local Pension submission enters the private Home Visit queue.
+    // Assignment and scheduling are handled later by the Department Admin.
 
     // New Senior Citizens ID applications never choose their own official ID.
-    // OSCA assigns it centrally when the application reaches Approved.
+    // OSCA assigns it centrally when the application reaches Verified.
     if ($applicationType === 'senior') {
         $oscaData['senior_id_no'] = null;
     } elseif (!empty($oscaData['senior_id_no'])) {
@@ -387,22 +323,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 }
 
                 if ($saved) {
-                    if ($applicationType === 'pension') {
-                        $visitAssessmentStmt = $conn->prepare(
-                            'UPDATE applications
-                             SET home_visit_eligibility = ?, home_visit_eligibility_reason = ?,
-                                 home_visit_personnel_id = ?, home_visit_assessed_by = ?,
-                                 home_visit_assessed_at = CURRENT_TIMESTAMP
-                             WHERE id_number = ?'
-                        );
-                        $visitAssessmentStmt->execute([
-                            $homeVisitEligibility,
-                            $homeVisitEligibilityReason !== '' ? $homeVisitEligibilityReason : null,
-                            $homeVisitPersonnelId,
-                            $_SESSION['user_id'] ?? null,
-                            $idNumber,
-                        ]);
-                    }
                     if ($submittedDocuments) {
                         $driver = $conn->getAttribute(PDO::ATTR_DRIVER_NAME);
                         $documentSql = $driver === 'pgsql'
@@ -431,25 +351,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                     $conn->commit();
 
-                    $submissionMessage = 'Application submitted successfully.';
-                    if ($applicationType === 'pension' && $homeVisitScheduledAt) {
-                        $visit = new DateTime($homeVisitScheduledAt, new DateTimeZone('Asia/Manila'));
-                        $visitLabel = $visit->format('F j, Y \a\t g:i A');
-                        $smsVisitLabel = $visit->format('M j, Y g:i A');
-                        $smsMessage = "SENIORLINK: Local Pension {$idNumber} received. Home visit: {$smsVisitLabel}. Please keep your phone available. Brgy {$barangay}.";
-
-                        try {
-                            $smsResult = sendOrQueueSms($conn, $idNumber, $contactNumber, $smsMessage);
-                            $smsStatusStmt = $conn->prepare('UPDATE applications SET sms_notification_status = ? WHERE id_number = ?');
-                            $smsStatusStmt->execute([$smsResult['status'], $idNumber]);
-                            $submissionMessage = "Application submitted. Home visit scheduled for {$visitLabel}. "
-                                . ($smsResult['status'] === 'sent'
-                                    ? 'A confirmation text was sent to the applicant.'
-                                    : 'The confirmation text is saved in the SMS queue.');
-                        } catch (Throwable $smsError) {
-                            $submissionMessage = "Application submitted. Home visit scheduled for {$visitLabel}. The text could not be sent yet and can be retried from the SMS queue.";
-                        }
-                    }
+                    $submissionMessage = $applicationType === 'pension'
+                        ? 'Application submitted successfully. Status: Waiting for Home Visit.'
+                        : 'Application submitted successfully.';
 
                     $_SESSION['application_submission_notice'] = $submissionMessage;
 
@@ -1697,7 +1601,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=15">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
@@ -1747,12 +1651,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         'senior'           => ['icon' => 'fas fa-id-card',       'color' => '#60a5fa', 'grad' => 'linear-gradient(135deg,#1e3a8a,#1d4ed8)', 'desc' => 'Senior Citizens ID registration',    'code' => '',           'accent' => '#3b82f6'],
                         'landbank'         => ['icon' => 'fas fa-credit-card',   'color' => '#34d399', 'grad' => 'linear-gradient(135deg,#064e3b,#059669)', 'desc' => 'Land Bank Cash Card enrollment',       'code' => '',           'accent' => '#10b981'],
                         'pension'          => ['icon' => 'fas fa-wallet',        'color' => '#fbbf24', 'grad' => 'linear-gradient(135deg,#78350f,#d97706)', 'desc' => 'Local social pension benefit',          'code' => 'Local',     'accent' => '#f59e0b'],
-                        'national_pension' => ['icon' => 'fas fa-landmark',     'color' => '#a78bfa', 'grad' => 'linear-gradient(135deg,#4c1d95,#7c3aed)', 'desc' => 'National DSWD pension (RA 11916)',     'code' => 'National',  'accent' => '#8b5cf6'],
                         'milestone_gift'   => ['icon' => 'fas fa-gift',          'color' => '#f472b6', 'grad' => 'linear-gradient(135deg,#831843,#db2777)', 'desc' => 'Octogenarian / Centenarian cash gift',  'code' => '',           'accent' => '#ec4899'],
                         'burial'           => ['icon' => 'fas fa-ribbon',        'color' => '#94a3b8', 'grad' => 'linear-gradient(135deg,#1e293b,#475569)', 'desc' => 'Burial financial assistance claim',      'code' => '',           'accent' => '#64748b'],
                     ];
                     $newApplicationTypes = getApplicationTypeOptions();
-                    unset($newApplicationTypes['home_visit']);
+                    unset($newApplicationTypes['home_visit'], $newApplicationTypes['national_pension']);
                     ?>
                     <div class="app-type-grid" id="appTypeGrid">
                         <?php foreach ($newApplicationTypes as $val => $label):
@@ -2830,37 +2733,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     </div>
                                 </div>
 
-                                <!-- Home visitation schedule (Local Pension only) -->
+                                <!-- Automatic Home Visit queue (Local Pension only) -->
                                 <div id="pensionHomeVisitSchedule" style="display:none;background:#eff6ff;border:1.5px solid #93c5fd;border-radius:12px;padding:14px 16px;margin-bottom:14px;">
                                     <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#1e3a8a;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
-                                        <i class="fas fa-house-medical" style="color:#2563eb;"></i> Home Visitation Schedule
+                                        <i class="fas fa-house-medical" style="color:#2563eb;"></i> Required Home Visit
                                     </div>
-                                    <p style="font-size:0.78rem;color:#1e40af;line-height:1.5;margin:0 0 10px;">
-                                        Complete the eligibility decision first. Scheduling and personnel assignment are required only for eligible seniors.
+                                    <p style="font-size:0.82rem;color:#1e40af;line-height:1.55;margin:0 0 10px;">
+                                        After submission, this Local Pension application will automatically be marked <strong>Waiting for Home Visit</strong>.
                                     </p>
-                                    <fieldset style="border:0;margin:0 0 10px;padding:0;">
-                                        <legend style="font-size:0.68rem;font-weight:700;color:#1e3a8a;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px;">Eligible for home visit? <span style="color:#dc2626;">*</span></legend>
-                                        <label style="display:inline-flex;align-items:center;gap:6px;margin-right:18px;font-size:0.84rem;font-weight:600;"><input type="radio" name="homeVisitEligibility" value="eligible" onchange="toggleHomeVisitEligibility()"> Yes</label>
-                                        <label style="display:inline-flex;align-items:center;gap:6px;font-size:0.84rem;font-weight:600;"><input type="radio" name="homeVisitEligibility" value="not_eligible" onchange="toggleHomeVisitEligibility()"> No</label>
-                                    </fieldset>
-                                    <label for="homeVisitEligibilityReason" style="font-size:0.68rem;font-weight:700;color:#1e3a8a;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:4px;">Assessment reason</label>
-                                    <input type="text" id="homeVisitEligibilityReason" name="homeVisitEligibilityReason" maxlength="255" placeholder="e.g. Bedridden or unable to visit the office"
-                                        style="width:100%;padding:9px 10px;border:1.5px solid #93c5fd;border-radius:7px;font-size:0.88rem;color:#172554;background:#fff;outline:none;margin-bottom:10px;">
-                                    <div id="homeVisitScheduleHelp" style="font-size:0.75rem;color:#1d4ed8;background:#dbeafe;border-radius:7px;padding:8px 10px;margin-bottom:8px;"><i class="fas fa-info-circle"></i> Choose <strong>Yes</strong> above to enable the calendar and personnel assignment.</div>
-                                    <div id="homeVisitAssignmentFields" style="display:block;opacity:0.55;transition:opacity .2s;">
-                                    <label for="homeVisitScheduledAt" style="font-size:0.68rem;font-weight:700;color:#1e3a8a;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:4px;">Visit date and time <span style="color:#dc2626;">*</span></label>
-                                    <input type="datetime-local" id="homeVisitScheduledAt" name="homeVisitScheduledAt" step="1800"
-                                        onclick="if (this.showPicker && !this.disabled) this.showPicker()"
-                                        style="width:100%;max-width:360px;padding:9px 10px;border:1.5px solid #93c5fd;border-radius:7px;font-size:0.88rem;color:#172554;background:#fff;outline:none;">
-                                    <label for="homeVisitPersonnelId" style="font-size:0.68rem;font-weight:700;color:#1e3a8a;text-transform:uppercase;letter-spacing:0.05em;display:block;margin:8px 0 4px;">Assigned personnel <span style="color:#dc2626;">*</span></label>
-                                    <select id="homeVisitPersonnelId" name="homeVisitPersonnelId" style="width:100%;max-width:360px;padding:9px 10px;border:1.5px solid #93c5fd;border-radius:7px;font-size:0.88rem;color:#172554;background:#fff;outline:none;">
-                                        <option value="">Select personnel</option>
-                                        <?php foreach ($homeVisitPersonnel as $person): ?>
-                                            <option value="<?= (int)$person['id'] ?>"><?= htmlspecialchars($person['full_name'] . (!empty($person['position']) ? ' - ' . $person['position'] : '')) ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
+                                    <div style="font-size:0.78rem;color:#334155;background:#fff;border-radius:8px;padding:10px 12px;line-height:1.5;">
+                                        <i class="fas fa-user-shield" style="color:#178b4b;margin-right:6px;"></i>The Department Admin privately assigns the personnel and visit date. No schedule is selected or disclosed during application submission because the visit is unannounced.
                                     </div>
-                                    <div style="font-size:0.72rem;color:#64748b;margin-top:6px;"><i class="fas fa-clock" style="margin-right:4px;"></i>Monday–Friday, 8:00 AM–4:30 PM; 30-minute slots.</div>
                                 </div>
 
                                 <!-- Economic Status -->
@@ -4191,23 +4074,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             formBody.scrollIntoView({ behavior: 'auto', block: 'start' });
 
             const visitSchedule = document.getElementById('pensionHomeVisitSchedule');
-            const visitScheduleInput = document.getElementById('homeVisitScheduledAt');
-            if (visitSchedule && visitScheduleInput) {
+            if (visitSchedule) {
                 const isLocalPension = value === 'pension';
                 visitSchedule.style.display = isLocalPension ? 'block' : 'none';
-                visitScheduleInput.disabled = !isLocalPension;
-                document.querySelectorAll('input[name="homeVisitEligibility"]').forEach((radio) => {
-                    radio.disabled = !isLocalPension;
-                    radio.required = isLocalPension;
-                    if (!isLocalPension) radio.checked = false;
-                });
-                if (isLocalPension) {
-                    const earliest = new Date();
-                    earliest.setMinutes(earliest.getMinutes() < 30 ? 30 : 60, 0, 0);
-                    const localIso = new Date(earliest.getTime() - earliest.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-                    visitScheduleInput.min = localIso;
-                }
-                toggleHomeVisitEligibility();
             }
 
             // Update pension form title for national pension
@@ -4231,30 +4100,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 for (const r of purposeRadios) if (r.checked) selPurpose = r.value;
                 updateRequirementsByPurpose(selPurpose || 'new');
             } catch (e) { /* ignore if not present */ }
-        }
-
-        function toggleHomeVisitEligibility() {
-            const selected = document.querySelector('input[name="homeVisitEligibility"]:checked');
-            const assignmentFields = document.getElementById('homeVisitAssignmentFields');
-            const scheduleInput = document.getElementById('homeVisitScheduledAt');
-            const personnelInput = document.getElementById('homeVisitPersonnelId');
-            const reasonInput = document.getElementById('homeVisitEligibilityReason');
-            const eligible = selected && selected.value === 'eligible';
-
-            const help = document.getElementById('homeVisitScheduleHelp');
-            if (assignmentFields) assignmentFields.style.opacity = eligible ? '1' : '0.55';
-            if (help) help.style.display = eligible ? 'none' : 'block';
-            if (scheduleInput) {
-                scheduleInput.required = !!eligible;
-                scheduleInput.disabled = !eligible;
-                if (!eligible) scheduleInput.value = '';
-            }
-            if (personnelInput) {
-                personnelInput.required = !!eligible;
-                personnelInput.disabled = !eligible;
-                if (!eligible) personnelInput.value = '';
-            }
-            if (reasonInput) reasonInput.required = !!eligible;
         }
 
         // Update the Requirements Reference Guide and toggle required file inputs based on OSCA purpose
@@ -4859,30 +4704,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 }
             }
 
-            if (type === 'pension') {
-                const eligibility = document.querySelector('input[name="homeVisitEligibility"]:checked');
-                if (!eligibility) {
-                    window.showCarelinkResult('Please indicate whether the senior is eligible for a home visit.', false);
-                    e.preventDefault();
-                    return;
-                }
-                if (eligibility.value !== 'eligible') return;
-                const visitInput = document.getElementById('homeVisitScheduledAt');
-                const visitDate = visitInput && visitInput.value ? new Date(visitInput.value) : null;
-                if (!visitDate || Number.isNaN(visitDate.getTime())) {
-                    window.showCarelinkResult('Please choose a home visitation schedule.', false);
-                    e.preventDefault();
-                    return;
-                }
-                const day = visitDate.getDay();
-                const hour = visitDate.getHours();
-                const minute = visitDate.getMinutes();
-                if (day === 0 || day === 6 || hour < 8 || hour >= 17 || ![0, 30].includes(minute)) {
-                    window.showCarelinkResult('Home visits must be Monday to Friday, 8:00 AM to 4:30 PM, in 30-minute slots.', false);
-                    e.preventDefault();
-                    return;
-                }
-            }
         });
 
         // Restore a preset application without instantiating every other form.

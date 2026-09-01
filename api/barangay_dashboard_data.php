@@ -38,12 +38,12 @@ try {
     // 2. Get workflow status distribution chart data
     $workflowStmt = $conn->prepare("
         SELECT 
-            COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') as workflow_state, 
+            CASE WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') IN ('Approved','Released') THEN 'Verified' ELSE COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') END as workflow_state,
             COUNT(*) as count 
         FROM applications 
         WHERE barangay = :barangay 
           AND (is_archived = 0 OR is_archived IS NULL)
-        GROUP BY COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received')
+        GROUP BY CASE WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') IN ('Approved','Released') THEN 'Verified' ELSE COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') END
     ");
     $workflowStmt->execute(['barangay' => $barangay]);
     $response['data']['workflow_stats'] = $workflowStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -55,7 +55,7 @@ try {
                 AND COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') = 'Received'
                 THEN 1 ELSE 0 END) AS priority_count,
             SUM(CASE WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received')
-                IN ('Received', 'For Review', 'Verified') THEN 1 ELSE 0 END) AS queue_count
+                IN ('Received', 'For Review') THEN 1 ELSE 0 END) AS queue_count
         FROM applications 
         WHERE barangay = :barangay 
           AND (is_archived = 0 OR is_archived IS NULL)
@@ -91,7 +91,7 @@ try {
             full_name,
             application_type,
             status,
-            COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') as workflow_state,
+            CASE WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') IN ('Approved','Released') THEN 'Verified' ELSE COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') END as workflow_state,
             priority_level,
             date_submitted
         FROM applications

@@ -6,7 +6,7 @@
         ['psa_birth_cert', 'PSA Birth Certificate', app => app.psa_birth_cert],
         ['barangay_residency', 'Barangay Residency Certificate', app => app.barangay_residency],
         ['comelec_cert', 'COMELEC Certificate', app => app.comelec_cert],
-        ['proof_of_life', 'Proof of Life (Bedridden)', app => app.proof_of_life],
+        ['proof_of_life', 'Current Senior Photo / Proof of Life', app => app.proof_of_life],
         ['auth_letter', 'Authorization Letter', app => app.auth_letter],
         ['proxy_id', 'Representative Government ID', app => app.proxy_id],
         ['proxy_birth_cert', 'Representative Birth Certificate', app => app.proxy_birth_cert],

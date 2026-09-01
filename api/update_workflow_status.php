@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../includes/db_connect.php';
+require_once '../includes/audit_logger.php';
 require_once '../includes/request_security.php';
 requireSameOriginMutation();
 
@@ -60,7 +61,7 @@ function generateUniqueSeniorId(PDO $conn): string {
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $appId    = sanitize_str($_POST['applicationId'] ?? null);
-    $action   = sanitize_str($_POST['action']         ?? null); // 'next' or 'return'
+    $action   = sanitize_str($_POST['action']         ?? null); // 'next', 'return', or 'reject'
     $comments = sanitize_str($_POST['comments']       ?? '') ?? '';
 
     if (empty($appId) || empty($action)) {
@@ -106,24 +107,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $nextStatus = 'For Review';
             } elseif ($currentStatus === 'For Review') {
                 $nextStatus = 'Verified';
-            } elseif ($currentStatus === 'Verified') {
-                $nextStatus = 'Approved';
-            } elseif ($currentStatus === 'Approved') {
-                $nextStatus = 'Released';
-            } elseif ($currentStatus === 'Released') {
-                echo json_encode(['success' => false, 'message' => 'Application is already finalized and released.']);
+            } elseif (in_array($currentStatus, ['Verified', 'Approved', 'Released'], true)) {
+                echo json_encode(['success' => false, 'message' => 'Application is already verified and complete.']);
                 exit();
             } else {
                 $nextStatus = 'Received';
             }
 
             // ──────────────────────────────────────────────────────────────────
-            // PDF POLICY ENFORCEMENT: Verified → Approved transition checks
+            // POLICY ENFORCEMENT: For Review → Verified (final) transition checks
             // ──────────────────────────────────────────────────────────────────
-            if ($currentStatus === 'Verified' && $nextStatus === 'Approved') {
+            if ($currentStatus === 'For Review' && $nextStatus === 'Verified') {
 
                 // ── (A) LOCAL SOCIAL PENSION: Ordinance 17-2025 checks ──────────
                 if ($applicationType === 'pension') {
+                    if (($app['home_visit_status'] ?? '') !== 'Completed') {
+                        echo json_encode([
+                            'success' => false,
+                            'message' => 'APPLICATION BLOCKED: The required home visit must be completed before this Local Pension application can be verified.'
+                        ]);
+                        exit();
+                    }
+
                     // Rule 1: SSS pension must not exceed ₱4,000
                     $sssAmount = floatval($app['pension_amount'] ?? 0);
                     if ($sssAmount > 4000) {
@@ -140,7 +145,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                          WHERE (lastName = ? OR full_name LIKE ?)
                          AND birth_date = ?
                          AND application_type = 'national_pension'
-                         AND workflow_state IN ('Approved','Released')
+                         AND workflow_state IN ('Verified','Approved','Released')
                          AND id_number != ?"
                     );
                     $nameLike = '%' . $app['lastName'] . '%';
@@ -198,6 +203,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
             $nextStatus = 'Received';
             $defaultComment = "Returned to Received state for document correction / rescan.";
+        } else if ($action === 'reject') {
+            if (!$isAdmin) {
+                echo json_encode(['success' => false, 'message' => 'Only department admins can reject applications.']);
+                exit();
+            }
+            if (!in_array($currentStatus, ['Received', 'Submitted', 'For Review'], true)) {
+                echo json_encode(['success' => false, 'message' => 'Only active applications can be rejected.']);
+                exit();
+            }
+            if ($comments === '') {
+                echo json_encode(['success' => false, 'message' => 'A rejection reason is required.']);
+                exit();
+            }
+            $nextStatus = 'Rejected';
+            $defaultComment = 'Application rejected and automatically moved to the archive.';
         } else {
             echo json_encode(['success' => false, 'message' => 'Invalid action.']);
             exit();
@@ -211,15 +231,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $oscaIdNo = null;
 
         // 1. Update applications table state
-        $stmtUpdate = $conn->prepare("UPDATE applications SET workflow_state = ? WHERE id_number = ?");
-        $stmtUpdate->execute([$nextStatus, $appId]);
+        if ($nextStatus === 'Rejected') {
+            $archiveActor = trim(($_SESSION['first_name'] ?? '') . ' ' . ($_SESSION['last_name'] ?? ''));
+            if ($archiveActor === '') $archiveActor = $operator;
+            $stmtUpdate = $conn->prepare("UPDATE applications
+                SET workflow_state = 'Rejected', status = 'rejected', is_archived = 1,
+                    archived_at = NOW(), archived_by = ?
+                WHERE id_number = ? AND COALESCE(is_archived, 0) = 0");
+            $stmtUpdate->execute([$archiveActor, $appId]);
+            if ($stmtUpdate->rowCount() !== 1) {
+                throw new RuntimeException('The application is already archived or could not be rejected.');
+            }
+        } else {
+            $stmtUpdate = $conn->prepare("UPDATE applications SET workflow_state = ? WHERE id_number = ?");
+            $stmtUpdate->execute([$nextStatus, $appId]);
+        }
 
         // ──────────────────────────────────────────────────────────────────────
-        // PDF SIDE EFFECTS on specific approvals
+        // Final-verification side effects
         // ──────────────────────────────────────────────────────────────────────
 
-        // (A) SENIOR ID APPROVAL → Auto-generate OSCA ID number if not yet set
-        if ($applicationType === 'senior' && $nextStatus === 'Approved') {
+        // (A) SENIOR ID VERIFICATION → Auto-generate OSCA ID number if not yet set
+        if ($applicationType === 'senior' && $nextStatus === 'Verified') {
             $existingOscaId = $app['senior_id_no'] ?? '';
             if (empty($existingOscaId)) {
                 $oscaIdNo = generateUniqueSeniorId($conn);
@@ -229,8 +262,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
         }
 
-        // (B) BURIAL ASSISTANCE APPROVAL → Mark deceased senior's status + log Landbank freeze
-        if ($applicationType === 'burial' && $nextStatus === 'Approved') {
+        // (B) BURIAL ASSISTANCE VERIFICATION → Mark deceased senior's status + log Landbank freeze
+        if ($applicationType === 'burial' && $nextStatus === 'Verified') {
             // Update the deceased senior's record to 'deceased' status
             // Match by deceased name fields in the burial application
             $deceasedLastName  = $app['deceased_last_name']  ?? $app['lastName']  ?? '';
@@ -259,7 +292,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 );
                 $stmtFreeze->execute([
                     $appId,
-                    'Approved',
+                    'Verified',
                     'Landbank-Card-Freeze-Logged',
                     $operator,
                     "SYSTEM ACTION: Deceased senior '{$deceasedFirstName} {$deceasedLastName}' profile updated to status=deceased. Landbank Blue Cash Card scheduled for deactivation to prevent unauthorized pension withdrawals post-mortem. (Pasig Ordinance 3-2026 §7c)"
@@ -271,23 +304,33 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $stmtHistory = $conn->prepare("INSERT INTO application_history (application_id, previous_state, new_state, changed_by, comments) VALUES (?, ?, ?, ?, ?)");
         $stmtHistory->execute([$appId, $currentStatus, $nextStatus, $operator, $finalComment]);
 
+        if ($nextStatus === 'Rejected') {
+            logAudit(
+                $conn,
+                'ARCHIVE_APPLICATION',
+                "Rejected and archived application {$appId} ({$app['full_name']} - " . ucfirst($applicationType) . " in Barangay {$app['barangay']}). Reason: {$finalComment}"
+            );
+        }
+
         $conn->commit();
 
         // Build enhanced response with OSCA ID if newly generated
         $responseData = [
             'success'       => true,
-            'message'        => "Application status updated to: $nextStatus",
+            'message'        => $nextStatus === 'Rejected'
+                ? 'Application rejected and moved to the Archive.'
+                : "Application status updated to: $nextStatus",
             'current_status' => $nextStatus,
             // Backward-compatible response key for any older clients.
             'current_state'  => $nextStatus
         ];
 
-        if ($applicationType === 'senior' && $nextStatus === 'Approved' && !empty($oscaIdNo)) {
+        if ($applicationType === 'senior' && $nextStatus === 'Verified' && !empty($oscaIdNo)) {
             $responseData['osca_id_generated'] = $oscaIdNo;
             $responseData['message'] .= " | OSCA ID assigned: {$oscaIdNo}";
         }
 
-        if ($applicationType === 'burial' && $nextStatus === 'Approved') {
+        if ($applicationType === 'burial' && $nextStatus === 'Verified') {
             $responseData['message'] .= " | Deceased senior profile updated and Landbank card freeze logged.";
         }
 

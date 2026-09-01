@@ -371,7 +371,7 @@ $old = static function (string $key, string $default = ''): string {
     <!-- Option Selection Header -->
     <div style="margin-bottom: 25px; text-align: center;">
         <h3 style="margin-bottom: 10px; color: #0f172a; font-weight: 700;">Select Transaction Portal</h3>
-        <p style="color: #64748b; font-size: 0.95rem; margin: 0;">Choose the action that corresponds to your senior representative status.</p>
+        <p style="color: #64748b; font-size: 0.95rem; margin: 0;">Choose the application service needed by the senior citizen.</p>
     </div>
 
     <!-- Portal Option Choice Cards -->
@@ -381,8 +381,8 @@ $old = static function (string $key, string $default = ''): string {
             <div class="option-icon" style="background: #10b981;">
                 <i class="fas fa-user-plus"></i>
             </div>
-            <h4>New Bedridden Pre-Registration</h4>
-            <p>For seniors without an ID card yet. Pre-register to place them in the Counter Priority Queue.</p>
+            <h4>New Senior Pre-Registration</h4>
+            <p>Start a public application for any eligible senior citizen. Assistance may be provided when needed.</p>
         </div>
 
         <div class="portal-option-card<?php echo $activePortalOption === 'existing_benefits' ? ' active' : ''; ?>" id="optionCardExisting" onclick="selectPortalPath('existing_benefits')">
@@ -391,7 +391,7 @@ $old = static function (string $key, string $default = ''): string {
                 <i class="fas fa-file-invoice-dollar"></i>
             </div>
             <h4>Apply for Existing Senior Benefits</h4>
-            <p>For already approved Bedridden seniors. Input Senior ID to apply for the Local Senior Pension benefit.</p>
+            <p>For any approved senior citizen. Enter the Senior ID to apply for the Local Senior Pension benefit.</p>
         </div>
     </div>
 
@@ -403,7 +403,7 @@ $old = static function (string $key, string $default = ''): string {
         </div>
     <?php endif; ?>
 
-    <!-- ── FORM A: NEW BEDRIDDEN SENIOR PRE-REGISTRATION ── -->
+    <!-- ── FORM A: NEW SENIOR PRE-REGISTRATION ── -->
     <div id="newSeniorFormSection" class="form-switch-section" style="display: <?php echo $activePortalOption === 'new_senior' ? 'block' : 'none'; ?>;">
         <form method="POST" action="<?php echo htmlspecialchars($formAction); ?>" enctype="multipart/form-data" class="proxy-form" id="newSeniorForm">
             <input type="hidden" name="proxy_submit" value="1">
@@ -434,9 +434,7 @@ $old = static function (string $key, string $default = ''): string {
                         <option value="">— Select Benefit or Service —</option>
                         <?php foreach ([
                             'Senior Citizen ID Registration',
-                            'Home Visitation / Confirmation',
                             'Local Social Pension Assessment',
-                            'National DSWD Social Pension Assessment',
                             'Land Bank Cash Card Enrollment',
                             'Milestone Cash Gift',
                             'Other OSCA Assistance',
@@ -444,7 +442,7 @@ $old = static function (string $key, string $default = ''): string {
                             <option value="<?php echo htmlspecialchars($value); ?>" <?php echo $old('requestedBenefit') === $value ? 'selected' : ''; ?>><?php echo htmlspecialchars($value); ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <small class="field-help">This tells the reviewing office which service should be assessed during priority processing.</small>
+                    <small class="field-help">This tells the reviewing office which service or benefit should be assessed.</small>
                 </div>
 
                 <!-- Name Row -->
@@ -552,11 +550,16 @@ $old = static function (string $key, string $default = ''): string {
                 </div>
                 <input type="hidden" id="completeAddress" name="completeAddress" value="<?php echo $old('completeAddress'); ?>">
 
-                <div class="form-subheading">Bedridden condition and home visit</div>
+                <div class="form-subheading">Senior support and mobility information</div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="healthCondition">Medical / Mobility Condition <span style="color:#b91c1c;">*</span></label>
-                        <input type="text" id="healthCondition" name="healthCondition" class="form-control" value="<?php echo $old('healthCondition'); ?>" placeholder="e.g. Post-stroke, unable to walk" required>
+                        <label for="mobilityStatus">Mobility Status <span style="color:#b91c1c;">*</span></label>
+                        <select id="mobilityStatus" name="mobilityStatus" class="form-control" required>
+                            <option value="">— Select Mobility Status —</option>
+                            <?php foreach (['Physically Fit', 'Needs Mobility Assistance', 'Bedridden', 'Frail / Sickly', 'PWD'] as $value): ?>
+                                <option value="<?php echo htmlspecialchars($value); ?>" <?php echo $old('mobilityStatus') === $value ? 'selected' : ''; ?>><?php echo htmlspecialchars($value); ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label for="livingArrangement">Living Arrangement <span style="color:#b91c1c;">*</span></label>
@@ -569,8 +572,12 @@ $old = static function (string $key, string $default = ''): string {
                     </div>
                 </div>
                 <div class="form-group">
+                    <label for="healthCondition">Medical or Support Notes</label>
+                    <input type="text" id="healthCondition" name="healthCondition" class="form-control" value="<?php echo $old('healthCondition'); ?>" placeholder="Optional: mobility aid, medical condition, or assistance needed">
+                </div>
+                <div class="form-group">
                     <label for="visitPurpose">Requested Assistance <span style="color:#b91c1c;">*</span></label>
-                    <textarea id="visitPurpose" name="visitPurpose" class="form-control" rows="2" required placeholder="Describe why the senior cannot appear in person and what assistance is requested."><?php echo $old('visitPurpose'); ?></textarea>
+                    <textarea id="visitPurpose" name="visitPurpose" class="form-control" rows="2" required placeholder="Describe the registration, benefit, or assistance being requested."><?php echo $old('visitPurpose'); ?></textarea>
                 </div>
 
                 <div class="form-subheading">Benefit-specific information</div>
@@ -581,28 +588,30 @@ $old = static function (string $key, string $default = ''): string {
 
                 <div class="benefit-specific-panel" data-benefits="Senior Citizen ID Registration" hidden>
                     <h4 class="benefit-panel-title">Senior Citizen ID Registration</h4>
-                    <p class="benefit-panel-copy">Provide the reason for the ID request.</p>
+                    <p class="benefit-panel-copy">Complete the additional fields shown on the official Senior Citizens ID Application.</p>
                     <div class="form-group">
                         <label for="idPurpose">ID Application Purpose <span style="color:#b91c1c;">*</span></label>
                         <select id="idPurpose" name="idPurpose" class="form-control" data-benefit-required>
                             <option value="">— Select Purpose —</option>
-                            <?php foreach (['First-time registration', 'Renewal / information update', 'Replacement of lost or damaged ID'] as $value): ?>
-                                <option value="<?php echo htmlspecialchars($value); ?>" <?php echo $old('idPurpose') === $value ? 'selected' : ''; ?>><?php echo htmlspecialchars($value); ?></option>
-                            <?php endforeach; ?>
+                            <option value="new" <?php echo $old('idPurpose') === 'new' ? 'selected' : ''; ?>>New / First-time registration</option>
+                            <option value="lost" <?php echo $old('idPurpose') === 'lost' ? 'selected' : ''; ?>>Lost ID replacement</option>
+                            <option value="change" <?php echo $old('idPurpose') === 'change' ? 'selected' : ''; ?>>Information change</option>
+                            <option value="transfer" <?php echo $old('idPurpose') === 'transfer' ? 'selected' : ''; ?>>Transfer</option>
                         </select>
                     </div>
-                </div>
-
-                <div class="benefit-specific-panel" data-benefits="Home Visitation / Confirmation" hidden>
-                    <h4 class="benefit-panel-title">Home Visitation / Confirmation</h4>
-                    <p class="benefit-panel-copy">Give the field team practical access and scheduling instructions.</p>
-                    <div class="form-group">
-                        <label for="visitSummary">Visit Instructions <span style="color:#b91c1c;">*</span></label>
-                        <textarea id="visitSummary" name="visitSummary" class="form-control" rows="3" data-benefit-required placeholder="Preferred day/time, gate or access instructions, caregiver availability, and other important notes."><?php echo $old('visitSummary'); ?></textarea>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="emergencyContactName">Emergency Contact Name <span style="color:#b91c1c;">*</span></label>
+                            <input type="text" id="emergencyContactName" name="emergencyContactName" class="form-control" value="<?php echo $old('emergencyContactName'); ?>" data-benefit-required>
+                        </div>
+                        <div class="form-group">
+                            <label for="emergencyContact">Emergency Contact Number <span style="color:#b91c1c;">*</span></label>
+                            <input type="tel" id="emergencyContact" name="emergencyContact" class="form-control" maxlength="11" pattern="09[0-9]{9}" inputmode="numeric" value="<?php echo $old('emergencyContact'); ?>" data-benefit-required>
+                        </div>
                     </div>
                 </div>
 
-                <div class="benefit-specific-panel" data-benefits="Local Social Pension Assessment|National DSWD Social Pension Assessment" hidden>
+                <div class="benefit-specific-panel" data-benefits="Local Social Pension Assessment" hidden>
                     <h4 class="benefit-panel-title">Social Pension Assessment</h4>
                     <p class="benefit-panel-copy">These details are used to assess pension and household-income eligibility.</p>
                     <div class="form-row">
@@ -657,6 +666,24 @@ $old = static function (string $key, string $default = ''): string {
                             <input type="number" id="personalIncomeAmount" name="personalIncomeAmount" class="form-control" value="<?php echo $old('personalIncomeAmount'); ?>" min="0" step="0.01" placeholder="0.00">
                         </div>
                     </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="incomeSource">Permanent Income Source <span style="color:#b91c1c;">*</span></label>
+                            <input type="text" id="incomeSource" name="incomeSource" class="form-control" value="<?php echo $old('incomeSource'); ?>" placeholder="Enter None if not applicable" data-benefit-required>
+                        </div>
+                        <div class="form-group">
+                            <label for="ownsHouse">Owns House? <span style="color:#b91c1c;">*</span></label>
+                            <select id="ownsHouse" name="ownsHouse" class="form-control" data-benefit-required>
+                                <option value="">— Select —</option><option value="1" <?php echo $old('ownsHouse') === '1' ? 'selected' : ''; ?>>Yes</option><option value="0" <?php echo $old('ownsHouse') === '0' ? 'selected' : ''; ?>>No</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="isRenter">Renter? <span style="color:#b91c1c;">*</span></label>
+                            <select id="isRenter" name="isRenter" class="form-control" data-benefit-required>
+                                <option value="">— Select —</option><option value="1" <?php echo $old('isRenter') === '1' ? 'selected' : ''; ?>>Yes</option><option value="0" <?php echo $old('isRenter') === '0' ? 'selected' : ''; ?>>No</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="benefit-specific-panel" data-benefits="Land Bank Cash Card Enrollment" hidden>
@@ -690,15 +717,20 @@ $old = static function (string $key, string $default = ''): string {
 
                 <div class="benefit-specific-panel" data-benefits="Milestone Cash Gift" hidden>
                     <h4 class="benefit-panel-title">Milestone Cash Gift</h4>
-                    <p class="benefit-panel-copy">Select the milestone age being claimed. The representative details below will be recorded as the claimant.</p>
+                    <p class="benefit-panel-copy">Complete the milestone and claimant fields shown on the official Octogenarian, Nonagenarian, and Centenarian form.</p>
                     <div class="form-group">
                         <label for="milestoneAge">Milestone Age <span style="color:#b91c1c;">*</span></label>
                         <select id="milestoneAge" name="milestoneAge" class="form-control" data-benefit-required>
                             <option value="">— Select Milestone —</option>
-                            <?php foreach (['80', '85', '90', '95', '100+'] as $value): ?>
-                                <option value="<?php echo $value; ?>" <?php echo $old('milestoneAge') === $value ? 'selected' : ''; ?>><?php echo $value; ?> years old</option>
+                            <?php foreach (['80', '85', '90', '95', '100'] as $value): ?>
+                                <option value="<?php echo $value; ?>" <?php echo $old('milestoneAge') === $value ? 'selected' : ''; ?>><?php echo $value === '100' ? '100+ years old' : $value . ' years old'; ?></option>
                             <?php endforeach; ?>
                         </select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label for="claimantName">Claimant Name <span style="color:#b91c1c;">*</span></label><input type="text" id="claimantName" name="claimantName" class="form-control" value="<?php echo $old('claimantName'); ?>" data-benefit-required></div>
+                        <div class="form-group"><label for="claimantRelationship">Relationship <span style="color:#b91c1c;">*</span></label><input type="text" id="claimantRelationship" name="claimantRelationship" class="form-control" value="<?php echo $old('claimantRelationship'); ?>" data-benefit-required placeholder="Self, child, spouse, etc."></div>
+                        <div class="form-group"><label for="claimantContact">Claimant Contact <span style="color:#b91c1c;">*</span></label><input type="tel" id="claimantContact" name="claimantContact" class="form-control" maxlength="11" pattern="09[0-9]{9}" inputmode="numeric" value="<?php echo $old('claimantContact'); ?>" data-benefit-required></div>
                     </div>
                 </div>
 
@@ -744,32 +776,32 @@ $old = static function (string $key, string $default = ''): string {
                     <input type="file" id="comelec_cert_file" name="comelec_cert_file" accept="image/jpeg,application/pdf" required>
                 </div>
 
-                <h5 style="margin-top:20px; color:#475569; font-size:0.88rem; text-transform:uppercase; letter-spacing:0.5px;">Proof of Bedridden Condition</h5>
+                <h5 style="margin-top:20px; color:#475569; font-size:0.88rem; text-transform:uppercase; letter-spacing:0.5px;">Senior Identity Confirmation</h5>
                 
                 <div class="upload-slot">
-                    <label for="proof_of_life_file">Bedridden Photo (Proof of Life) <span class="req">*</span></label>
-                    <p class="slot-desc"><strong>Important:</strong> Upload a current photo of the senior in bed with the date clearly visible on a phone screen or written card.</p>
+                    <label for="proof_of_life_file">Current Senior Photo (Proof of Life) <span class="req">*</span></label>
+                    <p class="slot-desc"><strong>Important:</strong> Upload a clear and current photo of the senior with the date visible on a phone screen or written card. A bedside photo is needed only when the senior is homebound.</p>
                     <input type="file" id="proof_of_life_file" name="proof_of_life_file" accept="image/jpeg" required>
                 </div>
 
                 <h5 style="margin-top:20px; color:#475569; font-size:0.88rem; text-transform:uppercase; letter-spacing:0.5px;">Representative Verification Documents</h5>
                 
                 <div class="upload-slot">
-                    <label for="auth_letter_file">Authorization Letter <span class="req">*</span></label>
+                    <label for="auth_letter_file">Authorization Letter <span class="field-help">(Optional)</span></label>
                     <p class="slot-desc">Authorization letter signed or marked with the senior's thumbmark authorizing the representative.</p>
-                    <input type="file" id="auth_letter_file" name="auth_letter_file" accept="image/jpeg,application/pdf" required>
+                    <input type="file" id="auth_letter_file" name="auth_letter_file" accept="image/jpeg,application/pdf">
                 </div>
 
                 <div class="upload-slot">
-                    <label for="proxy_id_file">Representative's Government ID <span class="req">*</span></label>
+                    <label for="proxy_id_file">Representative's Government ID <span class="field-help">(Optional)</span></label>
                     <p class="slot-desc">Valid government ID of the authorized representative.</p>
-                    <input type="file" id="proxy_id_file" name="proxy_id_file" accept="image/jpeg,application/pdf" required>
+                    <input type="file" id="proxy_id_file" name="proxy_id_file" accept="image/jpeg,application/pdf">
                 </div>
 
                 <div class="upload-slot">
-                    <label for="proxy_birth_cert_file">Representative's Birth Certificate <span class="req">*</span></label>
+                    <label for="proxy_birth_cert_file">Representative's Birth Certificate <span class="field-help">(Optional)</span></label>
                     <p class="slot-desc">Representative's birth certificate or equivalent document proving the relationship to the senior.</p>
-                    <input type="file" id="proxy_birth_cert_file" name="proxy_birth_cert_file" accept="image/jpeg,application/pdf" required>
+                    <input type="file" id="proxy_birth_cert_file" name="proxy_birth_cert_file" accept="image/jpeg,application/pdf">
                 </div>
             </div>
 
@@ -777,20 +809,20 @@ $old = static function (string $key, string $default = ''): string {
             <div class="step-heading" style="margin-top: 25px;">
                 <div class="step-number">3</div>
                 <div>
-                    <h3>Representative Details</h3>
-                    <p>Details of the representative submitting on behalf of the senior citizen.</p>
+                    <h3>Representative Details <small style="font-size:.72em;font-weight:500;color:#64748b;">(Optional)</small></h3>
+                    <p>Complete this section only when another person is submitting on behalf of the senior citizen.</p>
                 </div>
             </div>
 
             <div class="form-section">
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="proxyName">Representative Name <span style="color:#b91c1c;">*</span></label>
-                        <input type="text" id="proxyName" name="proxyName" class="form-control" placeholder="e.g. Maria Dela Cruz" value="<?php echo $old('proxyName'); ?>" autocomplete="name" required>
+                        <label for="proxyName">Representative Name</label>
+                        <input type="text" id="proxyName" name="proxyName" class="form-control" placeholder="Optional" value="<?php echo $old('proxyName'); ?>" autocomplete="name">
                     </div>
                     <div class="form-group">
-                        <label for="proxyRelationship">Relationship to Senior <span style="color:#b91c1c;">*</span></label>
-                        <select id="proxyRelationship" name="proxyRelationship" class="form-control" required>
+                        <label for="proxyRelationship">Relationship to Senior</label>
+                        <select id="proxyRelationship" name="proxyRelationship" class="form-control">
                             <option value="">— Select Relationship —</option>
                             <?php foreach (['Grandchild', 'Daughter', 'Son', 'Spouse', 'Sibling', 'Caregiver', 'Other'] as $value): ?>
                                 <option value="<?php echo $value; ?>" <?php echo $old('proxyRelationship') === $value ? 'selected' : ''; ?>><?php echo $value; ?></option>
@@ -800,8 +832,8 @@ $old = static function (string $key, string $default = ''): string {
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="proxyContactNumber">Representative Contact Number <span style="color:#b91c1c;">*</span></label>
-                        <input type="tel" id="proxyContactNumber" name="proxyContactNumber" class="form-control" placeholder="e.g. 09123456789" maxlength="11" pattern="09[0-9]{9}" inputmode="numeric" value="<?php echo $old('proxyContactNumber'); ?>" autocomplete="tel" required>
+                        <label for="proxyContactNumber">Representative Contact Number</label>
+                        <input type="tel" id="proxyContactNumber" name="proxyContactNumber" class="form-control" placeholder="Optional" maxlength="11" pattern="09[0-9]{9}" inputmode="numeric" value="<?php echo $old('proxyContactNumber'); ?>" autocomplete="tel">
                     </div>
                     <div class="form-group">
                         <label for="proxyEmail">Representative Email Address</label>
@@ -810,18 +842,18 @@ $old = static function (string $key, string $default = ''): string {
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="proxyBirthDate">Representative Birth Date <span style="color:#b91c1c;">*</span></label>
-                        <input type="date" id="proxyBirthDate" name="proxyBirthDate" class="form-control" value="<?php echo $old('proxyBirthDate'); ?>" required>
+                        <label for="proxyBirthDate">Representative Birth Date</label>
+                        <input type="date" id="proxyBirthDate" name="proxyBirthDate" class="form-control" value="<?php echo $old('proxyBirthDate'); ?>">
                     </div>
                     <div class="form-group">
-                        <label for="proxyAddress">Representative Complete Address <span style="color:#b91c1c;">*</span></label>
-                        <input type="text" id="proxyAddress" name="proxyAddress" class="form-control" value="<?php echo $old('proxyAddress'); ?>" autocomplete="street-address" required>
+                        <label for="proxyAddress">Representative Complete Address</label>
+                        <input type="text" id="proxyAddress" name="proxyAddress" class="form-control" value="<?php echo $old('proxyAddress'); ?>" autocomplete="street-address" placeholder="Optional">
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="proxyIdType">Government ID Type <span style="color:#b91c1c;">*</span></label>
-                        <select id="proxyIdType" name="proxyIdType" class="form-control" required>
+                        <label for="proxyIdType">Government ID Type</label>
+                        <select id="proxyIdType" name="proxyIdType" class="form-control">
                             <option value="">— Select ID Type —</option>
                             <?php foreach (['PhilSys ID', 'Driver\'s License', 'Passport', 'UMID', 'Voter\'s ID', 'Postal ID', 'PRC ID', 'Other government ID'] as $value): ?>
                                 <option value="<?php echo htmlspecialchars($value); ?>" <?php echo $old('proxyIdType') === $value ? 'selected' : ''; ?>><?php echo htmlspecialchars($value); ?></option>
@@ -829,15 +861,15 @@ $old = static function (string $key, string $default = ''): string {
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="proxyIdNumber">Government ID Number <span style="color:#b91c1c;">*</span></label>
-                        <input type="text" id="proxyIdNumber" name="proxyIdNumber" class="form-control" value="<?php echo $old('proxyIdNumber'); ?>" required>
+                        <label for="proxyIdNumber">Government ID Number</label>
+                        <input type="text" id="proxyIdNumber" name="proxyIdNumber" class="form-control" value="<?php echo $old('proxyIdNumber'); ?>" placeholder="Optional">
                     </div>
                 </div>
 
                 <div class="checkbox-row" style="margin-top: 15px;">
-                    <input type="checkbox" id="confirmBedridden" name="confirmBedridden" required style="width: 18px; height: 18px; accent-color: #10b981;">
-                    <label for="confirmBedridden" style="font-size: 0.85rem; font-weight: 500; color: #475569; margin: 0;">
-                        I certify that the applicant senior citizen is verified bedridden/low-mobility and physically unable to travel.
+                    <input type="checkbox" id="confirmRepresentative" name="confirmRepresentative" required style="width: 18px; height: 18px; accent-color: #10b981;">
+                    <label for="confirmRepresentative" style="font-size: 0.85rem; font-weight: 500; color: #475569; margin: 0;">
+                        I certify that the information is accurate and that I am the senior applicant or am authorized to assist the senior citizen.
                     </label>
                 </div>
                 <div class="checkbox-row" style="margin-top: 12px;">
@@ -865,7 +897,7 @@ $old = static function (string $key, string $default = ''): string {
             <div class="privacy-alert" role="note" style="margin-bottom: 24px; background: #eff6ff; border-color: #bfdbfe; color: #1e40af;">
                 <i class="fas fa-info-circle" aria-hidden="true" style="color: #2563eb;"></i>
                 <div>
-                    <strong>Secondary Benefit Enrollment:</strong> Verified bedridden senior citizens can apply for additional municipal pension payouts through this representative portal.
+                    <strong>Secondary Benefit Enrollment:</strong> Any verified senior citizen may apply for an eligible municipal pension benefit through an authorized representative.
                     <div style="margin-top:8px;"><strong>Benefit being applied for:</strong> Local Senior Pension Benefit</div>
                 </div>
             </div>
@@ -966,7 +998,7 @@ $old = static function (string $key, string $default = ''): string {
 
             if (age >= 60) {
                 // Pass Rule
-                ageCheckStatus.innerHTML = `<span style="color: #059669; font-weight: 600;"><i class="fas fa-check-circle"></i> Eligible Bedridden Senior (Age in 2026: ${age} years old)</span>`;
+                ageCheckStatus.innerHTML = `<span style="color: #059669; font-weight: 600;"><i class="fas fa-check-circle"></i> Eligible Senior Citizen (Current age: ${age} years old)</span>`;
                 uploadSlotsContainer.classList.remove('disabled');
                 
                 // Remove disabled state from file inputs
@@ -1045,20 +1077,10 @@ $old = static function (string $key, string $default = ''): string {
                     ['Barangay Residency Certificate', 'Current barangay certificate confirming Pasig residency.'],
                     ['2-Year COMELEC Certification', 'Official voter residency certification of the senior citizen applicant.']
                 ],
-                'Home Visitation / Confirmation': [
-                    ['Senior Citizen ID or Valid Government ID', 'Identification document of the senior citizen.'],
-                    ['Proof of Address', 'Barangay certificate, utility bill, or another document showing the home-visit address.'],
-                    ["Medical Certificate or Doctor's Recommendation", 'Medical support document showing the mobility or health condition, when available.']
-                ],
                 'Local Social Pension Assessment': [
                     ['Senior Citizen ID or Valid Government ID', 'Identification document of the senior citizen.'],
                     ['Barangay Certificate of Indigency', 'Current indigency and residency certification issued by the barangay.'],
                     ['SSS / GSIS Pension Record or Certification', 'Document showing the pension source and monthly amount, or proof that no pension is received.']
-                ],
-                'National DSWD Social Pension Assessment': [
-                    ['Senior Citizen ID or Valid Government ID', 'Identification document of the senior citizen.'],
-                    ['CSWD / Barangay Certificate of Indigency', 'Current certification supporting the indigency assessment.'],
-                    ['DSWD Social Pension Form or Pension Declaration', 'Completed assessment form or document declaring current pension status.']
                 ],
                 'Land Bank Cash Card Enrollment': [
                     ['Senior Citizen ID or Proof of Registration', 'Senior Citizen ID or proof of an active senior registration.'],
@@ -1132,17 +1154,17 @@ $old = static function (string $key, string $default = ''): string {
                 const data = await response.json();
                 
                 if (data.success) {
-                    // Valid Bedridden senior citizen found!
+                    // Valid senior citizen found.
                     resultPanel.innerHTML = `
                         <div class="alert-banner alert-banner-success" style="margin-bottom:0;">
                             <i class="fas fa-check-circle" style="font-size:1.2rem;"></i>
                             <div>
-                                <h5 style="margin:0 0 4px 0; font-weight:700;">Verified Bedridden Profile Found</h5>
+                                <h5 style="margin:0 0 4px 0; font-weight:700;">Verified Senior Profile Found</h5>
                                 <p style="margin:0; font-size:0.85rem; color:#064e3b;">
                                     <strong>Name:</strong> ${data.senior.full_name}<br>
                                     <strong>Barangay:</strong> ${data.senior.barangay}<br>
                                     <strong>Address:</strong> ${data.senior.complete_address}<br>
-                                    <strong>Status:</strong> ${data.senior.workflow_state} (Low Mobility verified)
+                                    <strong>Status:</strong> ${data.senior.workflow_state}
                                 </p>
                                 <div style="margin-top:10px; font-weight:700; color:#0f766e;">
                                     <i class="fas fa-clipboard-check"></i> Eligible Benefit: Local Senior Pension Form
@@ -1181,15 +1203,15 @@ $old = static function (string $key, string $default = ''): string {
     <!-- Rule-based workflow routing success scenarios -->
     <?php if ($proxyOption === 'new_senior'): ?>
         
-        <!-- OPTION A SUCCESS: PRIORITY QUEUE TOKEN -->
+        <!-- OPTION A SUCCESS: REPRESENTATIVE QUEUE TOKEN -->
         <div class="success-qr-card">
             <div class="success-qr-icon">
                 <i class="fas fa-check-circle"></i>
             </div>
             <h3 style="color:#0f172a; font-weight:800; font-size:1.45rem; margin-bottom:10px;">Pre-registration successful.</h3>
             <p style="color:#64748b; font-size:0.95rem; line-height:1.5; margin:0 0 15px 0;">
-                Lolo Tomas's digital application has shifted from <strong>[Draft] &rarr; [Submitted]</strong>. 
-                Download/print your priority queue token and check the appointment details.
+                The senior citizen's digital application has shifted from <strong>[Draft] &rarr; [Submitted]</strong>.
+                Download or print the queue token and check the appointment details.
             </p>
             
             <div class="qr-image-wrapper">
@@ -1204,13 +1226,13 @@ $old = static function (string $key, string $default = ''): string {
                 <i class="fas fa-calendar-alt"></i>
                 <div>
                     <h5>Automated Appointment Notice</h5>
-                    <p>Please print this priority token page and bring the <strong>physical original documents</strong> to the <strong>Barangay Rosario Hall</strong> for counter verification on your scheduled appointment date.</p>
+                    <p>Please print this queue token page and bring the <strong>physical original documents</strong> to the selected barangay office for counter verification on the scheduled date.</p>
                 </div>
             </div>
 
             <div style="display:flex; flex-direction:column; gap:10px; margin-top:25px;">
                 <button type="button" class="btn btn-primary" onclick="window.print()" style="padding:12px; font-weight:600;">
-                    <i class="fas fa-download"></i> Download Priority Token
+                    <i class="fas fa-download"></i> Download Queue Token
                 </button>
                 <a href="<?php echo htmlspecialchars($resetUrl); ?>" class="btn btn-muted" style="padding:10px;">
                     <i class="fas fa-redo"></i> Done / Register Another

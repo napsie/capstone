@@ -568,7 +568,7 @@ if (empty($_SESSION['login_audit_recorded'])) {
             }
         }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=11">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
     <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=3">
@@ -613,13 +613,12 @@ if (empty($_SESSION['login_audit_recorded'])) {
                 <nav class="dashboard-quick-actions" aria-label="Department quick actions">
                     <a class="quick-action primary" href="verify_document.php"><i class="fas fa-file-circle-check" aria-hidden="true"></i><span><strong>Verify documents</strong><small>Open review workspace</small></span></a>
                     <a class="quick-action" href="department_records.php"><i class="fas fa-database" aria-hidden="true"></i><span><strong>Citywide records</strong><small>Browse all barangays</small></span></a>
-                    <a class="quick-action" href="field_operations.php#batches"><i class="fas fa-boxes-stacked" aria-hidden="true"></i><span><strong>Hardcopy batches</strong><small>Confirm submissions</small></span></a>
                 </nav>
             </section>
             
             <!-- Stats Cards -->
             <div class="stats-container">
-                <a class="stat-card stat-card-link stat-blue" href="verify_document.php" aria-label="Open verified applications and document review">
+                <a class="stat-card stat-card-link stat-blue" href="department_records.php" aria-label="Open verified application records">
                     <div class="stat-icon bg-primary">
                         <i class="fas fa-check-circle"></i>
                     </div>
@@ -892,8 +891,6 @@ if (empty($_SESSION['login_audit_recorded'])) {
                 'received':   { icon: 'fa-inbox',       color: '#94a3b8', bg: 'rgba(148,163,184,0.15)', label: 'Received'   },
                 'for review': { icon: 'fa-search',       color: '#3b82f6', bg: 'rgba(59,130,246,0.12)',  label: 'For Review' },
                 'verified':   { icon: 'fa-check',        color: '#14b8a6', bg: 'rgba(20,184,166,0.12)',  label: 'Verified'   },
-                'approved':   { icon: 'fa-check-double', color: '#22c55e', bg: 'rgba(34,197,94,0.12)',   label: 'Approved'   },
-                'released':   { icon: 'fa-gift',         color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)',  label: 'Released'   },
                 'deceased':   { icon: 'fa-cross',        color: '#64748b', bg: 'rgba(100,116,139,0.12)', label: 'Deceased'   },
             };
 
@@ -908,13 +905,18 @@ if (empty($_SESSION['login_audit_recorded'])) {
                 const stateKey = (notif.workflow_state || 'received').toLowerCase();
                 const cfg = stateConfig[stateKey] || { icon: 'fa-info-circle', color: '#94a3b8', bg: 'rgba(148,163,184,0.15)', label: notif.workflow_state };
                 const typeLabel = appTypeLabels[notif.application_type] || notif.application_type;
-                const isHighPriority = notif.priority_level === 'high';
+                const applicantName = String(notif.full_name || 'Unknown applicant');
+                const safeApplicantName = applicantName.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[character]);
+                const destination = ['verified', 'approved', 'released'].includes(stateKey)
+                    ? 'department_records.php'
+                    : 'verify_document.php';
+                const applicantUrl = `${destination}?search=${encodeURIComponent(applicantName)}`;
                 const dateObj = new Date((notif.date_submitted || '').replace(' ', 'T'));
                 const timeAgo = getTimeAgo(dateObj);
 
                 const item = document.createElement('div');
                 item.className = 'notification-item';
-                item.style.cssText = 'display:flex;align-items:flex-start;padding:11px 5px;border-bottom:1px solid #f1f5f9;gap:12px;cursor:pointer;transition:background 0.15s;';
+                item.style.cssText = 'display:flex;align-items:flex-start;padding:11px 5px;border-bottom:1px solid #f1f5f9;gap:12px;transition:background 0.15s;';
                 item.onmouseenter = () => item.style.background = '#f8fafc';
                 item.onmouseleave = () => item.style.background = '';
                 item.innerHTML = `
@@ -923,7 +925,7 @@ if (empty($_SESSION['login_audit_recorded'])) {
                     </div>
                     <div style="flex:1;min-width:0;">
                         <div style="font-weight:700;font-size:0.84rem;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                            ${notif.full_name}${isHighPriority ? ' <span style="background:#f59e0b;color:#fff;font-size:0.62rem;font-weight:800;padding:1px 6px;border-radius:10px;vertical-align:middle;">★ PRIORITY</span>' : ''}
+                            <a href="${applicantUrl}" title="Show ${safeApplicantName}" style="color:inherit;text-decoration:none;cursor:pointer;">${safeApplicantName}</a>
                         </div>
                         <div style="font-size:0.76rem;color:#475569;margin-top:2px;">${typeLabel} &mdash; <span style="color:#64748b;">${notif.barangay || ''}</span></div>
                         <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
@@ -989,7 +991,7 @@ if (empty($_SESSION['login_audit_recorded'])) {
                         indexAxis: 'y', // Makes it a horizontal bar chart
                         responsive: true,
                         maintainAspectRatio: false,
-                        animation: { duration: 180 },
+                        animation: false,
                         plugins: {
                             legend: { display: false }
                         },
@@ -1021,7 +1023,7 @@ if (empty($_SESSION['login_audit_recorded'])) {
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        animation: { duration: 180 },
+                        animation: false,
                         plugins: {
                             legend: { display: false }
                         },

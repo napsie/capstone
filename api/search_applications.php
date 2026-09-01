@@ -24,8 +24,11 @@ if (($_SESSION['role'] ?? '') === 'barangay_staff') {
 $where = ['COALESCE(a.is_archived, 0) = 0'];
 $params = [];
 if ($searchQuery !== '') {
-    $where[] = '(a.full_name LIKE :search OR a.id_number LIKE :search OR a.complete_address LIKE :search)';
-    $params['search'] = '%' . $searchQuery . '%';
+    $where[] = '(a.full_name LIKE :search_name OR a.id_number LIKE :search_id OR a.complete_address LIKE :search_address)';
+    $searchValue = '%' . $searchQuery . '%';
+    $params['search_name'] = $searchValue;
+    $params['search_id'] = $searchValue;
+    $params['search_address'] = $searchValue;
 }
 if ($filterType !== '') {
     $where[] = 'a.application_type = :type';
@@ -59,7 +62,7 @@ $offset = ($page - 1) * $perPage;
 $sql = "SELECT a.id_number AS id, a.full_name, a.application_type, a.birth_date,
                a.contact_number, a.date_submitted, a.status, a.complete_address,
                a.house_no, a.street, a.city, a.province, a.zip_code, a.barangay,
-               a.workflow_state, a.priority_level,
+               a.workflow_state, a.home_visit_status, a.requested_benefit, a.priority_level,
                (SELECT h.comments FROM application_history h
                 WHERE h.application_id = a.id_number AND h.new_state = 'Received'
                   AND h.previous_state IN ('For Review', 'Verified', 'Approved')
@@ -78,6 +81,12 @@ $stmt->execute();
 $applications = $stmt->fetchAll();
 
 foreach ($applications as &$application) {
+    $isPendingPensionInterview = (($application['application_type'] ?? '') === 'pension'
+        || ($application['requested_benefit'] ?? '') === 'Local Social Pension Assessment')
+        && ($application['home_visit_status'] ?? '') !== 'Completed';
+    $application['display_status'] = $isPendingPensionInterview
+        ? 'Waiting for Home Visitation'
+        : ($application['workflow_state'] ?: 'Received');
     if (trim((string)($application['complete_address'] ?? '')) === '') {
         $application['complete_address'] = implode(', ', array_filter([
             $application['house_no'] ?? '', $application['street'] ?? '',

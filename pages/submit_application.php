@@ -206,6 +206,7 @@ unset($_SESSION['application_submission_notice']);
             letter-spacing: 0.05em;
             padding: 4px 10px;
             border-radius: 20px;
+            white-space: nowrap;
         }
         .badge-received { background-color: #e2e8f0; color: #475569; }
         .badge-review { background-color: #dbeafe; color: #1d4ed8; }
@@ -353,7 +354,7 @@ unset($_SESSION['application_submission_notice']);
         /* Footer */
         .page-footer { text-align:center; padding:24px; font-size:0.78rem; color:var(--gray); }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=15">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
     <script src="../assets/js/table-pagination.js?v=1" defer></script>
@@ -401,7 +402,7 @@ unset($_SESSION['application_submission_notice']);
             <div class="queue-card-header">
                 <h2><i class="fas fa-clipboard-list"></i> Applications Queue</h2>
                 <button type="button" class="btn btn-small queue-export-btn" onclick="openExportModal()">
-                    <i class="fas fa-file-pdf"></i> Generate Report
+                    <i class="fas fa-file-excel"></i> Generate Report
                 </button>
             </div>
 
@@ -431,7 +432,6 @@ unset($_SESSION['application_submission_notice']);
                 <table class="records-tbl">
                     <thead>
                         <tr>
-                            <th>Priority</th>
                             <th>Applicant</th>
                             <th>Application Type</th>
                             <th>Birth Date</th>
@@ -470,8 +470,6 @@ unset($_SESSION['application_submission_notice']);
                 <div class="step" id="step-Received"><div class="step-circle">1</div><div class="step-label">Received</div></div>
                 <div class="step" id="step-For-Review"><div class="step-circle">2</div><div class="step-label">For Review</div></div>
                 <div class="step" id="step-Verified"><div class="step-circle">3</div><div class="step-label">Verified</div></div>
-                <div class="step" id="step-Approved"><div class="step-circle">4</div><div class="step-label">Approved</div></div>
-                <div class="step" id="step-Released"><div class="step-circle">5</div><div class="step-label">Released</div></div>
             </div>
 
             <!-- Return Warning Box -->
@@ -625,16 +623,16 @@ unset($_SESSION['application_submission_notice']);
     </div><!-- /.modal-box -->
 </div><!-- /#applicationModal -->
 
-<!-- Export PDF filter modal -->
+<!-- Export Excel filter modal -->
 <div id="exportModal" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="exportModalTitle">
     <div class="modal-box export-modal-box">
         <div class="modal-head">
-            <h2 id="exportModalTitle"><i class="fas fa-file-pdf"></i> Export Queue PDF</h2>
+            <h2 id="exportModalTitle"><i class="fas fa-file-excel"></i> Export Queue to Excel</h2>
             <button type="button" class="modal-close" id="closeExportModalBtn" aria-label="Close export dialog">&times;</button>
         </div>
-        <form id="exportReportForm" method="GET" action="../api/export_records_pdf.php">
+        <form id="exportReportForm" method="GET" action="../api/export_records_excel.php">
             <div class="export-modal-body">
-                <p>Set the filters for your queue PDF report. Only applications matching these criteria will be included.</p>
+                <p>Set the filters for your queue Excel report. Only applications matching these criteria will be included.</p>
                 <input type="hidden" name="scope" value="barangay">
                 <input type="hidden" name="report_mode" value="queue">
                 <div class="export-filter-grid">
@@ -670,7 +668,7 @@ unset($_SESSION['application_submission_notice']);
                 </div>
                 <div class="export-actions">
                     <button type="button" class="btn btn-ghost" id="cancelExportBtn">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-file-pdf"></i> Generate PDF</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-file-excel"></i> Generate Excel</button>
                 </div>
             </div>
         </form>
@@ -686,7 +684,7 @@ unset($_SESSION['application_submission_notice']);
         </div>
         <div class="modal-scroller" style="padding:20px;">
             <p style="font-size:0.82rem; color:var(--gray); margin-bottom:14px;">
-                Paste the encrypted QR token link or type the unique transaction priority token (e.g. PRX-XXXXXX) to load profiles.
+                Paste the encrypted QR token link or type the representative transaction token (e.g. PRX-XXXXXX) to load the profile.
             </p>
             <div class="form-group" style="margin-bottom:14px;">
                 <label style="font-weight:700; font-size:0.75rem;">Token Payload</label>
@@ -701,9 +699,9 @@ unset($_SESSION['application_submission_notice']);
 </div>
 
 <script src="../assets/js/sidebar-toggle.js?v=3"></script>
-<script src="../assets/js/osca-form-fields.js?v=2"></script>
-<script src="../assets/js/application-documents.js?v=7"></script>
-<script src="../assets/js/application-details.js?v=5"></script>
+<script src="../assets/js/osca-form-fields.js?v=3"></script>
+<script src="../assets/js/application-documents.js?v=8"></script>
+<script src="../assets/js/application-details.js?v=9"></script>
 <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 <script src="../assets/js/application-form-generator.js?v=1"></script>
 <script src="../assets/js/report-validation.js?v=1"></script>
@@ -733,6 +731,8 @@ unset($_SESSION['application_submission_notice']);
     const userBarangay          = "<?php echo $loggedInBarangay; ?>";
     const serverPagination      = document.getElementById('serverPagination');
     let applicationsPage        = 1;
+    const requestedApplicantName = new URLSearchParams(window.location.search).get('search');
+    if (requestedApplicantName) searchInput.value = requestedApplicantName;
 
     function buildAddressFromParts(app = {}) {
         return [
@@ -775,9 +775,8 @@ unset($_SESSION['application_submission_notice']);
         
         let url = `../api/search_applications.php?query=${encodeURIComponent(searchInput.value)}&page=${applicationsPage}&per_page=25`;
         if (applicationTypeFilter.value) url += `&type=${encodeURIComponent(applicationTypeFilter.value)}`;
-        // Finalized records belong in Barangay Records, which shows only
-        // Approved and Released applications. This queue keeps active work.
-        url += `&status=${encodeURIComponent('Received,For Review,Verified')}`;
+        // Verified is the final state and belongs in Barangay Records.
+        url += `&status=${encodeURIComponent('Received,For Review')}`;
         if (userBarangay)                url += `&barangay=${encodeURIComponent(userBarangay)}`;
 
         fetch(url)
@@ -787,14 +786,14 @@ unset($_SESSION['application_submission_notice']);
                 const apps = result.data || [];
                 tableBody.innerHTML = '';
                 if (!apps.length) {
-                    tableBody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray);">No applications found.</td></tr>';
+                    tableBody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray);">No applications found.</td></tr>';
                     renderServerPagination(result.pagination);
                     return;
                 }
 
                 apps.forEach(app => {
-                    const isHigh = app.priority_level === 'high';
                     const state  = app.workflow_state || 'Received';
+                    const displayState = app.display_status || state;
                     
                     let stateBadge = 'badge-received';
                     if (state === 'For Review') stateBadge = 'badge-review';
@@ -810,8 +809,7 @@ unset($_SESSION['application_submission_notice']);
                     const typeLabel = TYPE_LABELS[app.application_type] || app.application_type;
 
                     tableBody.innerHTML += `
-                        <tr class="applicant-row ${isHigh ? 'priority-high-row' : ''}" data-id="${app.id}" tabindex="0" role="button" aria-label="View applicant details">
-                            <td>${isHigh ? '<span class="priority-badge"><i class="fas fa-star"></i> HIGH</span>' : '<span style="color:var(--gray);font-size:0.75rem;">Normal</span>'}</td>
+                        <tr class="applicant-row" data-id="${app.id}" tabindex="0" role="button" aria-label="View applicant details">
                             <td>
                                 <div class="name-cell">
                                     <a href="#" class="name-link" data-id="${app.id}">${app.full_name}</a>
@@ -822,7 +820,7 @@ unset($_SESSION['application_submission_notice']);
                             <td>${app.birth_date}</td>
                             <td>${app.contact_number}</td>
                             <td>${new Date(app.date_submitted).toLocaleDateString()}</td>
-                            <td><span class="badge ${stateBadge}">${state}</span></td>
+                            <td><span class="badge ${stateBadge}">${displayState}</span></td>
                             <td style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${app.complete_address}</td>
                             <td>
                                 ${state === 'Received' 
@@ -906,7 +904,7 @@ unset($_SESSION['application_submission_notice']);
         document.getElementById('proxyDocumentsList').innerHTML = '';
 
         // Reset stepper
-        ['step-Received','step-For-Review','step-Verified','step-Approved','step-Released'].forEach(id => {
+        ['step-Received','step-For-Review','step-Verified'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.className = 'step';
         });
@@ -941,8 +939,9 @@ unset($_SESSION['application_submission_notice']);
                 document.getElementById('emailAddress').value         = app.email_address || '';
                 document.getElementById('additionalNotes').value      = app.additional_notes || '';
 
+                const modalFormType = getOscaFormType(app.application_type, app.requested_benefit);
                 populateOscaFields(app, '');
-                setModalFormFieldVisibility(app.application_type);
+                setModalFormFieldVisibility(modalFormType);
                 document.getElementById('dynamicDetailsSection').innerHTML = window.renderApplicationEditContext(app);
 
                 // Toggle type-specific sections
@@ -951,21 +950,22 @@ unset($_SESSION['application_submission_notice']);
                 pm.style.display = 'none';
                 bm.style.display = 'none';
 
-                if (app.application_type === 'pension' || app.application_type === 'national_pension') {
+                if (modalFormType === 'pension' || modalFormType === 'national_pension') {
                     pm.style.display = 'block';
                     document.getElementById('sssNumber').value = app.sss_number || '';
                     document.getElementById('pensionAmount').value = app.pension_amount || '';
                 }
-                if (app.application_type === 'burial') {
+                if (modalFormType === 'burial') {
                     bm.style.display = 'block';
                     document.getElementById('dateOfDeath').value = app.date_of_death || '';
                     document.getElementById('relationshipToDeceased').value = app.relationship_to_deceased || '';
                 }
-                toggleOscaFormFields(app.application_type, '');
+                toggleOscaFormFields(modalFormType, '');
 
                 // Stepper state highlighting
-                const steps = ['Received','For Review','Verified','Approved','Released'];
-                const currentState = app.workflow_state || 'Received';
+                const steps = ['Received','For Review','Verified'];
+                const rawState = app.workflow_state || 'Received';
+                const currentState = ['Approved','Released'].includes(rawState) ? 'Verified' : rawState;
                 let idx = steps.indexOf(currentState);
                 if (idx === -1) idx = 0;
                 steps.forEach((s, i) => {
@@ -993,7 +993,7 @@ unset($_SESSION['application_submission_notice']);
                         { key: 'psa_birth_cert', label: 'PSA Birth Certificate' },
                         { key: 'barangay_residency', label: 'Barangay Residency' },
                         { key: 'comelec_cert', label: 'COMELEC Certificate' },
-                        { key: 'proof_of_life', label: 'Proof of Life (In Bed)' },
+                        { key: 'proof_of_life', label: 'Current Senior Photo / Proof of Life' },
                         { key: 'auth_letter', label: 'Auth Letter' },
                         { key: 'proxy_id', label: 'Representative Government ID' },
                         { key: 'proxy_birth_cert', label: 'Representative Birth Certificate' },
@@ -1144,7 +1144,7 @@ unset($_SESSION['application_submission_notice']);
             ['psa_birth_cert', 'PSA Birth Certificate', app.psa_birth_cert],
             ['barangay_residency', 'Barangay Residency', app.barangay_residency],
             ['comelec_cert', 'COMELEC Certificate', app.comelec_cert],
-            ['proof_of_life', 'Proof of Life (In Bed)', app.proof_of_life],
+            ['proof_of_life', 'Current Senior Photo / Proof of Life', app.proof_of_life],
             ['auth_letter', 'Authorization Letter', app.auth_letter],
             ['proxy_id', 'Representative Government ID', app.proxy_id],
             ['proxy_birth_cert', 'Representative Birth Certificate', app.proxy_birth_cert],

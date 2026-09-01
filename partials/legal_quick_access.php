@@ -7,7 +7,7 @@ $notificationQueueUrl = $quickAccessRole === 'barangay_staff'
     ? 'submit_application.php'
     : 'verify_document.php';
 ?>
-<link rel="stylesheet" href="../assets/css/legal-quick-access.css?v=4">
+<link rel="stylesheet" href="../assets/css/legal-quick-access.css?v=6">
 
 <div class="legal-quick-actions" id="quickActionsMenu" aria-label="Quick actions">
     <button class="legal-quick-button quick-action-choice legal-quick-notification-button" id="notificationQuickButton" type="button"
@@ -38,6 +38,7 @@ $notificationQueueUrl = $quickAccessRole === 'barangay_staff'
 
 <section class="notification-quick-panel" id="notificationQuickPanel" role="dialog"
          aria-labelledby="notificationQuickTitle" aria-hidden="true"
+         data-role="<?php echo htmlspecialchars($quickAccessRole, ENT_QUOTES, 'UTF-8'); ?>"
          data-endpoint="<?php echo htmlspecialchars($notificationEndpoint, ENT_QUOTES, 'UTF-8'); ?>">
     <header class="notification-quick-header">
         <div><p>Quick updates</p><h2 id="notificationQuickTitle"><i class="fas fa-bell" aria-hidden="true"></i> Recent notifications</h2></div>
@@ -215,4 +216,4 @@ $notificationQueueUrl = $quickAccessRole === 'barangay_staff'
         <p>This quick guide is a summary. Consult the complete reference for detailed provisions.</p>
     </footer>
 </aside>
-<script src="../assets/js/legal-quick-access.js?v=4" defer></script>
+<script src="../assets/js/legal-quick-access.js?v=6" defer></script>

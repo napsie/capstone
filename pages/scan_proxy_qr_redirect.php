@@ -67,7 +67,7 @@ if (!$is_authenticated) {
                 padding-top: 15px;
             }
         </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=11">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
     </head>
     <body>
         <div class="guard-box">

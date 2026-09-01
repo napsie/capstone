@@ -38,6 +38,36 @@
     --sl-ease: 220ms cubic-bezier(.2, .7, .2, 1);
 }
 
+/* System-wide performance baseline: retain state feedback without costly paint effects. */
+html { scroll-behavior: auto !important; }
+
+body,
+.page-bg,
+.main-content,
+.dashboard-container {
+    background-attachment: scroll !important;
+}
+
+*:not(.spinner):not(.fa-spinner):not(.fa-circle-notch),
+*:not(.spinner):not(.fa-spinner):not(.fa-circle-notch)::before,
+*:not(.spinner):not(.fa-spinner):not(.fa-circle-notch)::after {
+    animation: none !important;
+    transition-duration: 120ms !important;
+}
+
+:where(.modal, .modal-overlay, .about-modal, .app-result-modal, .legal-quick-backdrop,
+       .glass-card, .auth-card, .form-card, .dashboard-card, .stat-card, .content-card,
+       .batch-role-note, .modal-content, .sidebar, .main-header) {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+@media (hover: hover) {
+    :where(.card, .portal-card, .app-type-card, .stat-card, .quick-action-item):hover {
+        translate: none !important;
+    }
+}
+
 body.modal-hci-open {
     overflow: hidden !important;
 }
@@ -515,6 +545,13 @@ table {
         animation-iteration-count: 1 !important;
         transition-duration: .01ms !important;
     }
+}
+
+/* Keep these final so page-level legacy styles cannot restore costly effects. */
+*, *::before, *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background-attachment: scroll !important;
 }
 
 @media (forced-colors: active) {
@@ -2083,5 +2120,32 @@ html, body { max-width: 100%; }
     :where(.modal-box, .modal-content, .cl-modal-content, .about-content, .archive-detail-dialog) {
         animation: none !important;
         transition: none !important;
+    }
+}
+
+@media (max-width: 480px) {
+    #trackModal {
+        align-items: center !important;
+        padding: 16px !important;
+    }
+
+    #trackModal .track-content {
+        width: min(100%, 440px) !important;
+        max-width: 440px !important;
+        height: auto !important;
+        max-height: calc(100dvh - 32px) !important;
+        padding: 20px 16px !important;
+        border: 1px solid #d9e2ec !important;
+        border-radius: 18px !important;
+        box-shadow: 0 14px 36px rgba(2, 19, 39, .28) !important;
+    }
+
+    #trackModal .portal-tracker-controls {
+        grid-template-columns: 1fr !important;
+    }
+
+    #trackModal .portal-tracker-controls button {
+        width: 100%;
+        min-height: 48px;
     }
 }

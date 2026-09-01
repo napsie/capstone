@@ -13,18 +13,16 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['department_ad
 // Fetch stats for the queue counters
 $statsQuery = "SELECT 
     COUNT(*) as total_queue,
-    SUM(CASE WHEN priority_level = 'high' THEN 1 ELSE 0 END) as high_priority_count,
     SUM(CASE WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') = 'For Review' THEN 1 ELSE 0 END) as for_review,
     SUM(CASE WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') = 'Verified' THEN 1 ELSE 0 END) as verified
     FROM applications
-    WHERE COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') NOT IN ('Approved', 'Released')
+    WHERE COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') NOT IN ('Verified', 'Approved', 'Released')
       AND (is_archived = 0 OR is_archived IS NULL)";
 $statsStmt = $conn->prepare($statsQuery);
 $statsStmt->execute();
 $queueStats = $statsStmt->fetch(PDO::FETCH_ASSOC);
 
 $totalQCount   = $queueStats['total_queue'] ?? 0;
-$highPCount    = $queueStats['high_priority_count'] ?? 0;
 $forReviewC    = $queueStats['for_review'] ?? 0;
 $verifiedC     = $queueStats['verified'] ?? 0;
 
@@ -33,7 +31,6 @@ $queueFilters = [
     'search'    => trim((string)($_GET['search'] ?? '')),
     'type'      => trim((string)($_GET['type'] ?? 'all')),
     'barangay'  => trim((string)($_GET['barangay'] ?? 'all')),
-    'priority'  => trim((string)($_GET['priority'] ?? 'all')),
 ];
 
 $applicationTypeOptions = getApplicationTypeOptions();
@@ -44,19 +41,18 @@ if ($queueFilters['type'] !== 'all' && !array_key_exists($queueFilters['type'], 
 if ($queueFilters['barangay'] !== 'all' && !in_array($queueFilters['barangay'], $barangays_list, true)) {
     $queueFilters['barangay'] = 'all';
 }
-if (!in_array($queueFilters['priority'], ['all', 'high', 'normal'], true)) {
-    $queueFilters['priority'] = 'all';
-}
 
 $queueConditions = [
-    "COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') NOT IN ('Approved', 'Released')",
+    "COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') NOT IN ('Verified', 'Approved', 'Released')",
     '(is_archived = 0 OR is_archived IS NULL)',
 ];
 $queueParams = [];
 
 if ($queueFilters['search'] !== '') {
-    $queueConditions[] = '(full_name LIKE :queue_search OR id_number LIKE :queue_search)';
-    $queueParams['queue_search'] = '%' . $queueFilters['search'] . '%';
+    $queueConditions[] = '(full_name LIKE :queue_search_name OR id_number LIKE :queue_search_id)';
+    $queueSearchValue = '%' . $queueFilters['search'] . '%';
+    $queueParams['queue_search_name'] = $queueSearchValue;
+    $queueParams['queue_search_id'] = $queueSearchValue;
 }
 if ($queueFilters['type'] !== 'all') {
     $queueConditions[] = 'application_type = :queue_type';
@@ -65,10 +61,6 @@ if ($queueFilters['type'] !== 'all') {
 if ($queueFilters['barangay'] !== 'all') {
     $queueConditions[] = 'barangay = :queue_barangay';
     $queueParams['queue_barangay'] = $queueFilters['barangay'];
-}
-if ($queueFilters['priority'] !== 'all') {
-    $queueConditions[] = "COALESCE(NULLIF(priority_level, ''), 'normal') = :queue_priority";
-    $queueParams['queue_priority'] = $queueFilters['priority'];
 }
 
 $queuePage = max(1, (int)($_GET['page'] ?? 1));
@@ -80,11 +72,12 @@ $queueTotalPages = max(1, (int)ceil($filteredQueueCount / $queuePerPage));
 $queuePage = min($queuePage, $queueTotalPages);
 $queueOffset = ($queuePage - 1) * $queuePerPage;
 
-$queueSql = "SELECT id_number as id, full_name, application_type, barangay, date_submitted, status, workflow_state, priority_level,
+$queueSql = "SELECT id_number as id, full_name, application_type, requested_benefit, barangay, date_submitted,
+                    status, workflow_state, home_visit_status,
                     COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') AS effective_state
              FROM applications
              WHERE " . implode(' AND ', $queueConditions) . "
-             ORDER BY CASE WHEN priority_level = 'high' THEN 0 ELSE 1 END, date_submitted DESC, id_number DESC
+             ORDER BY date_submitted DESC, id_number DESC
              LIMIT :queue_limit OFFSET :queue_offset";
 $queueStmt = $conn->prepare($queueSql);
 $queueStmt->bindValue(':queue_limit', $queuePerPage, PDO::PARAM_INT);
@@ -94,8 +87,7 @@ $queueStmt->execute();
 $result = $queueStmt->fetchAll(PDO::FETCH_ASSOC);
 $hasQueueFilters = $queueFilters['search'] !== ''
     || $queueFilters['type'] !== 'all'
-    || $queueFilters['barangay'] !== 'all'
-    || $queueFilters['priority'] !== 'all';
+    || $queueFilters['barangay'] !== 'all';
 
 ?>
 <!DOCTYPE html>
@@ -475,7 +467,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
         /* Footer */
         .page-footer { text-align:center; padding:24px; font-size:0.78rem; color:var(--gray); }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=15">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
     <script src="../assets/js/table-pagination.js?v=1" defer></script>
@@ -521,13 +513,6 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                 </div>
             </div>
             <div class="stat-card">
-                <div class="stat-icon amber"><i class="fas fa-star"></i></div>
-                <div>
-                    <div class="stat-label">High Priority (Bedridden)</div>
-                    <div class="stat-value"><?php echo $highPCount; ?></div>
-                </div>
-            </div>
-            <div class="stat-card">
                 <div class="stat-icon purple"><i class="fas fa-search"></i></div>
                 <div>
                     <div class="stat-label">For evaluation</div>
@@ -548,7 +533,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
             <div class="queue-card-header">
                 <h2><i class="fas fa-list-ol"></i> Evaluation Review Queue</h2>
                 <button type="button" class="btn btn-small queue-export-btn" onclick="openExportModal()">
-                    <i class="fas fa-file-pdf"></i> Generate Report
+                    <i class="fas fa-file-excel"></i> Generate Report
                 </button>
             </div>
 
@@ -579,14 +564,6 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="queue-filter-field">
-                        <label for="queuePriority">Priority</label>
-                        <select id="queuePriority" name="priority">
-                            <option value="all" <?php echo $queueFilters['priority'] === 'all' ? 'selected' : ''; ?>>All Priorities</option>
-                            <option value="high" <?php echo $queueFilters['priority'] === 'high' ? 'selected' : ''; ?>>High Priority</option>
-                            <option value="normal" <?php echo $queueFilters['priority'] === 'normal' ? 'selected' : ''; ?>>Normal Priority</option>
-                        </select>
-                    </div>
                 </div>
                 <div class="queue-filter-actions">
                     <div class="queue-result-count" id="queueResultCount" aria-live="polite">
@@ -603,7 +580,6 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                 <table class="records-tbl">
                     <thead>
                         <tr>
-                            <th>Priority</th>
                             <th>Applicant Name</th>
                             <th>Application Type</th>
                             <th>Barangay</th>
@@ -615,7 +591,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                     <tbody>
                         <?php
                         if (count($result) === 0): ?>
-                            <tr><td colspan="7">
+                            <tr><td colspan="6">
                                 <div class="empty-state">
                                     <i class="fas fa-<?php echo $hasQueueFilters ? 'filter-circle-xmark' : 'folder-open'; ?>"></i>
                                     <p><?php echo $hasQueueFilters ? 'No applications match the selected filters' : 'No active applications in the review queue'; ?></p>
@@ -624,10 +600,11 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                             </td></tr>
                         <?php else:
                             foreach ($result as $row):
-                                $isHigh = ($row['priority_level'] === 'high');
-                                $rowClass = $isHigh ? 'priority-high-row' : '';
-                                
+                                $requiresHomeVisit = ($row['application_type'] === 'pension'
+                                    || ($row['requested_benefit'] ?? '') === 'Local Social Pension Assessment')
+                                    && ($row['home_visit_status'] ?? '') !== 'Completed';
                                 $state = $row['effective_state'];
+                                $displayState = $requiresHomeVisit ? 'Waiting for Home Visitation' : $state;
                                 $stateBadgeClass = 'badge-received';
                                 if ($state === 'For Review') $stateBadgeClass = 'badge-review';
                                 if ($state === 'Verified') $stateBadgeClass = 'badge-verified';
@@ -636,14 +613,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
 
                                 $typeLabel = applicationTypeLabel($row['application_type']);
                             ?>
-                            <tr class="applicant-row <?php echo $rowClass; ?>" data-id="<?php echo htmlspecialchars($row['id']); ?>" tabindex="0" role="button" aria-label="Open applicant review">
-                                <td>
-                                    <?php if ($isHigh): ?>
-                                        <span class="priority-badge"><i class="fas fa-star"></i> HIGH</span>
-                                    <?php else: ?>
-                                        <span style="color:#94a3b8; font-size:0.8rem;">Normal</span>
-                                    <?php endif; ?>
-                                </td>
+                            <tr class="applicant-row" data-id="<?php echo htmlspecialchars($row['id']); ?>" tabindex="0" role="button" aria-label="Open applicant review">
                                 <td>
                                     <div class="name-cell">
                                         <div class="full-name"><?php echo htmlspecialchars($row['full_name']); ?></div>
@@ -653,7 +623,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                                 <td><?php echo htmlspecialchars($typeLabel); ?></td>
                                 <td><?php echo htmlspecialchars($row['barangay']); ?></td>
                                 <td><?php echo date('M d, Y', strtotime($row['date_submitted'])); ?></td>
-                                <td><span class="badge <?php echo $stateBadgeClass; ?>"><?php echo htmlspecialchars($state); ?></span></td>
+                                <td><span class="badge <?php echo $stateBadgeClass; ?>"><?php echo htmlspecialchars($displayState); ?></span></td>
                                 <td>
                                     <button class="btn-view view-details-btn" data-id="<?php echo htmlspecialchars($row['id']); ?>">
                                         <i class="fas fa-folder-open"></i> Open Review
@@ -706,14 +676,6 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                 <div class="step" id="step-Verified">
                     <div class="step-circle">3</div>
                     <div class="step-label">Verified</div>
-                </div>
-                <div class="step" id="step-Approved">
-                    <div class="step-circle">4</div>
-                    <div class="step-label">Approved</div>
-                </div>
-                <div class="step" id="step-Released">
-                    <div class="step-circle">5</div>
-                    <div class="step-label">Released</div>
                 </div>
             </div>
 
@@ -778,6 +740,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                             <button type="button" class="btn btn-primary" id="btnOfficialForm" disabled><i class="fas fa-file-pdf"></i> Generate Official Form</button>
                             <button type="button" class="btn btn-primary" id="btnAdvanceStatus" onclick="submitStatusAction('next')">Advance Status</button>
                             <button type="button" class="btn btn-secondary" id="btnReturnStatus" onclick="submitStatusAction('return')">Return to Barangay</button>
+                            <button type="button" class="btn btn-danger" id="btnRejectStatus" onclick="submitStatusAction('reject')"><i class="fas fa-ban"></i> Reject &amp; Archive</button>
                         </div>
                     </div>
 
@@ -792,16 +755,16 @@ $hasQueueFilters = $queueFilters['search'] !== ''
     </div><!-- /.modal-box -->
 </div><!-- /#applicationModal -->
 
-<!-- Export PDF filter modal -->
+<!-- Export Excel filter modal -->
 <div id="exportModal" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="exportModalTitle">
     <div class="modal-box export-modal-box">
         <div class="modal-head">
-            <h2 id="exportModalTitle"><i class="fas fa-file-pdf"></i> Export Verification Queue PDF</h2>
+            <h2 id="exportModalTitle"><i class="fas fa-file-excel"></i> Export Verification Queue to Excel</h2>
             <button type="button" class="modal-close" id="closeExportModalBtn" aria-label="Close export dialog">&times;</button>
         </div>
-        <form id="exportReportForm" method="GET" action="../api/export_records_pdf.php">
+        <form id="exportReportForm" method="GET" action="../api/export_records_excel.php">
             <div class="export-modal-body">
-                <p>Set the filters for your verification queue PDF report. Only matching applications will be included.</p>
+                <p>Set the filters for your verification queue Excel report. Only matching applications will be included.</p>
                 <input type="hidden" name="scope" value="department">
                 <input type="hidden" name="report_mode" value="verification">
                 <input type="hidden" name="barangay" id="exportBarangayValue" value="all">
@@ -857,7 +820,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                 </div>
                 <div class="export-actions">
                     <button type="button" class="btn btn-ghost" id="cancelExportBtn">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-file-pdf"></i> Generate PDF</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-file-excel"></i> Generate Excel</button>
                 </div>
             </div>
         </form>
@@ -865,8 +828,8 @@ $hasQueueFilters = $queueFilters['search'] !== ''
 </div>
 
 <script src="../assets/js/sidebar-toggle.js?v=3"></script>
-<script src="../assets/js/application-documents.js?v=7"></script>
-<script src="../assets/js/application-details.js?v=5"></script>
+<script src="../assets/js/application-documents.js?v=8"></script>
+<script src="../assets/js/application-details.js?v=9"></script>
 <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 <script src="../assets/js/application-form-generator.js?v=2"></script>
 <script src="../assets/js/report-validation.js?v=1"></script>
@@ -892,8 +855,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
         function hasActiveQueueFilters() {
             return queueSearch.value.trim() !== ''
                 || document.getElementById('queueType').value !== 'all'
-                || document.getElementById('queueBarangay').value !== 'all'
-                || document.getElementById('queuePriority').value !== 'all';
+                || document.getElementById('queueBarangay').value !== 'all';
         }
 
         async function refreshVerificationQueue() {
@@ -948,7 +910,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
             window.clearTimeout(filterTimer);
             filterTimer = window.setTimeout(refreshVerificationQueue, 350);
         });
-        ['queueType', 'queueBarangay', 'queuePriority'].forEach(id => {
+        ['queueType', 'queueBarangay'].forEach(id => {
             document.getElementById(id).addEventListener('change', refreshVerificationQueue);
         });
         clearQueueFilters.addEventListener('click', function(event) {
@@ -1054,7 +1016,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
         document.getElementById('timelineList').innerHTML     = '<p style="color:var(--gray);font-size:0.85rem;">Loading history…</p>';
 
         // Reset stepper
-        ['step-Received','step-For-Review','step-Verified','step-Approved','step-Released'].forEach(id => {
+        ['step-Received','step-For-Review','step-Verified'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.className = 'step';
         });
@@ -1086,8 +1048,8 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                 officialFormButton.onclick = () => openOfficialApplicationForm(app.id_number);
 
                 /* ── Stepper ── */
-                const steps = ['Received','For Review','Verified','Approved','Released'];
-                let idx = steps.indexOf(currentWorkflowStatus);
+                const steps = ['Received','For Review','Verified'];
+                let idx = steps.indexOf(['Approved','Released'].includes(currentWorkflowStatus) ? 'Verified' : currentWorkflowStatus);
                 if (idx === -1) idx = 0;
                 steps.forEach((s, i) => {
                     const el = document.getElementById('step-' + s.replace(' ','-'));
@@ -1145,12 +1107,6 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                     }
                 }
 
-                if (app.priority_level === 'high') {
-                    ch += `<div class="compliance-item" style="background:rgba(245,158,11,0.08);padding:5px;border-radius:4px;">
-                        <span>Priority Queue Placement</span>
-                        <span style="color:#d97706;font-weight:700;"><i class="fas fa-star"></i> High-Priority (Bedridden Senior)</span>
-                    </div>`;
-                }
                 document.getElementById('complianceList').innerHTML = ch;
                 /* ── Dynamic Details (Complete details rendering) ── */
                 document.getElementById('dynamicDetailsSection').innerHTML = window.renderApplicationVerificationDetails(app);
@@ -1161,10 +1117,12 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                 /* Rule-based workflow operations */
                 const btnNext = document.getElementById('btnAdvanceStatus');
                 const btnReturn = document.getElementById('btnReturnStatus');
+                const btnReject = document.getElementById('btnRejectStatus');
                 const instruction = document.getElementById('statusInstructions');
 
                 btnReturn.style.display = 'block';
                 btnNext.style.display = 'block';
+                btnReject.style.display = 'block';
 
                 const existingBlockBanner = document.getElementById('policyBlockBanner');
                 if (existingBlockBanner) existingBlockBanner.remove();
@@ -1176,42 +1134,28 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                 } else if (currentWorkflowStatus === 'For Review') {
                     instruction.innerHTML = "<strong>Status Action:</strong> Mark document audits as Verified and lock the compliance records.";
                     btnNext.textContent = "Verify Application";
-                } else if (currentWorkflowStatus === 'Verified') {
-                    instruction.innerHTML = "<strong>Status Action:</strong> Authorize senior credentials and approve for payroll benefits distribution.";
-                    btnNext.textContent = "Approve for Payroll";
-
                     if (approvalBlocked) {
                         btnNext.disabled = true;
-                        btnNext.style.opacity = '0.4';
-                        btnNext.style.cursor  = 'not-allowed';
-                        
+                        btnNext.style.opacity = '0.45';
                         const blockBanner = document.createElement('div');
                         blockBanner.id = 'policyBlockBanner';
-                        blockBanner.style.cssText = `
-                            background: rgba(239,68,68,0.1);
-                            border: 1.5px solid #ef4444;
-                            border-radius: 8px;
-                            padding: 10px 14px;
-                            margin-bottom: 12px;
-                            font-size: 0.82rem;
-                            color: #b91c1c;
-                            font-weight: 600;
-                            line-height: 1.5;
-                        `;
-                        blockBanner.innerHTML = `<i class="fas fa-ban" style="margin-right:6px;"></i> ${approvalBlockReason}`;
+                        blockBanner.className = 'alert alert-danger';
+                        blockBanner.textContent = approvalBlockReason;
                         btnNext.parentElement.insertBefore(blockBanner, btnNext);
                     } else {
                         btnNext.disabled = false;
                         btnNext.style.opacity = '';
-                        btnNext.style.cursor  = '';
                     }
-                } else if (currentWorkflowStatus === 'Approved') {
-                    instruction.innerHTML = "<strong>Status Action:</strong> Finalize benefits check and mark credentials as Released.";
-                    btnNext.textContent = "Release Benefits";
-                } else if (currentWorkflowStatus === 'Released') {
-                    instruction.innerHTML = "<strong>Status Action:</strong> Processing is complete. Benefits are released to the citizen.";
+                } else if (currentWorkflowStatus === 'Verified') {
+                    instruction.innerHTML = "<strong>Status:</strong> Verification is complete and the compliance record is locked.";
                     btnNext.style.display = 'none';
                     btnReturn.style.display = 'none';
+                    btnReject.style.display = 'none';
+                } else if (['Approved', 'Released'].includes(currentWorkflowStatus)) {
+                    instruction.innerHTML = "<strong>Status:</strong> This legacy application is complete and is now represented as Verified.";
+                    btnNext.style.display = 'none';
+                    btnReturn.style.display = 'none';
+                    btnReject.style.display = 'none';
                 }
 
                 /* ── Paginated Timeline ── */
@@ -1226,13 +1170,18 @@ $hasQueueFilters = $queueFilters['search'] !== ''
     async function submitStatusAction(action, confirmed = false) {
         const comment = document.getElementById('statusComment').value.trim();
 
-        if (action === 'return' && !comment) {
-            showCarelinkResult("Please input comment remarks explaining why this application is being returned to the Barangay (e.g. Blurry Documents / Missing IDs).", false);
+        if (['return', 'reject'].includes(action) && !comment) {
+            showCarelinkResult(action === 'reject'
+                ? "Please enter the reason for rejecting this application."
+                : "Please input comment remarks explaining why this application is being returned to the Barangay (e.g. Blurry Documents / Missing IDs).", false);
             return;
         }
 
         if (!confirmed) {
-            window.showCarelinkConfirm('Confirm this status action?', () => submitStatusAction(action, true));
+            const confirmation = action === 'reject'
+                ? 'Reject this application and move it to the Archive?'
+                : 'Confirm this status action?';
+            window.showCarelinkConfirm(confirmation, () => submitStatusAction(action, true));
             return;
         }
 
@@ -1361,7 +1310,6 @@ $hasQueueFilters = $queueFilters['search'] !== ''
         healthHtml += getFieldHtml("Living Arrangement", app.living_arrangement);
         healthHtml += getFieldHtml("With Maintenance Meds", app.with_maintenance);
         healthHtml += getFieldHtml("Maintenance Specification", app.maintenance_spec);
-        healthHtml += getFieldHtml("Priority Level", app.priority_level);
 
         if (healthHtml) {
             dynamicHtml += `
@@ -1517,7 +1465,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
 
         const additionalDocs = [
             ['psa_birth_cert', 'PSA Birth Certificate'], ['barangay_residency', 'Barangay Residency'],
-            ['comelec_cert', 'COMELEC Certificate'], ['proof_of_life', 'Proof of Life (In Bed)'],
+            ['comelec_cert', 'COMELEC Certificate'], ['proof_of_life', 'Current Senior Photo / Proof of Life'],
             ['auth_letter', 'Authorization Letter'], ['proxy_id', 'Representative Government ID'],
             ['proxy_birth_cert', 'Representative Birth Certificate'], ['home_visitation_form', 'Home Visitation Form'],
             ['landbank_enrollment_form', 'Land Bank Enrollment Form']

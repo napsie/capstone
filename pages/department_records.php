@@ -5,7 +5,7 @@ require_once '../includes/barangays_list.php';
 require_once '../includes/application_types.php';
 
 // Auth check
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'department_admin') {
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'] ?? '', ['department_admin', 'super_admin'], true)) {
     header('Location: ../index.php');
     exit;
 }
@@ -20,12 +20,14 @@ $offset          = ($page - 1) * $recordsPerPage;
 
 // Build dynamic query
 $baseQuery    = "FROM applications";
-$whereClauses = ["(is_archived = 0 OR is_archived IS NULL)", "(workflow_state IN ('Approved', 'Released') OR status = 'Approved')"];
+$whereClauses = ["(is_archived = 0 OR is_archived IS NULL)", "(workflow_state IN ('Verified', 'Approved', 'Released') OR status IN ('Verified', 'Approved'))"];
 $params       = [];
 
 if (!empty($search)) {
-    $whereClauses[] = "(full_name LIKE :search OR id_number LIKE :search)";
-    $params[':search'] = "%$search%";
+    $whereClauses[] = "(full_name LIKE :search_name OR id_number LIKE :search_id)";
+    $searchValue = "%$search%";
+    $params[':search_name'] = $searchValue;
+    $params[':search_id'] = $searchValue;
 }
 if ($barangayFilter !== 'all') {
     $whereClauses[] = "barangay = :barangay";
@@ -45,7 +47,7 @@ $totalRecords = $totalStmt->fetchColumn();
 $totalPages   = ceil($totalRecords / $recordsPerPage);
 
 // Paginated records
-$recordsStmt = $conn->prepare("SELECT id_number as id, full_name, application_type, barangay, date_submitted, COALESCE(workflow_state, status) as status " . $baseQuery . $whereSql . " ORDER BY date_submitted DESC LIMIT :limit OFFSET :offset");
+$recordsStmt = $conn->prepare("SELECT id_number as id, full_name, application_type, barangay, date_submitted, CASE WHEN COALESCE(workflow_state, status) IN ('Approved','Released') THEN 'Verified' ELSE COALESCE(workflow_state, status) END as status " . $baseQuery . $whereSql . " ORDER BY date_submitted DESC LIMIT :limit OFFSET :offset");
 foreach ($params as $k => &$v) $recordsStmt->bindParam($k, $v);
 $recordsStmt->bindParam(':limit',  $recordsPerPage, PDO::PARAM_INT);
 $recordsStmt->bindParam(':offset', $offset,         PDO::PARAM_INT);
@@ -438,7 +440,7 @@ function getStatusBadge($status) {
         /* Footer */
         .page-footer { text-align:center; padding:24px; font-size:0.78rem; color:var(--gray); }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=15">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
@@ -507,10 +509,10 @@ function getStatusBadge($status) {
         <!-- Records Card -->
         <div class="records-card">
             <div class="records-card-header">
-                <h2><i class="fas fa-folder-open"></i> All Approved Records – Pasig City</h2>
+                <h2><i class="fas fa-folder-open"></i> All Verified Records – Pasig City</h2>
                 <div class="header-actions">
                     <button type="button" class="btn btn-ghost" onclick="exportDepartmentRecords()">
-                        <i class="fas fa-file-pdf"></i> Generate Report
+                        <i class="fas fa-file-excel"></i> Generate Report
                     </button>
                 </div>
             </div>
@@ -670,14 +672,6 @@ function getStatusBadge($status) {
                     <div class="step-circle">3</div>
                     <div class="step-label">Verified</div>
                 </div>
-                <div class="step" id="step-Approved">
-                    <div class="step-circle">4</div>
-                    <div class="step-label">Approved</div>
-                </div>
-                <div class="step" id="step-Released">
-                    <div class="step-circle">5</div>
-                    <div class="step-label">Released</div>
-                </div>
             </div>
 
             <!-- Recorded compliance results -->
@@ -733,7 +727,6 @@ function getStatusBadge($status) {
                 <div>
                     <div style="margin-bottom:16px;">
                         <button type="button" class="btn btn-primary" id="btnOfficialForm" disabled><i class="fas fa-file-pdf"></i> Generate Official Form</button>
-                        <button type="button" class="btn" id="btnReleaseApplication" style="display:none;background:#10b981;color:#fff;"><i class="fas fa-box-open"></i> Release Application</button>
                     </div>
                     <div class="section-title"><i class="fas fa-clock-rotate-left"></i> Audit History</div>
                     <div class="timeline" id="timelineList">
@@ -750,12 +743,12 @@ function getStatusBadge($status) {
 <div id="exportModal" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="exportModalTitle">
     <div class="modal-box export-modal-box">
         <div class="modal-head">
-            <h2 id="exportModalTitle"><i class="fas fa-file-pdf"></i> Generate Report</h2>
+            <h2 id="exportModalTitle"><i class="fas fa-file-excel"></i> Generate Excel Report</h2>
             <button type="button" class="modal-close" id="closeExportModalBtn" aria-label="Close report dialog">&times;</button>
         </div>
-        <form id="exportReportForm" method="GET" action="../api/export_records_pdf.php">
+        <form id="exportReportForm" method="GET" action="../api/export_records_excel.php">
             <div class="export-modal-body">
-                <p>Choose the filters and barangay coverage for this report. Only matching records will be included in the PDF.</p>
+                <p>Choose the filters and barangay coverage for this report. Only matching records will be included in the Excel workbook.</p>
                 <input type="hidden" name="scope" value="department">
                 <input type="hidden" name="barangay" id="exportBarangayValue" value="all">
 
@@ -772,9 +765,8 @@ function getStatusBadge($status) {
                     <div class="export-field">
                         <label for="exportStatus">Status</label>
                         <select name="status" id="exportStatus">
-                            <option value="all">Approved &amp; Released</option>
-                            <option value="Approved">Approved Only</option>
-                            <option value="Released">Released Only</option>
+                            <option value="all">All Verified Records</option>
+                            <option value="Verified">Verified</option>
                         </select>
                     </div>
                     <div class="export-field">
@@ -820,7 +812,7 @@ function getStatusBadge($status) {
                 </div>
                 <div class="export-actions">
                     <button type="button" class="btn btn-ghost" id="cancelExportBtn">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-file-pdf"></i> Generate PDF</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-file-excel"></i> Generate Excel</button>
                 </div>
             </div>
         </form>
@@ -828,9 +820,9 @@ function getStatusBadge($status) {
 </div>
 
 <script src="../assets/js/sidebar-toggle.js?v=3"></script>
-<script src="../assets/js/application-documents.js?v=7"></script>
+<script src="../assets/js/application-documents.js?v=8"></script>
 <script src="../assets/js/report-validation.js?v=1"></script>
-<script src="../assets/js/application-details.js?v=5"></script>
+<script src="../assets/js/application-details.js?v=9"></script>
 <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 <script src="../assets/js/application-form-generator.js?v=2"></script>
 <script>
@@ -938,7 +930,6 @@ function getStatusBadge($status) {
     /* ─── Open modal and populate ───────────────────────────── */
     function openApplicationModal(appId) {
         document.getElementById('btnOfficialForm').disabled = true;
-        document.getElementById('btnReleaseApplication').style.display = 'none';
         // Reset placeholders
         document.getElementById('modalAppTitle').textContent  = 'Loading…';
         document.getElementById('complianceList').innerHTML   = '<p style="color:var(--gray);font-size:0.85rem;">Loading compliance checks…</p>';
@@ -947,7 +938,7 @@ function getStatusBadge($status) {
         document.getElementById('timelineList').innerHTML     = '<p style="color:var(--gray);font-size:0.85rem;">Loading history…</p>';
 
         // Reset stepper
-        ['step-Received','step-For-Review','step-Verified','step-Approved','step-Released'].forEach(id => {
+        ['step-Received','step-For-Review','step-Verified'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.className = 'step';
         });
@@ -977,15 +968,11 @@ function getStatusBadge($status) {
                 officialFormButton.onclick = () => openOfficialApplicationForm(app.id_number);
 
                 const currentState = app.workflow_state || app.status || 'Received';
-                const releaseButton = document.getElementById('btnReleaseApplication');
-                if (currentState === 'Approved') {
-                    releaseButton.style.display = 'inline-flex';
-                    releaseButton.onclick = () => releaseApplication(app.id_number);
-                }
 
                 /* ── Stepper ── */
-                const steps = ['Received','For Review','Verified','Approved','Released'];
-                const state = app.workflow_state || 'Received';
+                const steps = ['Received','For Review','Verified'];
+                const rawState = app.workflow_state || 'Received';
+                const state = ['Approved','Released'].includes(rawState) ? 'Verified' : rawState;
                 let idx = steps.indexOf(state);
                 if (idx === -1) idx = 0;
                 steps.forEach((s, i) => {
@@ -1027,12 +1014,6 @@ function getStatusBadge($status) {
                     ch += ed <= 30
                         ? `<div class="compliance-item"><span>Filing Deadline (Pasig Ord. 3/2026)</span><span class="pass-tag"><i class="fas fa-circle-check"></i> PASS — ${ed} working days</span></div>`
                         : `<div class="compliance-item"><span>Filing Deadline (Pasig Ord. 3/2026)</span><span class="fail-tag"><i class="fas fa-circle-xmark"></i> FAIL — ${ed} days elapsed</span></div>`;
-                }
-                if (app.priority_level === 'high') {
-                    ch += `<div class="compliance-item" style="background:rgba(245,158,11,0.08);padding:5px;border-radius:4px;">
-                        <span>Priority Queue</span>
-                        <span style="color:#d97706;font-weight:700;"><i class="fas fa-star"></i> High-Priority (Bedridden)</span>
-                    </div>`;
                 }
                 document.getElementById('complianceList').innerHTML = ch;
                 /* ── Dynamic Details (Complete details rendering) ── */
@@ -1178,7 +1159,6 @@ function getStatusBadge($status) {
         healthHtml += getFieldHtml("Living Arrangement", app.living_arrangement);
         healthHtml += getFieldHtml("With Maintenance Meds", app.with_maintenance);
         healthHtml += getFieldHtml("Maintenance Specification", app.maintenance_spec);
-        healthHtml += getFieldHtml("Priority Level", app.priority_level);
 
         if (healthHtml) {
             dynamicHtml += `

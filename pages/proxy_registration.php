@@ -17,7 +17,7 @@ $resetUrl = 'proxy_registration.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SENIORLINK — Representative Pre-Registration</title>
+    <title>SENIORLINK — Public Senior Application</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -228,7 +228,7 @@ $resetUrl = 'proxy_registration.php';
             margin: 0; font-size: 0.9rem; color: #475569;
         }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=11">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
 </head>
 <body>
     <a href="../index.php" class="back-btn">
@@ -243,11 +243,11 @@ $resetUrl = 'proxy_registration.php';
             <div class="proxy-panel">
                 <div class="proxy-panel-header">
                     <div class="hero-badge">
-                        <i class="fas fa-wheelchair" aria-hidden="true"></i>
-                        Bedridden Senior Support
+                        <i class="fas fa-people-roof" aria-hidden="true"></i>
+                        Public Senior Service
                     </div>
-                    <h2 id="proxy-heading">Representative Registration Portal</h2>
-                    <p>Pre-register online for bedridden seniors to generate a priority queue token.</p>
+                    <h2 id="proxy-heading">New Senior Application</h2>
+                    <p>Submit a new application for any eligible senior citizen. The service supports independent seniors and seniors receiving assistance from family members, caregivers, or authorized representatives.</p>
                 </div>
                 <div class="proxy-panel-body">
                     <?php include '../partials/proxy_form.php'; ?>

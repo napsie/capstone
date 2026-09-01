@@ -126,7 +126,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
 
 
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=11">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
     <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=3">
@@ -164,23 +164,14 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                 <nav class="dashboard-quick-actions" aria-label="Barangay quick actions">
                     <a class="quick-action primary" href="new_application.php"><i class="fas fa-user-plus" aria-hidden="true"></i><span><strong>New application</strong><small>Register an applicant</small></span></a>
                     <a class="quick-action" href="submit_application.php"><i class="fas fa-clipboard-list" aria-hidden="true"></i><span><strong>Open queue</strong><small>Continue processing</small></span></a>
-                    <a class="quick-action" href="field_operations.php#batches"><i class="fas fa-boxes-stacked" aria-hidden="true"></i><span><strong>Hardcopy batches</strong><small>Prepare handover</small></span></a>
                 </nav>
             </section>
-
-            <!-- Priority Queue Alert Banner (shown when high-priority applications are pending) -->
-            <div id="priorityAlertBanner" class="priority-alert hidden" role="status" aria-live="polite">
-                <div class="priority-alert-text">
-                    <i class="fas fa-star"></i>&nbsp; <span id="priorityCountDisplay">0</span> High-Priority (Bedridden Senior) application(s) awaiting counter assistance
-                </div>
-                <a href="submit_application.php"><i class="fas fa-arrow-right"></i> View Queue</a>
-            </div>
 
             <!-- Summary Stats Strip -->
             <div class="stats-strip" id="statsStrip">
                 <a class="stat-card stat-card-link stat-blue" href="submit_application.php" aria-label="Open all active applications"><div class="stat-icon"><i class="fas fa-file-lines" aria-hidden="true"></i></div><div class="stat-info"><div class="stat-label">Active applications</div><div class="stat-value dashboard-loading" id="statTotal" aria-live="polite" aria-label="Loading active applications">0</div><small>View local workload</small></div><i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i></a>
                 <a class="stat-card stat-card-link stat-amber" href="submit_application.php" aria-label="Open received applications"><div class="stat-icon"><i class="fas fa-inbox" aria-hidden="true"></i></div><div class="stat-info"><div class="stat-label">Awaiting action</div><div class="stat-value dashboard-loading" id="statReceived" aria-live="polite" aria-label="Loading applications awaiting action">0</div><small>Received in queue</small></div><i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i></a>
-                <a class="stat-card stat-card-link stat-green" href="barangay_records.php" aria-label="Open approved application records"><div class="stat-icon"><i class="fas fa-circle-check" aria-hidden="true"></i></div><div class="stat-info"><div class="stat-label">Approved records</div><div class="stat-value dashboard-loading" id="statApproved" aria-live="polite" aria-label="Loading approved records">0</div><small>Browse verified records</small></div><i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i></a>
+                <a class="stat-card stat-card-link stat-green" href="barangay_records.php" aria-label="Open verified application records"><div class="stat-icon"><i class="fas fa-circle-check" aria-hidden="true"></i></div><div class="stat-info"><div class="stat-label">Verified records</div><div class="stat-value dashboard-loading" id="statApproved" aria-live="polite" aria-label="Loading verified records">0</div><small>Browse completed records</small></div><i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i></a>
             </div>
 
             <div class="dashboard-section-heading"><div><span>Performance and activity</span><h2>Application insights</h2><p>Use these summaries to identify workload patterns and recent changes.</p></div></div>
@@ -451,8 +442,6 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
             'received':   { icon: 'fa-inbox',        color: '#94a3b8', bg: 'rgba(148,163,184,0.15)', label: 'Received'   },
             'for review': { icon: 'fa-search',        color: '#3b82f6', bg: 'rgba(59,130,246,0.12)',  label: 'For Review' },
             'verified':   { icon: 'fa-check',         color: '#14b8a6', bg: 'rgba(20,184,166,0.12)',  label: 'Verified'   },
-            'approved':   { icon: 'fa-check-double',  color: '#22c55e', bg: 'rgba(34,197,94,0.12)',   label: 'Approved'   },
-            'released':   { icon: 'fa-gift',          color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)',  label: 'Released'   },
             'deceased':   { icon: 'fa-cross',         color: '#64748b', bg: 'rgba(100,116,139,0.12)', label: 'Deceased'   },
         };
 
@@ -467,14 +456,19 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
             const stateKey = (notif.workflow_state || 'received').toLowerCase();
             const cfg = stateConfig[stateKey] || { icon: 'fa-info-circle', color: '#94a3b8', bg: 'rgba(148,163,184,0.15)', label: notif.workflow_state };
             const typeLabel = appTypeLabels[notif.application_type] || notif.application_type;
-            const isHighPriority = notif.priority_level === 'high';
+            const applicantName = String(notif.full_name || 'Unknown applicant');
+            const safeApplicantName = applicantName.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[character]);
+            const destination = ['verified', 'approved', 'released'].includes(stateKey)
+                ? 'barangay_records.php'
+                : 'submit_application.php';
+            const applicantUrl = `${destination}?search=${encodeURIComponent(applicantName)}`;
 
             const dateObj = new Date((notif.date_submitted || '').replace(' ', 'T'));
             const timeAgo = getTimeAgo(dateObj);
 
             const item = document.createElement('div');
             item.className = 'notification-item';
-            item.style.cssText = 'display:flex;align-items:flex-start;padding:11px 5px;border-bottom:1px solid #f1f5f9;gap:12px;cursor:pointer;transition:background 0.15s;';
+            item.style.cssText = 'display:flex;align-items:flex-start;padding:11px 5px;border-bottom:1px solid #f1f5f9;gap:12px;transition:background 0.15s;';
             item.onmouseenter = () => item.style.background = '#f8fafc';
             item.onmouseleave = () => item.style.background = '';
             item.innerHTML = `
@@ -483,7 +477,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                 </div>
                 <div style="flex:1;min-width:0;">
                     <div style="font-weight:700;font-size:0.84rem;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                        ${notif.full_name}${isHighPriority ? ' <span style="background:#f59e0b;color:#fff;font-size:0.62rem;font-weight:800;padding:1px 6px;border-radius:10px;vertical-align:middle;">★ PRIORITY</span>' : ''}
+                        <a href="${applicantUrl}" title="Show ${safeApplicantName}" style="color:inherit;text-decoration:none;cursor:pointer;">${safeApplicantName}</a>
                     </div>
                     <div style="font-size:0.76rem;color:#475569;margin-top:2px;">${typeLabel}</div>
                     <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
@@ -524,17 +518,9 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
         // The Submit Application page contains all active states, not only
         // applications that are still at the first Received step.
         if (el('statReceived'))  el('statReceived').textContent  = data.queue_count ?? 0;
-        if (el('statApproved'))  el('statApproved').textContent  = workflowMap['Approved'] ?? 0;
+        if (el('statApproved'))  el('statApproved').textContent  = workflowMap['Verified'] ?? 0;
         document.querySelectorAll('.dashboard-loading').forEach(node => { node.classList.remove('dashboard-loading'); node.removeAttribute('aria-label'); });
 
-        // Priority banner
-        const priorityCount = data.priority_count ?? 0;
-        const banner = document.getElementById('priorityAlertBanner');
-        const countDisplay = document.getElementById('priorityCountDisplay');
-        if (banner && countDisplay) {
-            countDisplay.textContent = priorityCount;
-            banner.classList.toggle('hidden', priorityCount === 0);
-        }
     }
 
     function initializeCharts(data) {
@@ -544,7 +530,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
         // --- Status Chart ---
         const statusCtx = document.getElementById('statusChart')?.getContext('2d');
         if (statusCtx && data.workflow_stats) {
-            const statusOrder = ['Received', 'For Review', 'Verified', 'Approved', 'Released', 'Rejected', 'Deceased'];
+            const statusOrder = ['Received', 'For Review', 'Verified', 'Rejected', 'Deceased'];
             const workflowStats = [...data.workflow_stats].sort((a, b) => {
                 const aIndex = statusOrder.indexOf(a.workflow_state);
                 const bIndex = statusOrder.indexOf(b.workflow_state);
@@ -556,8 +542,6 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                 'Received':   '#94a3b8',
                 'For Review': '#3b82f6',
                 'Verified':   '#14b8a6',
-                'Approved':   '#22c55e',
-                'Released':   '#8b5cf6',
                 'Rejected':   '#ef4444',
                 'Deceased':   '#64748b'
             };
@@ -568,7 +552,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                 options: { 
                     responsive: true, 
                     maintainAspectRatio: false, 
-                    animation: { duration: 180 },
+                    animation: false,
                     plugins: { 
                         legend: { 
                             position: 'right',
@@ -628,7 +612,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        animation: { duration: 180 },
+                        animation: false,
                         plugins: {
                             legend: {
                                 labels: {

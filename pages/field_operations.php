@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     requireOperationsCsrf();
     $action = (string)($_POST['action'] ?? '');
     if (in_array($action, ['create_batch', 'release_batch', 'receive_batch', 'update_batch_item'], true)) {
-        $operationsAnchor = 'batches';
+        operationsRedirect('Hardcopy batch processing has been removed from SENIORLINK.', false);
     } elseif (in_array($action, ['add_personnel', 'toggle_personnel'], true)) {
         $operationsAnchor = 'personnel';
     } else {
@@ -80,26 +80,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($action === 'save_visit') {
+            if (!$isDepartment) operationsRedirect('Only the Department Admin can assign and schedule surprise home visits.', false);
             $applicationId = trim((string)($_POST['application_id'] ?? ''));
             $app = fetchScopedApplication($conn, $applicationId, $isDepartment, $barangay);
             if (!$app || ($app['application_type'] ?? '') !== 'pension') operationsRedirect('Local pension application not found.', false);
 
-            $eligibility = (string)($_POST['eligibility'] ?? '');
+            $eligibility = 'Eligible';
             $reason = trim(strip_tags((string)($_POST['reason'] ?? '')));
             $notes = trim(strip_tags((string)($_POST['notes'] ?? '')));
-            if (!in_array($eligibility, ['Eligible', 'Not Eligible'], true)) operationsRedirect('Select a valid eligibility decision.', false);
 
             $schedule = null;
             $personnelId = null;
-            $status = 'Not Eligible';
-            if ($eligibility === 'Eligible') {
+            $status = 'Scheduled';
+            {
                 $personnelId = filter_var($_POST['personnel_id'] ?? null, FILTER_VALIDATE_INT) ?: null;
                 $rawSchedule = trim((string)($_POST['scheduled_at'] ?? ''));
                 $tz = new DateTimeZone('Asia/Manila');
                 $date = DateTime::createFromFormat('Y-m-d\TH:i', $rawSchedule, $tz);
                 $errors = DateTime::getLastErrors();
                 $validDate = $date && ($errors === false || ($errors['warning_count'] === 0 && $errors['error_count'] === 0));
-                if ($reason === '') operationsRedirect('Enter the reason for home visit eligibility.', false);
                 if (!$personnelId) operationsRedirect('Assign personnel to the visit.', false);
                 if (!$validDate || $date <= new DateTime('now', $tz)) operationsRedirect('Choose a future visit date and time.', false);
                 if (in_array($date->format('N'), ['6', '7'], true) || (int)$date->format('H') < 8 || (int)$date->format('H') >= 17 || !in_array($date->format('i'), ['00', '30'], true)) {
@@ -124,21 +123,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$eligibility, $reason ?: null, $personnelId, $schedule, $status, $notes ?: null, $_SESSION['user_id'], $applicationId]);
             logAudit($conn, 'SAVE_HOME_VISIT_ASSESSMENT', "{$applicationId}: {$eligibility}; status {$status}.");
 
-            if ($schedule && !empty($app['contact_number'])) {
-                try {
-                    $label = (new DateTime($schedule, new DateTimeZone('Asia/Manila')))->format('M j, Y g:i A');
-                    $sms = "SENIORLINK: Home visit for {$applicationId} is scheduled on {$label}. Please keep your phone available.";
-                    $result = sendOrQueueSms($conn, $applicationId, $app['contact_number'], $sms);
-                    $smsStmt = $conn->prepare('UPDATE applications SET sms_notification_status = ? WHERE id_number = ?');
-                    $smsStmt->execute([$result['status'], $applicationId]);
-                } catch (Throwable $ignored) {
-                    // The visit remains saved even if the optional SMS provider is unavailable.
-                }
-            }
-            operationsRedirect('Home visit assessment saved.');
+            operationsRedirect('Home visit assignment saved. The schedule remains private to authorized personnel.');
         }
 
         if ($action === 'update_visit_status') {
+            if (!$isDepartment) operationsRedirect('Only the Department Admin can update surprise home visits.', false);
             $applicationId = trim((string)($_POST['application_id'] ?? ''));
             $app = fetchScopedApplication($conn, $applicationId, $isDepartment, $barangay);
             if (!$app) operationsRedirect('Application not found.', false);
@@ -256,53 +245,10 @@ if (!$isDepartment) {
     $visitSql .= ' AND a.barangay = ?';
     $visitParams[] = $barangay;
 }
-$visitSql .= ' ORDER BY CASE WHEN a.home_visit_scheduled_at IS NULL THEN 1 ELSE 0 END, a.home_visit_scheduled_at, a.date_submitted DESC';
+$visitSql .= " ORDER BY CASE COALESCE(NULLIF(a.home_visit_status, ''), 'Waiting for Home Visit') WHEN 'Waiting for Home Visit' THEN 0 WHEN 'Scheduled' THEN 1 WHEN 'In Progress' THEN 2 ELSE 3 END, a.home_visit_scheduled_at, a.date_submitted DESC";
 $visitStmt = $conn->prepare($visitSql);
 $visitStmt->execute($visitParams);
 $visits = $visitStmt->fetchAll(PDO::FETCH_ASSOC);
-
-$eligibleApps = [];
-if (!$isDepartment) {
-    $eligibleStmt = $conn->prepare("SELECT a.id_number, a.full_name, a.application_type, a.workflow_state
-        FROM applications a
-        WHERE a.barangay = ? AND a.workflow_state = 'For Review' AND COALESCE(a.is_archived, 0) = 0
-          AND NOT EXISTS (SELECT 1 FROM hardcopy_batch_items bi WHERE bi.application_id = a.id_number)
-        ORDER BY a.full_name");
-    $eligibleStmt->execute([$barangay]);
-    $eligibleApps = $eligibleStmt->fetchAll(PDO::FETCH_ASSOC);
-}
-
-$batchSql = "SELECT b.*, CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')) received_by_name,
-                    COUNT(i.id) item_count,
-                    SUM(CASE WHEN i.document_status = 'Complete' THEN 1 ELSE 0 END) complete_count,
-                    SUM(CASE WHEN i.document_status = 'Incomplete' THEN 1 ELSE 0 END) incomplete_count
-             FROM hardcopy_batches b
-             LEFT JOIN users u ON u.id = b.received_by_user_id
-             LEFT JOIN hardcopy_batch_items i ON i.batch_id = b.id";
-$batchParams = [];
-if (!$isDepartment) {
-    $batchSql .= ' WHERE b.barangay = ?';
-    $batchParams[] = $barangay;
-}
-$batchSql .= ' GROUP BY b.id, u.first_name, u.last_name ORDER BY b.created_at DESC';
-$batchStmt = $conn->prepare($batchSql);
-$batchStmt->execute($batchParams);
-$batches = $batchStmt->fetchAll(PDO::FETCH_ASSOC);
-
-$batchStatusCounts = ['Draft' => 0, 'Released' => 0, 'Received' => 0, 'Incomplete' => 0, 'Completed' => 0];
-foreach ($batches as $batchRow) {
-    $batchRowStatus = (string)($batchRow['status'] ?? '');
-    if (array_key_exists($batchRowStatus, $batchStatusCounts)) $batchStatusCounts[$batchRowStatus]++;
-}
-
-$itemsByBatch = [];
-if ($batches) {
-    $batchIds = array_column($batches, 'id');
-    $marks = implode(',', array_fill(0, count($batchIds), '?'));
-    $itemsStmt = $conn->prepare("SELECT i.*, a.full_name, a.application_type, a.workflow_state FROM hardcopy_batch_items i JOIN applications a ON a.id_number = i.application_id WHERE i.batch_id IN ({$marks}) ORDER BY a.full_name");
-    $itemsStmt->execute($batchIds);
-    foreach ($itemsStmt->fetchAll(PDO::FETCH_ASSOC) as $item) $itemsByBatch[$item['batch_id']][] = $item;
-}
 
 $sidebarPartial = $isDepartment ? '../partials/department_sidebar.php' : '../partials/barangay_sidebar.php';
 $sidebarCss = $isDepartment ? '../assets/css/department-sidebar.css' : '../assets/css/barangay-sidebar.css';
@@ -318,7 +264,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
     <title>SENIORLINK - Field Operations</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="<?= htmlspecialchars($sidebarCss) ?>?v=4">
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=11">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
     <script src="../assets/js/table-pagination.js?v=1" defer></script>
     <style>
@@ -572,7 +518,6 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
 
         <div class="tabs" role="tablist" aria-label="Field operations sections">
             <button class="tab-btn active" id="visitsTab" type="button" role="tab" aria-selected="true" aria-controls="tab-visits" data-tab="visits"><i class="fas fa-house-medical"></i> Home Visits</button>
-            <button class="tab-btn" id="batchesTab" type="button" role="tab" aria-selected="false" aria-controls="tab-batches" data-tab="batches"><i class="fas fa-box"></i> Hardcopy Batches</button>
             <?php if ($isDepartment): ?><button class="tab-btn" id="personnelTab" type="button" role="tab" aria-selected="false" aria-controls="tab-personnel" data-tab="personnel"><i class="fas fa-user-nurse"></i> Personnel</button><?php endif; ?>
         </div>
 
@@ -581,9 +526,9 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
                 <div class="panel-head"><h2>Home Visit Monitoring</h2><span class="muted"><?= count($visits) ?> local pension record(s)</span></div>
                 <div class="table-wrap">
                     <table>
-                        <thead><tr><th>Senior</th><th>Barangay</th><th>Eligibility</th><th>Schedule</th><th>Personnel</th><th>Status</th><th>Manage</th></tr></thead>
+                        <thead><tr><th>Senior</th><th>Barangay</th><th>Eligibility</th><th>Schedule</th><th>Personnel</th><th>Status</th><?php if ($isDepartment): ?><th>Manage</th><?php endif; ?></tr></thead>
                         <tbody data-paginate="10" data-pagination-label="Home visit pages">
-                        <?php if (!$visits): ?><tr><td colspan="7">No local pension applications found.</td></tr><?php endif; ?>
+                        <?php if (!$visits): ?><tr><td colspan="<?= $isDepartment ? 7 : 6 ?>">No local pension applications found.</td></tr><?php endif; ?>
                         <?php foreach ($visits as $visit): ?>
                             <tr>
                                 <td><strong><?= htmlspecialchars($visit['full_name']) ?></strong><br><span class="muted"><?= htmlspecialchars($visit['id_number']) ?></span></td>
@@ -591,8 +536,9 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
                                 <td><span class="badge <?= strtolower(str_replace(' ', '-', $visit['home_visit_eligibility'] ?? 'pending')) ?>"><?= htmlspecialchars($visit['home_visit_eligibility'] ?: 'Pending') ?></span><br><span class="muted"><?= htmlspecialchars($visit['home_visit_eligibility_reason'] ?? '') ?></span></td>
                                 <td><?= $visit['home_visit_scheduled_at'] ? htmlspecialchars(date('M j, Y g:i A', strtotime($visit['home_visit_scheduled_at']))) : '-' ?></td>
                                 <td><?= htmlspecialchars($visit['personnel_name'] ?? '-') ?></td>
-                                <td><span class="badge <?= strtolower(str_replace(' ', '-', $visit['home_visit_status'] ?? 'pending')) ?>"><?= htmlspecialchars($visit['home_visit_status'] ?: 'Pending') ?></span></td>
-                                <td><button class="btn btn-primary" type="button" onclick='openVisit(<?= json_encode($visit, JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>Assess / Schedule</button></td>
+                                <?php $visitStatus = $visit['home_visit_status'] ?: 'Waiting for Home Visit'; ?>
+                                <td><span class="badge <?= strtolower(str_replace(' ', '-', $visitStatus)) ?>"><?= htmlspecialchars($visitStatus) ?></span></td>
+                                <?php if ($isDepartment): ?><td><button class="btn btn-primary" type="button" onclick='openVisit(<?= json_encode($visit, JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>Assign / Schedule</button></td><?php endif; ?>
                             </tr>
                         <?php endforeach; ?>
                         </tbody>
@@ -600,6 +546,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
                 </div>
             </div>
 
+            <?php if ($isDepartment): ?>
             <div class="panel" id="visitEditor">
                 <div class="panel-head"><h2>Assessment and Schedule</h2><span class="muted" id="visitEditorName">Select a senior above</span></div>
                 <div class="panel-body">
@@ -607,11 +554,10 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
                         <input type="hidden" name="action" value="save_visit">
                         <input type="hidden" name="application_id" id="visitApplicationId">
-                        <div class="field"><label>Eligibility</label><select name="eligibility" id="visitEligibility" required onchange="toggleVisitFields()"><option value="">Select decision</option><option>Eligible</option><option>Not Eligible</option></select></div>
-                        <div class="field"><label>Reason</label><input name="reason" id="visitReason" maxlength="255" placeholder="Reason for the decision"></div>
+                        <div class="field full"><span class="muted"><i class="fas fa-circle-info"></i> This required home visit is privately scheduled by the Department Admin. Do not disclose the date in advance.</span></div>
                         <div class="field visit-assignment"><label>Assigned Personnel</label><select name="personnel_id" id="visitPersonnel"><option value="">Select personnel</option><?php foreach ($activePersonnel as $p): ?><option value="<?= (int)$p['id'] ?>"><?= htmlspecialchars($p['full_name'] . (!empty($p['position']) ? ' - ' . $p['position'] : '')) ?></option><?php endforeach; ?></select></div>
                         <div class="field visit-assignment"><label>Schedule</label><input type="datetime-local" name="scheduled_at" id="visitSchedule" step="1800" onclick="if (this.showPicker && !this.disabled) this.showPicker()"></div>
-                        <div class="field full" id="visitScheduleHelp"><span class="muted"><i class="fas fa-info-circle"></i> Select <strong>Eligible</strong> to enable the calendar and personnel fields.</span></div>
+                        <div class="field"><label>Internal scheduling note (optional)</label><input name="reason" id="visitReason" maxlength="255" placeholder="Internal reason or assignment note"></div>
                         <div class="field full"><label>Assessment / Visit Notes</label><textarea name="notes" id="visitNotes" placeholder="Assessment notes, address instructions, or visit result"></textarea></div>
                         <div class="full"><button class="btn btn-primary" type="submit"><i class="fas fa-save"></i> Save Assessment</button></div>
                     </form>
@@ -626,8 +572,12 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
                     </form>
                 </div>
             </div>
+            <?php else: ?>
+            <div class="panel"><div class="panel-body"><p class="muted"><i class="fas fa-user-shield"></i> Local Pension applications are automatically queued for an unannounced home visit. The Department Admin privately assigns personnel and schedules each visit.</p></div></div>
+            <?php endif; ?>
         </section>
 
+        <?php if (false): /* Retained only as inactive historical markup; the module is removed. */ ?>
         <section id="tab-batches" class="tab-panel batch-workspace" role="tabpanel" aria-labelledby="batchesTab">
             <div class="batch-intro" aria-labelledby="batchPageTitle">
                 <div>
@@ -748,6 +698,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
                 </div>
             </div>
         </section>
+        <?php endif; ?>
 
         <?php if ($isDepartment): ?>
         <section id="tab-personnel" class="tab-panel" role="tabpanel" aria-labelledby="personnelTab">
@@ -866,26 +817,17 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
         document.getElementById('visitApplicationId').value = visit.id_number;
         document.getElementById('statusApplicationId').value = visit.id_number;
         document.getElementById('visitEditorName').textContent = visit.full_name + ' (' + visit.id_number + ')';
-        document.getElementById('visitEligibility').value = visit.home_visit_eligibility || '';
         document.getElementById('visitReason').value = visit.home_visit_eligibility_reason || '';
         document.getElementById('visitPersonnel').value = visit.home_visit_personnel_id || '';
         document.getElementById('visitSchedule').value = toLocalInput(visit.home_visit_scheduled_at);
         document.getElementById('visitNotes').value = visit.home_visit_notes || '';
-        toggleVisitFields();
         document.getElementById('visitEditor').scrollIntoView({behavior:'smooth', block:'start'});
     }
 
-    function toggleVisitFields() {
-        const eligible = document.getElementById('visitEligibility').value === 'Eligible';
-        document.querySelectorAll('.visit-assignment').forEach((field) => field.style.opacity = eligible ? '1' : '0.55');
-        document.getElementById('visitPersonnel').required = eligible;
-        document.getElementById('visitPersonnel').disabled = !eligible;
-        document.getElementById('visitSchedule').required = eligible;
-        document.getElementById('visitSchedule').disabled = !eligible;
-        document.getElementById('visitReason').required = eligible;
-        document.getElementById('visitScheduleHelp').style.display = eligible ? 'none' : 'block';
-    }
-    toggleVisitFields();
+    const visitPersonnel = document.getElementById('visitPersonnel');
+    const visitSchedule = document.getElementById('visitSchedule');
+    if (visitPersonnel) visitPersonnel.required = true;
+    if (visitSchedule) visitSchedule.required = true;
 </script>
 </body>
 </html>

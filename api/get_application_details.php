@@ -24,7 +24,7 @@ $userRole     = $_SESSION['role'];
 $userBarangay = $_SESSION['barangay'] ?? null;
 
 $oscaCols = implode(', ', array_map(fn($c) => "a.$c", getOscaExtraColumns()));
-$baseCols = "a.id_number, a.full_name, a.application_type, a.birth_date, a.contact_number, a.complete_address,
+$baseCols = "a.id_number, a.full_name, a.application_type, a.requested_benefit, a.birth_date, a.contact_number, a.complete_address,
              a.emergency_contact, a.emergency_contact_name, a.date_submitted, a.status, a.barangay, a.disability_type,
              (a.proof_of_address IS NOT NULL) as has_proof_of_address, (a.id_image IS NOT NULL) as has_id_image,
              a.lastName, a.firstName, a.middleName, a.suffix,

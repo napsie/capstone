@@ -302,7 +302,7 @@ try {
             #editUserModal .modal-actions .btn { flex: 1 1 0; min-width: 0; }
         }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=15">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
     <script src="../assets/js/table-pagination.js?v=1" defer></script>

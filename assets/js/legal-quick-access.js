@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!button || !drawer || !backdrop || !closeButton) return;
 
     let previouslyFocused = null;
+    let currentNotificationSignature = '';
     const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), summary, [tabindex]:not([tabindex="-1"])';
 
     const openDrawer = () => {
@@ -72,25 +73,48 @@ document.addEventListener('DOMContentLoaded', () => {
         return Number.isNaN(date.getTime()) ? '' : date.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
     };
 
+    const getRecentNotifications = notifications => {
+        if (!Array.isArray(notifications)) return [];
+        return notifications.slice(0, 8);
+    };
+
+    const notificationStorageKey = `seniorlink-quick-notifications-${notificationPanel?.dataset.role || 'user'}`;
+
+    const markNotificationsSeen = () => {
+        if (!currentNotificationSignature) return;
+        sessionStorage.setItem(notificationStorageKey, currentNotificationSignature);
+        if (notificationBadge) notificationBadge.hidden = true;
+    };
+
     const renderQuickNotifications = notifications => {
         if (!notificationList || !notificationBadge) return;
-        const recent = Array.isArray(notifications) ? notifications.slice(0, 8) : [];
+        const recent = getRecentNotifications(notifications);
+        currentNotificationSignature = recent.map(item => `${item.id || item.id_number || ''}:${item.workflow_state || item.status || ''}:${item.date_submitted || ''}`).join('|');
+        const seenSignature = sessionStorage.getItem(notificationStorageKey) || '';
         notificationBadge.textContent = String(recent.length);
         notificationBadge.setAttribute('aria-label', `${recent.length} recent update${recent.length === 1 ? '' : 's'}`);
-        notificationBadge.hidden = recent.length === 0;
+        notificationBadge.hidden = recent.length === 0 || currentNotificationSignature === seenSignature || notificationPanel?.classList.contains('is-open');
         if (!recent.length) {
-            notificationList.innerHTML = '<div class="notification-quick-state"><i class="fas fa-circle-check" aria-hidden="true"></i>No recent application updates.</div>';
+            notificationList.innerHTML = '<div class="notification-quick-state"><i class="fas fa-circle-check" aria-hidden="true"></i><strong>No recent updates</strong><br>There are no recent applications to display.</div>';
             return;
         }
         const typeLabels = { senior: 'Senior ID', pension: 'Local Pension', national_pension: 'DSWD Pension', milestone_gift: 'Milestone Gift', landbank: 'Land Bank', home_visit: 'Home Visit', burial: 'Burial Assistance' };
         notificationList.innerHTML = recent.map(item => {
-            const status = item.workflow_state || item.status || 'Received';
+            const rawStatus = item.workflow_state || item.status || 'Received';
+            const status = ['Approved', 'Released'].includes(rawStatus) ? 'Verified' : rawStatus;
             const type = typeLabels[item.application_type] || item.application_type || 'Application';
             const priority = item.priority_level === 'high' ? '<span class="notification-quick-status notification-quick-priority">Priority</span>' : '';
+            const applicantName = item.full_name || 'Application update';
+            const isFinalized = ['Verified', 'Approved', 'Released'].includes(rawStatus);
+            const isBarangay = notificationPanel?.dataset.role === 'barangay_staff';
+            const destination = isFinalized
+                ? (isBarangay ? 'barangay_records.php' : 'department_records.php')
+                : (isBarangay ? 'submit_application.php' : 'verify_document.php');
+            const applicantUrl = `${destination}?search=${encodeURIComponent(applicantName)}`;
             return `<article class="notification-quick-item">
                 <span class="notification-quick-icon" aria-hidden="true"><i class="fas fa-file-circle-check"></i></span>
                 <div class="notification-quick-copy">
-                    <div class="notification-quick-name">${escapeHtml(item.full_name || 'Application update')}</div>
+                    <div class="notification-quick-name"><a href="${applicantUrl}" title="Show ${escapeHtml(applicantName)}">${escapeHtml(applicantName)}</a></div>
                     <div class="notification-quick-meta">${escapeHtml(type)}${item.barangay ? ` · ${escapeHtml(item.barangay)}` : ''}<br>${escapeHtml(formatNotificationDate(item.date_submitted))}</div>
                     <span class="notification-quick-status">${escapeHtml(status)}</span>${priority}
                 </div>
@@ -106,19 +130,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await response.json();
             renderQuickNotifications(result?.data?.notifications || []);
         } catch (error) {
+            currentNotificationSignature = '';
+            if (notificationBadge) notificationBadge.hidden = true;
             if (notificationList) notificationList.innerHTML = '<div class="notification-quick-state"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i>Notifications could not be loaded.</div>';
         }
     };
 
-    notificationButton?.addEventListener('click', () => {
+    notificationButton?.addEventListener('click', async () => {
         const willOpen = !notificationPanel?.classList.contains('is-open');
         closeNotificationPanel();
         if (!willOpen || !notificationPanel) return;
+        if (notificationList) notificationList.innerHTML = '<div class="notification-quick-state"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i>Loading active updates…</div>';
         notificationPanel.classList.add('is-open');
         notificationPanel.setAttribute('aria-hidden', 'false');
         notificationButton.setAttribute('aria-expanded', 'true');
         document.body.classList.add('notification-quick-open');
         setQuickActionsOpen(false);
+        await loadQuickNotifications();
+        markNotificationsSeen();
     });
     notificationClose?.addEventListener('click', () => {
         closeNotificationPanel();

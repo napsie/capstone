@@ -63,27 +63,41 @@
         return display(app.senior_id_no, app.application_type === 'senior' ? 'Not yet issued' : 'Not provided');
     }
 
+    function isWaitingForHomeVisit(app) {
+        const isLocalPension = app.application_type === 'pension'
+            || app.requested_benefit === 'Local Social Pension Assessment';
+        return isLocalPension && app.home_visit_status !== 'Completed';
+    }
+
     function applicationIdentity(app, title) {
         return section('fa-clipboard-list', title, [
             field('Application ID', app.id_number),
             field('Application Type', typeLabels[app.application_type] || app.application_type),
             field('Requested Benefit / Service', app.requested_benefit),
             field('Senior Citizen ID No.', seniorId(app), { raw: true }),
-            field('Processing Status', app.workflow_state || app.status || 'Received'),
-            field('Date Submitted', dateTime(app.date_submitted), { raw: true }),
-            field('Priority Level', app.priority_level || 'Normal')
+            field('Processing Status', isWaitingForHomeVisit(app)
+                ? 'Waiting for Home Visitation'
+                : (app.workflow_state || app.status || 'Received')),
+            field('Date Submitted', dateTime(app.date_submitted), { raw: true })
         ]);
     }
 
     function typeSpecificSections(app) {
         const sections = [];
-        const type = app.application_type || '';
+        const benefitTypes = {
+            'Senior Citizen ID Registration': 'senior',
+            'Local Social Pension Assessment': 'pension',
+            'Land Bank Cash Card Enrollment': 'landbank',
+            'Milestone Cash Gift': 'milestone_gift'
+        };
+        const type = benefitTypes[app.requested_benefit] || app.application_type || '';
 
         if (type === 'senior') {
             sections.push(section('fa-id-card', app.requested_benefit === 'Senior Citizen ID Registration' ? 'Senior ID Registration' : 'Senior Pre-registration Profile', [
                 field('Application Purpose', app.id_purpose), field('Control Number', app.control_no),
                 field('ID Type Presented', app.id_type_presented), field('TIN', app.tin),
-                field('Health Status', app.health_status)
+                field('Health Status', app.health_status), field('Emergency Contact', app.emergency_contact_name),
+                field('Emergency Contact Number', app.emergency_contact)
             ]));
         }
 
@@ -101,6 +115,8 @@
                 field('Personal Income Amount', money(app.personal_income_amount), { raw: true }),
                 field('Family Support', yesNo(app.family_support), { raw: true }),
                 field('Family Support Amount', money(app.family_support_amount), { raw: true }),
+                field('Owns House', yesNo(app.owns_house), { raw: true }),
+                field('Renter', yesNo(app.is_renter), { raw: true }),
                 field('ATM / Temporary Stub Number', app.atm_card_no)
             ]));
         }
@@ -208,9 +224,10 @@
         section('fa-clipboard-list', 'Application Context', [
             field('Application ID', app.id_number),
             field('Application Type', typeLabels[app.application_type] || app.application_type),
-            field('Processing Status', app.workflow_state || app.status || 'Received'),
+            field('Processing Status', isWaitingForHomeVisit(app)
+                ? 'Waiting for Home Visitation'
+                : (app.workflow_state || app.status || 'Received')),
             field('Date Submitted', dateTime(app.date_submitted), { raw: true }),
-            field('Priority Level', app.priority_level || 'Normal'),
             ...(app.application_type === 'pension' ? [
                 field('Home Visit Schedule', dateTime(app.home_visit_scheduled_at), { raw: true }),
                 field('SMS Notification', app.sms_notification_status)

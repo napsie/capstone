@@ -38,7 +38,7 @@ try {
         $issuedStmt = $conn->prepare(
             "SELECT changed_by, changed_at
              FROM application_history
-             WHERE application_id = ? AND new_state = 'Approved'
+             WHERE application_id = ? AND new_state IN ('Verified', 'Approved')
              ORDER BY changed_at ASC LIMIT 1"
         );
         $issuedStmt->execute([$appId]);

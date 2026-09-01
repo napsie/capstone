@@ -24,7 +24,7 @@ try {
             full_name,
             application_type,
             status,
-            COALESCE(workflow_state, 'Received') as workflow_state,
+            CASE WHEN COALESCE(workflow_state, 'Received') IN ('Approved','Released') THEN 'Verified' ELSE COALESCE(workflow_state, 'Received') END as workflow_state,
             priority_level,
             barangay,
             date_submitted
@@ -65,10 +65,10 @@ try {
 
     // Workflow status distribution (for extended stat cards)
     $stmt = $conn->prepare("
-        SELECT COALESCE(workflow_state, 'Received') as workflow_state, COUNT(*) as count
+        SELECT CASE WHEN COALESCE(workflow_state, 'Received') IN ('Approved','Released') THEN 'Verified' ELSE COALESCE(workflow_state, 'Received') END as workflow_state, COUNT(*) as count
         FROM applications
         WHERE (is_archived = 0 OR is_archived IS NULL)
-        GROUP BY workflow_state
+        GROUP BY CASE WHEN COALESCE(workflow_state, 'Received') IN ('Approved','Released') THEN 'Verified' ELSE COALESCE(workflow_state, 'Received') END
     ");
     $stmt->execute();
     $workflowRows = $stmt->fetchAll(PDO::FETCH_ASSOC);

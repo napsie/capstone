@@ -18,8 +18,8 @@ $yearFilter = $_GET['year'] ?? 'all';
 $recordsPage = max(1, (int)($_GET['page'] ?? 1));
 $recordsPerPage = 25;
 
-// Build query – only approved/released for this barangay
-$baseQuery    = "FROM applications WHERE barangay = :barangay AND (is_archived = 0 OR is_archived IS NULL) AND (workflow_state IN ('Approved', 'Released') OR status = 'approved')";
+// Verified is the final workflow state; retain legacy Approved/Released records.
+$baseQuery    = "FROM applications WHERE barangay = :barangay AND (is_archived = 0 OR is_archived IS NULL) AND (workflow_state IN ('Verified', 'Approved', 'Released') OR status IN ('verified', 'approved'))";
 $params       = [':barangay' => $_SESSION['barangay']];
 if ($search !== '') {
     $baseQuery .= ' AND (full_name LIKE :search OR id_number LIKE :search)';
@@ -46,7 +46,7 @@ $recordsTotalPages = max(1, (int)ceil($totalRecords / $recordsPerPage));
 $recordsPage = min($recordsPage, $recordsTotalPages);
 $recordsOffset = ($recordsPage - 1) * $recordsPerPage;
 
-$recordsQuery = "SELECT id_number as id, full_name, application_type, date_submitted, COALESCE(workflow_state, status) as status " . $baseQuery . " ORDER BY date_submitted DESC, id_number DESC LIMIT :limit OFFSET :offset";
+$recordsQuery = "SELECT id_number as id, full_name, application_type, date_submitted, CASE WHEN COALESCE(workflow_state, status) IN ('Approved','Released') THEN 'Verified' ELSE COALESCE(workflow_state, status) END as status " . $baseQuery . " ORDER BY date_submitted DESC, id_number DESC LIMIT :limit OFFSET :offset";
 $recordsStmt  = $conn->prepare($recordsQuery);
 $recordsStmt->bindValue(':limit', $recordsPerPage, PDO::PARAM_INT);
 $recordsStmt->bindValue(':offset', $recordsOffset, PDO::PARAM_INT);
@@ -559,7 +559,7 @@ function getStatusClass($status) {
             color: var(--gray);
         }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=15">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
     <script src="../assets/js/table-pagination.js?v=1" defer></script>
@@ -600,7 +600,7 @@ function getStatusClass($status) {
             <div class="stat-card">
                 <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
                 <div>
-                    <div class="stat-label">Total Approved</div>
+                    <div class="stat-label">Total Verified</div>
                     <div class="stat-value" id="totalApproved"><?php echo $totalRecords; ?></div>
                 </div>
             </div>
@@ -625,7 +625,7 @@ function getStatusClass($status) {
             <div class="records-card-header">
                 <h2><i class="fas fa-folder-open"></i> Application Records</h2>
                 <button class="btn-export" onclick="openExportModal()">
-                    <i class="fas fa-file-pdf"></i> Generate Report
+                    <i class="fas fa-file-excel"></i> Generate Report
                 </button>
             </div>
 
@@ -762,14 +762,6 @@ function getStatusClass($status) {
                     <div class="step-circle">3</div>
                     <div class="step-label">Verified</div>
                 </div>
-                <div class="step" id="step-Approved">
-                    <div class="step-circle">4</div>
-                    <div class="step-label">Approved</div>
-                </div>
-                <div class="step" id="step-Released">
-                    <div class="step-circle">5</div>
-                    <div class="step-label">Released</div>
-                </div>
             </div>
 
             <!-- Recorded compliance results -->
@@ -852,16 +844,16 @@ function getStatusClass($status) {
     </div><!-- /.modal-box -->
 </div><!-- /#applicationModal -->
 
-<!-- Export PDF filter modal -->
+<!-- Export Excel filter modal -->
 <div id="exportModal" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="exportModalTitle">
     <div class="modal-box export-modal-box">
         <div class="modal-head">
-            <h2 id="exportModalTitle"><i class="fas fa-file-pdf"></i> Generate Report</h2>
+            <h2 id="exportModalTitle"><i class="fas fa-file-excel"></i> Generate Excel Report</h2>
             <button type="button" class="modal-close" id="closeExportModalBtn" aria-label="Close report dialog">&times;</button>
         </div>
-        <form id="exportReportForm" method="GET" action="../api/export_records_pdf.php">
+        <form id="exportReportForm" method="GET" action="../api/export_records_excel.php">
             <div class="export-modal-body">
-                <p>Set the filters for your PDF report. Only records matching these criteria will be included.</p>
+                <p>Set the filters for your Excel report. Only records matching these criteria will be included.</p>
                 <input type="hidden" name="scope" value="barangay">
                 <div class="export-filter-grid">
                     <div class="export-field">
@@ -876,9 +868,8 @@ function getStatusClass($status) {
                     <div class="export-field">
                         <label for="exportStatus">Status</label>
                         <select name="status" id="exportStatus">
-                            <option value="all">Approved &amp; Released</option>
-                            <option value="Approved">Approved Only</option>
-                            <option value="Released">Released Only</option>
+                            <option value="all">All Verified Records</option>
+                            <option value="Verified">Verified</option>
                         </select>
                     </div>
                     <div class="export-field">
@@ -904,7 +895,7 @@ function getStatusClass($status) {
                 </div>
                 <div class="export-actions">
                     <button type="button" class="btn-export-cancel" id="cancelExportBtn">Cancel</button>
-                    <button type="submit" class="btn-export-submit"><i class="fas fa-file-pdf"></i> Generate PDF</button>
+                    <button type="submit" class="btn-export-submit"><i class="fas fa-file-excel"></i> Generate Excel</button>
                 </div>
             </div>
         </form>
@@ -912,8 +903,8 @@ function getStatusClass($status) {
 </div>
 
 <script src="../assets/js/sidebar-toggle.js?v=3"></script>
-<script src="../assets/js/application-documents.js?v=7"></script>
-<script src="../assets/js/application-details.js?v=5"></script>
+<script src="../assets/js/application-documents.js?v=8"></script>
+<script src="../assets/js/application-details.js?v=9"></script>
 <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 <script src="../assets/js/application-form-generator.js?v=2"></script>
 <script src="../assets/js/report-validation.js?v=1"></script>
@@ -1009,7 +1000,7 @@ function getStatusClass($status) {
         document.getElementById('previewIdImage').innerHTML   = '<span style="color:var(--gray);font-size:0.8rem;">Loading…</span>';
 
         // Reset stepper
-        ['step-Received','step-For-Review','step-Verified','step-Approved','step-Released'].forEach(id => {
+        ['step-Received','step-For-Review','step-Verified'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.className = 'step';
         });
@@ -1039,8 +1030,9 @@ function getStatusClass($status) {
                 officialFormButton.onclick = () => openOfficialApplicationForm(app.id_number);
 
                 /* ── Stepper ── */
-                const steps = ['Received','For Review','Verified','Approved','Released'];
-                const state = app.workflow_state || 'Received';
+                const steps = ['Received','For Review','Verified'];
+                const rawState = app.workflow_state || 'Received';
+                const state = ['Approved','Released'].includes(rawState) ? 'Verified' : rawState;
                 let idx = steps.indexOf(state);
                 if (idx === -1) idx = 0;
                 steps.forEach((s, i) => {
@@ -1084,12 +1076,6 @@ function getStatusClass($status) {
                     ch += ed <= 30
                         ? `<div class="compliance-item"><span>Filing Deadline (Pasig Ord. 3/2026)</span><span class="pass-tag"><i class="fas fa-circle-check"></i> PASS — ${ed} working days</span></div>`
                         : `<div class="compliance-item"><span>Filing Deadline (Pasig Ord. 3/2026)</span><span class="fail-tag"><i class="fas fa-circle-xmark"></i> FAIL — ${ed} days elapsed (limit: 30)</span></div>`;
-                }
-                if (app.priority_level === 'high') {
-                    ch += `<div class="compliance-item" style="background:rgba(245,158,11,0.08);padding:5px;border-radius:4px;">
-                        <span>Priority Queue</span>
-                        <span style="color:#d97706;font-weight:700;"><i class="fas fa-star"></i> High-Priority (Bedridden)</span>
-                    </div>`;
                 }
                 document.getElementById('complianceList').innerHTML = ch;
                 /* ── Dynamic Details (Complete details rendering) ── */
@@ -1177,7 +1163,7 @@ function getStatusClass($status) {
         document.getElementById('noResultsMsg').style.display = visible === 0 ? 'block' : 'none';
     }
 
-    /* ─── Export formatted PDF report ───────────────────────── */
+    /* ─── Export formatted Excel report ─────────────────────── */
     function exportDisplayedRecords() {
         openExportModal();
     }
@@ -1282,7 +1268,6 @@ function getStatusClass($status) {
         healthHtml += getFieldHtml("Living Arrangement", app.living_arrangement);
         healthHtml += getFieldHtml("With Maintenance Meds", app.with_maintenance);
         healthHtml += getFieldHtml("Maintenance Specification", app.maintenance_spec);
-        healthHtml += getFieldHtml("Priority Level", app.priority_level);
 
         if (healthHtml) {
             dynamicHtml += `

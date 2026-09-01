@@ -48,6 +48,17 @@ function toggleOscaFormFields(type, prefix = '') {
     labelId.textContent = labels[1];
 }
 
+/** Resolve the official form for public applications stored under the general senior type. */
+function getOscaFormType(applicationType, requestedBenefit = '') {
+    const benefitTypes = {
+        'Senior Citizen ID Registration': 'senior',
+        'Local Social Pension Assessment': 'pension',
+        'Land Bank Cash Card Enrollment': 'landbank',
+        'Milestone Cash Gift': 'milestone_gift',
+    };
+    return benefitTypes[requestedBenefit] || applicationType || 'senior';
+}
+
 /**
  * Populate OSCA extra fields from application API response.
  */

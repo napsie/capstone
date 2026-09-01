@@ -27,16 +27,11 @@ try {
         exit();
     }
 
-    if ($senior['is_proxy_application'] != 1) {
-        echo json_encode(['success' => false, 'message' => 'Applicant profile is not flagged as Bedridden / Low-Mobility. Only Bedridden seniors are eligible for representative pension benefit claims.']);
-        exit();
-    }
-
     $isValidState = in_array($senior['workflow_state'], ['Verified', 'Approved', 'Released']);
     if (!$isValidState) {
         echo json_encode([
             'success' => false, 
-            'message' => 'Profile status is [' . ($senior['workflow_state'] ?: 'Received') . ']. Applying for pension benefits requires a Verified, Approved, or Released Senior Citizen record.'
+            'message' => 'Profile status is [' . ($senior['workflow_state'] ?: 'Received') . ']. Applying for benefits requires a Verified Senior Citizen record.'
         ]);
         exit();
     }

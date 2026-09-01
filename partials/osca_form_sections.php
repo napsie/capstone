@@ -43,7 +43,7 @@ $id = static fn(string $name): string => $prefix . $name;
 <div id="<?php echo $id('senior-fields'); ?>" class="form-section osca-type-fields" style="display:none;">
     <h3><i class="fas fa-id-card"></i> Senior ID Registration</h3>
     <div class="form-row">
-        <div class="form-group"><label for="<?php echo $id('idPurpose'); ?>">Application Purpose</label><input type="text" id="<?php echo $id('idPurpose'); ?>" name="idPurpose"></div>
+        <div class="form-group"><label for="<?php echo $id('idPurpose'); ?>">Application Purpose</label><select id="<?php echo $id('idPurpose'); ?>" name="idPurpose"><option value="">Select purpose</option><option value="new">New / First-time</option><option value="lost">Lost ID Replacement</option><option value="change">Information Change</option><option value="transfer">Transfer</option></select></div>
         <div class="form-group"><label for="<?php echo $id('controlNo'); ?>">Control Number</label><input type="text" id="<?php echo $id('controlNo'); ?>" name="controlNo"></div>
     </div>
     <div class="form-row">
@@ -97,7 +97,7 @@ $id = static fn(string $name): string => $prefix . $name;
 <div id="<?php echo $id('milestone-fields'); ?>" class="form-section osca-type-fields" style="display:none;">
     <h3><i class="fas fa-cake-candles"></i> Milestone Gift Claim</h3>
     <div class="form-row">
-        <div class="form-group"><label for="<?php echo $id('milestoneAge'); ?>">Milestone Age</label><input type="number" min="80" id="<?php echo $id('milestoneAge'); ?>" name="milestoneAge"></div>
+        <div class="form-group"><label for="<?php echo $id('milestoneAge'); ?>">Milestone Age</label><select id="<?php echo $id('milestoneAge'); ?>" name="milestoneAge"><option value="">Select milestone</option><option value="80">80 years old</option><option value="85">85 years old</option><option value="90">90 years old</option><option value="95">95 years old</option><option value="100">100+ years old</option></select></div>
         <div class="form-group"><label for="<?php echo $id('applicantName'); ?>">Applicant Name</label><input type="text" id="<?php echo $id('applicantName'); ?>" name="applicantName"></div>
     </div>
     <div class="form-row">

@@ -93,11 +93,14 @@ function processProxyRegistration(): array
             'Pasig City', $zipCode,
         ])));
         $healthCondition = trim($_POST['healthCondition'] ?? '');
+        $mobilityStatus = trim($_POST['mobilityStatus'] ?? '');
         $livingArrangement = trim($_POST['livingArrangement'] ?? '');
         $visitPurpose = trim($_POST['visitPurpose'] ?? '');
         $applicationType = trim($_POST['applicationType'] ?? 'senior');
         $requestedBenefit = trim($_POST['requestedBenefit'] ?? '');
         $idPurpose = trim($_POST['idPurpose'] ?? '');
+        $emergencyContactName = trim($_POST['emergencyContactName'] ?? '');
+        $emergencyContact = trim($_POST['emergencyContact'] ?? '');
         $visitSummary = trim($_POST['visitSummary'] ?? '');
         $isPensioner = isset($_POST['isPensioner']) && in_array((string) $_POST['isPensioner'], ['0', '1'], true)
             ? (int) $_POST['isPensioner'] : null;
@@ -110,12 +113,20 @@ function processProxyRegistration(): array
             ? (int) $_POST['personalIncome'] : null;
         $personalIncomeAmount = isset($_POST['personalIncomeAmount']) && $_POST['personalIncomeAmount'] !== ''
             ? (float) $_POST['personalIncomeAmount'] : null;
+        $incomeSource = trim($_POST['incomeSource'] ?? '');
+        $ownsHouse = isset($_POST['ownsHouse']) && in_array((string) $_POST['ownsHouse'], ['0', '1'], true)
+            ? (int) $_POST['ownsHouse'] : null;
+        $isRenter = isset($_POST['isRenter']) && in_array((string) $_POST['isRenter'], ['0', '1'], true)
+            ? (int) $_POST['isRenter'] : null;
         $nameOnCard = trim($_POST['nameOnCard'] ?? '');
         $tin = trim($_POST['tin'] ?? '');
         $seniorIdTypePresented = trim($_POST['seniorIdTypePresented'] ?? '');
         $nationality = trim($_POST['nationality'] ?? '');
         $sourceOfFunds = trim($_POST['sourceOfFunds'] ?? '');
         $milestoneAge = trim($_POST['milestoneAge'] ?? '');
+        $claimantName = trim($_POST['claimantName'] ?? '');
+        $claimantRelationship = trim($_POST['claimantRelationship'] ?? '');
+        $claimantContact = trim($_POST['claimantContact'] ?? '');
         $otherAssistanceDetails = trim($_POST['otherAssistanceDetails'] ?? '');
         
         $sssNumber = trim($_POST['sssNumber'] ?? '');
@@ -131,6 +142,12 @@ function processProxyRegistration(): array
         $proxyAddress = trim($_POST['proxyAddress'] ?? '');
         $proxyIdType = trim($_POST['proxyIdType'] ?? '');
         $proxyIdNumber = trim($_POST['proxyIdNumber'] ?? '');
+        $hasRepresentativeData = implode('', [
+            $proxyName, $proxyRelationship, $proxyContactNumber, $proxyBirthDate,
+            $proxyEmail, $proxyAddress, $proxyIdType, $proxyIdNumber,
+        ]) !== '' || !empty($_FILES['auth_letter_file']['name'])
+            || !empty($_FILES['proxy_id_file']['name'])
+            || !empty($_FILES['proxy_birth_cert_file']['name']);
 
         $requiredFields = [
             'Benefit or Service Requested' => $requestedBenefit,
@@ -138,12 +155,8 @@ function processProxyRegistration(): array
             'Place of Birth' => $placeOfBirth, 'Sex' => $gender,
             'Civil Status' => $civilStatus, 'House / Unit Number' => $houseNo,
             'Street / Subdivision' => $street, 'Barangay' => $barangay,
-            'Medical / Mobility Condition' => $healthCondition,
-            'Living Arrangement' => $livingArrangement, 'Requested Assistance' => $visitPurpose,
-            'Representative Name' => $proxyName, 'Relationship to Senior' => $proxyRelationship,
-            'Representative Birth Date' => $proxyBirthDate,
-            'Representative Address' => $proxyAddress, 'Government ID Type' => $proxyIdType,
-            'Government ID Number' => $proxyIdNumber,
+            'Mobility Status' => $mobilityStatus, 'Living Arrangement' => $livingArrangement,
+            'Requested Assistance' => $visitPurpose,
         ];
         foreach ($requiredFields as $label => $value) {
             if ($value === '') {
@@ -152,8 +165,9 @@ function processProxyRegistration(): array
             }
         }
 
-        if (!preg_match('/^09\d{9}$/', $contactNumber) || !preg_match('/^09\d{9}$/', $proxyContactNumber)) {
-            $result['message'] = 'Senior and representative contact numbers must be valid 11-digit Philippine mobile numbers.';
+        if (!preg_match('/^09\d{9}$/', $contactNumber) ||
+            ($proxyContactNumber !== '' && !preg_match('/^09\d{9}$/', $proxyContactNumber))) {
+            $result['message'] = 'Contact numbers must be valid 11-digit Philippine mobile numbers.';
             return $result;
         }
         if (($seniorEmail !== '' && !filter_var($seniorEmail, FILTER_VALIDATE_EMAIL)) ||
@@ -161,16 +175,18 @@ function processProxyRegistration(): array
             $result['message'] = 'Please provide a valid email address.';
             return $result;
         }
-        if (!isset($_POST['confirmBedridden']) || !isset($_POST['confirmPrivacy'])) {
-            $result['message'] = 'Both the bedridden certification and privacy/authorization consent are required.';
+        if (!isset($_POST['confirmRepresentative']) || !isset($_POST['confirmPrivacy'])) {
+            $result['message'] = 'Both the representative certification and privacy/authorization consent are required.';
+            return $result;
+        }
+        if (!in_array($mobilityStatus, ['Physically Fit', 'Needs Mobility Assistance', 'Bedridden', 'Frail / Sickly', 'PWD'], true)) {
+            $result['message'] = 'Please select a valid mobility status.';
             return $result;
         }
 
         $allowedBenefits = [
             'Senior Citizen ID Registration',
-            'Home Visitation / Confirmation',
             'Local Social Pension Assessment',
-            'National DSWD Social Pension Assessment',
             'Land Bank Cash Card Enrollment',
             'Milestone Cash Gift',
             'Other OSCA Assistance',
@@ -182,20 +198,18 @@ function processProxyRegistration(): array
 
         switch ($requestedBenefit) {
             case 'Senior Citizen ID Registration':
-                if (!in_array($idPurpose, ['First-time registration', 'Renewal / information update', 'Replacement of lost or damaged ID'], true)) {
+                if (!in_array($idPurpose, ['new', 'lost', 'change', 'transfer'], true)) {
                     $result['message'] = 'Please select the ID application purpose.';
                     return $result;
                 }
-                break;
-            case 'Home Visitation / Confirmation':
-                if ($visitSummary === '') {
-                    $result['message'] = 'Visit instructions are required for home visitation.';
+                if ($emergencyContactName === '' || !preg_match('/^09\d{9}$/', $emergencyContact)) {
+                    $result['message'] = 'Please provide the emergency contact name and a valid 11-digit mobile number.';
                     return $result;
                 }
                 break;
             case 'Local Social Pension Assessment':
-            case 'National DSWD Social Pension Assessment':
-                if ($isPensioner === null || $familySupport === null || $personalIncome === null) {
+                if ($isPensioner === null || $familySupport === null || $personalIncome === null ||
+                    $incomeSource === '' || $ownsHouse === null || $isRenter === null) {
                     $result['message'] = 'Please complete all pension and household-income questions.';
                     return $result;
                 }
@@ -223,8 +237,12 @@ function processProxyRegistration(): array
                 }
                 break;
             case 'Milestone Cash Gift':
-                if (!in_array($milestoneAge, ['80', '85', '90', '95', '100+'], true)) {
+                if (!in_array($milestoneAge, ['80', '85', '90', '95', '100'], true)) {
                     $result['message'] = 'Please select the milestone age being claimed.';
+                    return $result;
+                }
+                if ($claimantName === '' || $claimantRelationship === '' || !preg_match('/^09\d{9}$/', $claimantContact)) {
+                    $result['message'] = 'Please complete the claimant details with a valid 11-digit mobile number.';
                     return $result;
                 }
                 break;
@@ -245,11 +263,11 @@ function processProxyRegistration(): array
 
         if ($requestedBenefit !== 'Senior Citizen ID Registration') {
             $idPurpose = '';
+            $emergencyContactName = '';
+            $emergencyContact = '';
         }
-        if ($requestedBenefit !== 'Home Visitation / Confirmation') {
-            $visitSummary = '';
-        }
-        if (!in_array($requestedBenefit, ['Local Social Pension Assessment', 'National DSWD Social Pension Assessment'], true)) {
+        $visitSummary = '';
+        if ($requestedBenefit !== 'Local Social Pension Assessment') {
             $isPensioner = null;
             $pensionSource = '';
             $sssNumber = '';
@@ -258,6 +276,9 @@ function processProxyRegistration(): array
             $familySupportAmount = null;
             $personalIncome = null;
             $personalIncomeAmount = null;
+            $incomeSource = '';
+            $ownsHouse = null;
+            $isRenter = null;
         } else {
             if ($isPensioner === 0) { $pensionSource = ''; $pensionAmount = null; }
             if ($familySupport === 0) { $familySupportAmount = null; }
@@ -272,6 +293,9 @@ function processProxyRegistration(): array
         }
         if ($requestedBenefit !== 'Milestone Cash Gift') {
             $milestoneAge = '';
+            $claimantName = '';
+            $claimantRelationship = '';
+            $claimantContact = '';
         }
         if ($requestedBenefit !== 'Other OSCA Assistance') {
             $otherAssistanceDetails = '';
@@ -279,7 +303,7 @@ function processProxyRegistration(): array
 
         if (!in_array($gender, ['Male', 'Female'], true) ||
             !in_array($civilStatus, ['Single', 'Married', 'Widowed', 'Separated'], true) ||
-            !in_array($proxyRelationship, ['Grandchild', 'Daughter', 'Son', 'Spouse', 'Sibling', 'Caregiver', 'Other'], true) ||
+            ($proxyRelationship !== '' && !in_array($proxyRelationship, ['Grandchild', 'Daughter', 'Son', 'Spouse', 'Sibling', 'Caregiver', 'Other'], true)) ||
             !in_array($livingArrangement, ['Living alone', 'With spouse', 'With children or relatives', 'With caregiver', 'Care facility'], true)) {
             $result['message'] = 'One or more selected options are invalid. Please review the form.';
             return $result;
@@ -302,7 +326,7 @@ function processProxyRegistration(): array
                 return $result;
             }
             if ($requestedBenefit === 'Milestone Cash Gift') {
-                $eligibleMilestone = $milestoneAge === '100+' ? $age >= 100 : $age === (int) $milestoneAge;
+                $eligibleMilestone = $milestoneAge === '100' ? $age >= 100 : $age === (int) $milestoneAge;
                 if (!$eligibleMilestone) {
                     $result['message'] = "The selected milestone ({$milestoneAge}) does not match the senior's current age ({$age}).";
                     return $result;
@@ -313,24 +337,24 @@ function processProxyRegistration(): array
             return $result;
         }
 
-        try {
-            $representativeDob = new DateTime($proxyBirthDate);
-            $today = new DateTime('today');
-            $representativeAge = $today->diff($representativeDob)->y;
-            if ($representativeDob > $today || $representativeAge < 18) {
-                $result['message'] = 'The authorized representative must be at least 18 years old.';
+        if ($proxyBirthDate !== '') {
+            try {
+                $representativeDob = new DateTime($proxyBirthDate);
+                $today = new DateTime('today');
+                $representativeAge = $today->diff($representativeDob)->y;
+                if ($representativeDob > $today || $representativeAge < 18) {
+                    $result['message'] = 'The authorized representative must be at least 18 years old.';
+                    return $result;
+                }
+            } catch (Exception $e) {
+                $result['message'] = 'Please provide a valid representative birth date.';
                 return $result;
             }
-        } catch (Exception $e) {
-            $result['message'] = 'Please provide a valid representative birth date.';
-            return $result;
         }
 
         $benefitDocumentLabels = [
             'Senior Citizen ID Registration' => ['PSA Birth Certificate', 'Barangay Residency Certificate', 'COMELEC Certification'],
-            'Home Visitation / Confirmation' => ['Senior Citizen ID or Valid Government ID', 'Proof of Address', 'Medical Certificate or Doctor\'s Recommendation'],
             'Local Social Pension Assessment' => ['Senior Citizen ID or Valid Government ID', 'Barangay Certificate of Indigency', 'SSS / GSIS Pension Record or Certification'],
-            'National DSWD Social Pension Assessment' => ['Senior Citizen ID or Valid Government ID', 'CSWD / Barangay Certificate of Indigency', 'DSWD Social Pension Form or Pension Declaration'],
             'Land Bank Cash Card Enrollment' => ['Senior Citizen ID or Proof of Registration', 'Valid Government-Issued ID', 'Proof of Address'],
             'Milestone Cash Gift' => ['Senior Citizen ID', 'Certified PSA Birth Certificate', 'Latest Whole-Body Photo'],
             'Other OSCA Assistance' => ['Senior Citizen ID or Valid Government ID', 'Proof of Address', 'Supporting Document for the Request'],
@@ -340,10 +364,7 @@ function processProxyRegistration(): array
             'psa_birth_cert_file' => $selectedDocumentLabels[0],
             'barangay_residency_file' => $selectedDocumentLabels[1],
             'comelec_cert_file' => $selectedDocumentLabels[2],
-            'proof_of_life_file' => 'Bedridden Photo / Proof of Life',
-            'auth_letter_file' => 'Authorization Letter',
-            'proxy_id_file' => 'Representative Government ID',
-            'proxy_birth_cert_file' => 'Representative Birth Certificate',
+            'proof_of_life_file' => 'Current Senior Photo / Proof of Life',
         ];
         foreach ($requiredUploads as $key => $label) {
             if (!isset($_FILES[$key]) || $_FILES[$key]['error'] !== UPLOAD_ERR_OK) {
@@ -353,6 +374,7 @@ function processProxyRegistration(): array
         }
 
         $transactionId = 'PRX-' . strtoupper(bin2hex(random_bytes(3)));
+        $priorityLevel = 'normal';
 
         // Handle File Uploads
         $psaBirthCert = saveUploadedProxyFile('psa_birth_cert_file', $transactionId, 'psa_birth_cert');
@@ -363,10 +385,20 @@ function processProxyRegistration(): array
         $proxyId = saveUploadedProxyFile('proxy_id_file', $transactionId, 'proxy_id');
         $proxyBirthCert = saveUploadedProxyFile('proxy_birth_cert_file', $transactionId, 'proxy_birth_cert');
 
-        if (in_array(null, [
-            $psaBirthCert, $barangayResidency, $comelecCert, $proofOfLife,
-            $authLetter, $proxyId, $proxyBirthCert,
-        ], true)) {
+        $requiredProcessedFiles = [$psaBirthCert, $barangayResidency, $comelecCert, $proofOfLife];
+        $optionalUploads = [
+            'auth_letter_file' => $authLetter,
+            'proxy_id_file' => $proxyId,
+            'proxy_birth_cert_file' => $proxyBirthCert,
+        ];
+        $optionalUploadFailed = false;
+        foreach ($optionalUploads as $fileKey => $savedPath) {
+            if (isset($_FILES[$fileKey]) && ($_FILES[$fileKey]['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE && $savedPath === null) {
+                $optionalUploadFailed = true;
+                break;
+            }
+        }
+        if (in_array(null, $requiredProcessedFiles, true) || $optionalUploadFailed) {
             $result['message'] = 'One or more documents could not be processed. Upload only valid JPEG, PNG, GIF, or PDF files and try again.';
             return $result;
         }
@@ -374,9 +406,8 @@ function processProxyRegistration(): array
         try {
             $conn->beginTransaction();
 
-            // A completed pre-registration is immediately available to the
-            // barangay counter. Use the same active queue state as counter
-            // applications so the HIGH-priority record is visible at once.
+            // A completed representative pre-registration is immediately
+            // available in the standard barangay counter queue.
             $sql = "INSERT INTO applications (
                         id_number, full_name, lastName, firstName, middleName, suffix,
                         birth_date, contact_number, complete_address, barangay,
@@ -388,40 +419,42 @@ function processProxyRegistration(): array
                         email_address, place_of_birth, gender, civil_status, mothers_maiden_name,
                         house_no, street, city, province, zip_code, landmark, health_status,
                         health_condition, living_arrangement, visit_purpose,
-                        id_purpose, visit_summary, is_pensioner, pension_source,
+                        id_purpose, emergency_contact_name, emergency_contact, visit_summary, is_pensioner, pension_source,
                         family_support, family_support_amount, personal_income, personal_income_amount,
+                        income_source, owns_house, is_renter,
                         name_on_card, tin, id_type_presented, nationality, source_of_funds, milestone_age,
                         claimant_name, claimant_relationship, claimant_contact, additional_notes,
                         proxy_birth_date, proxy_email, proxy_address, proxy_id_type, proxy_id_number
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
             $stmt = $conn->prepare($sql);
             $stmt->execute([
                 $transactionId, $fullName, $lastName, $firstName, $middleName, $suffix,
                 $birthDate, $contactNumber, $completeAddress, $barangay,
-                'pending', 'Received', $requestedBenefit, 1, $proxyName,
-                $proxyRelationship, $proxyContactNumber, $transactionId, 'high', $applicationType,
+                'pending', 'Received', $requestedBenefit, $hasRepresentativeData ? 1 : 0, $proxyName ?: null,
+                $proxyRelationship ?: null, $proxyContactNumber ?: null, $transactionId, $priorityLevel, $applicationType,
                 $sssNumber, $pensionAmount, !empty($dateOfDeath) ? $dateOfDeath : null, !empty($relationshipToDeceased) ? $relationshipToDeceased : null,
                 $psaBirthCert, $barangayResidency, $comelecCert, $proofOfLife,
                 $authLetter, $proxyId, $proxyBirthCert,
                 $seniorEmail ?: null, $placeOfBirth, $gender, $civilStatus, $mothersMaidenName ?: null,
-                $houseNo, $street, 'Pasig City', 'Metro Manila', $zipCode ?: null, $landmark ?: null, 'Bedridden',
+                $houseNo, $street, 'Pasig City', 'Metro Manila', $zipCode ?: null, $landmark ?: null, $mobilityStatus,
                 $healthCondition, $livingArrangement, $visitPurpose,
-                $idPurpose ?: null, $visitSummary ?: null, $isPensioner, $pensionSource ?: null,
+                $idPurpose ?: null, $emergencyContactName ?: null, $emergencyContact ?: null,
+                $visitSummary ?: null, $isPensioner, $pensionSource ?: null,
                 $familySupport, $familySupportAmount, $personalIncome, $personalIncomeAmount,
+                $incomeSource ?: null, $ownsHouse, $isRenter,
                 $nameOnCard ?: null, $tin ?: null, $seniorIdTypePresented ?: null, $nationality ?: null,
                 $sourceOfFunds ?: null, $milestoneAge ?: null,
-                $requestedBenefit === 'Milestone Cash Gift' ? $proxyName : null,
-                $requestedBenefit === 'Milestone Cash Gift' ? $proxyRelationship : null,
-                $requestedBenefit === 'Milestone Cash Gift' ? $proxyContactNumber : null,
+                $claimantName ?: null, $claimantRelationship ?: null, $claimantContact ?: null,
                 $otherAssistanceDetails ?: null,
-                $proxyBirthDate, $proxyEmail ?: null, $proxyAddress, $proxyIdType, $proxyIdNumber
+                $proxyBirthDate ?: null, $proxyEmail ?: null, $proxyAddress ?: null, $proxyIdType ?: null, $proxyIdNumber ?: null
             ]);
 
             // Add workflow history entry for the active counter queue.
             $stmtHist = $conn->prepare("INSERT INTO application_history (application_id, previous_state, new_state, changed_by, comments) VALUES (?, ?, ?, ?, ?)");
             $stmtHist->execute([
-                $transactionId, 'Draft', 'Received', 'Proxy Representative', 'Representative pre-registration received and placed in the HIGH-priority counter queue.'
+                $transactionId, 'Draft', 'Received', $hasRepresentativeData ? 'Authorized Representative' : 'Senior Applicant',
+                ($hasRepresentativeData ? 'Assisted' : 'Self-submitted') . ' pre-registration received and placed in the standard counter queue.'
             ]);
 
             $conn->commit();
@@ -466,14 +499,13 @@ function processProxyRegistration(): array
                                           WHERE application_type = 'senior'
                                             AND (senior_id_no = ? OR id_number = ?)
                                             AND workflow_state IN ('Verified', 'Approved', 'Released')
-                                            AND is_proxy_application = 1
                                           ORDER BY CASE WHEN senior_id_no = ? THEN 0 ELSE 1 END
                                           LIMIT 1");
             $stmtVerify->execute([$seniorCitizenId, $seniorCitizenId, $seniorCitizenId]);
             $senior = $stmtVerify->fetch(PDO::FETCH_ASSOC);
 
             if (!$senior) {
-                $result['message'] = "Profile Integrity Check Failed: No verified/approved bedridden senior citizens found with the ID: {$seniorCitizenId}.";
+                $result['message'] = "Profile Integrity Check Failed: No verified or approved senior citizen was found with the ID: {$seniorCitizenId}.";
                 return $result;
             }
 
@@ -498,18 +530,20 @@ function processProxyRegistration(): array
                         status, workflow_state, requested_benefit, is_proxy_application, proxy_name,
                         proxy_relationship, proxy_contact_number, proxy_token, priority_level, application_type,
                         senior_id_no, parent_senior_id, home_visitation_form, landbank_enrollment_form,
-                        proxy_birth_date, proxy_email, proxy_address, proxy_id_type, proxy_id_number
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        proxy_birth_date, proxy_email, proxy_address, proxy_id_type, proxy_id_number,
+                        home_visit_status
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             
             $stmtPension = $conn->prepare($sql);
             $stmtPension->execute([
                 $pensionTransactionId, $senior['full_name'], $senior['lastName'], $senior['firstName'], $senior['middleName'], $senior['suffix'],
                 $senior['birth_date'], $senior['contact_number'], $senior['complete_address'], $senior['barangay'],
                 'pending', 'Received', 'Local Senior Pension Benefit', 1, $senior['proxy_name'],
-                $senior['proxy_relationship'], $senior['proxy_contact_number'], $senior['proxy_token'], 'high', 'pension',
+                $senior['proxy_relationship'], $senior['proxy_contact_number'], $senior['proxy_token'], 'normal', 'pension',
                 $senior['senior_id_no'], $senior['id_number'], $homeVisitationForm, $landbankForm,
                 $senior['proxy_birth_date'] ?? null, $senior['proxy_email'] ?? null,
-                $senior['proxy_address'] ?? null, $senior['proxy_id_type'] ?? null, $senior['proxy_id_number'] ?? null
+                $senior['proxy_address'] ?? null, $senior['proxy_id_type'] ?? null, $senior['proxy_id_number'] ?? null,
+                'Waiting for Home Visit'
             ]);
 
             // Enter the standard processing queue so barangay and department
