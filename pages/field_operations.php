@@ -143,7 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($action === 'create_batch') {
-            if ($isDepartment) operationsRedirect('Hardcopy batches must be created by barangay staff.', false);
+            if ($isDepartment) operationsRedirect('Hardcopy batches must be created by an SHDO.', false);
             $handoverDate = trim((string)($_POST['handover_date'] ?? ''));
             $submittedBy = trim(strip_tags((string)($_POST['submitted_by_name'] ?? '')));
             $remarks = trim(strip_tags((string)($_POST['remarks'] ?? '')));
@@ -176,7 +176,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($action === 'release_batch') {
-            if ($isDepartment) operationsRedirect('Only barangay staff can release a batch.', false);
+            if ($isDepartment) operationsRedirect('Only an SHDO can release a batch.', false);
             $batchId = filter_var($_POST['batch_id'] ?? null, FILTER_VALIDATE_INT);
             $stmt = $conn->prepare("UPDATE hardcopy_batches SET status = 'Released', released_at = CURRENT_TIMESTAMP WHERE id = ? AND barangay = ? AND status = 'Draft'");
             $stmt->execute([$batchId, $barangay]);
@@ -508,7 +508,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
                     <div class="user-avatar"><img src="<?= htmlspecialchars($profilePath) ?>" alt="Profile Picture"></div>
                     <div class="user-details">
                         <h2><?= htmlspecialchars(($_SESSION['first_name'] ?? '') . ' ' . ($_SESSION['last_name'] ?? '')) ?></h2>
-                        <p><?= $isDepartment ? 'Department Admin - Pasig City' : 'Barangay Staff - ' . htmlspecialchars($barangay) ?></p>
+                        <p><?= $isDepartment ? 'Department Admin - Pasig City' : 'SHDO - ' . htmlspecialchars($barangay) ?></p>
                     </div>
                 </div>
             </div>

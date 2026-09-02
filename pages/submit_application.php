@@ -1027,7 +1027,7 @@ unset($_SESSION['application_submission_notice']);
                     }
                 });
 
-                // Barangay staff can correct a submitted requirement while the
+                // SHDO can correct a submitted requirement while the
                 // application is still at the barangay stage.
                 const canCorrectDocuments = currentState === 'Received' || currentState === 'Submitted';
                 renderAllSubmittedDocuments(app, appId, { allowReplacement: canCorrectDocuments });
@@ -1290,7 +1290,7 @@ unset($_SESSION['application_submission_notice']);
         const fd = new FormData();
         fd.append('applicationId', currentAppId);
         fd.append('action', 'next');
-        fd.append('comments', 'Submitted by Barangay Staff for review evaluation.');
+        fd.append('comments', 'Submitted by SHDO for review evaluation.');
 
         fetch('../api/update_workflow_status.php', { method: 'POST', body: fd })
             .then(r => r.json())

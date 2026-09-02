@@ -134,20 +134,9 @@ function processProxyRegistration(): array
         $dateOfDeath = trim($_POST['dateOfDeath'] ?? '');
         $relationshipToDeceased = trim($_POST['relationshipToDeceased'] ?? '');
         
-        $proxyName = trim($_POST['proxyName'] ?? '');
-        $proxyRelationship = trim($_POST['proxyRelationship'] ?? '');
-        $proxyContactNumber = trim($_POST['proxyContactNumber'] ?? '');
-        $proxyBirthDate = trim($_POST['proxyBirthDate'] ?? '');
-        $proxyEmail = trim($_POST['proxyEmail'] ?? '');
-        $proxyAddress = trim($_POST['proxyAddress'] ?? '');
-        $proxyIdType = trim($_POST['proxyIdType'] ?? '');
-        $proxyIdNumber = trim($_POST['proxyIdNumber'] ?? '');
-        $hasRepresentativeData = implode('', [
-            $proxyName, $proxyRelationship, $proxyContactNumber, $proxyBirthDate,
-            $proxyEmail, $proxyAddress, $proxyIdType, $proxyIdNumber,
-        ]) !== '' || !empty($_FILES['auth_letter_file']['name'])
-            || !empty($_FILES['proxy_id_file']['name'])
-            || !empty($_FILES['proxy_birth_cert_file']['name']);
+        // Representative intake is intentionally disabled for the public form.
+        $proxyName = $proxyRelationship = $proxyContactNumber = '';
+        $proxyBirthDate = $proxyEmail = $proxyAddress = $proxyIdType = $proxyIdNumber = '';
 
         $requiredFields = [
             'Benefit or Service Requested' => $requestedBenefit,
@@ -165,18 +154,16 @@ function processProxyRegistration(): array
             }
         }
 
-        if (!preg_match('/^09\d{9}$/', $contactNumber) ||
-            ($proxyContactNumber !== '' && !preg_match('/^09\d{9}$/', $proxyContactNumber))) {
-            $result['message'] = 'Contact numbers must be valid 11-digit Philippine mobile numbers.';
+        if (!preg_match('/^09\d{9}$/', $contactNumber)) {
+            $result['message'] = 'Contact number must be a valid 11-digit Philippine mobile number.';
             return $result;
         }
-        if (($seniorEmail !== '' && !filter_var($seniorEmail, FILTER_VALIDATE_EMAIL)) ||
-            ($proxyEmail !== '' && !filter_var($proxyEmail, FILTER_VALIDATE_EMAIL))) {
+        if ($seniorEmail !== '' && !filter_var($seniorEmail, FILTER_VALIDATE_EMAIL)) {
             $result['message'] = 'Please provide a valid email address.';
             return $result;
         }
-        if (!isset($_POST['confirmRepresentative']) || !isset($_POST['confirmPrivacy'])) {
-            $result['message'] = 'Both the representative certification and privacy/authorization consent are required.';
+        if (!isset($_POST['confirmPrivacy'])) {
+            $result['message'] = 'Applicant certification and privacy consent are required.';
             return $result;
         }
         if (!in_array($mobilityStatus, ['Physically Fit', 'Needs Mobility Assistance', 'Bedridden', 'Frail / Sickly', 'PWD'], true)) {
@@ -303,7 +290,6 @@ function processProxyRegistration(): array
 
         if (!in_array($gender, ['Male', 'Female'], true) ||
             !in_array($civilStatus, ['Single', 'Married', 'Widowed', 'Separated'], true) ||
-            ($proxyRelationship !== '' && !in_array($proxyRelationship, ['Grandchild', 'Daughter', 'Son', 'Spouse', 'Sibling', 'Caregiver', 'Other'], true)) ||
             !in_array($livingArrangement, ['Living alone', 'With spouse', 'With children or relatives', 'With caregiver', 'Care facility'], true)) {
             $result['message'] = 'One or more selected options are invalid. Please review the form.';
             return $result;
@@ -337,21 +323,6 @@ function processProxyRegistration(): array
             return $result;
         }
 
-        if ($proxyBirthDate !== '') {
-            try {
-                $representativeDob = new DateTime($proxyBirthDate);
-                $today = new DateTime('today');
-                $representativeAge = $today->diff($representativeDob)->y;
-                if ($representativeDob > $today || $representativeAge < 18) {
-                    $result['message'] = 'The authorized representative must be at least 18 years old.';
-                    return $result;
-                }
-            } catch (Exception $e) {
-                $result['message'] = 'Please provide a valid representative birth date.';
-                return $result;
-            }
-        }
-
         $benefitDocumentLabels = [
             'Senior Citizen ID Registration' => ['PSA Birth Certificate', 'Barangay Residency Certificate', 'COMELEC Certification'],
             'Local Social Pension Assessment' => ['Senior Citizen ID or Valid Government ID', 'Barangay Certificate of Indigency', 'SSS / GSIS Pension Record or Certification'],
@@ -381,24 +352,10 @@ function processProxyRegistration(): array
         $barangayResidency = saveUploadedProxyFile('barangay_residency_file', $transactionId, 'barangay_residency');
         $comelecCert = saveUploadedProxyFile('comelec_cert_file', $transactionId, 'comelec_cert');
         $proofOfLife = saveUploadedProxyFile('proof_of_life_file', $transactionId, 'proof_of_life');
-        $authLetter = saveUploadedProxyFile('auth_letter_file', $transactionId, 'auth_letter');
-        $proxyId = saveUploadedProxyFile('proxy_id_file', $transactionId, 'proxy_id');
-        $proxyBirthCert = saveUploadedProxyFile('proxy_birth_cert_file', $transactionId, 'proxy_birth_cert');
+        $authLetter = $proxyId = $proxyBirthCert = null;
 
         $requiredProcessedFiles = [$psaBirthCert, $barangayResidency, $comelecCert, $proofOfLife];
-        $optionalUploads = [
-            'auth_letter_file' => $authLetter,
-            'proxy_id_file' => $proxyId,
-            'proxy_birth_cert_file' => $proxyBirthCert,
-        ];
-        $optionalUploadFailed = false;
-        foreach ($optionalUploads as $fileKey => $savedPath) {
-            if (isset($_FILES[$fileKey]) && ($_FILES[$fileKey]['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE && $savedPath === null) {
-                $optionalUploadFailed = true;
-                break;
-            }
-        }
-        if (in_array(null, $requiredProcessedFiles, true) || $optionalUploadFailed) {
+        if (in_array(null, $requiredProcessedFiles, true)) {
             $result['message'] = 'One or more documents could not be processed. Upload only valid JPEG, PNG, GIF, or PDF files and try again.';
             return $result;
         }
@@ -406,8 +363,8 @@ function processProxyRegistration(): array
         try {
             $conn->beginTransaction();
 
-            // A completed representative pre-registration is immediately
-            // available in the standard barangay counter queue.
+            // A completed public application is immediately available in the
+            // standard barangay counter queue.
             $sql = "INSERT INTO applications (
                         id_number, full_name, lastName, firstName, middleName, suffix,
                         birth_date, contact_number, complete_address, barangay,
@@ -431,7 +388,7 @@ function processProxyRegistration(): array
             $stmt->execute([
                 $transactionId, $fullName, $lastName, $firstName, $middleName, $suffix,
                 $birthDate, $contactNumber, $completeAddress, $barangay,
-                'pending', 'Received', $requestedBenefit, $hasRepresentativeData ? 1 : 0, $proxyName ?: null,
+                'pending', 'For Review', $requestedBenefit, 0, null,
                 $proxyRelationship ?: null, $proxyContactNumber ?: null, $transactionId, $priorityLevel, $applicationType,
                 $sssNumber, $pensionAmount, !empty($dateOfDeath) ? $dateOfDeath : null, !empty($relationshipToDeceased) ? $relationshipToDeceased : null,
                 $psaBirthCert, $barangayResidency, $comelecCert, $proofOfLife,
@@ -453,8 +410,8 @@ function processProxyRegistration(): array
             // Add workflow history entry for the active counter queue.
             $stmtHist = $conn->prepare("INSERT INTO application_history (application_id, previous_state, new_state, changed_by, comments) VALUES (?, ?, ?, ?, ?)");
             $stmtHist->execute([
-                $transactionId, 'Draft', 'Received', $hasRepresentativeData ? 'Authorized Representative' : 'Senior Applicant',
-                ($hasRepresentativeData ? 'Assisted' : 'Self-submitted') . ' pre-registration received and placed in the standard counter queue.'
+                $transactionId, 'Draft', 'For Review', 'Senior Applicant',
+                'Public senior application submitted directly to the Department Admin verification queue.'
             ]);
 
             $conn->commit();
@@ -538,11 +495,10 @@ function processProxyRegistration(): array
             $stmtPension->execute([
                 $pensionTransactionId, $senior['full_name'], $senior['lastName'], $senior['firstName'], $senior['middleName'], $senior['suffix'],
                 $senior['birth_date'], $senior['contact_number'], $senior['complete_address'], $senior['barangay'],
-                'pending', 'Received', 'Local Senior Pension Benefit', 1, $senior['proxy_name'],
-                $senior['proxy_relationship'], $senior['proxy_contact_number'], $senior['proxy_token'], 'normal', 'pension',
+                'pending', 'For Review', 'Local Senior Pension Benefit', 0, null,
+                null, null, $pensionTransactionId, 'normal', 'pension',
                 $senior['senior_id_no'], $senior['id_number'], $homeVisitationForm, $landbankForm,
-                $senior['proxy_birth_date'] ?? null, $senior['proxy_email'] ?? null,
-                $senior['proxy_address'] ?? null, $senior['proxy_id_type'] ?? null, $senior['proxy_id_number'] ?? null,
+                null, null, null, null, null,
                 'Waiting for Home Visit'
             ]);
 
@@ -550,7 +506,7 @@ function processProxyRegistration(): array
             // screens can review this benefit claim normally.
             $stmtHist = $conn->prepare("INSERT INTO application_history (application_id, previous_state, new_state, changed_by, comments) VALUES (?, ?, ?, ?, ?)");
             $stmtHist->execute([
-                $pensionTransactionId, 'Draft', 'Received', 'Proxy Representative', 'Pension benefit application received through the representative portal.'
+                $pensionTransactionId, 'Draft', 'For Review', 'Senior Applicant', 'Pension benefit application submitted directly to the Department Admin verification queue.'
             ]);
 
             $conn->commit();

@@ -40,7 +40,7 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
                 ]);
 
                 setcookie('remember_me', $selector . ':' . $newValidator, time() + (86400 * 30), "/", "", false, true);
-                if (logAudit($conn, 'LOGIN', "Restored remembered login as Barangay Staff for Barangay {$user['barangay']}.")) {
+                if (logAudit($conn, 'LOGIN', "Restored remembered login as SHDO for Barangay {$user['barangay']}.")) {
                     $_SESSION['login_audit_recorded'] = true;
                 }
                 header("Location: Barangay_Dash.php");
@@ -93,13 +93,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     setcookie('remember_me', $selector . ':' . $validator, time() + (86400 * 30), "/", "", false, true);
                 }
 
-                if (logAudit($conn, 'LOGIN', "Logged in as Barangay Staff for Barangay {$user['barangay']}.")) {
+                if (logAudit($conn, 'LOGIN', "Logged in as SHDO for Barangay {$user['barangay']}.")) {
                     $_SESSION['login_audit_recorded'] = true;
                 }
                 header("Location: Barangay_Dash.php");
                 exit;
             } else {
-                logAudit($conn, 'FAILED_LOGIN', "Failed Barangay Staff login attempt for username '{$staffId}' in Barangay {$barangay}.", $user ? (int)$user['id'] : null, [
+                logAudit($conn, 'FAILED_LOGIN', "Failed SHDO login attempt for username '{$staffId}' in Barangay {$barangay}.", $user ? (int)$user['id'] : null, [
                     'username' => $staffId ?: 'Unknown',
                     'role' => 'barangay_staff',
                     'barangay' => $barangay,
@@ -117,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barangay Staff Login - SENIORLINK</title>
+    <title>SHDO Login - SENIORLINK</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -143,7 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     </div>
                     <span class="auth-eyebrow">Secure staff access</span>
                 </div>
-                <h1>Barangay Staff Login</h1>
+                <h1>SHDO Login</h1>
                 <p>Access your local records and beneficiary management system</p>
             </div>
 

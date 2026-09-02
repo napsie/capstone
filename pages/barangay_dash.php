@@ -12,7 +12,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'barangay_staff') {
 // Backfill one audit event for sessions established before login auditing was enabled.
 if (empty($_SESSION['login_audit_recorded'])) {
     $sessionBarangay = (string)($_SESSION['barangay'] ?? 'Unknown Barangay');
-    if (logAudit($conn, 'LOGIN', "Active Barangay Staff session confirmed for Barangay {$sessionBarangay}.")) {
+    if (logAudit($conn, 'LOGIN', "Active SHDO session confirmed for Barangay {$sessionBarangay}.")) {
         $_SESSION['login_audit_recorded'] = true;
     }
 }

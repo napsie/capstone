@@ -247,7 +247,7 @@ $resetUrl = 'proxy_registration.php';
                         Public Senior Service
                     </div>
                     <h2 id="proxy-heading">New Senior Application</h2>
-                    <p>Submit a new application for any eligible senior citizen. The service supports independent seniors and seniors receiving assistance from family members, caregivers, or authorized representatives.</p>
+                    <p>Complete the senior citizen's information and upload the documents required for the selected benefit.</p>
                 </div>
                 <div class="proxy-panel-body">
                     <?php include '../partials/proxy_form.php'; ?>

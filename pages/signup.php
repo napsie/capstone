@@ -494,7 +494,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <div class="form-group">
                     <label for="role">Role</label>
                     <select id="role" name="role" class="form-control" onchange="toggleBarangayField()" required>
-                        <option value="barangay_staff">Barangay Staff</option>
+                        <option value="barangay_staff">SHDO</option>
                         <option value="department_admin">Department Admin</option>
                     </select>
                 </div>

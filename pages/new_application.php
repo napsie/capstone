@@ -12,7 +12,7 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'barangay_staf
 
 $sessionDisplayName = trim((string)($_SESSION['first_name'] ?? '') . ' ' . (string)($_SESSION['last_name'] ?? ''));
 if ($sessionDisplayName === '') {
-    $sessionDisplayName = (string)($_SESSION['username'] ?? 'Barangay Staff');
+    $sessionDisplayName = (string)($_SESSION['username'] ?? 'SHDO');
 }
 
 // Helper function to calculate working days (excluding Sat/Sun)

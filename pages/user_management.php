@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addUser'])) {
                 // Validate barangay based on the selected role
                 if ($role === 'barangay_staff') {
                     if (empty($barangay)) {
-                        $error = 'Barangay is required for Barangay Staff.';
+                        $error = 'Barangay is required for SHDO.';
                     } elseif (!in_array($barangay, $barangays_list)) {
                         $error = 'Invalid barangay selected.';
                     }
@@ -392,7 +392,7 @@ try {
                             <select id="role" name="role" required>
                                 <option value="">Select role</option>
                                 <option value="department_admin">Administrator</option>
-                                <option value="barangay_staff">Barangay Staff</option>
+                                <option value="barangay_staff">SHDO</option>
                             </select>
                         </div>
                         <div class="form-group" id="barangay-form-group">
@@ -495,7 +495,7 @@ try {
                             <div class="form-group"><label for="editUsername">Username</label><input type="text" id="editUsername" name="username" autocomplete="username" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')" required></div>
                         </div>
                         <div class="form-row">
-                            <div class="form-group"><label for="editRole">Role</label><select id="editRole" name="role" required><option value="department_admin">Administrator</option><option value="barangay_staff">Barangay Staff</option></select></div>
+                            <div class="form-group"><label for="editRole">Role</label><select id="editRole" name="role" required><option value="department_admin">Administrator</option><option value="barangay_staff">SHDO</option></select></div>
                             <div class="form-group" id="editBarangayFormGroup"><label for="editBarangay">Barangay</label><select id="editBarangay" name="barangay"><option value="">Select barangay...</option><?php foreach ($barangays_list as $b): ?><option value="<?php echo htmlspecialchars($b); ?>"><?php echo htmlspecialchars($b); ?></option><?php endforeach; ?></select></div>
                         </div>
                         <div class="form-group">

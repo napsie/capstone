@@ -370,7 +370,7 @@ $old = static function (string $key, string $default = ''): string {
     
     <!-- Option Selection Header -->
     <div style="margin-bottom: 25px; text-align: center;">
-        <h3 style="margin-bottom: 10px; color: #0f172a; font-weight: 700;">Select Transaction Portal</h3>
+        <h3 style="margin-bottom: 10px; color: #0f172a; font-weight: 700;">Choose an Application Type</h3>
         <p style="color: #64748b; font-size: 0.95rem; margin: 0;">Choose the application service needed by the senior citizen.</p>
     </div>
 
@@ -382,7 +382,7 @@ $old = static function (string $key, string $default = ''): string {
                 <i class="fas fa-user-plus"></i>
             </div>
             <h4>New Senior Pre-Registration</h4>
-            <p>Start a public application for any eligible senior citizen. Assistance may be provided when needed.</p>
+            <p>Complete the senior citizen's details using the information shown in official records.</p>
         </div>
 
         <div class="portal-option-card<?php echo $activePortalOption === 'existing_benefits' ? ' active' : ''; ?>" id="optionCardExisting" onclick="selectPortalPath('existing_benefits')">
@@ -748,7 +748,7 @@ $old = static function (string $key, string $default = ''): string {
             <div class="step-heading" style="margin-top: 25px;">
                 <div class="step-number">2</div>
                 <div>
-                    <h3>Required Target Documents</h3>
+                    <h3>Required Documents</h3>
                     <p>Upload digital copies (PDF or JPEG) below. Enabled upon senior age eligibility verification.</p>
                 </div>
             </div>
@@ -784,98 +784,22 @@ $old = static function (string $key, string $default = ''): string {
                     <input type="file" id="proof_of_life_file" name="proof_of_life_file" accept="image/jpeg" required>
                 </div>
 
-                <h5 style="margin-top:20px; color:#475569; font-size:0.88rem; text-transform:uppercase; letter-spacing:0.5px;">Representative Verification Documents</h5>
-                
-                <div class="upload-slot">
-                    <label for="auth_letter_file">Authorization Letter <span class="field-help">(Optional)</span></label>
-                    <p class="slot-desc">Authorization letter signed or marked with the senior's thumbmark authorizing the representative.</p>
-                    <input type="file" id="auth_letter_file" name="auth_letter_file" accept="image/jpeg,application/pdf">
-                </div>
-
-                <div class="upload-slot">
-                    <label for="proxy_id_file">Representative's Government ID <span class="field-help">(Optional)</span></label>
-                    <p class="slot-desc">Valid government ID of the authorized representative.</p>
-                    <input type="file" id="proxy_id_file" name="proxy_id_file" accept="image/jpeg,application/pdf">
-                </div>
-
-                <div class="upload-slot">
-                    <label for="proxy_birth_cert_file">Representative's Birth Certificate <span class="field-help">(Optional)</span></label>
-                    <p class="slot-desc">Representative's birth certificate or equivalent document proving the relationship to the senior.</p>
-                    <input type="file" id="proxy_birth_cert_file" name="proxy_birth_cert_file" accept="image/jpeg,application/pdf">
-                </div>
             </div>
 
             <!-- Step 3 Heading -->
             <div class="step-heading" style="margin-top: 25px;">
                 <div class="step-number">3</div>
                 <div>
-                    <h3>Representative Details <small style="font-size:.72em;font-weight:500;color:#64748b;">(Optional)</small></h3>
-                    <p>Complete this section only when another person is submitting on behalf of the senior citizen.</p>
+                    <h3>Review and Consent</h3>
+                    <p>Confirm that the senior applicant's information is complete and accurate before submission.</p>
                 </div>
             </div>
 
             <div class="form-section">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="proxyName">Representative Name</label>
-                        <input type="text" id="proxyName" name="proxyName" class="form-control" placeholder="Optional" value="<?php echo $old('proxyName'); ?>" autocomplete="name">
-                    </div>
-                    <div class="form-group">
-                        <label for="proxyRelationship">Relationship to Senior</label>
-                        <select id="proxyRelationship" name="proxyRelationship" class="form-control">
-                            <option value="">— Select Relationship —</option>
-                            <?php foreach (['Grandchild', 'Daughter', 'Son', 'Spouse', 'Sibling', 'Caregiver', 'Other'] as $value): ?>
-                                <option value="<?php echo $value; ?>" <?php echo $old('proxyRelationship') === $value ? 'selected' : ''; ?>><?php echo $value; ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="proxyContactNumber">Representative Contact Number</label>
-                        <input type="tel" id="proxyContactNumber" name="proxyContactNumber" class="form-control" placeholder="Optional" maxlength="11" pattern="09[0-9]{9}" inputmode="numeric" value="<?php echo $old('proxyContactNumber'); ?>" autocomplete="tel">
-                    </div>
-                    <div class="form-group">
-                        <label for="proxyEmail">Representative Email Address</label>
-                        <input type="email" id="proxyEmail" name="proxyEmail" class="form-control" value="<?php echo $old('proxyEmail'); ?>" autocomplete="email" placeholder="Optional">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="proxyBirthDate">Representative Birth Date</label>
-                        <input type="date" id="proxyBirthDate" name="proxyBirthDate" class="form-control" value="<?php echo $old('proxyBirthDate'); ?>">
-                    </div>
-                    <div class="form-group">
-                        <label for="proxyAddress">Representative Complete Address</label>
-                        <input type="text" id="proxyAddress" name="proxyAddress" class="form-control" value="<?php echo $old('proxyAddress'); ?>" autocomplete="street-address" placeholder="Optional">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="proxyIdType">Government ID Type</label>
-                        <select id="proxyIdType" name="proxyIdType" class="form-control">
-                            <option value="">— Select ID Type —</option>
-                            <?php foreach (['PhilSys ID', 'Driver\'s License', 'Passport', 'UMID', 'Voter\'s ID', 'Postal ID', 'PRC ID', 'Other government ID'] as $value): ?>
-                                <option value="<?php echo htmlspecialchars($value); ?>" <?php echo $old('proxyIdType') === $value ? 'selected' : ''; ?>><?php echo htmlspecialchars($value); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="proxyIdNumber">Government ID Number</label>
-                        <input type="text" id="proxyIdNumber" name="proxyIdNumber" class="form-control" value="<?php echo $old('proxyIdNumber'); ?>" placeholder="Optional">
-                    </div>
-                </div>
-
                 <div class="checkbox-row" style="margin-top: 15px;">
-                    <input type="checkbox" id="confirmRepresentative" name="confirmRepresentative" required style="width: 18px; height: 18px; accent-color: #10b981;">
-                    <label for="confirmRepresentative" style="font-size: 0.85rem; font-weight: 500; color: #475569; margin: 0;">
-                        I certify that the information is accurate and that I am the senior applicant or am authorized to assist the senior citizen.
-                    </label>
-                </div>
-                <div class="checkbox-row" style="margin-top: 12px;">
                     <input type="checkbox" id="confirmPrivacy" name="confirmPrivacy" required style="width: 18px; height: 18px; accent-color: #10b981;">
                     <label for="confirmPrivacy" style="font-size: 0.85rem; font-weight: 500; color: #475569; margin: 0;">
-                        I confirm that the senior authorized this submission and consented to the collection and verification of the information and documents provided.
+                        I confirm that the information is accurate and consent to the collection and verification of the senior applicant's information and documents.
                     </label>
                 </div>
             </div>
@@ -897,7 +821,7 @@ $old = static function (string $key, string $default = ''): string {
             <div class="privacy-alert" role="note" style="margin-bottom: 24px; background: #eff6ff; border-color: #bfdbfe; color: #1e40af;">
                 <i class="fas fa-info-circle" aria-hidden="true" style="color: #2563eb;"></i>
                 <div>
-                    <strong>Secondary Benefit Enrollment:</strong> Any verified senior citizen may apply for an eligible municipal pension benefit through an authorized representative.
+                    <strong>Secondary Benefit Enrollment:</strong> A verified senior citizen may apply for an eligible municipal pension benefit.
                     <div style="margin-top:8px;"><strong>Benefit being applied for:</strong> Local Senior Pension Benefit</div>
                 </div>
             </div>
@@ -1203,19 +1127,19 @@ $old = static function (string $key, string $default = ''): string {
     <!-- Rule-based workflow routing success scenarios -->
     <?php if ($proxyOption === 'new_senior'): ?>
         
-        <!-- OPTION A SUCCESS: REPRESENTATIVE QUEUE TOKEN -->
+        <!-- OPTION A SUCCESS: PUBLIC APPLICATION QUEUE TOKEN -->
         <div class="success-qr-card">
             <div class="success-qr-icon">
                 <i class="fas fa-check-circle"></i>
             </div>
             <h3 style="color:#0f172a; font-weight:800; font-size:1.45rem; margin-bottom:10px;">Pre-registration successful.</h3>
             <p style="color:#64748b; font-size:0.95rem; line-height:1.5; margin:0 0 15px 0;">
-                The senior citizen's digital application has shifted from <strong>[Draft] &rarr; [Submitted]</strong>.
-                Download or print the queue token and check the appointment details.
+                The senior citizen's application was sent directly to the <strong>Department Admin verification queue</strong>.
+                Save the tracking token to check its progress.
             </p>
             
             <div class="qr-image-wrapper">
-                <img src="<?php echo htmlspecialchars($proxyQrUrl); ?>" alt="Representative QR Token">
+                <img src="<?php echo htmlspecialchars($proxyQrUrl); ?>" alt="Application tracking QR code">
                 <div>
                     <span class="qr-token-label">TOKEN: <?php echo htmlspecialchars($proxyTransactionId); ?></span>
                 </div>

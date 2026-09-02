@@ -138,7 +138,7 @@ header('Expires: 0');
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/seniorlink-public.css?v=1">
-    <link rel="stylesheet" href="assets/css/landing.css?v=19">
+    <link rel="stylesheet" href="assets/css/landing.css?v=21">
     <link rel="stylesheet" href="assets/css/seniorlink-ui.css?v=17">
     <script src="assets/js/modal-hci.js?v=2" defer></script>
 </head>
@@ -164,12 +164,8 @@ header('Expires: 0');
                 </span>
             </div>
             <nav class="site-nav" aria-label="Main navigation">
-                <button type="button" class="nav-about" id="aboutLink" aria-haspopup="dialog" aria-controls="aboutModal">
-                    <i class="far fa-circle-question" aria-hidden="true"></i>
-                    <span>About</span>
-                </button>
                 <a href="pages/signup.php" class="btn-primary">
-                    <span>Sign Up</span>
+                    <span>Create account</span>
                     <i class="fas fa-arrow-right" aria-hidden="true"></i>
                 </a>
             </nav>
@@ -179,17 +175,15 @@ header('Expires: 0');
     <div class="landing-wrapper">
         <div id="main-content" class="landing-main">
         <section class="hero-content" aria-labelledby="hero-title">
-            <span class="hero-kicker">City of Pasig</span>
             <div class="hero-badge">
                 <i class="fas fa-shield-alt" aria-hidden="true"></i>
-                Government Services Portal
+                City of Pasig
             </div>
-            <h2 id="hero-title">Secure profiling for <span>Seniors &amp; Community Members</span></h2>
-            <p class="hero-sub">SENIORLINK is a centralized profiling and record authentication system for efficient government service delivery.</p>
+            <h2 id="hero-title">Senior services, <span>made simpler</span></h2>
+            <p class="hero-sub">Apply, track an application, or access the workspace for your role.</p>
             <div class="hero-assurance" aria-label="System features">
                 <span><i class="fas fa-lock" aria-hidden="true"></i> Secure access</span>
-                <span><i class="fas fa-database" aria-hidden="true"></i> Centralized records</span>
-                <span><i class="fas fa-check-circle" aria-hidden="true"></i> Verified profiles</span>
+                <span><i class="fas fa-check-circle" aria-hidden="true"></i> Official city portal</span>
             </div>
 
         </section>
@@ -198,33 +192,32 @@ header('Expires: 0');
             <div class="portal-panel-header">
                 <div>
                     <span class="portal-eyebrow">Get started</span>
-                    <h3 id="portal-heading">Choose your portal</h3>
-                    <p>Select the workspace that matches your role.</p>
+                    <h3 id="portal-heading">What do you need?</h3>
+                    <p>Choose one option to continue.</p>
                 </div>
                 <span class="portal-security" title="Secure role-based access">
                     <i class="fas fa-shield-alt" aria-hidden="true"></i>
                     Secure
                 </span>
             </div>
-            <a href="pages/benefit_tracker.php" class="portal-track-card" id="trackLink" aria-haspopup="dialog" aria-controls="trackModal">
+            <a href="pages/benefit_tracker.php" class="portal-track-card">
                 <span class="portal-track-card-icon" aria-hidden="true"><i class="fas fa-magnifying-glass"></i></span>
                 <span class="portal-track-card-copy">
                     <strong>Track your application</strong>
-                    <small>Use your PRX or PEN token to check its current processing status.</small>
+                    <small>Check status with your PRX or PEN token.</small>
                 </span>
                 <i class="fas fa-arrow-right portal-track-card-arrow" aria-hidden="true"></i>
             </a>
             <div class="portal-cards">
                 <a href="pages/barangay_staff_login_page.php" class="portal-card" id="staffCard"
                    aria-label="SHDO login — register beneficiaries and manage local records">
-                    <span class="portal-card-number" aria-hidden="true">01</span>
                     <div class="portal-card-icon staff" aria-hidden="true">
                         <i class="fas fa-user-shield"></i>
                     </div>
                     <div class="portal-card-body">
-                        <span class="portal-role">Local operations</span>
-                        <h4>SHDO</h4>
-                        <p>Register beneficiaries, capture applicant photos, and manage local records.</p>
+                        <span class="portal-role">Staff access</span>
+                        <h4>SHDO sign in</h4>
+                        <p>Register and manage senior records.</p>
                     </div>
                     <span class="portal-card-arrow" aria-hidden="true">
                         <i class="fas fa-arrow-right"></i>
@@ -233,14 +226,13 @@ header('Expires: 0');
 
                 <a href="pages/department_admin_login_page.php" class="portal-card" id="adminCard"
                    aria-label="Department Admin login — oversee operations and monitor authentication">
-                    <span class="portal-card-number" aria-hidden="true">02</span>
                     <div class="portal-card-icon admin" aria-hidden="true">
                         <i class="fas fa-user-cog"></i>
                     </div>
                     <div class="portal-card-body">
-                        <span class="portal-role">Citywide oversight</span>
-                        <h4>Department Admin</h4>
-                        <p>Oversee system operations, generate reports, and monitor authentication.</p>
+                        <span class="portal-role">Administrator access</span>
+                        <h4>Department Admin sign in</h4>
+                        <p>Manage operations and reports.</p>
                     </div>
                     <span class="portal-card-arrow" aria-hidden="true">
                         <i class="fas fa-arrow-right"></i>
@@ -249,14 +241,13 @@ header('Expires: 0');
 
                 <a href="pages/proxy_registration.php" class="portal-card" id="proxyCard"
                    aria-label="Public new application service for senior citizens">
-                    <span class="portal-card-number" aria-hidden="true">03</span>
                     <div class="portal-card-icon proxy" aria-hidden="true">
                         <i class="fas fa-qrcode"></i>
                     </div>
                     <div class="portal-card-body">
-                        <span class="portal-role">Public service</span>
-                        <h4>New Senior Application</h4>
-                        <p>Public online application for every eligible senior citizen, with assistance from a family member or authorized representative when needed.</p>
+                        <span class="portal-role">For senior citizens</span>
+                        <h4>Apply for Benefit</h4>
+                        <p>Submit an online senior benefit application.</p>
                     </div>
                     <span class="portal-card-arrow" aria-hidden="true">
                         <i class="fas fa-arrow-right"></i>
@@ -273,128 +264,5 @@ header('Expires: 0');
         </footer>
     </div>
 
-    <div class="about-modal" id="aboutModal" role="dialog" aria-modal="true"
-         aria-labelledby="about-title" aria-hidden="true">
-        <div class="about-content">
-            <div class="about-header">
-                <h3 id="about-title">About SENIORLINK</h3>
-                <button class="close-btn" type="button" aria-label="Close about dialog">&times;</button>
-            </div>
-            <div class="about-body">
-                <p>SENIORLINK is a Centralized Profiling and Record Authentication System designed for senior citizens and community members who need reliable access to government services.</p>
-                <p>SENIORLINK ensures secure and accurate identity verification while maintaining data privacy.</p>
-                <p>The system provides efficient access to essential services for eligible residents.</p>
-                <div class="team-section">
-                    <h4>Our Team</h4>
-                    <div class="team-members-container">
-                        <div class="team-member">
-                            <i class="fas fa-user-circle" aria-hidden="true"></i>
-                            <p>Developer</p>
-                        </div>
-                        <div class="team-member">
-                            <i class="fas fa-user-tie" aria-hidden="true"></i>
-                            <p>Front End</p>
-                        </div>
-                        <div class="team-member">
-                            <i class="fas fa-user-cog" aria-hidden="true"></i>
-                            <p>Back End</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="about-modal" id="trackModal" role="dialog" aria-modal="true"
-         aria-labelledby="track-title" aria-hidden="true">
-        <div class="about-content track-content">
-            <div class="about-header">
-                <div>
-                    <span class="portal-eyebrow">Public tracking</span>
-                    <h3 id="track-title">Track Your Application Status</h3>
-                </div>
-                <button class="close-btn" type="button" aria-label="Close application tracker">&times;</button>
-            </div>
-            <p class="track-intro">Use the PRX or PEN token you received after registration to view your current status and processing updates.</p>
-            <form class="portal-tracker track-modal-form" action="pages/benefit_tracker.php" method="get">
-                <label for="landingTrackerToken">Application token</label>
-                <div class="portal-tracker-controls">
-                    <input id="landingTrackerToken" name="token" type="text" placeholder="PRX-ABC123 or PEN-ABC123" maxlength="24" autocomplete="off" spellcheck="false" required>
-                    <button type="submit"><span>Check Status</span><i class="fas fa-arrow-right" aria-hidden="true"></i></button>
-                </div>
-                <small class="track-help"><i class="fas fa-shield-halved" aria-hidden="true"></i> Secure lookup—your token is used only to find your application status.</small>
-            </form>
-        </div>
-    </div>
-
-    <script>
-        const aboutLink = document.getElementById('aboutLink');
-        const aboutModal = document.getElementById('aboutModal');
-        const closeBtn = aboutModal.querySelector('.close-btn');
-        let lastFocusedElement = null;
-
-        function openModal() {
-            lastFocusedElement = document.activeElement;
-            aboutModal.setAttribute('aria-hidden', 'false');
-            document.body.style.overflow = 'hidden';
-            closeBtn.focus();
-        }
-
-        function closeModal() {
-            aboutModal.setAttribute('aria-hidden', 'true');
-            document.body.style.overflow = '';
-            if (lastFocusedElement) lastFocusedElement.focus();
-        }
-
-        aboutLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            openModal();
-        });
-
-        closeBtn.addEventListener('click', closeModal);
-
-        aboutModal.addEventListener('click', (e) => {
-            if (e.target === aboutModal) closeModal();
-        });
-
-        const trackLink = document.getElementById('trackLink');
-        const trackModal = document.getElementById('trackModal');
-        const trackCloseBtn = trackModal?.querySelector('.close-btn');
-        const trackerInput = document.getElementById('landingTrackerToken');
-
-        function openTrackModal() {
-            lastFocusedElement = document.activeElement;
-            if (!trackModal || !trackerInput) return;
-            trackModal.setAttribute('aria-hidden', 'false');
-            document.body.style.overflow = 'hidden';
-            trackerInput.focus();
-        }
-
-        function closeTrackModal() {
-            if (!trackModal) return;
-            trackModal.setAttribute('aria-hidden', 'true');
-            document.body.style.overflow = '';
-            if (lastFocusedElement) lastFocusedElement.focus();
-        }
-
-        trackLink?.addEventListener('click', (event) => {
-            if (!trackModal || !trackerInput) return;
-            event.preventDefault();
-            openTrackModal();
-        });
-        trackCloseBtn?.addEventListener('click', closeTrackModal);
-        trackModal?.addEventListener('click', (e) => {
-            if (e.target === trackModal) closeTrackModal();
-        });
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && aboutModal.getAttribute('aria-hidden') === 'false') {
-                closeModal();
-            }
-            if (e.key === 'Escape' && trackModal?.getAttribute('aria-hidden') === 'false') {
-                closeTrackModal();
-            }
-        });
-    </script>
 </body>
 </html>

@@ -429,7 +429,7 @@ $sidebarCss = ($role === 'barangay_staff') ? '../assets/css/barangay-sidebar.css
                             </div>
                             <div class="accordion-body">
                                 <ul>
-                                    <li><strong>Step 1:</strong> Barangay staff files application via SENIORLINK</li>
+                                    <li><strong>Step 1:</strong> SHDO files the application via SENIORLINK</li>
                                     <li><strong>Step 2:</strong> OSCA / DSWD social worker conducts home visitation</li>
                                     <li><strong>Step 3:</strong> Department Admin reviews uploaded documents</li>
                                     <li><strong>Step 4:</strong> Deduplication check — verified not registered elsewhere</li>

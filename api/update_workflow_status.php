@@ -69,9 +69,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         exit();
     }
 
-    // Barangay Staff can only perform the first forward transition
+    // SHDO can only perform the first forward transition.
     if ($isStaff && $action !== 'next') {
-        echo json_encode(['success' => false, 'message' => 'Barangay staff can only submit applications for review — no other transitions are permitted.']);
+        echo json_encode(['success' => false, 'message' => 'SHDO can only submit applications for review — no other transitions are permitted.']);
         exit();
     }
 
@@ -97,9 +97,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         // Direct, rule-based status handling.
         if ($action === 'next') {
-            // Staff can only move from initial states
+            // Staff can only move from initial states.
             if ($isStaff && !in_array($currentStatus, ['Received', 'Submitted'], true)) {
-                echo json_encode(['success' => false, 'message' => 'Barangay staff can only submit newly received applications for department review.']);
+                echo json_encode(['success' => false, 'message' => 'SHDO can only submit newly received applications for department review.']);
                 exit();
             }
 

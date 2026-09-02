@@ -142,7 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
                     // Validate barangay based on the selected role for the user being edited
                     if ($role === 'barangay_staff') {
                         if (empty($barangay)) {
-                            $response['message'] = 'Barangay is required for Barangay Staff.'; // Changed from $response['error']
+                            $response['message'] = 'Barangay is required for SHDO.'; // Changed from $response['error']
                         } elseif (!in_array($barangay, $barangays_list)) {
                             $response['message'] = 'Invalid barangay selected.'; // Changed from $response['error']
                         }
@@ -622,7 +622,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
                             <select id="role" name="role" required>
                                 <option value="">Select role</option>
                                 <option value="department_admin" <?php echo ($user['role'] == 'department_admin') ? 'selected' : ''; ?>>Administrator</option>
-                                <option value="barangay_staff" <?php echo ($user['role'] == 'barangay_staff') ? 'selected' : ''; ?>>Barangay Staff</option>
+                                <option value="barangay_staff" <?php echo ($user['role'] == 'barangay_staff') ? 'selected' : ''; ?>>SHDO</option>
                             </select>
                         </div>
                         <div class="form-group" id="barangayFormGroup" style="display: none;">
@@ -780,7 +780,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
                             <select id="role" name="role" required>
                                 <option value="">Select role</option>
                                 <option value="department_admin" <?php echo ($user['role'] == 'department_admin') ? 'selected' : ''; ?>>Administrator</option>
-                                <option value="barangay_staff" <?php echo ($user['role'] == 'barangay_staff') ? 'selected' : ''; ?>>Barangay Staff</option>
+                                <option value="barangay_staff" <?php echo ($user['role'] == 'barangay_staff') ? 'selected' : ''; ?>>SHDO</option>
                             </select>
                         </div>
                         <div class="form-group" id="barangayFormGroup" style="display: none;">
