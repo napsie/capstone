@@ -2,7 +2,6 @@
 session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/audit_logger.php';
-require_once '../includes/sms_service.php';
 
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'] ?? '', ['barangay_staff', 'department_admin'], true)) {
     header('Location: ../index.php');
@@ -142,81 +141,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             operationsRedirect('Home visit status updated.');
         }
 
-        if ($action === 'create_batch') {
-            if ($isDepartment) operationsRedirect('Hardcopy batches must be created by an SHDO.', false);
-            $handoverDate = trim((string)($_POST['handover_date'] ?? ''));
-            $submittedBy = trim(strip_tags((string)($_POST['submitted_by_name'] ?? '')));
-            $remarks = trim(strip_tags((string)($_POST['remarks'] ?? '')));
-            $applicationIds = array_values(array_unique(array_filter(array_map('trim', (array)($_POST['application_ids'] ?? [])))));
-            $date = DateTime::createFromFormat('Y-m-d', $handoverDate);
-            if (!$date || $date->format('Y-m-d') !== $handoverDate) operationsRedirect('Select a valid handover date.', false);
-            if ($submittedBy === '') operationsRedirect('Enter the name of the person carrying the hardcopies.', false);
-            if (!$applicationIds) operationsRedirect('Select at least one application for the batch.', false);
-
-            $placeholders = implode(',', array_fill(0, count($applicationIds), '?'));
-            $check = $conn->prepare("SELECT id_number FROM applications WHERE barangay = ? AND workflow_state = 'For Review' AND COALESCE(is_archived, 0) = 0 AND id_number IN ({$placeholders})");
-            $check->execute(array_merge([$barangay], $applicationIds));
-            $validIds = $check->fetchAll(PDO::FETCH_COLUMN);
-            if (count($validIds) !== count($applicationIds)) operationsRedirect('One or more selected applications are not ready for department handover.', false);
-
-            $conn->beginTransaction();
-            $prefix = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $barangay), 0, 3)) ?: 'BRG';
-            $countStmt = $conn->prepare('SELECT COUNT(*) FROM hardcopy_batches WHERE barangay = ? AND handover_date = ?');
-            $countStmt->execute([$barangay, $handoverDate]);
-            $sequence = (int)$countStmt->fetchColumn() + 1;
-            $batchCode = sprintf('HC-%s-%s-%03d', $date->format('Ymd'), $prefix, $sequence);
-            $batchStmt = $conn->prepare('INSERT INTO hardcopy_batches (batch_code, barangay, handover_date, status, submitted_by_name, created_by_user_id, remarks) VALUES (?, ?, ?, ?, ?, ?, ?)');
-            $batchStmt->execute([$batchCode, $barangay, $handoverDate, 'Draft', $submittedBy, $_SESSION['user_id'], $remarks ?: null]);
-            $batchId = (int)$conn->lastInsertId();
-            $itemStmt = $conn->prepare('INSERT INTO hardcopy_batch_items (batch_id, application_id) VALUES (?, ?)');
-            foreach ($validIds as $id) $itemStmt->execute([$batchId, $id]);
-            $conn->commit();
-            logAudit($conn, 'CREATE_HARDCOPY_BATCH', "Created {$batchCode} with " . count($validIds) . ' applications.');
-            operationsRedirect("Batch {$batchCode} created as Draft.");
-        }
-
-        if ($action === 'release_batch') {
-            if ($isDepartment) operationsRedirect('Only an SHDO can release a batch.', false);
-            $batchId = filter_var($_POST['batch_id'] ?? null, FILTER_VALIDATE_INT);
-            $stmt = $conn->prepare("UPDATE hardcopy_batches SET status = 'Released', released_at = CURRENT_TIMESTAMP WHERE id = ? AND barangay = ? AND status = 'Draft'");
-            $stmt->execute([$batchId, $barangay]);
-            if ($stmt->rowCount() === 0) operationsRedirect('Draft batch not found.', false);
-            logAudit($conn, 'RELEASE_HARDCOPY_BATCH', "Released hardcopy batch #{$batchId}.");
-            operationsRedirect('Batch marked as released to the main office.');
-        }
-
-        if ($action === 'receive_batch') {
-            if (!$isDepartment) operationsRedirect('Only department administrators can receive a batch.', false);
-            $batchId = filter_var($_POST['batch_id'] ?? null, FILTER_VALIDATE_INT);
-            $stmt = $conn->prepare("UPDATE hardcopy_batches SET status = 'Received', received_by_user_id = ?, received_at = CURRENT_TIMESTAMP WHERE id = ? AND status IN ('Released', 'Incomplete')");
-            $stmt->execute([$_SESSION['user_id'], $batchId]);
-            if ($stmt->rowCount() === 0) operationsRedirect('Released batch not found.', false);
-            logAudit($conn, 'RECEIVE_HARDCOPY_BATCH', "Received hardcopy batch #{$batchId}.");
-            operationsRedirect('Batch receipt recorded. Review each application document set.');
-        }
-
-        if ($action === 'update_batch_item') {
-            if (!$isDepartment) operationsRedirect('Only department administrators can review received documents.', false);
-            $itemId = filter_var($_POST['item_id'] ?? null, FILTER_VALIDATE_INT);
-            $documentStatus = (string)($_POST['document_status'] ?? '');
-            $remarks = trim(strip_tags((string)($_POST['remarks'] ?? '')));
-            if (!in_array($documentStatus, ['Complete', 'Incomplete'], true)) operationsRedirect('Invalid document result.', false);
-            if ($documentStatus === 'Incomplete' && $remarks === '') operationsRedirect('Describe the missing or incomplete documents.', false);
-            $find = $conn->prepare("SELECT i.batch_id FROM hardcopy_batch_items i JOIN hardcopy_batches b ON b.id = i.batch_id WHERE i.id = ? AND b.status IN ('Received', 'Incomplete')");
-            $find->execute([$itemId]);
-            $batchId = (int)$find->fetchColumn();
-            if (!$batchId) operationsRedirect('Batch item not found.', false);
-            $stmt = $conn->prepare('UPDATE hardcopy_batch_items SET document_status = ?, remarks = ? WHERE id = ?');
-            $stmt->execute([$documentStatus, $remarks ?: null, $itemId]);
-            $summary = $conn->prepare("SELECT SUM(CASE WHEN document_status = 'Pending' THEN 1 ELSE 0 END) pending_count, SUM(CASE WHEN document_status = 'Incomplete' THEN 1 ELSE 0 END) incomplete_count FROM hardcopy_batch_items WHERE batch_id = ?");
-            $summary->execute([$batchId]);
-            $counts = $summary->fetch(PDO::FETCH_ASSOC);
-            $batchStatus = (int)$counts['incomplete_count'] > 0 ? 'Incomplete' : ((int)$counts['pending_count'] === 0 ? 'Completed' : 'Received');
-            $batchStmt = $conn->prepare('UPDATE hardcopy_batches SET status = ? WHERE id = ?');
-            $batchStmt->execute([$batchStatus, $batchId]);
-            logAudit($conn, 'REVIEW_HARDCOPY_ITEM', "Batch #{$batchId}, item #{$itemId}: {$documentStatus}.");
-            operationsRedirect('Document result saved.');
-        }
     } catch (Throwable $e) {
         if ($conn->inTransaction()) $conn->rollBack();
         error_log('Field operations error: ' . $e->getMessage());
@@ -302,193 +226,23 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
         .badge.eligible,.badge.completed,.badge.complete,.badge.received { background:#dcfce7; color:#166534; }
         .badge.scheduled,.badge.released { background:#dbeafe; color:#1d4ed8; }
         .badge.incomplete,.badge.cancelled,.badge.not-eligible { background:#fee2e2; color:#991b1b; }
-        details { border:1px solid #e2e8f0; border-radius:10px; margin:10px 0; overflow:hidden; }
-        summary { cursor:pointer; padding:12px 14px; background:#f8fafc; font-weight:800; }
-        .details-body { padding:14px; }
-        .selection-list { max-height:310px; overflow:auto; border:1px solid #dbe4ef; border-radius:9px; }
-        .selection-row { display:flex; align-items:center; gap:10px; padding:10px 12px; border-bottom:1px solid #edf2f7; }
-        .selection-row:last-child { border:0; }
         .muted { color:var(--muted); font-size:.78rem; }
         .sr-only { position:absolute!important; width:1px!important; height:1px!important; padding:0!important; margin:-1px!important; overflow:hidden!important; clip:rect(0,0,0,0)!important; white-space:nowrap!important; border:0!important; }
         .notice { display:flex; align-items:center; gap:10px; }
         .notice i { flex:0 0 auto; font-size:1rem; }
         .tab-btn { min-height:44px; display:inline-flex; align-items:center; gap:8px; transition:background .18s,border-color .18s,color .18s,box-shadow .18s; }
         .tab-btn:hover:not(.active) { background:#f8fafc; border-color:#94a3b8; }
-        .tab-btn:focus-visible,.btn:focus-visible,.text-action:focus-visible,summary:focus-visible,.batch-filters input:focus-visible,.batch-filters select:focus-visible { outline:3px solid rgba(37,99,235,.28); outline-offset:2px; }
+        .tab-btn:focus-visible,.btn:focus-visible,.text-action:focus-visible { outline:3px solid rgba(37,99,235,.28); outline-offset:2px; }
         .btn { min-height:42px; transition:filter .18s,transform .18s,box-shadow .18s; }
         .btn:hover:not(:disabled) { filter:brightness(.94); transform:translateY(-1px); box-shadow:0 5px 13px rgba(15,23,42,.14); }
         .btn:disabled { opacity:.52; cursor:not-allowed; }
 
-        /* Hardcopy batches: task-oriented and status-forward workspace. */
-        .batch-workspace { --batch-blue:#1769aa; --batch-green:#15804a; --batch-amber:#b35c08; --batch-red:#b42318; }
-        .batch-intro { display:flex; align-items:flex-start; justify-content:space-between; gap:24px; padding:24px 26px; margin-bottom:16px; color:#fff; background:linear-gradient(135deg,#123c67 0%,#1769aa 58%,#0f766e 145%); border-radius:16px; box-shadow:0 10px 28px rgba(15,61,103,.16); overflow:hidden; position:relative; }
-        .batch-intro::after { content:''; position:absolute; width:250px; height:250px; right:-80px; top:-120px; border-radius:50%; background:rgba(255,255,255,.08); pointer-events:none; }
-        .section-eyebrow { display:inline-flex; align-items:center; gap:7px; margin-bottom:7px; color:#bfdbfe; font-size:.72rem; font-weight:800; letter-spacing:.07em; text-transform:uppercase; }
-        .batch-intro h2 { margin:0 0 6px; font-size:1.55rem; line-height:1.2; }
-        .batch-intro p { max-width:690px; margin:0; color:rgba(255,255,255,.82); font-size:.88rem; line-height:1.6; }
-        .batch-role-note { z-index:1; max-width:270px; display:flex; align-items:flex-start; gap:9px; padding:11px 13px; color:#e0f2fe; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18); border-radius:11px; font-size:.75rem; line-height:1.45; backdrop-filter:blur(8px); }
-        .batch-role-note i { margin-top:2px; color:#7dd3fc; }
-
-        .batch-stats { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; margin-bottom:16px; }
-        .batch-stat { min-width:0; display:flex; align-items:center; gap:11px; padding:13px 14px; background:#fff; border:1px solid #dce5ee; border-radius:12px; box-shadow:0 3px 12px rgba(15,23,42,.035); }
-        .stat-icon { width:38px; height:38px; flex:0 0 38px; display:grid; place-items:center; border-radius:10px; }
-        .stat-icon.all { color:#1d4ed8; background:#dbeafe; }
-        .stat-icon.draft { color:#475569; background:#e2e8f0; }
-        .stat-icon.transit { color:#9a4b06; background:#ffedd5; }
-        .stat-icon.review { color:#6d28d9; background:#ede9fe; }
-        .stat-icon.done { color:#166534; background:#dcfce7; }
-        .batch-stat strong,.batch-stat small { display:block; }
-        .batch-stat strong { color:#0f172a; font-size:1.12rem; line-height:1.1; }
-        .batch-stat small { margin-top:3px; color:#64748b; font-size:.68rem; font-weight:700; white-space:nowrap; }
-
-        .batch-flow { display:grid; grid-template-columns:1fr auto 1fr auto 1fr auto 1fr; align-items:center; gap:12px; padding:14px 18px; margin-bottom:18px; background:#eef6fb; border:1px solid #cfe1ee; border-radius:13px; }
-        .batch-flow>div { min-width:0; display:grid; grid-template-columns:30px minmax(0,1fr); column-gap:9px; align-items:center; }
-        .batch-flow>div>span { grid-row:1/3; width:30px; height:30px; display:grid; place-items:center; color:#fff; background:#1769aa; border-radius:50%; font-size:.72rem; font-weight:800; }
-        .batch-flow strong { color:#183b56; font-size:.77rem; line-height:1.25; }
-        .batch-flow small { color:#5f7487; font-size:.63rem; line-height:1.35; }
-        .batch-flow>i { color:#8eabc0; font-size:.62rem; }
-
-        .batch-create-panel,.batch-monitor-panel { border-color:#d7e2ec; box-shadow:0 7px 22px rgba(15,23,42,.05); }
-        .batch-panel-head { padding:17px 20px; background:#fbfdff; }
-        .batch-panel-head>div { min-width:0; }
-        .panel-step { display:block; margin-bottom:4px; color:#1769aa; font-size:.65rem; font-weight:800; letter-spacing:.07em; text-transform:uppercase; }
-        .batch-panel-head h2 { font-size:1.05rem; color:#152d42; }
-        .batch-panel-head p { margin:5px 0 0; color:#64748b; font-size:.76rem; }
-        .availability-count { flex:0 0 auto; padding:7px 10px; color:#31536d; background:#eaf2f8; border-radius:999px; font-size:.7rem; font-weight:700; }
-        .availability-count strong { color:#1769aa; }
-
-        .batch-form { gap:17px; }
-        .batch-form .field label,.batch-selection-field legend { color:#263f54; font-size:.75rem; font-weight:750; text-transform:none; }
-        .batch-form .field>small { display:block; margin-top:5px; color:#6b7f91; font-size:.68rem; line-height:1.4; }
-        .batch-form input { min-height:44px; }
-        .batch-form input:focus,.document-review-form input:focus,.document-review-form select:focus { outline:none; border-color:#1769aa; box-shadow:0 0 0 3px rgba(23,105,170,.13); }
-        .optional-label { margin-left:5px; color:#64748b; font-size:.62rem; font-weight:600; }
-        .batch-selection-field { min-width:0; padding:0; margin:0; border:0; }
-        .batch-selection-field legend { margin-bottom:7px; }
-        .selection-toolbar { min-height:42px; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 12px; color:#405a70; background:#edf5fa; border:1px solid #cfe0eb; border-bottom:0; border-radius:10px 10px 0 0; font-size:.72rem; font-weight:700; }
-        .selection-toolbar>span:last-child { display:flex; gap:4px; }
-        .text-action { min-height:32px; padding:5px 9px; color:#1769aa; background:transparent; border:0; border-radius:6px; font:inherit; cursor:pointer; }
-        .text-action:hover { background:#dcecf6; }
-        .batch-selection-field .selection-list { max-height:330px; border-color:#cfe0eb; border-radius:0 0 10px 10px; }
-        .batch-selection-field .selection-row { position:relative; min-height:58px; padding:9px 12px; background:#fff; cursor:pointer; transition:background .15s; }
-        .batch-selection-field .selection-row:hover { background:#f5fafe; }
-        .batch-selection-field .selection-row:has(input:checked) { background:#eef7ff; box-shadow:inset 3px 0 #1769aa; }
-        .batch-selection-field input[type=checkbox] { position:absolute; opacity:0; pointer-events:none; }
-        .selection-check { width:21px; height:21px; flex:0 0 21px; display:grid; place-items:center; color:transparent; background:#fff; border:2px solid #93a8ba; border-radius:6px; font-size:.65rem; }
-        .selection-row input:checked+.selection-check { color:#fff; background:#1769aa; border-color:#1769aa; }
-        .selection-row input:focus-visible+.selection-check { outline:3px solid rgba(37,99,235,.28); outline-offset:2px; }
-        .selection-row>span:last-child { min-width:0; }
-        .selection-row strong { color:#1f3547; font-size:.78rem; }
-        .selection-row small { display:block; margin-top:2px; color:#6b7f91; font-size:.67rem; }
-        .batch-submit-row { display:flex; align-items:center; justify-content:space-between; gap:18px; padding-top:2px; }
-        .batch-submit-row>span { color:#64748b; font-size:.7rem; }
-        .batch-submit-row>span i { margin-right:5px; color:#1769aa; }
-
-        .monitoring-head { border-bottom:0; }
-        .batch-filters { display:flex; align-items:center; gap:9px; padding:0 20px 15px; background:#fbfdff; border-bottom:1px solid var(--border); }
-        .batch-filters label { min-width:0; }
-        .batch-filters input,.batch-filters select { height:42px; padding:8px 11px; color:#243b4f; background:#fff; border:1px solid #cbd8e3; border-radius:9px; font:inherit; font-size:.78rem; }
-        .batch-search { position:relative; flex:1 1 320px; max-width:430px; }
-        .batch-search i { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#7790a4; }
-        .batch-search input { width:100%; padding-left:35px; }
-        .batch-filters select { min-width:165px; }
-        .batch-list { padding:12px 18px 18px; }
-        .batch-card { margin:9px 0; border-color:#d8e3ec; border-radius:12px; box-shadow:0 2px 8px rgba(15,23,42,.025); }
-        .batch-card[hidden] { display:none; }
-        .batch-card summary { list-style:none; min-height:76px; display:grid; grid-template-columns:42px minmax(190px,1.2fr) minmax(190px,.9fr) auto 24px; align-items:center; gap:13px; padding:11px 14px; background:#fff; font-weight:400; transition:background .15s; }
-        .batch-card summary::-webkit-details-marker { display:none; }
-        .batch-card summary:hover { background:#f7fbfe; }
-        .batch-card[open] summary { background:#f2f8fc; border-bottom:1px solid #d8e3ec; }
-        .batch-summary-icon { width:42px; height:42px; display:grid; place-items:center; color:#1769aa; background:#e3f0f9; border-radius:10px; }
-        .batch-summary-main,.batch-summary-info { min-width:0; display:flex; flex-direction:column; }
-        .batch-summary-main strong { overflow:hidden; color:#143652; font-size:.85rem; text-overflow:ellipsis; white-space:nowrap; }
-        .batch-summary-main small,.batch-summary-info small { color:#64798a; font-size:.68rem; font-weight:600; }
-        .batch-summary-main small { margin-top:4px; }
-        .batch-summary-main i { width:13px; color:#829aac; }
-        .batch-summary-info { gap:3px; }
-        .batch-card .badge { gap:6px; align-items:center; justify-self:end; }
-        .batch-card .badge i,.batch-table .badge i { font-size:.38rem; }
-        .summary-chevron { color:#71879a; transition:transform .18s; }
-        .batch-card[open] .summary-chevron { transform:rotate(180deg); }
-        .batch-details-body { padding:18px; background:#fff; }
-
-        .batch-progress { max-width:660px; display:grid; grid-template-columns:48px minmax(24px,1fr) 48px minmax(24px,1fr) 48px minmax(24px,1fr) 48px; align-items:start; margin:0 auto 20px; }
-        .batch-progress>span { display:flex; flex-direction:column; align-items:center; gap:5px; color:#8b9baa; }
-        .batch-progress>span>i { width:30px; height:30px; display:grid; place-items:center; background:#eef2f5; border:2px solid #d9e1e7; border-radius:50%; font-size:.65rem; }
-        .batch-progress>span small { font-size:.62rem; font-weight:700; }
-        .batch-progress>b { height:3px; margin-top:14px; background:#d9e1e7; }
-        .batch-progress>.done { color:#177944; }
-        .batch-progress>span.done>i,.batch-progress>b.done { color:#fff; background:#21a35c; border-color:#21a35c; }
-        .batch-progress>span.attention { color:#a94710; }
-        .batch-progress>span.attention>i { color:#fff; background:#d97706; border-color:#d97706; }
-
-        .batch-metadata { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px; margin-bottom:14px; }
-        .batch-metadata>div { min-width:0; display:flex; align-items:flex-start; gap:9px; padding:11px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:9px; }
-        .batch-metadata>div>i { width:18px; margin-top:2px; color:#4c7899; text-align:center; }
-        .batch-metadata span { min-width:0; }
-        .batch-metadata small,.batch-metadata strong,.batch-metadata em { display:block; }
-        .batch-metadata small { color:#718396; font-size:.61rem; font-weight:700; text-transform:uppercase; letter-spacing:.035em; }
-        .batch-metadata strong { margin-top:2px; overflow-wrap:anywhere; color:#263f54; font-size:.7rem; line-height:1.4; }
-        .batch-metadata em { color:#64748b; font-size:.62rem; font-style:normal; }
-        .batch-remarks { display:flex; align-items:flex-start; gap:9px; padding:10px 12px; margin-bottom:14px; color:#5d4a16; background:#fffbeb; border:1px solid #fde68a; border-radius:9px; font-size:.72rem; }
-        .batch-remarks i { margin-top:2px; color:#b7791f; }
-        .batch-remarks strong { display:block; margin-bottom:2px; }
-        .batch-actions { display:flex; align-items:center; min-height:44px; margin:5px 0 16px; }
-        .action-status { display:inline-flex; align-items:center; gap:7px; color:#356149; font-size:.72rem; font-weight:650; }
-        .action-status i { color:#22a15d; }
-        .batch-table-heading { display:flex; align-items:end; justify-content:space-between; padding-top:14px; margin-bottom:9px; border-top:1px solid #e2e8f0; }
-        .batch-table-heading h3 { margin:0; color:#19364d; font-size:.86rem; }
-        .batch-table-heading p { margin:3px 0 0; color:#64748b; font-size:.67rem; }
-        .batch-table-wrap { border:1px solid #dfe7ee; border-radius:9px; }
-        .batch-table { min-width:920px; }
-        .batch-table th { background:#edf4f8; color:#38566d; }
-        .application-code { color:#1d4f78; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:.73rem; font-weight:700; }
-        .document-review-form { min-width:360px; display:grid; grid-template-columns:105px minmax(150px,1fr) auto; align-items:end; gap:7px; }
-        .document-review-form label>span { display:block; margin-bottom:3px; color:#596f81; font-size:.61rem; font-weight:700; }
-        .document-review-form select,.document-review-form input { width:100%; min-height:38px; padding:7px 8px; color:#263f54; background:#fff; border:1px solid #cbd5e1; border-radius:7px; font:inherit; font-size:.72rem; }
-        .document-review-form .btn { min-height:38px; padding:7px 10px; font-size:.69rem; }
-        .batch-empty { min-height:150px; display:flex; align-items:center; justify-content:center; gap:14px; padding:28px; color:#61788b; text-align:left; }
-        .batch-empty>i { width:46px; height:46px; flex:0 0 46px; display:grid; place-items:center; color:#477895; background:#eaf3f8; border-radius:50%; font-size:1.1rem; }
-        .batch-empty strong { display:block; color:#28465c; font-size:.86rem; }
-        .batch-empty p { max-width:430px; margin:4px 0 0; font-size:.72rem; line-height:1.5; }
-        .batch-empty.compact { min-height:100px; justify-content:flex-start; }
-
-        @media(max-width:1100px){
-            .batch-stats { grid-template-columns:repeat(3,minmax(0,1fr)); }
-            .batch-flow { grid-template-columns:1fr 1fr; gap:10px; }
-            .batch-flow>i { display:none; }
-            .batch-metadata { grid-template-columns:1fr 1fr; }
-        }
         @media(max-width:900px){
             .form-grid{grid-template-columns:1fr 1fr;}
-            .batch-intro { flex-direction:column; }
-            .batch-role-note { max-width:none; }
-            .batch-card summary { grid-template-columns:42px minmax(160px,1fr) auto 24px; }
-            .batch-summary-info { display:none; }
         }
         @media(max-width:600px){
             .main-content{padding:14px}.form-grid{grid-template-columns:1fr}.full{grid-column:auto}
-            .batch-intro { padding:20px; border-radius:13px; }
-            .batch-intro h2 { font-size:1.3rem; }
-            .batch-stats { grid-template-columns:1fr 1fr; }
-            .batch-stat { padding:11px; }
-            .batch-flow { grid-template-columns:1fr; }
-            .batch-panel-head { align-items:flex-start; }
             .availability-count { white-space:nowrap; }
-            .batch-submit-row { align-items:stretch; flex-direction:column; }
-            .batch-submit-row .btn { width:100%; }
-            .batch-filters { align-items:stretch; flex-direction:column; }
-            .batch-search,.batch-filters select { width:100%; max-width:none; }
-            .batch-list { padding:9px; }
-            .batch-card summary { grid-template-columns:38px minmax(0,1fr) auto 20px; gap:9px; padding:10px; }
-            .batch-summary-icon { width:38px; height:38px; }
-            .batch-summary-main strong { font-size:.75rem; }
-            .batch-card .badge { padding:4px 6px; font-size:.6rem; }
-            .batch-details-body { padding:13px 10px; }
-            .batch-progress { grid-template-columns:38px minmax(12px,1fr) 38px minmax(12px,1fr) 38px minmax(12px,1fr) 38px; }
-            .batch-progress>span small { font-size:.53rem; }
-            .batch-metadata { grid-template-columns:1fr; }
-            .batch-actions .btn { width:100%; }
         }
     </style>
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
@@ -577,129 +331,6 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
             <?php endif; ?>
         </section>
 
-        <?php if (false): /* Retained only as inactive historical markup; the module is removed. */ ?>
-        <section id="tab-batches" class="tab-panel batch-workspace" role="tabpanel" aria-labelledby="batchesTab">
-            <div class="batch-intro" aria-labelledby="batchPageTitle">
-                <div>
-                    <span class="section-eyebrow"><i class="fas fa-boxes-stacked" aria-hidden="true"></i> Physical document tracking</span>
-                    <h2 id="batchPageTitle">Hardcopy Batches</h2>
-                    <p><?= $isDepartment ? 'Monitor submissions from every barangay, confirm physical receipt, and record document completeness.' : 'Group reviewed applications, record who will deliver them, and monitor receipt by the main office.' ?></p>
-                </div>
-                <div class="batch-role-note"><i class="fas fa-circle-info" aria-hidden="true"></i><span><strong>Your role:</strong> <?= $isDepartment ? 'Receive and review batches' : 'Prepare and release batches' ?></span></div>
-            </div>
-
-            <div class="batch-stats" aria-label="Hardcopy batch summary">
-                <div class="batch-stat"><span class="stat-icon all"><i class="fas fa-layer-group"></i></span><span><strong><?= count($batches) ?></strong><small>Total batches</small></span></div>
-                <div class="batch-stat"><span class="stat-icon draft"><i class="fas fa-file-pen"></i></span><span><strong><?= $batchStatusCounts['Draft'] ?></strong><small>Draft</small></span></div>
-                <div class="batch-stat"><span class="stat-icon transit"><i class="fas fa-truck-fast"></i></span><span><strong><?= $batchStatusCounts['Released'] ?></strong><small>In transit</small></span></div>
-                <div class="batch-stat"><span class="stat-icon review"><i class="fas fa-clipboard-check"></i></span><span><strong><?= $batchStatusCounts['Received'] + $batchStatusCounts['Incomplete'] ?></strong><small>Needs review</small></span></div>
-                <div class="batch-stat"><span class="stat-icon done"><i class="fas fa-circle-check"></i></span><span><strong><?= $batchStatusCounts['Completed'] ?></strong><small>Completed</small></span></div>
-            </div>
-
-            <div class="batch-flow" aria-label="Hardcopy batch workflow">
-                <div><span>1</span><strong>Prepare</strong><small>Barangay groups applications</small></div>
-                <i class="fas fa-chevron-right" aria-hidden="true"></i>
-                <div><span>2</span><strong>Release</strong><small>Hardcopies leave the barangay</small></div>
-                <i class="fas fa-chevron-right" aria-hidden="true"></i>
-                <div><span>3</span><strong>Receive</strong><small>Main office confirms delivery</small></div>
-                <i class="fas fa-chevron-right" aria-hidden="true"></i>
-                <div><span>4</span><strong>Review</strong><small>Documents are checked per senior</small></div>
-            </div>
-
-            <?php if (!$isDepartment): ?>
-            <div class="panel batch-create-panel">
-                <div class="panel-head batch-panel-head">
-                    <div><span class="panel-step">Step 1</span><h2>Create a New Batch</h2><p>Complete the handover details, then select at least one application.</p></div>
-                    <span class="availability-count"><strong><?= count($eligibleApps) ?></strong> ready to batch</span>
-                </div>
-                <div class="panel-body">
-                    <form method="post" class="form-grid batch-form" id="batchCreateForm">
-                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
-                        <input type="hidden" name="action" value="create_batch">
-                        <div class="field"><label for="handoverDate">Planned handover date <span aria-hidden="true">*</span></label><input id="handoverDate" type="date" name="handover_date" min="<?= date('Y-m-d') ?>" required><small>When the documents will leave the barangay.</small></div>
-                        <div class="field"><label for="submittedBy">Person carrying the hardcopies <span aria-hidden="true">*</span></label><input id="submittedBy" name="submitted_by_name" maxlength="150" autocomplete="name" placeholder="Enter full name" required><small>This name appears in the handover record.</small></div>
-                        <div class="field"><label for="batchRemarks">Remarks <span class="optional-label">Optional</span></label><input id="batchRemarks" name="remarks" maxlength="500" placeholder="Delivery instructions or notes"><small>Maximum of 500 characters.</small></div>
-                        <fieldset class="field full batch-selection-field">
-                            <legend>Applications in this batch <span aria-hidden="true">*</span></legend>
-                            <div class="selection-toolbar">
-                                <span id="batchSelectionCount" role="status" aria-live="polite">0 applications selected</span>
-                                <?php if ($eligibleApps): ?><span><button type="button" class="text-action" id="selectAllBatch">Select all</button><button type="button" class="text-action" id="clearBatchSelection">Clear</button></span><?php endif; ?>
-                            </div>
-                            <div class="selection-list" id="batchApplicationList">
-                                <?php if (!$eligibleApps): ?><div class="batch-empty compact"><i class="fas fa-circle-check" aria-hidden="true"></i><div><strong>Nothing is waiting to be batched</strong><p>Applications will appear here once they reach “For Review.”</p></div></div><?php endif; ?>
-                                <?php foreach ($eligibleApps as $app): ?><label class="selection-row"><input type="checkbox" name="application_ids[]" value="<?= htmlspecialchars($app['id_number']) ?>"><span class="selection-check" aria-hidden="true"><i class="fas fa-check"></i></span><span><strong><?= htmlspecialchars($app['full_name']) ?></strong><small><?= htmlspecialchars($app['id_number']) ?> <span aria-hidden="true">&bull;</span> <?= htmlspecialchars(ucwords(str_replace('_', ' ', $app['application_type']))) ?></small></span></label><?php endforeach; ?>
-                            </div>
-                        </fieldset>
-                        <div class="full batch-submit-row"><span><i class="fas fa-info-circle"></i> The batch starts as a draft. You can review it before release.</span><button class="btn btn-primary" id="createBatchButton" type="submit" <?= !$eligibleApps ? 'disabled' : '' ?>><i class="fas fa-plus"></i> Create Draft Batch</button></div>
-                    </form>
-                </div>
-            </div>
-            <?php endif; ?>
-
-            <div class="panel batch-monitor-panel">
-                <div class="panel-head batch-panel-head monitoring-head">
-                    <div><span class="panel-step"><?= $isDepartment ? 'Main office workspace' : 'Step 2' ?></span><h2>Batch Monitoring</h2><p>Open a batch to view its handover history and application documents.</p></div>
-                    <span class="availability-count" id="visibleBatchCount"><?= count($batches) ?> shown</span>
-                </div>
-                <div class="batch-filters" aria-label="Filter hardcopy batches">
-                    <label class="batch-search"><span class="sr-only">Search batches</span><i class="fas fa-search" aria-hidden="true"></i><input type="search" id="batchSearch" placeholder="Search batch code or barangay"></label>
-                    <label><span class="sr-only">Filter by status</span><select id="batchStatusFilter"><option value="">All statuses</option><option>Draft</option><option>Released</option><option>Received</option><option>Incomplete</option><option>Completed</option></select></label>
-                </div>
-                <div class="panel-body batch-list" id="batchList">
-                    <?php if (!$batches): ?><div class="batch-empty"><i class="fas fa-box-open" aria-hidden="true"></i><div><strong>No hardcopy batches yet</strong><p><?= $isDepartment ? 'Barangay submissions will appear here after they are created.' : 'Create a batch when applications are ready for department review.' ?></p></div></div><?php endif; ?>
-                    <div class="batch-empty" id="batchFilterEmpty" hidden><i class="fas fa-filter-circle-xmark" aria-hidden="true"></i><div><strong>No batches match your filters</strong><p>Try a different search term or status.</p></div></div>
-                    <?php foreach ($batches as $batch):
-                        $batchStatus = (string)$batch['status'];
-                        $isReleased = $batchStatus !== 'Draft';
-                        $isReceived = in_array($batchStatus, ['Received', 'Incomplete', 'Completed'], true);
-                        $isReviewed = $batchStatus === 'Completed';
-                    ?>
-                    <details class="batch-card" data-status="<?= htmlspecialchars(strtolower($batchStatus)) ?>" data-search="<?= htmlspecialchars(strtolower($batch['batch_code'] . ' ' . $batch['barangay'] . ' ' . $batch['submitted_by_name'])) ?>">
-                        <summary>
-                            <span class="batch-summary-icon"><i class="fas fa-box-archive" aria-hidden="true"></i></span>
-                            <span class="batch-summary-main"><strong><?= htmlspecialchars($batch['batch_code']) ?></strong><small><i class="fas fa-location-dot" aria-hidden="true"></i> <?= htmlspecialchars($batch['barangay']) ?></small></span>
-                            <span class="batch-summary-info"><small><?= (int)$batch['item_count'] ?> application<?= (int)$batch['item_count'] === 1 ? '' : 's' ?></small><small>Handover <?= htmlspecialchars(date('M j, Y', strtotime($batch['handover_date']))) ?></small></span>
-                            <span class="badge <?= strtolower($batchStatus) ?>"><i class="fas fa-circle" aria-hidden="true"></i><?= htmlspecialchars($batchStatus) ?></span>
-                            <span class="summary-chevron"><i class="fas fa-chevron-down" aria-hidden="true"></i></span>
-                        </summary>
-                        <div class="details-body batch-details-body">
-                            <div class="batch-progress" aria-label="Batch progress">
-                                <span class="done"><i class="fas fa-check"></i><small>Prepared</small></span>
-                                <b class="<?= $isReleased ? 'done' : '' ?>"></b>
-                                <span class="<?= $isReleased ? 'done' : '' ?>"><i class="fas <?= $isReleased ? 'fa-check' : 'fa-truck' ?>"></i><small>Released</small></span>
-                                <b class="<?= $isReceived ? 'done' : '' ?>"></b>
-                                <span class="<?= $isReceived ? 'done' : '' ?>"><i class="fas <?= $isReceived ? 'fa-check' : 'fa-inbox' ?>"></i><small>Received</small></span>
-                                <b class="<?= $isReviewed ? 'done' : '' ?>"></b>
-                                <span class="<?= $isReviewed ? 'done' : ($batchStatus === 'Incomplete' ? 'attention' : '') ?>"><i class="fas <?= $isReviewed ? 'fa-check' : ($batchStatus === 'Incomplete' ? 'fa-exclamation' : 'fa-clipboard-check') ?>"></i><small>Reviewed</small></span>
-                            </div>
-
-                            <div class="batch-metadata">
-                                <div><i class="fas fa-calendar-day" aria-hidden="true"></i><span><small>Handover date</small><strong><?= htmlspecialchars(date('M j, Y', strtotime($batch['handover_date']))) ?></strong></span></div>
-                                <div><i class="fas fa-person-walking-luggage" aria-hidden="true"></i><span><small>Carried by</small><strong><?= htmlspecialchars($batch['submitted_by_name']) ?></strong></span></div>
-                                <div><i class="fas fa-clock" aria-hidden="true"></i><span><small>Released</small><strong><?= $batch['released_at'] ? htmlspecialchars(date('M j, Y g:i A', strtotime($batch['released_at']))) : 'Not yet released' ?></strong></span></div>
-                                <div><i class="fas fa-building-circle-check" aria-hidden="true"></i><span><small>Received</small><strong><?= $batch['received_at'] ? htmlspecialchars(date('M j, Y g:i A', strtotime($batch['received_at']))) : 'Not yet received' ?></strong><?php if (trim($batch['received_by_name'] ?? '') !== ''): ?><em>by <?= htmlspecialchars(trim($batch['received_by_name'])) ?></em><?php endif; ?></span></div>
-                            </div>
-
-                            <?php if (!empty($batch['remarks'])): ?><div class="batch-remarks"><i class="fas fa-note-sticky" aria-hidden="true"></i><span><strong>Batch remarks</strong><?= htmlspecialchars($batch['remarks']) ?></span></div><?php endif; ?>
-
-                            <div class="batch-actions">
-                                <?php if (!$isDepartment && $batchStatus === 'Draft'): ?><form method="post" onsubmit="return confirm('Mark this batch as released? Confirm only when the hardcopies have left the barangay office.');"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>"><input type="hidden" name="action" value="release_batch"><input type="hidden" name="batch_id" value="<?= (int)$batch['id'] ?>"><button class="btn btn-warning" type="submit"><i class="fas fa-truck"></i> Confirm Release to Main Office</button></form><?php endif; ?>
-                                <?php if ($isDepartment && in_array($batchStatus, ['Released', 'Incomplete'], true)): ?><form method="post" onsubmit="return confirm('<?= $batchStatus === 'Incomplete' ? 'Confirm that the corrected or missing documents were physically received?' : 'Confirm that the main office physically received this batch?' ?>');"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>"><input type="hidden" name="action" value="receive_batch"><input type="hidden" name="batch_id" value="<?= (int)$batch['id'] ?>"><button class="btn btn-success" type="submit"><i class="fas fa-inbox"></i> <?= $batchStatus === 'Incomplete' ? 'Confirm Corrected Documents' : 'Confirm Physical Receipt' ?></button></form><?php endif; ?>
-                                <?php if (!$isDepartment && $batchStatus !== 'Draft'): ?><span class="action-status"><i class="fas fa-circle-check"></i> No action needed from the barangay at this stage.</span><?php endif; ?>
-                            </div>
-
-                            <div class="batch-table-heading"><div><h3>Applications and Documents</h3><p><?= (int)$batch['complete_count'] ?> complete, <?= (int)$batch['incomplete_count'] ?> incomplete, <?= max(0, (int)$batch['item_count'] - (int)$batch['complete_count'] - (int)$batch['incomplete_count']) ?> pending</p></div></div>
-                            <div class="table-wrap batch-table-wrap"><table class="batch-table"><thead><tr><th>Senior</th><th>Application</th><th>Document status</th><th>Remarks</th><?php if ($isDepartment): ?><th>Review document set</th><?php endif; ?></tr></thead><tbody data-paginate="10" data-pagination-label="Batch application pages">
-                            <?php foreach ($itemsByBatch[$batch['id']] ?? [] as $item): ?><tr><td><strong><?= htmlspecialchars($item['full_name']) ?></strong></td><td><span class="application-code"><?= htmlspecialchars($item['application_id']) ?></span><br><span class="muted"><?= htmlspecialchars($item['workflow_state']) ?></span></td><td><span class="badge <?= strtolower($item['document_status']) ?>"><i class="fas fa-circle" aria-hidden="true"></i><?= htmlspecialchars($item['document_status']) ?></span></td><td><?= htmlspecialchars($item['remarks'] ?: 'No remarks') ?></td><?php if ($isDepartment): ?><td><?php if (in_array($batchStatus, ['Received', 'Incomplete'], true)): ?><form method="post" class="document-review-form"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>"><input type="hidden" name="action" value="update_batch_item"><input type="hidden" name="item_id" value="<?= (int)$item['id'] ?>"><label><span>Result</span><select name="document_status" required><option value="Complete" <?= $item['document_status'] === 'Complete' ? 'selected' : '' ?>>Complete</option><option value="Incomplete" <?= $item['document_status'] === 'Incomplete' ? 'selected' : '' ?>>Incomplete</option></select></label><label><span>Remarks</span><input name="remarks" value="<?= htmlspecialchars($item['remarks'] ?? '') ?>" placeholder="Required if incomplete"></label><button class="btn btn-primary" type="submit"><i class="fas fa-save"></i> Save review</button></form><?php else: ?><span class="muted"><i class="fas fa-lock"></i> <?= $batchStatus === 'Completed' ? 'Review completed' : 'Confirm receipt before reviewing' ?></span><?php endif; ?></td><?php endif; ?></tr><?php endforeach; ?>
-                            </tbody></table></div>
-                        </div>
-                    </details>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-        </section>
-        <?php endif; ?>
-
         <?php if ($isDepartment): ?>
         <section id="tab-personnel" class="tab-panel" role="tabpanel" aria-labelledby="personnelTab">
             <div class="panel"><div class="panel-head"><h2>Add Home Visit Personnel</h2></div><div class="panel-body">
@@ -752,61 +383,6 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
 
     const requestedTab = window.location.hash.replace('#', '');
     activateOperationsTab(requestedTab || 'visits');
-
-    const batchCheckboxes = Array.from(document.querySelectorAll('#batchApplicationList input[type="checkbox"]'));
-    const batchSelectionCount = document.getElementById('batchSelectionCount');
-    const createBatchButton = document.getElementById('createBatchButton');
-
-    function updateBatchSelection() {
-        if (!batchSelectionCount) return;
-        const selectedCount = batchCheckboxes.filter((checkbox) => checkbox.checked).length;
-        batchSelectionCount.textContent = selectedCount + ' application' + (selectedCount === 1 ? '' : 's') + ' selected';
-        if (createBatchButton) createBatchButton.disabled = selectedCount === 0;
-    }
-
-    batchCheckboxes.forEach((checkbox) => checkbox.addEventListener('change', updateBatchSelection));
-    document.getElementById('selectAllBatch')?.addEventListener('click', () => {
-        batchCheckboxes.forEach((checkbox) => checkbox.checked = true);
-        updateBatchSelection();
-    });
-    document.getElementById('clearBatchSelection')?.addEventListener('click', () => {
-        batchCheckboxes.forEach((checkbox) => checkbox.checked = false);
-        updateBatchSelection();
-    });
-    updateBatchSelection();
-
-    const batchSearch = document.getElementById('batchSearch');
-    const batchStatusFilter = document.getElementById('batchStatusFilter');
-    const batchCards = Array.from(document.querySelectorAll('.batch-card'));
-    const visibleBatchCount = document.getElementById('visibleBatchCount');
-    const batchFilterEmpty = document.getElementById('batchFilterEmpty');
-
-    function filterBatches() {
-        const query = (batchSearch?.value || '').trim().toLowerCase();
-        const status = (batchStatusFilter?.value || '').toLowerCase();
-        let visibleCount = 0;
-        batchCards.forEach((card) => {
-            const visible = (!query || card.dataset.search.includes(query)) && (!status || card.dataset.status === status);
-            card.hidden = !visible;
-            if (visible) visibleCount++;
-        });
-        if (visibleBatchCount) visibleBatchCount.textContent = visibleCount + ' shown';
-        if (batchFilterEmpty) batchFilterEmpty.hidden = visibleCount !== 0 || batchCards.length === 0;
-    }
-
-    batchSearch?.addEventListener('input', filterBatches);
-    batchStatusFilter?.addEventListener('change', filterBatches);
-
-    document.querySelectorAll('.document-review-form').forEach((form) => {
-        const result = form.querySelector('select[name="document_status"]');
-        const remarks = form.querySelector('input[name="remarks"]');
-        const syncRequirement = () => {
-            remarks.required = result.value === 'Incomplete';
-            remarks.setAttribute('aria-required', remarks.required ? 'true' : 'false');
-        };
-        result.addEventListener('change', syncRequirement);
-        syncRequirement();
-    });
 
     function toLocalInput(value) {
         if (!value) return '';

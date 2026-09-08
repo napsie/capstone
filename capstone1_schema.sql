@@ -1,7 +1,7 @@
 -- ============================================================
 -- CPRAS (Centralized Profiling and Record Authentication System)
 -- Complete Database Schema — capstone1
--- Last Updated: 2026-08-06
+-- Last Updated: 2026-09-02
 -- ============================================================
 
 CREATE DATABASE IF NOT EXISTS `capstone1`
@@ -332,44 +332,6 @@ CREATE TABLE `home_visit_personnel` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ============================================================
--- Physical hardcopy handover monitoring
--- ============================================================
-CREATE TABLE `hardcopy_batches` (
-  `id`                 int(11)      NOT NULL AUTO_INCREMENT,
-  `batch_code`         varchar(40)  NOT NULL,
-  `barangay`           varchar(100) NOT NULL,
-  `handover_date`      date         NOT NULL,
-  `status`             varchar(30)  NOT NULL DEFAULT 'Draft',
-  `submitted_by_name`  varchar(150) NOT NULL,
-  `created_by_user_id` int(11)      NOT NULL,
-  `released_at`        datetime     DEFAULT NULL,
-  `received_by_user_id` int(11)     DEFAULT NULL,
-  `received_at`        datetime     DEFAULT NULL,
-  `remarks`            text         DEFAULT NULL,
-  `created_at`         timestamp    NOT NULL DEFAULT current_timestamp(),
-  `updated_at`         timestamp    NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_hardcopy_batch_code` (`batch_code`),
-  KEY `idx_hardcopy_barangay` (`barangay`),
-  KEY `idx_hardcopy_status` (`status`),
-  KEY `idx_hardcopy_handover` (`handover_date`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-CREATE TABLE `hardcopy_batch_items` (
-  `id`              int(11)      NOT NULL AUTO_INCREMENT,
-  `batch_id`        int(11)      NOT NULL,
-  `application_id`  varchar(255) NOT NULL,
-  `document_status` varchar(30)  NOT NULL DEFAULT 'Pending',
-  `remarks`         text         DEFAULT NULL,
-  `created_at`      timestamp    NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_hardcopy_batch_item` (`batch_id`, `application_id`),
-  KEY `idx_hardcopy_item_application` (`application_id`),
-  CONSTRAINT `fk_hardcopy_item_batch` FOREIGN KEY (`batch_id`) REFERENCES `hardcopy_batches` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_hardcopy_item_application` FOREIGN KEY (`application_id`) REFERENCES `applications` (`id_number`) ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- ============================================================
 -- Table: remember_tokens
 -- ============================================================
 CREATE TABLE `remember_tokens` (
@@ -392,6 +354,7 @@ CREATE TABLE `remember_tokens` (
 CREATE TABLE `settings` (
   `id`            int(11)     NOT NULL AUTO_INCREMENT,
   `user_id`       int(11)     NOT NULL,
+  `theme`         varchar(50) NOT NULL DEFAULT 'light',
   `language`      varchar(50) NOT NULL DEFAULT 'en',
   `notifications` varchar(50) NOT NULL DEFAULT 'all',
   PRIMARY KEY (`id`),

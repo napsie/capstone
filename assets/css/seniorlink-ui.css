@@ -582,6 +582,15 @@ table {
     gap: 18px;
 }
 
+.staff-digital-id-section { padding:16px; border:1px solid #bfdbfe; border-radius:12px; background:#eff6ff; }
+.staff-digital-id-title { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:12px; }
+.staff-digital-id-title h4 { margin:0 0 3px; color:#172033; font-size:.92rem; }
+.staff-digital-id-title h4 i { margin-right:7px; color:#2563eb; }
+.staff-digital-id-title p { margin:0; color:#64748b; font-size:.73rem; }
+.staff-digital-id-link { flex:none; display:inline-flex; align-items:center; gap:7px; padding:9px 12px; border-radius:8px; background:#2563eb; color:#fff; font-size:.74rem; font-weight:800; text-decoration:none; }
+.staff-digital-id-link:hover { background:#1d4ed8; color:#fff; }
+@media(max-width:560px) { .staff-digital-id-title{flex-direction:column}.staff-digital-id-link{width:100%;justify-content:center;box-sizing:border-box} }
+
 .application-detail-section {
     padding: 16px;
     border: 1px solid var(--sl-border, #d9e3ee);

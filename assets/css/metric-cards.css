@@ -1,0 +1,201 @@
+/* Shared summary cards. Keep dashboard, verification, and records metrics aligned. */
+:is(.stats-strip, .stats-container) {
+    display: grid;
+    grid-template-columns: repeat(var(--metric-columns, 3), minmax(0, 1fr));
+    gap: 20px;
+    margin-bottom: 28px;
+}
+
+.stats-container { --metric-columns: 3; }
+
+:is(.stats-strip, .stats-container) .stat-card {
+    --metric-color: #2563eb;
+    --metric-soft: #eaf1ff;
+    --metric-tint: #f3f7ff;
+    --metric-border: #cfe0ff;
+    position: relative;
+    min-width: 0;
+    min-height: 126px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    overflow: hidden;
+    padding: 22px 30px;
+    color: #0f172a;
+    text-decoration: none;
+    background: linear-gradient(145deg, #fff 45%, var(--metric-tint));
+    border: 1px solid var(--metric-border);
+    border-radius: 16px;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, .05);
+    transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+
+:is(.stats-strip, .stats-container) .stat-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    width: auto;
+    height: 4px;
+    background: linear-gradient(90deg, var(--metric-color), color-mix(in srgb, var(--metric-color) 58%, white));
+    border-radius: 0;
+}
+
+:is(.stats-strip, .stats-container) .stat-card:nth-child(2),
+:is(.stats-strip, .stats-container) .stat-violet {
+    --metric-color: #8b5cf6;
+    --metric-soft: #f1ebff;
+    --metric-tint: #f8f5ff;
+    --metric-border: #e1d5ff;
+}
+
+:is(.stats-strip, .stats-container) .stat-card:nth-child(3),
+:is(.stats-strip, .stats-container) .stat-green {
+    --metric-color: #10b981;
+    --metric-soft: #e3f7f0;
+    --metric-tint: #effcf7;
+    --metric-border: #c8eedf;
+}
+
+:is(.stats-strip, .stats-container) .stat-card:nth-child(4),
+:is(.stats-strip, .stats-container) .stat-amber {
+    --metric-color: #f59e0b;
+    --metric-soft: #fff4d9;
+    --metric-tint: #fffbeb;
+    --metric-border: #f7dfaa;
+}
+
+/* Named dashboard variants take precedence over position-based record cards. */
+:is(.stats-strip, .stats-container) .stat-blue {
+    --metric-color: #2563eb;
+    --metric-soft: #eaf1ff;
+    --metric-tint: #f3f7ff;
+    --metric-border: #cfe0ff;
+}
+
+:is(.stats-strip, .stats-container) .stat-violet {
+    --metric-color: #8b5cf6;
+    --metric-soft: #f1ebff;
+    --metric-tint: #f8f5ff;
+    --metric-border: #e1d5ff;
+}
+
+:is(.stats-strip, .stats-container) .stat-green {
+    --metric-color: #10b981;
+    --metric-soft: #e3f7f0;
+    --metric-tint: #effcf7;
+    --metric-border: #c8eedf;
+}
+
+:is(.stats-strip, .stats-container) .stat-amber {
+    --metric-color: #f59e0b;
+    --metric-soft: #fff4d9;
+    --metric-tint: #fffbeb;
+    --metric-border: #f7dfaa;
+}
+
+:is(.stats-strip, .stats-container) .stat-card:hover,
+:is(.stats-strip, .stats-container) .stat-card:focus-visible {
+    color: #0f172a;
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--metric-color) 38%, white);
+    box-shadow: 0 10px 26px rgba(15, 23, 42, .10);
+}
+
+:is(.stats-strip, .stats-container) .stat-card:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--metric-color) 25%, transparent);
+    outline-offset: 2px;
+}
+
+:is(.stats-strip, .stats-container) .stat-icon,
+:is(.stats-strip, .stats-container) .stat-card :is(.bg-primary, .bg-success, .bg-danger) {
+    width: 66px;
+    height: 66px;
+    flex: 0 0 66px;
+    display: grid;
+    place-items: center;
+    color: var(--metric-color) !important;
+    background: var(--metric-soft) !important;
+    border-radius: 17px;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .65);
+    font-size: 1.55rem;
+}
+
+:is(.stats-strip, .stats-container) :is(.stat-copy, .stat-info, .stat-card > div:last-child) {
+    min-width: 0;
+}
+
+:is(.stats-strip, .stats-container) .stat-info {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+}
+
+:is(.stats-strip, .stats-container) :is(.stat-label, .stat-info p) {
+    order: 1;
+    margin: 0 0 6px;
+    color: #64748b;
+    font-size: .78rem;
+    font-weight: 800;
+    letter-spacing: .06em;
+    line-height: 1.15;
+    text-transform: uppercase;
+}
+
+:is(.stats-strip, .stats-container) :is(.stat-value, .stat-info h3) {
+    order: 2;
+    margin: 0;
+    color: #0f172a;
+    font-size: 2rem !important;
+    font-weight: 850;
+    line-height: 1;
+}
+
+:is(.stats-strip, .stats-container) .stat-value--text {
+    overflow: hidden;
+    font-size: clamp(1.05rem, 1.6vw, 1.45rem) !important;
+    line-height: 1.12;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+:is(.stats-strip, .stats-container) :is(.stat-meta, .stat-info small) {
+    order: 3;
+    display: block;
+    margin-top: 8px;
+    overflow: hidden;
+    color: #64748b;
+    font-size: .76rem;
+    line-height: 1.3;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+:is(.stats-strip, .stats-container) .stat-arrow { display: none; }
+
+@media (max-width: 1050px) {
+    :is(.stats-strip, .stats-container) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 680px) {
+    :is(.stats-strip, .stats-container) {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    :is(.stats-strip, .stats-container) .stat-card {
+        min-height: 108px;
+        padding: 18px 20px;
+    }
+
+    :is(.stats-strip, .stats-container) .stat-icon,
+    :is(.stats-strip, .stats-container) .stat-card :is(.bg-primary, .bg-success, .bg-danger) {
+        width: 56px;
+        height: 56px;
+        flex-basis: 56px;
+        border-radius: 15px;
+        font-size: 1.3rem;
+    }
+}

@@ -166,7 +166,7 @@ $auditHasFilters = $search !== '' || $barangayFilter !== 'all' || $auditEventFil
     <title>SENIORLINK — Department Master Archive</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=4">
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=17">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', 'Segoe UI', sans-serif; }
@@ -231,6 +231,7 @@ $auditHasFilters = $search !== '' || $barangayFilter !== 'all' || $auditEventFil
     <link rel="stylesheet" href="../assets/css/audit-log.css?v=2">
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
     <script src="../assets/js/table-pagination.js?v=1" defer></script>
+<link rel="stylesheet" href="../assets/css/application-documents.css?v=7">
 </head>
 <body>
     <div class="container">
@@ -535,8 +536,10 @@ $auditHasFilters = $search !== '' || $barangayFilter !== 'all' || $auditEventFil
     </div>
 
     <script src="../assets/js/sidebar-toggle.js?v=3"></script>
-    <script src="../assets/js/application-details.js?v=9"></script>
-    <script src="../assets/js/archive-application-modal.js?v=2"></script>
+    <script src="../assets/js/application-details.js?v=13"></script>
+    <script src="../assets/js/application-modal-data.js?v=1"></script>
+    <script src="../assets/js/application-documents.js?v=9"></script>
+    <script src="../assets/js/archive-application-modal.js?v=3"></script>
     <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
     <script>
         (function(){

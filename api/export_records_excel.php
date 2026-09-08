@@ -56,6 +56,9 @@ $barangay = trim($_GET['barangay'] ?? 'all');
 $dateFrom = trim($_GET['date_from'] ?? '');
 $dateTo = trim($_GET['date_to'] ?? '');
 $status = trim($_GET['status'] ?? 'all');
+$format = strtolower(trim($_GET['format'] ?? ''));
+$allowedFormats = ['excel', 'pdf'];
+if (!in_array($format, $allowedFormats, true)) { http_response_code(400); exit('Select a valid report format: PDF or Excel.'); }
 $allowedTypes = array_keys(getApplicationTypeOptions());
 if ($type !== 'all' && !in_array($type, $allowedTypes, true)) { http_response_code(400); exit('Invalid application type.'); }
 if ($status !== 'all' && $status !== 'Verified') { http_response_code(400); exit('Invalid report status.'); }
@@ -69,7 +72,7 @@ $parseReportDate = static function (string $value): ?DateTimeImmutable {
 $fromDate = $parseReportDate($dateFrom);
 $toDate = $parseReportDate($dateTo);
 if (($dateFrom !== '' && !$fromDate) || ($dateTo !== '' && !$toDate)) { http_response_code(400); exit('Use valid report dates in YYYY-MM-DD format.'); }
-if (($fromDate && !$toDate) || (!$fromDate && $toDate)) { http_response_code(400); exit('Select both the start and end dates.'); }
+if (!$fromDate || !$toDate) { http_response_code(400); exit('Select both the start and end dates for the report period.'); }
 if ($fromDate && $toDate && $fromDate > $toDate) { http_response_code(400); exit('The report end date cannot be earlier than the start date.'); }
 $today = new DateTimeImmutable('today');
 if (($fromDate && $fromDate > $today) || ($toDate && $toDate > $today)) { http_response_code(400); exit('Report dates cannot be in the future.'); }
@@ -131,6 +134,96 @@ $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
 if (!$records) {
     http_response_code(422);
     exit('No records match the selected report filters. Adjust the filters and try again.');
+}
+
+if ($format === 'pdf') {
+    $pdfEscape = static function ($value): string {
+        $text = (string)$value;
+        if (function_exists('iconv')) {
+            $converted = iconv('UTF-8', 'Windows-1252//TRANSLIT//IGNORE', $text);
+            if ($converted !== false) $text = $converted;
+        }
+        $text = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', '', $text) ?? '';
+        return str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $text);
+    };
+    $fit = static function ($value, int $limit): string {
+        $value = trim((string)$value);
+        return mb_strlen($value) > $limit ? mb_substr($value, 0, max(1, $limit - 3)) . '...' : $value;
+    };
+    $columns = [
+        ['#', 28, 4], ['Applicant Name', 170, 28], ['Application ID', 105, 17],
+        ['Application Type', 155, 25], ['Barangay', 120, 19], ['Date', 92, 12], ['Status', 100, 15],
+    ];
+    $pageWidth = 842;
+    $pageHeight = 595;
+    $left = 36;
+    $rowsPerPage = 24;
+    $recordChunks = array_chunk($records, $rowsPerPage);
+    $streams = [];
+    foreach ($recordChunks as $pageIndex => $chunk) {
+        $commands = ['0.12 0.22 0.35 rg'];
+        $commands[] = 'BT /F1 16 Tf ' . $left . ' 555 Td (' . $pdfEscape($reportTitle) . ') Tj ET';
+        $commands[] = '0.25 0.32 0.42 rg BT /F1 9 Tf ' . $left . ' 537 Td (' . $pdfEscape($coverageLabel) . ') Tj ET';
+        $commands[] = 'BT /F1 8 Tf ' . $left . ' 522 Td (' . $pdfEscape($fit($filterLabel, 150)) . ') Tj ET';
+        $commands[] = 'BT /F1 8 Tf 650 555 Td (Generated: ' . $pdfEscape(date('Y-m-d H:i')) . ') Tj ET';
+        $y = 496;
+        $commands[] = '0.08 0.28 0.50 rg ' . $left . ' ' . ($y - 4) . ' 770 20 re f';
+        $x = $left;
+        foreach ($columns as [$label, $width]) {
+            $commands[] = '1 1 1 rg BT /F1 8 Tf ' . ($x + 4) . ' ' . ($y + 2) . ' Td (' . $pdfEscape($label) . ') Tj ET';
+            $x += $width;
+        }
+        $y -= 22;
+        foreach ($chunk as $rowIndex => $record) {
+            if ($rowIndex % 2 === 1) $commands[] = '0.95 0.97 0.99 rg ' . $left . ' ' . ($y - 5) . ' 770 18 re f';
+            $values = [
+                ($pageIndex * $rowsPerPage) + $rowIndex + 1,
+                $fit($record['full_name'], 28), $fit($record['id_number'], 17),
+                $fit(applicationTypeLabel($record['application_type']), 25), $fit($record['barangay'], 19),
+                !empty($record['date_submitted']) ? date('Y-m-d', strtotime($record['date_submitted'])) : '',
+                $fit($record['status'], 15),
+            ];
+            $x = $left;
+            foreach ($columns as $columnIndex => $column) {
+                $commands[] = '0.10 0.16 0.24 rg BT /F1 7 Tf ' . ($x + 4) . ' ' . $y . ' Td (' . $pdfEscape($values[$columnIndex]) . ') Tj ET';
+                $x += $column[1];
+            }
+            $commands[] = '0.82 0.86 0.91 RG 0.4 w ' . $left . ' ' . ($y - 6) . ' m 806 ' . ($y - 6) . ' l S';
+            $y -= 19;
+        }
+        $commands[] = '0.35 0.40 0.48 rg BT /F1 8 Tf 720 22 Td (Page ' . ($pageIndex + 1) . ' of ' . count($recordChunks) . ') Tj ET';
+        $streams[] = implode("\n", $commands);
+    }
+
+    $objects = [1 => '<< /Type /Catalog /Pages 2 0 R >>', 3 => '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'];
+    $kids = [];
+    foreach ($streams as $index => $stream) {
+        $pageObject = 4 + ($index * 2);
+        $contentObject = $pageObject + 1;
+        $kids[] = $pageObject . ' 0 R';
+        $objects[$pageObject] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' . $pageWidth . ' ' . $pageHeight . '] /Resources << /Font << /F1 3 0 R >> >> /Contents ' . $contentObject . ' 0 R >>';
+        $objects[$contentObject] = '<< /Length ' . strlen($stream) . " >>\nstream\n" . $stream . "\nendstream";
+    }
+    $objects[2] = '<< /Type /Pages /Count ' . count($streams) . ' /Kids [' . implode(' ', $kids) . '] >>';
+    ksort($objects);
+    $pdf = "%PDF-1.4\n";
+    $offsets = [0];
+    foreach ($objects as $number => $body) {
+        $offsets[$number] = strlen($pdf);
+        $pdf .= $number . " 0 obj\n" . $body . "\nendobj\n";
+    }
+    $xref = strlen($pdf);
+    $maxObject = max(array_keys($objects));
+    $pdf .= "xref\n0 " . ($maxObject + 1) . "\n0000000000 65535 f \n";
+    for ($i = 1; $i <= $maxObject; $i++) $pdf .= sprintf('%010d 00000 n ', $offsets[$i]) . "\n";
+    $pdf .= "trailer\n<< /Size " . ($maxObject + 1) . " /Root 1 0 R >>\nstartxref\n" . $xref . "\n%%EOF";
+    $filename = ($scope === 'department' ? 'department' : 'barangay') . '_application_report_' . date('Ymd') . '.pdf';
+    header('Content-Type: application/pdf');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Content-Length: ' . strlen($pdf));
+    header('Cache-Control: private, max-age=0, must-revalidate');
+    echo $pdf;
+    exit;
 }
 
 if (!class_exists('ZipArchive')) {

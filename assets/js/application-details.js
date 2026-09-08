@@ -63,10 +63,27 @@
         return display(app.senior_id_no, app.application_type === 'senior' ? 'Not yet issued' : 'Not provided');
     }
 
+    function digitalSeniorId(app) {
+        const status = app.workflow_state || app.status || '';
+        const eligible = app.application_type === 'senior'
+            && ['Verified', 'Approved', 'Released'].includes(status)
+            && hasValue(app.senior_id_no)
+            && !/^OSCA-[0-9]{4}-[0-9A-F]{6}$/i.test(String(app.senior_id_no).trim())
+            && String(app.is_archived || '0') !== '1';
+        if (!eligible) return '';
+        const pageUrl = `digital_id.php?id=${encodeURIComponent(app.id_number)}`;
+        return `<section class="staff-digital-id-section" aria-label="Temporary Digital Senior Citizen ID available">
+            <div class="staff-digital-id-title">
+                <div><h4><i class="fas fa-id-card"></i>Temporary Digital Senior Citizen ID</h4><p>This approved applicant's temporary digital ID is ready to view.</p></div>
+                <a class="staff-digital-id-link" href="${escapeHtml(pageUrl)}" target="_blank" rel="noopener"><i class="fas fa-arrow-up-right-from-square"></i> View Digital ID</a>
+            </div>
+        </section>`;
+    }
+
     function isWaitingForHomeVisit(app) {
         const isLocalPension = app.application_type === 'pension'
             || app.requested_benefit === 'Local Social Pension Assessment';
-        return isLocalPension && app.home_visit_status !== 'Completed';
+        return app.workflow_state !== 'Needs Correction' && isLocalPension && app.home_visit_status !== 'Completed';
     }
 
     function applicationIdentity(app, title) {
@@ -76,7 +93,7 @@
             field('Requested Benefit / Service', app.requested_benefit),
             field('Senior Citizen ID No.', seniorId(app), { raw: true }),
             field('Processing Status', isWaitingForHomeVisit(app)
-                ? 'Waiting for Home Visitation'
+                ? 'Pending'
                 : (app.workflow_state || app.status || 'Received')),
             field('Date Submitted', dateTime(app.date_submitted), { raw: true })
         ]);
@@ -95,7 +112,6 @@
         if (type === 'senior') {
             sections.push(section('fa-id-card', app.requested_benefit === 'Senior Citizen ID Registration' ? 'Senior ID Registration' : 'Senior Pre-registration Profile', [
                 field('Application Purpose', app.id_purpose), field('Control Number', app.control_no),
-                field('ID Type Presented', app.id_type_presented), field('TIN', app.tin),
                 field('Health Status', app.health_status), field('Emergency Contact', app.emergency_contact_name),
                 field('Emergency Contact Number', app.emergency_contact)
             ]));
@@ -212,9 +228,12 @@
                 field('Claimant Relationship', app.claimant_relationship), field('Claimant Contact', app.claimant_contact)
             ]);
         }
-        return section('fa-hand-holding-heart', 'Requested OSCA Assistance', [
-            field('Assistance Details', app.additional_notes, { wide: true })
-        ]);
+        if (benefit === 'Other OSCA Assistance') {
+            return section('fa-hand-holding-heart', 'Requested OSCA Assistance', [
+                field('Assistance Details', app.additional_notes, { wide: true })
+            ]);
+        }
+        return '';
     }
 
     const wrap = sections => `<div class="application-detail-summary">${sections.filter(Boolean).join('')}</div>`;
@@ -225,7 +244,7 @@
             field('Application ID', app.id_number),
             field('Application Type', typeLabels[app.application_type] || app.application_type),
             field('Processing Status', isWaitingForHomeVisit(app)
-                ? 'Waiting for Home Visitation'
+                ? 'Pending'
                 : (app.workflow_state || app.status || 'Received')),
             field('Date Submitted', dateTime(app.date_submitted), { raw: true }),
             ...(app.application_type === 'pension' ? [
@@ -237,13 +256,16 @@
 
     // Verification shows only the reference and facts needed to assess this application type.
     window.renderApplicationVerificationDetails = app => wrap([
-        applicationIdentity(app, 'Verification Reference'), ...typeSpecificSections(app),
-        requestedBenefitSection(app), representativeSection(app)
+        digitalSeniorId(app), applicationIdentity(app, 'Verification Reference'), ...typeSpecificSections(app),
+        requestedBenefitSection(app), representativeSection(app),
+        hasValue(app.return_reason || app.return_comments)
+            ? section('fa-note-sticky', 'Correction Instructions', [field('Items and Reason', app.return_reason || app.return_comments, { wide: true })])
+            : ''
     ]);
 
     // Record viewing adds profile facts that are not already in the modal's applicant summary.
     window.renderApplicationRecordDetails = app => wrap([
-        applicationIdentity(app, 'Record Reference'),
+        digitalSeniorId(app), applicationIdentity(app, 'Record Reference'),
         String(app.is_archived) === '1'
             ? section('fa-box-archive', 'Archive Information', [
                 field('Archive Status', 'Archived', { raw: true }),
@@ -253,7 +275,7 @@
             : '',
         section('fa-address-card', 'Additional Profile Information', [
             field('Email Address', app.email_address), field('Place of Birth', app.place_of_birth),
-            field('Gender', app.gender), field('Civil Status', app.civil_status), field('Nationality', app.nationality),
+            field('Gender', app.gender), field('Civil Status', app.civil_status),
             field('Emergency Contact', app.emergency_contact_name),
             field('Emergency Contact Number', app.emergency_contact), field('Landmark', app.landmark)
         ]),
@@ -261,6 +283,16 @@
         hasValue(app.return_reason || app.return_comments)
             ? section('fa-note-sticky', 'Correction History', [field('Return / Correction Reason', app.return_reason || app.return_comments, { wide: true })])
             : ''
+    ]);
+
+    window.renderArchivedApplicationDetails = app => wrap([
+        section('fa-user', 'Applicant Information', [
+            field('Full Name', app.full_name), field('Birth Date', date(app.birth_date), { raw: true }),
+            field('Contact Number', app.contact_number), field('Barangay', app.barangay),
+            field('Complete Address', app.complete_address, { wide: true }),
+            field('Additional Notes', app.additional_notes, { wide: true })
+        ]),
+        window.renderApplicationRecordDetails(app)
     ]);
 
     window.renderApplicationAuditHistory = (history, target = 'timelineList', options = {}) => {

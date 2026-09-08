@@ -19,6 +19,11 @@ $perPage = min(100, max(10, (int)($_GET['per_page'] ?? 25)));
 
 if (($_SESSION['role'] ?? '') === 'barangay_staff') {
     $filterBarangay = (string)($_SESSION['barangay'] ?? '');
+    if ($filterBarangay === '') {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'A barangay assignment is required.']);
+        exit;
+    }
 }
 
 $where = ['COALESCE(a.is_archived, 0) = 0'];
@@ -62,10 +67,10 @@ $offset = ($page - 1) * $perPage;
 $sql = "SELECT a.id_number AS id, a.full_name, a.application_type, a.birth_date,
                a.contact_number, a.date_submitted, a.status, a.complete_address,
                a.house_no, a.street, a.city, a.province, a.zip_code, a.barangay,
-               a.workflow_state, a.home_visit_status, a.requested_benefit, a.priority_level,
+               a.workflow_state, a.home_visit_status, a.requested_benefit, a.priority_level, a.return_reason,
                (SELECT h.comments FROM application_history h
-                WHERE h.application_id = a.id_number AND h.new_state = 'Received'
-                  AND h.previous_state IN ('For Review', 'Verified', 'Approved')
+                WHERE h.application_id = a.id_number AND (h.new_state = 'Needs Correction' OR (h.new_state = 'Received'
+                  AND h.previous_state IN ('For Review', 'Verified', 'Approved')))
                 ORDER BY h.changed_at DESC LIMIT 1) AS return_comments
         FROM applications a" . $whereSql . "
         ORDER BY CASE WHEN a.priority_level = 'high' THEN 0 ELSE 1 END,
@@ -81,11 +86,14 @@ $stmt->execute();
 $applications = $stmt->fetchAll();
 
 foreach ($applications as &$application) {
+    if ($application['workflow_state'] === 'Needs Correction' && !empty($application['return_reason'])) {
+        $application['return_comments'] = $application['return_reason'];
+    }
     $isPendingPensionInterview = (($application['application_type'] ?? '') === 'pension'
         || ($application['requested_benefit'] ?? '') === 'Local Social Pension Assessment')
         && ($application['home_visit_status'] ?? '') !== 'Completed';
-    $application['display_status'] = $isPendingPensionInterview
-        ? 'Waiting for Home Visitation'
+    $application['display_status'] = $isPendingPensionInterview && $application['workflow_state'] !== 'Needs Correction'
+        ? 'Pending'
         : ($application['workflow_state'] ?: 'Received');
     if (trim((string)($application['complete_address'] ?? '')) === '') {
         $application['complete_address'] = implode(', ', array_filter([

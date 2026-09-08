@@ -1,30 +1,26 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-error_log("DEBUG: edit_user.php: Script started.");
 session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/password_validation.php'; // Include the password validation function
 
 // Check if the user is logged in and has the correct role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'department_admin') {
-    error_log("DEBUG: edit_user.php: User not logged in or not department_admin. Redirecting.");
+    if (($_GET['modal'] ?? '') === 'true') {
+        http_response_code(401);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => 'Please sign in as a department administrator.']);
+        exit;
+    }
     header('Location: ../index.php');
     exit;
 }
-error_log("DEBUG: edit_user.php: User logged in as department_admin. User ID: " . $_SESSION['user_id']);
 
 // Generate CSRF token
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-    error_log("DEBUG: edit_user.php: New CSRF token generated.");
-} else {
-    error_log("DEBUG: edit_user.php: Existing CSRF token: " . $_SESSION['csrf_token']);
 }
 
 require_once '../includes/barangays_list.php';
-error_log("DEBUG: edit_user.php: barangays_list.php included.");
 
 $user = null;
 $message = '';
@@ -33,9 +29,7 @@ $currentProfilePicPath = '../images/LOGO.jpg'; // Clean circular fallback image
 
 // Handle GET request to fetch user data for editing
 if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['id'])) {
-    error_log("DEBUG: edit_user.php: GET request for user edit detected.");
     $id = filter_var($_GET['id'], FILTER_SANITIZE_NUMBER_INT);
-    error_log("DEBUG: edit_user.php: User ID from GET: $id");
 
     $response = ['success' => false, 'message' => '']; // Initialize response array for modal
 
@@ -45,7 +39,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['id'])) {
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($user) {
-            error_log("DEBUG: edit_user.php: User found for editing. Username: " . $user['username']);
             // Set the current profile picture path
             $currentProfilePic = isset($user['profile_picture']) ? $user['profile_picture'] : 'default.jpg';
             $currentProfilePicPath = '../images/profile_pictures/' . $currentProfilePic;
@@ -57,7 +50,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['id'])) {
             if (isset($_GET['modal']) && $_GET['modal'] === 'true') {
                 $response['success'] = true;
                 $response['user'] = $user;
+                unset($response['user']['password']);
                 header('Content-Type: application/json');
+                header('Cache-Control: private, no-store');
                 echo json_encode($response);
                 exit;
             }
@@ -85,9 +80,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['id'])) {
 
 // Handle form submission for updating user
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
-    error_log("DEBUG: edit_user.php: POST request for user update detected.");
-    error_log("DEBUG: POST data: " . print_r($_POST, true));
-    error_log("DEBUG: FILES data: " . print_r($_FILES, true));
     $response = ['success' => false, 'message' => '']; // Initialize response array with empty message
 
     // If it's a modal request, set header early
@@ -101,13 +93,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
             $response['message'] = 'CSRF token validation failed.'; // Changed from $response['error']
             error_log("ERROR: edit_user.php: CSRF token validation failed for POST request.");
         } else {
-            error_log("DEBUG: edit_user.php: CSRF token validated successfully for POST request.");
             $id = filter_var($_POST['id'], FILTER_SANITIZE_NUMBER_INT);
-            error_log("DEBUG: edit_user.php: User ID from POST: $id");
 
             // Fetch user data for the update operation
             try {
-                error_log("DEBUG: edit_user.php: Attempting to fetch user for update with ID: $id");
                 $stmt = $conn->prepare("SELECT * FROM users WHERE id = :id");
                 $stmt->execute(['id' => $id]);
                 $user = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -116,16 +105,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
                     $response['message'] = 'User not found for update.'; // Changed from $response['error']
                     error_log("ERROR: edit_user.php: User not found for update with ID: $id.");
                 } else {
-                    error_log("DEBUG: edit_user.php: User found for update. Username: " . $user['username']);
                 }
             } catch (PDOException $e) {
                 $response['message'] = "Error fetching user for update: " . $e->getMessage(); // Changed from $response['error']
                 error_log("ERROR: edit_user.php: PDOException fetching user for update: " . $e->getMessage());
             }
 
-            error_log("DEBUG: edit_user.php: Before processing form fields and validation."); // Added log
             if (empty($response['message'])) { // Check $response['message'] for errors
-                error_log("DEBUG: edit_user.php: Inside empty(\$response['message']) block."); // Added log
                 $firstName = $_POST['firstName'];
                 $lastName = $_POST['lastName'];
                 $email = $_POST['email'];
@@ -213,7 +199,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
 
                     // Proceed with database update only if no errors
                     if (empty($response['message'])) { // Check $response['message'] for errors
-                        error_log("DEBUG: edit_user.php: Attempting database update."); // Added log
                         try {
                             $sql = "UPDATE users SET first_name = :first_name, last_name = :last_name, email = :email, username = :username, role = :role, barangay = :barangay, profile_picture = :profile_picture";
                             $params = [
@@ -238,7 +223,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
 
                             $response['success'] = true;
                             $response['message'] = 'User updated successfully!';
-                            error_log("DEBUG: edit_user.php: User updated successfully. Re-fetching user data."); // Added log
                             // Re-fetch user data to display updated info immediately
                             $stmt = $conn->prepare('SELECT * FROM users WHERE id = :id');
                             $stmt->execute(['id' => $id]);
@@ -272,7 +256,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
 
     // Always return JSON for modal updates if it was a modal request
     if (isset($_GET['modal']) && $_GET['modal'] === 'true') {
-        error_log("DEBUG: edit_user.php: Returning JSON response for modal."); // Added log
         echo json_encode($response);
         exit;
     } else {

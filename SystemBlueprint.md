@@ -149,21 +149,15 @@ This document provides a technical overview of the CARELINK system.
 
 ### `index.php`
 
-*   **Functionality:** This is the main entry point of the application. It allows users to select their role (Barangay Staff or Department Admin) and be redirected to the appropriate login page.
+*   **Functionality:** This is the main entry point of the application. Users select Barangay Staff or Department Admin and sign in inside the same page without navigating to a separate login screen.
 *   **Remember Me:** If the user has previously logged in and selected "Remember Me", this page will automatically log them in and redirect them to their dashboard.
+*   **Authentication:** The selected role is validated on this page, and successful authentication creates the user session before redirecting to the appropriate dashboard.
 
 ### `pages/signup.php`
 
 *   **Functionality:** This page allows new users to register for an account.
 *   **Validation:** The page performs validation to ensure that all required fields are filled, the passwords match, the password is at least 8 characters long, and the email format is valid.
 *   **User Creation:** Upon successful validation, a new user is created in the `users` table, and a corresponding default entry is created in the `settings` table.
-
-### `pages/barangay_staff_login_page.php` and `pages/department_admin_login_page.php`
-
-*   **Functionality:** These pages allow users to log in to their accounts.
-*   **Validation:** The pages perform validation to ensure that all required fields are filled and that the user exists in the database.
-*   **Authentication:** Upon successful validation, the user is authenticated, and a session is created.
-*   **Remember Me:** Users can choose to be remembered, which sets a cookie to keep them logged in for 30 days.
 
 ### `pages/Settings.php`
 

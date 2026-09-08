@@ -6,6 +6,42 @@ require_once '../includes/password_validation.php';
 $success = '';
 $error = '';
 
+function saveSignupProfilePicture(array $file): string
+{
+    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+        return 'default.jpg';
+    }
+    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        throw new RuntimeException('The profile photo could not be uploaded. Please try again.');
+    }
+    if (($file['size'] ?? 0) > 5 * 1024 * 1024) {
+        throw new RuntimeException('Profile photo must be 5 MB or smaller.');
+    }
+
+    $allowedTypes = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/gif' => 'gif',
+        'image/webp' => 'webp',
+    ];
+    $mimeType = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
+    if (!isset($allowedTypes[$mimeType]) || @getimagesize($file['tmp_name']) === false) {
+        throw new RuntimeException('Profile photo must be a valid JPG, PNG, GIF, or WebP image.');
+    }
+
+    $uploadDirectory = __DIR__ . '/../images/profile_pictures';
+    if (!is_dir($uploadDirectory) && !mkdir($uploadDirectory, 0755, true) && !is_dir($uploadDirectory)) {
+        throw new RuntimeException('The profile photo folder is unavailable.');
+    }
+
+    $fileName = bin2hex(random_bytes(16)) . '.' . $allowedTypes[$mimeType];
+    if (!move_uploaded_file($file['tmp_name'], $uploadDirectory . DIRECTORY_SEPARATOR . $fileName)) {
+        throw new RuntimeException('The profile photo could not be saved. Please try again.');
+    }
+
+    return $fileName;
+}
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $masterPassword = $_POST['masterPassword'];
     $correctMasterPassword = 'CarelinkMaster2025!'; // This is the master password.
@@ -45,6 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
                 
                 if (empty($error)) {
+                    $profilePicture = 'default.jpg';
                     try {
                         // Check if username or email already exists
                         $stmt = $conn->prepare("SELECT * FROM users WHERE username = :username OR email = :email");
@@ -52,11 +89,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         if ($stmt->fetch()) {
                             $error = 'Username or email already exists.';
                         } else {
+                            try {
+                                $profilePicture = saveSignupProfilePicture($_FILES['profile_picture'] ?? []);
+                            } catch (RuntimeException $uploadError) {
+                                $error = $uploadError->getMessage();
+                            }
+
+                            if (!empty($error)) {
+                                throw new RuntimeException($error);
+                            }
+
                             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
                             $conn->beginTransaction();
 
-                            $sql = "INSERT INTO users (first_name, last_name, email, username, password, role, barangay) VALUES (:first_name, :last_name, :email, :username, :password, :role, :barangay)";
+                            $sql = "INSERT INTO users (first_name, last_name, email, username, password, role, barangay, profile_picture) VALUES (:first_name, :last_name, :email, :username, :password, :role, :barangay, :profile_picture)";
                             $stmt = $conn->prepare($sql);
                             $stmt->execute([
                                 'first_name' => $firstName,
@@ -65,7 +112,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 'username' => $username,
                                 'password' => $hashedPassword,
                                 'role' => $role,
-                                'barangay' => $barangay
+                                'barangay' => $barangay,
+                                'profile_picture' => $profilePicture
                             ]);
 
                             $user_id = $conn->lastInsertId();
@@ -76,16 +124,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                             $conn->commit();
 
-                            if ($role === 'barangay_staff') {
-                                $login_page = 'barangay_staff_login_page.php';
-                            } else {
-                                $login_page = 'department_admin_login_page.php';
-                            }
+                            $login_page = '../index.php?view=' . ($role === 'barangay_staff' ? 'staff' : 'admin');
                             $success = "User registered successfully! You can now <a href='$login_page'>login</a>.";
                         }
-                    } catch (PDOException $e) {
-                        $conn->rollBack();
-                        $error = 'Failed to register user: ' . $e->getMessage();
+                    } catch (Throwable $e) {
+                        if ($conn->inTransaction()) {
+                            $conn->rollBack();
+                        }
+                        if (!empty($profilePicture) && $profilePicture !== 'default.jpg') {
+                            $uploadedPath = __DIR__ . '/../images/profile_pictures/' . $profilePicture;
+                            if (is_file($uploadedPath)) {
+                                unlink($uploadedPath);
+                            }
+                        }
+                        if (empty($error)) {
+                            $error = $e instanceof PDOException
+                                ? 'Failed to register user. Please try again.'
+                                : $e->getMessage();
+                        }
                     }
                 }
             }
@@ -247,6 +303,34 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         .form-group label::after {
             content: ' *';
             color: #b42318;
+        }
+
+        .form-group label.optional::after { content: ''; }
+
+        .profile-upload {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 10px 12px;
+            border: 1px dashed #b7c7d8;
+            border-radius: 10px;
+            background: #f8fafc;
+        }
+
+        .profile-preview {
+            width: 54px;
+            height: 54px;
+            flex: 0 0 54px;
+            border: 2px solid #d9e4ee;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #fff;
+        }
+
+        .profile-upload .form-control {
+            min-height: auto;
+            padding: 6px;
+            background: #fff;
         }
 
         .form-control {
@@ -454,7 +538,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <div class="message error" role="alert"><?php echo $error; ?></div>
             <?php endif; ?>
 
-            <form method="post" action="">
+            <form method="post" action="" enctype="multipart/form-data">
                 <div class="form-fields">
                 <div class="form-row">
                     <div class="form-group">
@@ -507,6 +591,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <?php endforeach; ?>
                     </select>
                     <span id="barangayError" class="error-message-inline" aria-live="polite"></span>
+                </div>
+                <div class="form-group">
+                    <label for="profile_picture" class="optional">Profile Photo <span class="form-hint" style="display:inline;">(optional)</span></label>
+                    <div class="profile-upload">
+                        <img id="profilePicturePreview" class="profile-preview" src="../images/profile_pictures/default.jpg" alt="Profile photo preview">
+                        <div style="min-width:0;flex:1;">
+                            <input type="file" id="profile_picture" name="profile_picture" class="form-control" accept="image/jpeg,image/png,image/gif,image/webp" aria-describedby="profilePictureHint">
+                            <span id="profilePictureHint" class="form-hint">JPG, PNG, GIF, or WebP up to 5 MB.</span>
+                        </div>
+                    </div>
                 </div>
                  <div class="form-group">
                     <label for="masterPassword">Master Password</label>
@@ -638,6 +732,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         usernameField.addEventListener('input', debounce(e => checkAvailability('username', e.target.value, usernameError)));
         emailField.addEventListener('input', debounce(e => checkAvailability('email', e.target.value, emailError)));
         barangayField.addEventListener('change', e => checkAvailability('barangay', e.target.value, barangayError));
+
+        const profilePictureInput = document.getElementById('profile_picture');
+        const profilePicturePreview = document.getElementById('profilePicturePreview');
+        profilePictureInput.addEventListener('change', function () {
+            const file = this.files[0];
+            if (!file) {
+                profilePicturePreview.src = '../images/profile_pictures/default.jpg';
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                this.value = '';
+                profilePicturePreview.src = '../images/profile_pictures/default.jpg';
+                window.alert('Profile photo must be 5 MB or smaller.');
+                return;
+            }
+            const previewUrl = URL.createObjectURL(file);
+            profilePicturePreview.src = previewUrl;
+            profilePicturePreview.onload = () => URL.revokeObjectURL(previewUrl);
+        });
     </script>
 </body>
 </html>

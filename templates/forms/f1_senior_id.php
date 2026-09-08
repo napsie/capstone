@@ -19,13 +19,24 @@ if ($addr === ', , Pasig City') $addr = $app['complete_address'] ?? '';
 <div class="form-page">
     <?php oscaPrintHeader('', 'SENIOR CITIZENS ID APPLICATION'); ?>
 
-    <div class="checkbox-row">
-        <strong>Purpose:</strong>
-        <?php echo oscaCheck(($app['id_purpose'] ?? 'new') === 'new'); ?> New
-        <?php echo oscaCheck(($app['id_purpose'] ?? '') === 'lost'); ?> Lost
-        <?php echo oscaCheck(($app['id_purpose'] ?? '') === 'change'); ?> Change
-        <?php echo oscaCheck(($app['id_purpose'] ?? '') === 'transfer'); ?> Transfer
-        &nbsp;&nbsp; <strong>Date Filed:</strong> <?php echo oscaFmtDate(substr($app['date_submitted'] ?? '', 0, 10), 'F j, Y'); ?>
+    <div class="id-form-heading">
+        <div class="checkbox-row id-form-purpose">
+            <strong>Purpose:</strong>
+            <?php echo oscaCheck(($app['id_purpose'] ?? 'new') === 'new'); ?> New
+            <?php echo oscaCheck(($app['id_purpose'] ?? '') === 'lost'); ?> Lost
+            <?php echo oscaCheck(($app['id_purpose'] ?? '') === 'change'); ?> Change
+            <?php echo oscaCheck(($app['id_purpose'] ?? '') === 'transfer'); ?> Transfer
+            <br><strong>Date Filed:</strong> <?php echo oscaFmtDate(substr($app['date_submitted'] ?? '', 0, 10), 'F j, Y'); ?>
+        </div>
+        <div class="id-photo-box">
+            <?php if (!empty($app['has_id_image'])): ?>
+                <img src="../api/get_document.php?id=<?php echo rawurlencode((string)$app['id_number']); ?>&amp;doc_type=id_image"
+                     alt="Uploaded ID photo of <?php echo oscaVal($app['full_name']); ?>">
+            <?php else: ?>
+                <div class="id-photo-placeholder">1×1 ID PHOTO<br><span>White background</span></div>
+            <?php endif; ?>
+            <div class="id-photo-caption">Latest Photo</div>
+        </div>
     </div>
 
     <?php oscaFieldRow([

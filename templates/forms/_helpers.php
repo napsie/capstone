@@ -61,6 +61,14 @@ function oscaPrintStyles(string $formCode): string {
     .field-table .val { min-height: 20px; font-size: 11px; font-weight: 600; color: #172033; }
     .section-title { font-weight: 800; font-size: 10px; color: #173b66; background: #eaf2fc; padding: 7px 9px; border: 1px solid #cbdced; border-radius: 7px; margin: 14px 0 7px; letter-spacing: .03em; }
     .checkbox-row { margin: 8px 0; padding: 8px 10px; background: #f8fbff; border: 1px solid #dce8f5; border-radius: 7px; line-height: 1.55; }
+    .id-form-heading { display: flex; align-items: stretch; gap: 12px; margin: 8px 0 10px; }
+    .id-form-purpose { flex: 1; margin: 0; }
+    .id-photo-box { width: 92px; flex: 0 0 92px; text-align: center; }
+    .id-photo-box img, .id-photo-placeholder { width: 92px; height: 106px; border: 1px solid #94a3b8; border-radius: 5px; background: #f8fafc; }
+    .id-photo-box img { display: block; object-fit: cover; }
+    .id-photo-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #64748b; font-size: 8px; font-weight: 700; line-height: 1.4; }
+    .id-photo-placeholder span { font-size: 7px; font-weight: 500; }
+    .id-photo-caption { margin-top: 3px; color: #64748b; font-size: 8px; }
     .cert-box { border: 1px solid #d6e0ec; border-left: 4px solid #3b82f6; border-radius: 7px; padding: 10px 12px; font-size: 10px; line-height: 1.5; margin: 13px 0; background: #f8fbff; }
     .sig-line { border-bottom: 1px solid #64748b; margin: 34px auto 0; padding-top: 4px; font-size: 9px; text-align: center; max-width: 300px; }
     .stub { border-top: 2px dashed #94a3b8; margin-top: 22px; padding: 10px 0 0; font-size: 9px; color: #475569; }

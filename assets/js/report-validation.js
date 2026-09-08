@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const dateFrom = form.querySelector('[name="date_from"]');
     const dateTo = form.querySelector('[name="date_to"]');
     const year = form.querySelector('[name="year"]');
+    const format = form.querySelector('[name="format"]');
     const selectedBarangayChoice = form.querySelector('input[name="barangayChoice"][value="selected"]');
     const barangaySelect = document.getElementById('exportBarangay');
     const today = new Date();
@@ -18,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dateFrom?.setCustomValidity('');
         dateTo?.setCustomValidity('');
         barangaySelect?.setCustomValidity('');
+        format?.setCustomValidity('');
     };
 
     const syncPeriodControls = () => {
@@ -30,8 +32,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const from = dateFrom?.value || '';
         const to = dateTo?.value || '';
 
-        if ((from && !to) || (!from && to)) {
-            const missingInput = from ? dateTo : dateFrom;
+        if (!format || !['pdf', 'excel'].includes(format.value)) {
+            format?.setCustomValidity('Choose PDF or Excel for the report.');
+            format?.reportValidity();
+            return false;
+        }
+
+        if (!from || !to) {
+            const missingInput = !from ? dateFrom : dateTo;
             missingInput?.setCustomValidity('Select both the start and end dates for the report period.');
             missingInput?.reportValidity();
             return false;
@@ -62,6 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
     barangaySelect?.addEventListener('change', clearValidation);
+    format?.addEventListener('change', clearValidation);
     form.addEventListener('submit', event => {
         syncPeriodControls();
         if (!validateReport()) event.preventDefault();

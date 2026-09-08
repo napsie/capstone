@@ -572,6 +572,8 @@ if (empty($_SESSION['login_audit_recorded'])) {
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
     <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=3">
+    <link rel="stylesheet" href="../assets/css/metric-cards.css?v=1">
+<script src="../assets/js/dashboard-chart-fallback.js?v=1"></script>
 </head>
 <body class="dashboard-page department-dashboard">
     <div class="container">
@@ -792,7 +794,8 @@ if (empty($_SESSION['login_audit_recorded'])) {
                 .then(result => {
                     if (result.status === 'success') {
                         renderNotifications(result.data.notifications);
-                        initializeDepartmentCharts(result.data);
+                        if (typeof Chart !== 'undefined') initializeDepartmentCharts(result.data);
+                        else showUnavailableCharts();
                         updateStatCards(result.data); // Call new function to update stat cards
                     } else {
                         throw new Error(result.message || 'Dashboard data is unavailable');
@@ -889,6 +892,7 @@ if (empty($_SESSION['login_audit_recorded'])) {
             // Workflow status to icon and color mapping
             const stateConfig = {
                 'received':   { icon: 'fa-inbox',       color: '#94a3b8', bg: 'rgba(148,163,184,0.15)', label: 'Received'   },
+                'pending':    { icon: 'fa-clock',       color: '#d97706', bg: 'rgba(245,158,11,0.14)', label: 'Pending'    },
                 'for review': { icon: 'fa-search',       color: '#3b82f6', bg: 'rgba(59,130,246,0.12)',  label: 'For Review' },
                 'verified':   { icon: 'fa-check',        color: '#14b8a6', bg: 'rgba(20,184,166,0.12)',  label: 'Verified'   },
                 'deceased':   { icon: 'fa-cross',        color: '#64748b', bg: 'rgba(100,116,139,0.12)', label: 'Deceased'   },

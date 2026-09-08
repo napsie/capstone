@@ -24,24 +24,31 @@ body {
 
 .site-header {
     position: fixed;
-    right: 0;
-    left: 0;
-    top: 0;
+    inset: 0 0 auto;
     z-index: 100;
+    width: 100%;
+    max-width: none;
+    margin: 0;
     flex-shrink: 0;
     padding: 0;
+    overflow: visible;
     background: linear-gradient(100deg, rgba(7, 32, 63, .96), rgba(18, 54, 88, .94));
     border-top: 3px solid #22a65b;
+    border-right: 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+    border-left: 0;
+    border-radius: 0;
     box-shadow: 0 3px 10px rgba(3, 17, 36, 0.18);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
 }
 
 .site-header-inner {
-    width: min(1280px, calc(100% - 48px));
+    box-sizing: border-box;
+    width: min(1440px, calc(100% - 48px));
     min-height: 84px;
     margin: 0 auto;
+    padding: 0;
     display: flex;
     align-items: center;
     gap: 22px;
@@ -98,7 +105,7 @@ body {
     min-width: 0;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 9px;
     padding-left: 22px;
     color: rgba(255, 255, 255, .74);
     border-left: 1px solid rgba(255, 255, 255, .2);
@@ -135,6 +142,8 @@ body {
 
 .site-nav {
     margin-left: auto;
+    display: flex;
+    align-items: center;
     gap: 8px;
 }
 
@@ -203,14 +212,15 @@ body {
     margin: 0 auto;
     padding: clamp(28px, 4vh, 48px) 0 clamp(22px, 3vh, 34px);
     display: grid;
-    grid-template-columns: minmax(0, 0.96fr) minmax(460px, 1.04fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: clamp(46px, 6vw, 78px);
     align-items: center;
 }
 
 .hero-content {
     position: relative;
-    max-width: 570px;
+    width: 100%;
+    max-width: 560px;
     color: #fff;
 }
 
@@ -243,6 +253,90 @@ body {
     letter-spacing: 0.075em;
     text-transform: uppercase;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.hero-top-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+.hero-top-actions .hero-badge {
+    margin-bottom: 0;
+}
+
+.hero-track {
+    width: 100%;
+    min-height: 68px;
+    display: inline-grid;
+    grid-template-columns: 44px minmax(0, 1fr) 20px;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 16px 11px 11px;
+    color: #fff;
+    text-decoration: none;
+    background: rgba(20, 62, 94, .94);
+    border: 1px solid rgba(140, 225, 175, .5);
+    border-radius: 16px;
+    box-shadow: 0 10px 28px rgba(3, 22, 42, .2);
+    transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease;
+}
+
+.hero-track-icon {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    color: #0b4937;
+    background: #8ce1af;
+    border-radius: 10px;
+    font-size: .94rem;
+}
+
+.hero-track-copy strong,
+.hero-track-copy small {
+    display: block;
+}
+
+.hero-track-copy strong {
+    color: #fff;
+    font-size: .91rem;
+    line-height: 1.2;
+}
+
+.hero-track-copy small {
+    margin-top: 4px;
+    color: rgba(255, 255, 255, .78);
+    font-size: .69rem;
+    line-height: 1.3;
+}
+
+.hero-track-arrow {
+    justify-self: end;
+    color: #8ce1af;
+    font-size: .76rem;
+    transition: transform 160ms ease;
+}
+
+.hero-track:hover {
+    transform: translateY(-2px);
+    background: rgba(16, 74, 101, .98);
+    border-color: rgba(140, 225, 175, .8);
+}
+
+.hero-track:hover .hero-track-arrow { transform: translateX(2px); }
+.hero-track:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(140, 225, 175, .34); }
+
+/* Medium screens: retain a comfortable target without crowding the hero. */
+@media (max-width: 1100px) {
+    .hero-track {
+        min-height: 64px;
+        grid-template-columns: 40px minmax(0, 1fr) 20px;
+    }
+
+    .hero-track-icon { width: 40px; height: 40px; }
 }
 
 .hero-content h2 {
@@ -379,41 +473,67 @@ body {
     font-weight: 700;
 }
 
-.portal-track-card {
-    position: relative;
-    z-index: 2;
-    width: 100%;
-    min-height: 68px;
-    display: grid;
-    grid-template-columns: 40px minmax(0, 1fr) 30px;
-    align-items: center;
-    gap: 12px;
-    margin: -7px 0 14px;
-    padding: 11px 13px;
-    color: var(--text-dark);
-    text-align: left;
-    background: #edf8f2;
-    border: 1px solid #cbe9d7;
-    border-radius: 14px;
-    font: inherit;
-    text-decoration: none;
-    cursor: pointer;
-    pointer-events: auto;
-    transition: background-color 140ms ease, border-color 140ms ease;
-}
-.portal-track-card:hover { background: #e3f5eb; border-color: #88cda5; }
-.portal-track-card:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-.portal-track-card-icon { width: 40px; height: 40px; display: grid; place-items: center; color: #fff; background: #18864a; border-radius: 11px; }
-.portal-track-card-copy { min-width: 0; }
-.portal-track-card-copy strong { display: block; color: #123e2a; font-size: .83rem; line-height: 1.3; }
-.portal-track-card-copy small { display: block; margin-top: 2px; color: #557063; font-size: .67rem; line-height: 1.4; }
-.portal-track-card-arrow { justify-self: center; color: #18864a; font-size: .75rem; }
-
 .portal-cards {
     display: flex;
     flex-direction: column;
     gap: 12px;
 }
+
+.portal-cards.is-hidden { display: none; }
+
+button.portal-card {
+    width: 100%;
+    font: inherit;
+    text-align: left;
+}
+
+.portal-login-view { display: none; }
+.portal-login-view.is-active { display: block; animation: portalLoginIn .22s ease; }
+@keyframes portalLoginIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
+
+.portal-login-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 40px;
+    margin: -3px 0 11px;
+    padding: 7px 4px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #42617f;
+    font: 700 .78rem Inter, sans-serif;
+    cursor: pointer;
+}
+
+.portal-login-back:hover { color: #174f83; background: #edf5fb; }
+.portal-login-back:focus-visible,
+.portal-forgot:focus-visible,
+.portal-login-form .toggle-password:focus-visible,
+.portal-login-submit:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+.portal-login-form { display: grid; gap: 13px; }
+.portal-login-form .form-group { margin: 0; }
+.portal-login-form label { display: block; margin-bottom: 6px; color: #334155; font-size: .76rem; font-weight: 700; }
+.portal-login-form .form-control { min-height: 48px; width: 100%; padding: 11px 13px; border: 1px solid #b9c8d8; border-radius: 10px; background: #fff; color: #172033; font: inherit; }
+.portal-login-form .form-control:focus { outline: 3px solid rgba(37, 99, 235, .16); border-color: #3b82f6; }
+.portal-login-form .password-field { position: relative; }
+.portal-login-form .password-field .form-control { padding-right: 50px; }
+.portal-login-form .toggle-password { position: absolute; top: 50%; right: 4px; transform: translateY(-50%); width: 40px; height: 40px; border: 0; border-radius: 8px; background: transparent; color: #64748b; cursor: pointer; }
+.portal-login-form .toggle-password:hover { color: #174f83; background: #edf5fb; }
+.portal-login-options { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 38px; }
+.portal-remember { display: flex !important; align-items: center; gap: 8px; margin: 0 !important; font-weight: 600 !important; }
+.portal-remember input { width: 19px; height: 19px; margin: 0; accent-color: #178b4b; }
+.portal-forgot { min-height: 38px; padding: 7px 5px; border: 0; border-radius: 7px; color: #155d99; background: transparent; font: 700 .75rem Inter,sans-serif; cursor: pointer; }
+.portal-forgot:hover { color: #0e4777; text-decoration: underline; }
+.portal-login-submit { display: flex; align-items: center; justify-content: center; gap: 9px; min-height: 48px; border: 0; border-radius: 10px; background: linear-gradient(135deg,#166534,#22a65a); color: #fff; font: 800 .84rem Inter,sans-serif; cursor: pointer; box-shadow: 0 8px 18px rgba(22,101,52,.2); }
+.portal-login-submit:hover { background: linear-gradient(135deg,#14532d,#178b4b); }
+.portal-login-error { margin-bottom: 15px; padding: 10px 12px; border: 1px solid #fecaca; border-radius: 9px; background: #fef2f2; color: #b91c1c; font-size: .78rem; }
+.forgot-password-copy { color: #52657a; font-size: .84rem; line-height: 1.55; }
+.forgot-password-message { min-height: 20px; color: #166534; font-size: .78rem; line-height: 1.45; }
+.forgot-password-message.is-error { color: #b91c1c; }
 
 .portal-card {
     position: relative;
@@ -745,11 +865,27 @@ body {
         gap: 26px;
     }
 
-    .hero-badge {
+    .hero-top-actions {
+        gap: 9px;
         margin-bottom: 17px;
+    }
+
+    .hero-badge {
         padding: 7px 11px;
         font-size: 0.64rem;
     }
+
+    .hero-track {
+        width: 100%;
+        min-height: 60px;
+        grid-template-columns: 38px minmax(0, 1fr) 18px;
+        gap: 8px;
+        padding: 7px 10px 7px 7px;
+        border-radius: 13px;
+    }
+    .hero-track-icon { width: 38px; height: 38px; border-radius: 9px; font-size: .8rem; }
+    .hero-track-copy strong { font-size: .8rem; }
+    .hero-track-copy small { margin-top: 2px; font-size: .63rem; }
 
     .hero-kicker { font-size: 0.62rem; }
 
@@ -789,10 +925,6 @@ body {
     .portal-panel-header h3 { font-size: 1.35rem; }
     .portal-panel-header p { max-width: 245px; font-size: 0.78rem; }
     .portal-security { padding: 6px 8px; font-size: 0.63rem; }
-    .portal-track-card { margin-top: -4px; padding: 10px 11px; }
-    .portal-track-card-copy strong { font-size: .78rem; }
-    .portal-track-card-copy small { font-size: .63rem; }
-
     .portal-card {
         grid-template-columns: 48px minmax(0, 1fr) 34px;
         gap: 11px;
@@ -821,12 +953,17 @@ body {
     .portal-card { grid-template-columns: 44px minmax(0, 1fr); }
     .portal-card-icon { width: 44px; height: 44px; }
     .portal-card-arrow { display: none; }
+    .portal-login-options { align-items: flex-start; flex-direction: column; gap: 2px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .portal-card,
     .portal-card-arrow,
+    .hero-track,
+    .hero-track-arrow,
     .site-nav .btn-primary i {
         transition: none;
     }
+
+    .portal-login-view.is-active { animation: none; }
 }

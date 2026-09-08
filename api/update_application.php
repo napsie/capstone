@@ -33,6 +33,23 @@ if (empty($appId)) {
     exit();
 }
 
+// Check ownership and editable state before reading or changing applicant data.
+$accessSql = 'SELECT workflow_state FROM applications WHERE id_number = ? AND COALESCE(is_archived, 0) = 0';
+$accessParams = [$appId];
+if ($_SESSION['role'] === 'barangay_staff') {
+    $accessSql .= ' AND barangay = ?';
+    $accessParams[] = $_SESSION['barangay'] ?? '';
+}
+$conn->beginTransaction();
+$access = $conn->prepare($accessSql . ' FOR UPDATE');
+$access->execute($accessParams);
+$editableApplication = $access->fetch(PDO::FETCH_ASSOC);
+if (!$editableApplication || !in_array($editableApplication['workflow_state'] ?: 'Received', ['Received', 'Submitted', 'Needs Correction'], true)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Application not found, outside your barangay, or locked for review.']);
+    exit;
+}
+
 $lastName             = sanitize_str($_POST['lastName'] ?? null);
 $firstName            = sanitize_str($_POST['firstName'] ?? null);
 $middleName           = sanitize_str($_POST['middleName'] ?? null);
@@ -189,13 +206,15 @@ foreach ($oscaData as $col => $val) {
 }
 $params[] = $appId;
 
-$sql = "UPDATE applications SET " . implode(', ', $setParts) . " WHERE id_number = ?";
+$sql = "UPDATE applications SET " . implode(', ', $setParts) . " WHERE id_number = ? AND COALESCE(is_archived, 0) = 0 AND COALESCE(workflow_state, 'Received') IN ('Received', 'Submitted', 'Needs Correction')";
 
 try {
     $stmt = $conn->prepare($sql);
     $stmt->execute($params);
+    $conn->commit();
     echo json_encode(['success' => true, 'message' => 'Application updated successfully!']);
 } catch (PDOException $e) {
+    if ($conn->inTransaction()) $conn->rollBack();
     error_log('update_application.php PDO error: ' . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Database error while updating.']);
 }

@@ -174,6 +174,24 @@ $old = static function (string $key, string $default = ''): string {
         padding: 6px 0;
     }
 
+    .selected-file-view {
+        display: none;
+        align-items: center;
+        gap: 8px;
+        width: fit-content;
+        margin-top: 6px;
+        padding: 8px 12px;
+        border: 1px solid #bfdbfe;
+        border-radius: 8px;
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-size: .78rem;
+        font-weight: 700;
+        text-decoration: none;
+    }
+    .selected-file-view.is-visible { display: inline-flex; }
+    .selected-file-view:hover { border-color:#60a5fa; background:#dbeafe; }
+
     /* Success QR code layouts */
     .success-qr-card {
         background: white;
@@ -359,6 +377,95 @@ $old = static function (string $key, string $default = ''): string {
         color: #64748b;
         font-size: 0.84rem;
     }
+
+    .benefit-choice-hint {
+        margin: 0 0 16px;
+        color: #52657d;
+        font-size: 0.9rem;
+    }
+
+    .benefit-choice-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+
+    .benefit-choice-card {
+        position: relative;
+        min-height: 230px;
+        padding: 24px 22px;
+        overflow: hidden;
+        border: 1.5px solid #d8e1ec;
+        border-radius: 16px;
+        background: linear-gradient(145deg, #fff, #f8fafc);
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+        color: #0f172a;
+        cursor: pointer;
+        text-align: left;
+        transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease, background .22s ease;
+    }
+
+    .benefit-choice-card:hover,
+    .benefit-choice-card:focus-visible {
+        transform: translateY(-4px);
+        border-color: var(--benefit-color);
+        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.14);
+        outline: none;
+    }
+
+    .benefit-choice-card.selected {
+        border-color: var(--benefit-color);
+        background: linear-gradient(145deg, color-mix(in srgb, var(--benefit-color) 10%, white), #fff);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--benefit-color) 22%, transparent), 0 14px 34px rgba(15, 23, 42, 0.12);
+    }
+
+    .benefit-choice-icon {
+        display: grid;
+        place-items: center;
+        width: 58px;
+        height: 58px;
+        margin-bottom: 22px;
+        border-radius: 50%;
+        background: var(--benefit-color);
+        color: #fff;
+        font-size: 1.35rem;
+        box-shadow: 0 10px 24px color-mix(in srgb, var(--benefit-color) 28%, transparent);
+    }
+
+    .benefit-choice-title { display: block; max-width: calc(100% - 22px); font-size: 1.02rem; font-weight: 800; line-height: 1.35; }
+    .benefit-choice-desc { display: block; margin-top: 14px; color: #526178; font-size: 0.82rem; font-weight: 600; line-height: 1.5; }
+    .benefit-choice-arrow { position: absolute; top: 50%; right: 18px; color: #94a3b8; transform: translateY(-50%); }
+    .benefit-choice-check { display: none; position: absolute; top: 14px; right: 14px; width: 24px; height: 24px; place-items: center; border-radius: 50%; background: var(--benefit-color); color: #fff; font-size: .7rem; }
+    .benefit-choice-card.selected .benefit-choice-check { display: grid; }
+    .benefit-choice-card.selected .benefit-choice-arrow { display: none; }
+
+    .public-benefit-modal { display:none; position:fixed; inset:0; z-index:3000; align-items:center; justify-content:center; padding:20px; background:rgba(15,23,42,.72); backdrop-filter:blur(4px); }
+    .public-benefit-modal.open { display:flex; }
+    .public-benefit-dialog { width:min(680px,100%); max-height:90vh; overflow:auto; border-radius:20px; background:#fff; box-shadow:0 28px 80px rgba(15,23,42,.35); }
+    .public-benefit-head { position:relative; padding:24px 28px; border-bottom:4px solid var(--modal-accent,#3b82f6); background:linear-gradient(145deg,#f8fafc,#fff); }
+    .public-benefit-head h3 { margin:0 44px 6px 0; color:#0f172a; font-size:1.35rem; }
+    .public-benefit-head p { margin:0; color:#64748b; line-height:1.55; }
+    .public-benefit-close { position:absolute; top:16px; right:18px; width:36px; height:36px; border:0; border-radius:9px; background:#e2e8f0; color:#475569; cursor:pointer; font-size:1.2rem; }
+    .public-benefit-body { padding:24px 28px; }
+    .public-benefit-block { margin-bottom:20px; }
+    .public-benefit-block h4 { margin:0 0 10px; color:#334155; font-size:.92rem; }
+    .public-benefit-block ul { margin:0; padding-left:22px; color:#526178; line-height:1.65; }
+    .public-benefit-ack { display:flex; gap:10px; align-items:flex-start; padding:14px; border:1px solid #dbe4ef; border-radius:10px; background:#f8fafc; color:#334155; font-size:.86rem; line-height:1.45; }
+    .public-benefit-ack input { margin-top:3px; accent-color:var(--modal-accent,#3b82f6); }
+    .public-benefit-actions { display:flex; justify-content:flex-end; gap:10px; padding:18px 28px; border-top:1px solid #e2e8f0; }
+    .public-benefit-actions button { padding:10px 18px; border-radius:9px; font:700 .88rem Inter,sans-serif; cursor:pointer; }
+    .public-benefit-cancel { border:1px solid #cbd5e1; background:#fff; color:#475569; }
+    .public-benefit-proceed { border:0; background:var(--modal-accent,#3b82f6); color:#fff; }
+    .public-benefit-proceed:disabled { opacity:.45; cursor:not-allowed; }
+    .public-benefit-selector.hidden { display:none; }
+    .public-application-body { display:none; }
+    .public-application-body.visible { display:block; animation:fadeInSlide .35s ease; }
+    .public-selected-benefit { display:flex; align-items:center; gap:14px; margin-bottom:22px; padding:15px 18px; border:1px solid #bfdbfe; border-radius:13px; background:#eff6ff; }
+    .public-selected-benefit i { color:#2563eb; font-size:1.25rem; }
+    .public-selected-benefit strong { display:block; color:#172033; }
+    .public-selected-benefit span { color:#64748b; font-size:.8rem; }
+    .public-selected-benefit button { margin-left:auto; padding:8px 11px; border:1px solid #93c5fd; border-radius:8px; background:#fff; color:#1d4ed8; font-weight:700; cursor:pointer; }
     @media (max-width: 600px) {
         .form-row-names {
             grid-template-columns: 1fr;
@@ -408,6 +515,45 @@ $old = static function (string $key, string $default = ''): string {
         <form method="POST" action="<?php echo htmlspecialchars($formAction); ?>" enctype="multipart/form-data" class="proxy-form" id="newSeniorForm">
             <input type="hidden" name="proxy_submit" value="1">
             <input type="hidden" name="portal_option" value="new_senior">
+            <input type="hidden" id="applicationType" name="applicationType" value="<?php echo $old('applicationType', 'senior'); ?>">
+            <select id="requestedBenefit" name="requestedBenefit" hidden aria-hidden="true">
+                <option value="">— Select Benefit or Service —</option>
+                <?php foreach (['Senior Citizen ID Registration','Local Social Pension Assessment','Land Bank Cash Card Enrollment','Milestone Cash Gift','Burial Assistance'] as $value): ?>
+                    <option value="<?php echo htmlspecialchars($value); ?>" <?php echo $old('requestedBenefit') === $value ? 'selected' : ''; ?>><?php echo htmlspecialchars($value); ?></option>
+                <?php endforeach; ?>
+            </select>
+
+            <?php
+            $publicBenefitCards = [
+                'Senior Citizen ID Registration' => ['fas fa-id-card', '#60a5fa', 'Senior Citizens ID Application', 'Senior Citizens ID registration'],
+                'Land Bank Cash Card Enrollment' => ['fas fa-credit-card', '#34d399', 'Land Bank Cash Card Enrollment', 'Land Bank cash card enrollment'],
+                'Local Social Pension Assessment' => ['fas fa-wallet', '#fbbf24', 'Local Senior Pension Form', 'Local social pension assessment'],
+                'Milestone Cash Gift' => ['fas fa-gift', '#f472b6', 'Octogenarian / Nonagenarian / Centenarian Cash Gift', 'Milestone cash gift application'],
+                'Burial Assistance' => ['fas fa-ribbon', '#94a3b8', 'Burial Assistance', 'Burial financial assistance claim'],
+            ];
+            $hasSelectedPublicBenefit = $old('requestedBenefit') !== '';
+            ?>
+            <div class="public-benefit-selector<?php echo $hasSelectedPublicBenefit ? ' hidden' : ''; ?>" id="publicBenefitSelector">
+                <p class="benefit-choice-hint"><i class="fas fa-hand-pointer" aria-hidden="true"></i> Click a benefit below to view details and requirements before applying.</p>
+                <div class="benefit-choice-grid" id="benefitChoiceGrid" role="group" aria-label="Choose a benefit or service" tabindex="-1">
+                    <?php foreach ($publicBenefitCards as $value => [$icon, $color, $title, $description]): ?>
+                        <button type="button" class="benefit-choice-card" style="--benefit-color:<?php echo $color; ?>" data-benefit-value="<?php echo htmlspecialchars($value); ?>" aria-pressed="false" onclick="openPublicBenefitModal(<?php echo htmlspecialchars(json_encode($value), ENT_QUOTES, 'UTF-8'); ?>, this)">
+                            <span class="benefit-choice-check"><i class="fas fa-check" aria-hidden="true"></i></span>
+                            <span class="benefit-choice-icon"><i class="<?php echo $icon; ?>" aria-hidden="true"></i></span>
+                            <span class="benefit-choice-title"><?php echo htmlspecialchars($title); ?></span>
+                            <span class="benefit-choice-desc"><?php echo htmlspecialchars($description); ?></span>
+                            <span class="benefit-choice-arrow"><i class="fas fa-chevron-right" aria-hidden="true"></i></span>
+                        </button>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
+            <div class="public-application-body<?php echo $hasSelectedPublicBenefit ? ' visible' : ''; ?>" id="publicApplicationBody">
+            <div class="public-selected-benefit">
+                <i class="fas fa-circle-check" aria-hidden="true"></i>
+                <div><span>Selected Application Form</span><strong id="publicSelectedBenefitLabel"><?php echo htmlspecialchars($old('requestedBenefit')); ?></strong></div>
+                <button type="button" onclick="changePublicBenefit()">Change Benefit</button>
+            </div>
 
             <!-- Privacy Alert -->
             <div class="privacy-alert" role="note" style="margin-bottom: 24px;">
@@ -427,24 +573,6 @@ $old = static function (string $key, string $default = ''): string {
             </div>
 
             <div class="form-section">
-                <div class="form-subheading" style="margin-top:0;">Benefit or service requested</div>
-                <div class="form-group">
-                    <label for="requestedBenefit">What is the senior applying for? <span style="color:#b91c1c;">*</span></label>
-                    <select id="requestedBenefit" name="requestedBenefit" class="form-control" required>
-                        <option value="">— Select Benefit or Service —</option>
-                        <?php foreach ([
-                            'Senior Citizen ID Registration',
-                            'Local Social Pension Assessment',
-                            'Land Bank Cash Card Enrollment',
-                            'Milestone Cash Gift',
-                            'Other OSCA Assistance',
-                        ] as $value): ?>
-                            <option value="<?php echo htmlspecialchars($value); ?>" <?php echo $old('requestedBenefit') === $value ? 'selected' : ''; ?>><?php echo htmlspecialchars($value); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                    <small class="field-help">This tells the reviewing office which service or benefit should be assessed.</small>
-                </div>
-
                 <!-- Name Row -->
                 <div class="form-row-names">
                     <div class="form-group">
@@ -571,15 +699,6 @@ $old = static function (string $key, string $default = ''): string {
                         </select>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label for="healthCondition">Medical or Support Notes</label>
-                    <input type="text" id="healthCondition" name="healthCondition" class="form-control" value="<?php echo $old('healthCondition'); ?>" placeholder="Optional: mobility aid, medical condition, or assistance needed">
-                </div>
-                <div class="form-group">
-                    <label for="visitPurpose">Requested Assistance <span style="color:#b91c1c;">*</span></label>
-                    <textarea id="visitPurpose" name="visitPurpose" class="form-control" rows="2" required placeholder="Describe the registration, benefit, or assistance being requested."><?php echo $old('visitPurpose'); ?></textarea>
-                </div>
-
                 <div class="form-subheading">Benefit-specific information</div>
                 <div id="benefitFieldsPrompt" class="privacy-alert" style="margin-bottom:0; background:#f8fafc; border-color:#cbd5e1; color:#475569;">
                     <i class="fas fa-hand-pointer" aria-hidden="true" style="color:#64748b;"></i>
@@ -734,14 +853,21 @@ $old = static function (string $key, string $default = ''): string {
                     </div>
                 </div>
 
-                <div class="benefit-specific-panel" data-benefits="Other OSCA Assistance" hidden>
-                    <h4 class="benefit-panel-title">Other OSCA Assistance</h4>
-                    <p class="benefit-panel-copy">Specify the service or assistance not listed above.</p>
-                    <div class="form-group">
-                        <label for="otherAssistanceDetails">Assistance Details <span style="color:#b91c1c;">*</span></label>
-                        <textarea id="otherAssistanceDetails" name="otherAssistanceDetails" class="form-control" rows="3" data-benefit-required><?php echo $old('otherAssistanceDetails'); ?></textarea>
+                <div class="benefit-specific-panel" data-benefits="Burial Assistance" hidden>
+                    <h4 class="benefit-panel-title">Burial Assistance</h4>
+                    <p class="benefit-panel-copy">Provide the passing and claimant relationship details required for the burial assistance claim.</p>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="dateOfDeath">Date of Passing <span style="color:#b91c1c;">*</span></label>
+                            <input type="date" id="dateOfDeath" name="dateOfDeath" class="form-control" value="<?php echo $old('dateOfDeath'); ?>" max="<?php echo date('Y-m-d'); ?>" data-benefit-required>
+                        </div>
+                        <div class="form-group">
+                            <label for="relationshipToDeceased">Relationship to Deceased <span style="color:#b91c1c;">*</span></label>
+                            <input type="text" id="relationshipToDeceased" name="relationshipToDeceased" class="form-control" value="<?php echo $old('relationshipToDeceased'); ?>" placeholder="e.g. Child, spouse, sibling" data-benefit-required>
+                        </div>
                     </div>
                 </div>
+
             </div>
 
             <!-- Step 2 Heading (Dynamic Uploads) -->
@@ -777,6 +903,12 @@ $old = static function (string $key, string $default = ''): string {
                 </div>
 
                 <h5 style="margin-top:20px; color:#475569; font-size:0.88rem; text-transform:uppercase; letter-spacing:0.5px;">Senior Identity Confirmation</h5>
+
+                <div class="upload-slot">
+                    <label for="id_photo_file">Senior ID Photo <span class="req">*</span></label>
+                    <p class="slot-desc"><strong>Required for all benefits:</strong> Upload a clear, recent 1×1 or 2×2 photo of the senior citizen. Use a plain or white background; JPEG or PNG only.</p>
+                    <input type="file" id="id_photo_file" name="id_photo_file" accept="image/jpeg,image/png" required>
+                </div>
                 
                 <div class="upload-slot">
                     <label for="proof_of_life_file">Current Senior Photo (Proof of Life) <span class="req">*</span></label>
@@ -808,6 +940,7 @@ $old = static function (string $key, string $default = ''): string {
             <button type="submit" class="btn btn-accent btn-block" id="btnSubmitNew" style="margin-top: 25px; padding: 14px; font-size: 1rem; background: #10b981; border-color: #10b981;" disabled>
                 <i class="fas fa-qrcode"></i> Submit Pre-Registration
             </button>
+            </div><!-- /#publicApplicationBody -->
         </form>
     </div>
 
@@ -829,8 +962,8 @@ $old = static function (string $key, string $default = ''): string {
             <div class="step-heading">
                 <div class="step-number">1</div>
                 <div>
-                    <h3>Senior Citizen ID Lookup</h3>
-                    <p>Enter the senior citizen's ID number to run the profile integrity verification.</p>
+                    <h3>Senior Citizen ID</h3>
+                    <p>Enter the ID printed on your senior citizen card. The ID will be checked when you submit the application.</p>
                 </div>
             </div>
 
@@ -838,11 +971,9 @@ $old = static function (string $key, string $default = ''): string {
                 <div class="form-row" style="align-items: flex-end;">
                     <div class="form-group" style="flex: 2;">
                         <label for="seniorCitizenId">Senior Citizen ID Number <span style="color:#b91c1c;">*</span></label>
-                        <input type="text" id="seniorCitizenId" name="seniorCitizenId" class="form-control" placeholder="e.g. PRX-XXXXXX or Senior ID" value="<?php echo $old('seniorCitizenId'); ?>" required>
+                        <input type="text" id="seniorCitizenId" name="seniorCitizenId" class="form-control" placeholder="e.g. PRX-7K2M or Senior ID" value="<?php echo $old('seniorCitizenId'); ?>" required>
                     </div>
-                    <div class="form-group" style="flex: 1;">
-                        <button type="button" class="verify-btn" onclick="verifySeniorID()">Verify Profile</button>
-                    </div>
+
                 </div>
                 
                 <!-- Dynamic lookup result panel -->
@@ -850,7 +981,7 @@ $old = static function (string $key, string $default = ''): string {
             </div>
 
             <!-- Dynamic Pension upload form (revealed only upon verification success) -->
-            <div id="pensionUploadsGroup" style="display: none;">
+            <div id="pensionUploadsGroup">
                 <div class="step-heading" style="margin-top: 25px;">
                     <div class="step-number">2</div>
                     <div>
@@ -860,6 +991,12 @@ $old = static function (string $key, string $default = ''): string {
                 </div>
 
                 <div class="upload-slots-container">
+                    <div class="upload-slot">
+                        <label for="pension_id_photo_file">Senior ID Photo <span class="req">*</span></label>
+                        <p class="slot-desc">Upload a clear, recent 1×1 or 2×2 photo of the senior citizen. Use a plain or white background; JPEG or PNG only.</p>
+                        <input type="file" id="pension_id_photo_file" name="pension_id_photo_file" accept="image/jpeg,image/png" required>
+                    </div>
+
                     <div class="upload-slot">
                         <label for="home_visitation_form_file">Social Worker Confirmation Form <span class="req">*</span></label>
                         <p class="slot-desc">A scanned copy or clear image of the Home Visitation/Confirmation Form signed by the local social worker.</p>
@@ -881,8 +1018,87 @@ $old = static function (string $key, string $default = ''): string {
         </form>
     </div>
 
+    <div class="public-benefit-modal" id="publicBenefitModal" role="dialog" aria-modal="true" aria-labelledby="publicBenefitModalTitle" aria-hidden="true">
+        <div class="public-benefit-dialog">
+            <div class="public-benefit-head">
+                <button type="button" class="public-benefit-close" onclick="closePublicBenefitModal()" aria-label="Close benefit details">&times;</button>
+                <h3 id="publicBenefitModalTitle"></h3>
+                <p id="publicBenefitModalSummary"></p>
+            </div>
+            <div class="public-benefit-body">
+                <div class="public-benefit-block"><h4><i class="fas fa-star" aria-hidden="true"></i> What You Get</h4><ul id="publicBenefitBenefits"></ul></div>
+                <div class="public-benefit-block"><h4><i class="fas fa-clipboard-check" aria-hidden="true"></i> Requirements to Apply</h4><ul id="publicBenefitRequirements"></ul></div>
+                <div class="public-benefit-block"><h4><i class="fas fa-folder-open" aria-hidden="true"></i> Documents Needed</h4><ul id="publicBenefitDocuments"></ul></div>
+                <label class="public-benefit-ack">
+                    <input type="checkbox" id="publicBenefitAck" onchange="document.getElementById('publicBenefitProceed').disabled = !this.checked">
+                    <span>I have read and understand the benefit details and have the required documents ready.</span>
+                </label>
+            </div>
+            <div class="public-benefit-actions">
+                <button type="button" class="public-benefit-cancel" onclick="closePublicBenefitModal()">Cancel</button>
+                <button type="button" class="public-benefit-proceed" id="publicBenefitProceed" onclick="proceedPublicBenefit()" disabled>Proceed with Application</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Client-Side Form Scripts -->
     <script>
+        const PUBLIC_BENEFIT_DETAILS = <?php echo json_encode(getApplicationBenefitDetails(), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
+        const PUBLIC_BENEFIT_CONFIG = {
+            'Senior Citizen ID Registration': { type: 'senior', title: 'Senior Citizens ID Application', detailKey: 'senior', accent: '#60a5fa' },
+            'Land Bank Cash Card Enrollment': { type: 'landbank', title: 'Land Bank Cash Card Enrollment', detailKey: 'landbank', accent: '#34d399' },
+            'Local Social Pension Assessment': { type: 'pension', title: 'Local Senior Pension Form', detailKey: 'pension', accent: '#fbbf24' },
+            'Milestone Cash Gift': { type: 'milestone_gift', title: 'Octogenarian / Nonagenarian / Centenarian Cash Gift', detailKey: 'milestone_gift', accent: '#f472b6' },
+            'Burial Assistance': { type: 'burial', title: 'Burial Assistance', detailKey: 'burial', accent: '#94a3b8' }
+        };
+        let pendingPublicBenefit = '';
+        let pendingPublicBenefitCard = null;
+
+        function fillPublicBenefitList(id, items) {
+            const list = document.getElementById(id);
+            list.replaceChildren(...(items || []).map(item => {
+                const li = document.createElement('li');
+                li.textContent = item;
+                return li;
+            }));
+        }
+
+        function openPublicBenefitModal(value, card) {
+            const config = PUBLIC_BENEFIT_CONFIG[value];
+            const details = config ? PUBLIC_BENEFIT_DETAILS[config.detailKey] : null;
+            if (!config || !details) return;
+            pendingPublicBenefit = value;
+            pendingPublicBenefitCard = card;
+            document.getElementById('publicBenefitModalTitle').textContent = config.title;
+            document.getElementById('publicBenefitModalSummary').textContent = details.summary || '';
+            fillPublicBenefitList('publicBenefitBenefits', details.benefits);
+            fillPublicBenefitList('publicBenefitRequirements', details.requirements);
+            fillPublicBenefitList('publicBenefitDocuments', details.documents);
+            const modal = document.getElementById('publicBenefitModal');
+            modal.style.setProperty('--modal-accent', config.accent);
+            modal.classList.add('open');
+            modal.setAttribute('aria-hidden', 'false');
+            document.getElementById('publicBenefitAck').checked = false;
+            document.getElementById('publicBenefitProceed').disabled = true;
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closePublicBenefitModal() {
+            const modal = document.getElementById('publicBenefitModal');
+            modal.classList.remove('open');
+            modal.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+        }
+
+        function proceedPublicBenefit() {
+            if (!pendingPublicBenefit || !document.getElementById('publicBenefitAck').checked) return;
+            const value = pendingPublicBenefit;
+            const card = pendingPublicBenefitCard;
+            closePublicBenefitModal();
+            selectRequestedBenefit(value, card);
+            document.getElementById('publicApplicationBody')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
         // Switch between Option A (New Pre-Reg) and Option B (Existing Pension)
         function selectPortalPath(path) {
             document.querySelectorAll('.portal-option-card').forEach(card => card.classList.remove('active'));
@@ -994,6 +1210,40 @@ $old = static function (string $key, string $default = ''): string {
             updateFinancialRequirements();
         }
 
+        function selectRequestedBenefit(value, selectedCard) {
+            const select = document.getElementById('requestedBenefit');
+            if (!select) return;
+            select.value = value;
+            const config = PUBLIC_BENEFIT_CONFIG[value];
+            const typeInput = document.getElementById('applicationType');
+            if (typeInput && config) typeInput.value = config.type;
+            document.querySelectorAll('.benefit-choice-card').forEach(card => {
+                const selected = card === selectedCard;
+                card.classList.toggle('selected', selected);
+                card.setAttribute('aria-pressed', selected ? 'true' : 'false');
+            });
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+            document.getElementById('publicBenefitSelector')?.classList.add('hidden');
+            document.getElementById('publicApplicationBody')?.classList.add('visible');
+            const label = document.getElementById('publicSelectedBenefitLabel');
+            if (label) label.textContent = config?.title || value;
+        }
+
+        function changePublicBenefit() {
+            const select = document.getElementById('requestedBenefit');
+            if (select) select.value = '';
+            document.getElementById('applicationType').value = 'senior';
+            document.querySelectorAll('.benefit-choice-card').forEach(card => {
+                card.classList.remove('selected');
+                card.setAttribute('aria-pressed', 'false');
+            });
+            updateBenefitSpecificFields();
+            document.getElementById('publicApplicationBody')?.classList.remove('visible');
+            const selector = document.getElementById('publicBenefitSelector');
+            selector?.classList.remove('hidden');
+            selector?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
         function updateRequiredDocuments(selectedBenefit) {
             const documentRequirements = {
                 'Senior Citizen ID Registration': [
@@ -1016,10 +1266,10 @@ $old = static function (string $key, string $default = ''): string {
                     ['Certified PSA Birth Certificate', "Certified proof of the senior citizen's date of birth."],
                     ['Latest Whole-Body Photo', 'Recent whole-body photo shown clearly against a plain background.']
                 ],
-                'Other OSCA Assistance': [
-                    ['Senior Citizen ID or Valid Government ID', 'Identification document of the senior citizen.'],
-                    ['Proof of Address', "Current document confirming the senior citizen's Pasig address."],
-                    ['Supporting Document for the Request', 'Document that supports the assistance described above.']
+                'Burial Assistance': [
+                    ['Death Certificate', 'Certified death certificate of the deceased senior citizen.'],
+                    ['Senior Citizen ID or Proof of Senior Status', 'Identification or registration proof of the deceased senior citizen.'],
+                    ['Claimant ID and Proof of Relationship', 'Valid claimant ID and document showing relationship to the deceased.']
                 ]
             };
             const fallback = [
@@ -1038,10 +1288,56 @@ $old = static function (string $key, string $default = ''): string {
 
         document.getElementById('newSeniorForm')?.addEventListener('submit', event => {
             syncCompleteAddress();
+            if (!document.getElementById('requestedBenefit')?.value) {
+                event.preventDefault();
+                const grid = document.getElementById('benefitChoiceGrid');
+                grid?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                grid?.focus({ preventScroll: true });
+                window.showCarelinkResult?.('Please select a benefit or service card before submitting.', false);
+                return;
+            }
             if (!event.currentTarget.checkValidity()) {
                 event.preventDefault();
                 event.currentTarget.reportValidity();
             }
+        });
+
+        function updateSelectedFileLink(input) {
+            let viewLink = input.parentElement.querySelector('.selected-file-view');
+            if (!viewLink) {
+                viewLink = document.createElement('a');
+                viewLink.className = 'selected-file-view';
+                viewLink.target = '_blank';
+                viewLink.rel = 'noopener';
+                input.insertAdjacentElement('afterend', viewLink);
+            }
+
+            if (input.dataset.previewUrl) {
+                URL.revokeObjectURL(input.dataset.previewUrl);
+                delete input.dataset.previewUrl;
+            }
+
+            const file = input.files && input.files[0];
+            if (!file) {
+                viewLink.classList.remove('is-visible');
+                viewLink.removeAttribute('href');
+                viewLink.replaceChildren();
+                return;
+            }
+
+            const objectUrl = URL.createObjectURL(file);
+            input.dataset.previewUrl = objectUrl;
+            viewLink.href = objectUrl;
+            viewLink.replaceChildren();
+            const icon = document.createElement('i');
+            icon.className = file.type === 'application/pdf' ? 'fas fa-file-pdf' : 'fas fa-image';
+            icon.setAttribute('aria-hidden', 'true');
+            viewLink.append(icon, document.createTextNode(` View selected file: ${file.name}`));
+            viewLink.classList.add('is-visible');
+        }
+
+        document.querySelectorAll('.proxy-form input[type="file"]').forEach(input => {
+            input.addEventListener('change', () => updateSelectedFileLink(input));
         });
 
         ['houseNo', 'street', 'barangay', 'zipCode'].forEach(id => {
@@ -1057,69 +1353,6 @@ $old = static function (string $key, string $default = ''): string {
 
         if (document.getElementById('birthDate')?.value) calculateProxyAge2026();
 
-        // Option B: Verify Existing Senior ID
-        async function verifySeniorID() {
-            const seniorIdInput = document.getElementById('seniorCitizenId');
-            const resultPanel = document.getElementById('verificationResultPanel');
-            const pensionUploadsGroup = document.getElementById('pensionUploadsGroup');
-            
-            const seniorId = seniorIdInput.value.trim();
-            if (!seniorId) {
-                window.showCarelinkResult('Please enter a Senior Citizen ID.', false);
-                return;
-            }
-
-            resultPanel.style.display = 'block';
-            resultPanel.innerHTML = '<div style="color:#2563eb; font-weight:600;"><i class="fas fa-spinner fa-spin"></i> Querying databases & verifying integrity...</div>';
-            pensionUploadsGroup.style.display = 'none';
-
-            try {
-                const response = await fetch(`../api/verify_senior_integrity.php?id=${encodeURIComponent(seniorId)}`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    // Valid senior citizen found.
-                    resultPanel.innerHTML = `
-                        <div class="alert-banner alert-banner-success" style="margin-bottom:0;">
-                            <i class="fas fa-check-circle" style="font-size:1.2rem;"></i>
-                            <div>
-                                <h5 style="margin:0 0 4px 0; font-weight:700;">Verified Senior Profile Found</h5>
-                                <p style="margin:0; font-size:0.85rem; color:#064e3b;">
-                                    <strong>Name:</strong> ${data.senior.full_name}<br>
-                                    <strong>Barangay:</strong> ${data.senior.barangay}<br>
-                                    <strong>Address:</strong> ${data.senior.complete_address}<br>
-                                    <strong>Status:</strong> ${data.senior.workflow_state}
-                                </p>
-                                <div style="margin-top:10px; font-weight:700; color:#0f766e;">
-                                    <i class="fas fa-clipboard-check"></i> Eligible Benefit: Local Senior Pension Form
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                    pensionUploadsGroup.style.display = 'block';
-                } else {
-                    // Invalid/Not found
-                    resultPanel.innerHTML = `
-                        <div class="alert-banner alert-banner-error" style="margin-bottom:0;">
-                            <i class="fas fa-exclamation-triangle" style="font-size:1.2rem;"></i>
-                            <div>
-                                <h5 style="margin:0 0 4px 0; font-weight:700;">Profile Integrity Error</h5>
-                                <p style="margin:0; font-size:0.85rem;">${data.message}</p>
-                            </div>
-                        </div>
-                    `;
-                    pensionUploadsGroup.style.display = 'none';
-                }
-            } catch (err) {
-                resultPanel.innerHTML = `
-                    <div class="alert-banner alert-banner-error" style="margin-bottom:0;">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <div>Could not connect to authentication services. Please check connection.</div>
-                    </div>
-                `;
-                pensionUploadsGroup.style.display = 'none';
-            }
-        }
     </script>
 
 <?php else: ?>

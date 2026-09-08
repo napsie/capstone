@@ -17,22 +17,27 @@ $response = [
 ];
 
 try {
-    // ── Recent Applications for Notifications (10 most recent, priority first) ──
+    // ── Recent Applications for Notifications (newest first) ──
     $stmt = $conn->prepare("
         SELECT 
             id_number,
             full_name,
             application_type,
             status,
-            CASE WHEN COALESCE(workflow_state, 'Received') IN ('Approved','Released') THEN 'Verified' ELSE COALESCE(workflow_state, 'Received') END as workflow_state,
+            CASE
+                WHEN workflow_state = 'Needs Correction' THEN 'Needs Correction'
+                WHEN (application_type = 'pension' OR requested_benefit = 'Local Social Pension Assessment')
+                     AND COALESCE(home_visit_status, '') <> 'Completed' THEN 'Pending'
+                WHEN COALESCE(workflow_state, 'Received') IN ('Approved','Released') THEN 'Verified'
+                ELSE COALESCE(workflow_state, 'Received')
+            END as workflow_state,
             priority_level,
             barangay,
             date_submitted
         FROM applications
         WHERE (is_archived = 0 OR is_archived IS NULL)
-        ORDER BY 
-            CASE WHEN priority_level = 'high' THEN 0 ELSE 1 END,
-            date_submitted DESC
+        ORDER BY date_submitted DESC,
+            CASE WHEN priority_level = 'high' THEN 0 ELSE 1 END
         LIMIT 10
     ");
     $stmt->execute();
@@ -65,10 +70,22 @@ try {
 
     // Workflow status distribution (for extended stat cards)
     $stmt = $conn->prepare("
-        SELECT CASE WHEN COALESCE(workflow_state, 'Received') IN ('Approved','Released') THEN 'Verified' ELSE COALESCE(workflow_state, 'Received') END as workflow_state, COUNT(*) as count
+        SELECT CASE
+                   WHEN workflow_state = 'Needs Correction' THEN 'Needs Correction'
+                WHEN (application_type = 'pension' OR requested_benefit = 'Local Social Pension Assessment')
+                        AND COALESCE(home_visit_status, '') <> 'Completed' THEN 'Pending'
+                   WHEN COALESCE(workflow_state, 'Received') IN ('Approved','Released') THEN 'Verified'
+                   ELSE COALESCE(workflow_state, 'Received')
+               END as workflow_state, COUNT(*) as count
         FROM applications
         WHERE (is_archived = 0 OR is_archived IS NULL)
-        GROUP BY CASE WHEN COALESCE(workflow_state, 'Received') IN ('Approved','Released') THEN 'Verified' ELSE COALESCE(workflow_state, 'Received') END
+        GROUP BY CASE
+                     WHEN workflow_state = 'Needs Correction' THEN 'Needs Correction'
+                WHEN (application_type = 'pension' OR requested_benefit = 'Local Social Pension Assessment')
+                          AND COALESCE(home_visit_status, '') <> 'Completed' THEN 'Pending'
+                     WHEN COALESCE(workflow_state, 'Received') IN ('Approved','Released') THEN 'Verified'
+                     ELSE COALESCE(workflow_state, 'Received')
+                 END
     ");
     $stmt->execute();
     $workflowRows = $stmt->fetchAll(PDO::FETCH_ASSOC);

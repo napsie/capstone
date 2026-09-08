@@ -168,48 +168,60 @@ $hasQueueFilters = $queueFilters['search'] !== ''
         .header-user-info p  { font-size: 0.75rem; color: var(--gray); margin: 0; }
 
         /* ─── Stats ──────────────────────────────────────────────────────── */
-        .stats-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+        .stats-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 28px; }
         .stat-card {
+            position: relative;
+            overflow: hidden;
             background: var(--card);
-            border-radius: 14px;
-            padding: 18px 22px;
+            border-radius: 16px;
+            min-height: 126px;
+            padding: 22px 24px;
             border: 1px solid var(--border);
             display: flex;
             align-items: center;
             gap: 14px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            box-shadow: 0 6px 18px rgba(15,23,42,0.05);
             transition: transform 0.2s, box-shadow 0.2s;
         }
+        .stat-card::before { content: ''; position: absolute; inset: 0 0 auto; height: 4px; }
+        .stat-card:nth-child(1) { background: linear-gradient(145deg,#fff 45%,#eff6ff); border-color:#cfe0ff; }
+        .stat-card:nth-child(2) { background: linear-gradient(145deg,#fff 45%,#f5f0ff); border-color:#e1d5ff; }
+        .stat-card:nth-child(3) { background: linear-gradient(145deg,#fff 45%,#ecfdf5); border-color:#c8eedf; }
+        .stat-card:nth-child(1)::before { background:linear-gradient(90deg,#2563eb,#60a5fa); }
+        .stat-card:nth-child(2)::before { background:linear-gradient(90deg,#7c3aed,#a78bfa); }
+        .stat-card:nth-child(3)::before { background:linear-gradient(90deg,#059669,#34d399); }
         .stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.07); }
-        .stat-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
+        .stat-icon { width: 54px; height: 54px; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; flex-shrink: 0; box-shadow:inset 0 0 0 1px rgba(255,255,255,.65); }
         .stat-icon.green  { background: rgba(16,185,129,0.12); color: var(--success); }
         .stat-icon.blue   { background: rgba(37,99,235,0.12);  color: var(--accent); }
         .stat-icon.purple { background: rgba(139,92,246,0.12); color: var(--purple); }
         .stat-icon.amber  { background: rgba(245,158,11,0.12); color: var(--warning); }
-        .stat-label { font-size: 0.75rem; color: var(--gray); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
-        .stat-value { font-size: 1.7rem; font-weight: 800; color: var(--primary); line-height: 1; }
+        .stat-copy { min-width:0; }
+        .stat-label { margin-bottom:5px; font-size: 0.73rem; color: #64748b; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; }
+        .stat-value { font-size: 2rem; font-weight: 850; color: #0f172a; line-height: .95; }
+        .stat-meta { margin-top:7px; color:#64748b; font-size:.72rem; line-height:1.25; }
 
         /* ─── Queue Card ─────────────────────────────────────────────────── */
-        .queue-card { background: var(--card); border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 16px rgba(0,0,0,0.05); overflow: hidden; }
+        .queue-card { background: var(--card); border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(15,23,42,0.06); overflow: hidden; }
         .queue-card-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 20px 28px;
+            padding: 18px 24px;
             border-bottom: 1px solid var(--border);
-            background: linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);
+            background: #fff;
         }
-        .queue-card-header h2 { color: #fff; font-size: 1.05rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 10px; }
-        .queue-card-header h2 i { color: #60a5fa; }
-        .queue-export-btn { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.38); color:#fff; }
-        .queue-export-btn:hover { background:rgba(255,255,255,.22); color:#fff; }
+        .queue-card-header h2 { color: #0f2942; font-size: 1.08rem; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 10px; }
+        .queue-card-header h2 i { width: 36px; height: 36px; display: grid; place-items: center; color: #2563eb; background: #eff6ff; border-radius: 10px; }
+        .queue-export-btn { min-height: 42px; background:#2563eb; border:1px solid #2563eb; color:#fff; box-shadow:0 5px 12px rgba(37,99,235,.2); }
+        .queue-export-btn:hover { background:#1d4ed8; border-color:#1d4ed8; color:#fff; }
 
         /* Queue filters */
         .queue-filters { padding: 20px 24px; background: #f8fafc; border-bottom: 1px solid var(--border); }
-        .queue-filter-grid { display: grid; grid-template-columns: minmax(240px, 1.5fr) repeat(3, minmax(160px, 1fr)); gap: 14px; align-items: end; }
+        .queue-filter-grid { display: grid; grid-template-columns: minmax(240px, 1.5fr) repeat(2, minmax(160px, 1fr)); gap: 14px; align-items: end; }
         .queue-filter-field { min-width: 0; }
         .queue-filter-field label { display: block; margin-bottom: 6px; color: #64748b; font-size: .72rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
-        .queue-filter-field input, .queue-filter-field select { width: 100%; min-height: 42px; padding: 9px 11px; color: #0f172a; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; font: inherit; font-size: .84rem; }
+        .queue-filter-field input, .queue-filter-field select { width: 100%; min-height: 46px; padding: 10px 12px; color: #0f172a; background: #fff; border: 1px solid #cbd5e1; border-radius: 10px; font: inherit; font-size: .84rem; }
         .queue-filter-field input:focus, .queue-filter-field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37, 99, 235, .1); outline: none; }
         .queue-search-wrap { position: relative; }
         .queue-search-wrap i { position: absolute; top: 50%; left: 12px; color: #94a3b8; transform: translateY(-50%); pointer-events: none; }
@@ -256,7 +268,8 @@ $hasQueueFilters = $queueFilters['search'] !== ''
         .records-tbl th { padding: 12px 18px; text-align: left; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gray); white-space: nowrap; }
         .records-tbl td { padding: 13px 18px; font-size: 0.86rem; color: var(--primary); border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
         .records-tbl tbody tr { transition: background 0.15s; }
-        .records-tbl tbody tr:hover { background: #f8fafc; }
+        .records-tbl tbody tr:nth-child(even) { background: #fafcff; }
+        .records-tbl tbody tr:hover { background: #eff6ff; }
         .records-tbl tbody tr:last-child td { border-bottom: none; }
 
         .name-cell .full-name { font-weight: 700; }
@@ -467,7 +480,8 @@ $hasQueueFilters = $queueFilters['search'] !== ''
         /* Footer */
         .page-footer { text-align:center; padding:24px; font-size:0.78rem; color:var(--gray); }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=17">
+    <link rel="stylesheet" href="../assets/css/metric-cards.css?v=1">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
     <script src="../assets/js/table-pagination.js?v=1" defer></script>
@@ -507,23 +521,26 @@ $hasQueueFilters = $queueFilters['search'] !== ''
         <div class="stats-strip">
             <div class="stat-card">
                 <div class="stat-icon blue"><i class="fas fa-list-check"></i></div>
-                <div>
+                <div class="stat-copy">
                     <div class="stat-label">Active Queue</div>
                     <div class="stat-value"><?php echo $totalQCount; ?></div>
+                    <div class="stat-meta">Applications requiring action</div>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon purple"><i class="fas fa-search"></i></div>
-                <div>
+                <div class="stat-copy">
                     <div class="stat-label">For evaluation</div>
                     <div class="stat-value"><?php echo $forReviewC; ?></div>
+                    <div class="stat-meta">Ready for department review</div>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon green"><i class="fas fa-file-signature"></i></div>
-                <div>
+                <div class="stat-copy">
                     <div class="stat-label">Verified (Sign-off)</div>
                     <div class="stat-value"><?php echo $verifiedC; ?></div>
+                    <div class="stat-meta">Completed verification checks</div>
                 </div>
             </div>
         </div>
@@ -604,7 +621,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                                     || ($row['requested_benefit'] ?? '') === 'Local Social Pension Assessment')
                                     && ($row['home_visit_status'] ?? '') !== 'Completed';
                                 $state = $row['effective_state'];
-                                $displayState = $requiresHomeVisit ? 'Waiting for Home Visitation' : $state;
+                                $displayState = $requiresHomeVisit && $state !== 'Needs Correction' ? 'Pending' : $state;
                                 $stateBadgeClass = 'badge-received';
                                 if ($state === 'For Review') $stateBadgeClass = 'badge-review';
                                 if ($state === 'Verified') $stateBadgeClass = 'badge-verified';
@@ -734,12 +751,14 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                     <div class="workflow-control">
                         <h3><i class="fas fa-sliders-h" style="color:var(--accent); margin-right:5px;"></i> Workflow Control Actions</h3>
                         <div class="workflow-instructions" id="statusInstructions">Loading instructions…</div>
-                        <textarea id="statusComment" class="workflow-comment" placeholder="Write status update details or reason for return/blurry scan here…"></textarea>
-                        
+                        <label for="correctionDocuments">Documents or fields needing correction (required when returning)</label>
+                        <textarea id="correctionDocuments" class="workflow-comment" maxlength="180" placeholder="Example: PSA birth certificate; contact number"></textarea>
+                        <label for="statusComment">Reason / instructions</label>
+                        <textarea id="statusComment" maxlength="280" class="workflow-comment" placeholder="Write status update details or reason for return/blurry scan here…"></textarea>
                         <div class="workflow-buttons">
                             <button type="button" class="btn btn-primary" id="btnOfficialForm" disabled><i class="fas fa-file-pdf"></i> Generate Official Form</button>
                             <button type="button" class="btn btn-primary" id="btnAdvanceStatus" onclick="submitStatusAction('next')">Advance Status</button>
-                            <button type="button" class="btn btn-secondary" id="btnReturnStatus" onclick="submitStatusAction('return')">Return to Barangay</button>
+                            <button type="button" class="btn btn-secondary" id="btnReturnStatus" onclick="submitStatusAction('return')">Request Correction</button>
                             <button type="button" class="btn btn-danger" id="btnRejectStatus" onclick="submitStatusAction('reject')"><i class="fas fa-ban"></i> Reject &amp; Archive</button>
                         </div>
                     </div>
@@ -759,16 +778,24 @@ $hasQueueFilters = $queueFilters['search'] !== ''
 <div id="exportModal" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="exportModalTitle">
     <div class="modal-box export-modal-box">
         <div class="modal-head">
-            <h2 id="exportModalTitle"><i class="fas fa-file-excel"></i> Export Verification Queue to Excel</h2>
+            <h2 id="exportModalTitle"><i class="fas fa-file-export"></i> Generate Verification Report</h2>
             <button type="button" class="modal-close" id="closeExportModalBtn" aria-label="Close export dialog">&times;</button>
         </div>
         <form id="exportReportForm" method="GET" action="../api/export_records_excel.php">
             <div class="export-modal-body">
-                <p>Set the filters for your verification queue Excel report. Only matching applications will be included.</p>
+                <p>Choose a file format and set the verification filters. Only matching applications will be included.</p>
                 <input type="hidden" name="scope" value="department">
                 <input type="hidden" name="report_mode" value="verification">
                 <input type="hidden" name="barangay" id="exportBarangayValue" value="all">
                 <div class="export-filter-grid">
+                    <div class="export-field">
+                        <label for="exportFormat">File Format</label>
+                        <select name="format" id="exportFormat" required>
+                            <option value="">Choose a format</option>
+                            <option value="pdf">PDF</option>
+                            <option value="excel">Excel (.xlsx)</option>
+                        </select>
+                    </div>
                     <div class="export-field">
                         <label for="exportType">Application Type</label>
                         <select name="type" id="exportType">
@@ -792,11 +819,11 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                     </div>
                     <div class="export-field">
                         <label for="exportDateFrom">Date From</label>
-                        <input type="date" name="date_from" id="exportDateFrom">
+                        <input type="date" name="date_from" id="exportDateFrom" required>
                     </div>
                     <div class="export-field">
                         <label for="exportDateTo">Date To</label>
-                        <input type="date" name="date_to" id="exportDateTo">
+                        <input type="date" name="date_to" id="exportDateTo" required>
                     </div>
                 </div>
                 <div class="export-divider">
@@ -820,7 +847,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                 </div>
                 <div class="export-actions">
                     <button type="button" class="btn btn-ghost" id="cancelExportBtn">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-file-excel"></i> Generate Excel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-download"></i> Generate Report</button>
                 </div>
             </div>
         </form>
@@ -828,11 +855,12 @@ $hasQueueFilters = $queueFilters['search'] !== ''
 </div>
 
 <script src="../assets/js/sidebar-toggle.js?v=3"></script>
-<script src="../assets/js/application-documents.js?v=8"></script>
-<script src="../assets/js/application-details.js?v=9"></script>
+<script src="../assets/js/application-documents.js?v=9"></script>
+<script src="../assets/js/application-details.js?v=13"></script>
+<script src="../assets/js/application-modal-data.js?v=1"></script>
 <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 <script src="../assets/js/application-form-generator.js?v=2"></script>
-<script src="../assets/js/report-validation.js?v=1"></script>
+<script src="../assets/js/report-validation.js?v=2"></script>
 <script>
     /* ─── Greeting ──────────────────────────────────────────── */
     (function(){
@@ -846,6 +874,8 @@ $hasQueueFilters = $queueFilters['search'] !== ''
     let currentWorkflowStatus = 'Received';
 
     document.addEventListener('DOMContentLoaded', function() {
+        const requestedApplication = new URLSearchParams(window.location.search).get('application');
+        if (requestedApplication) openApplicationModal(requestedApplication);
         const queueFilterForm = document.getElementById('queueFilterForm');
         const queueSearch = document.getElementById('queueSearch');
         const clearQueueFilters = document.getElementById('clearQueueFilters');
@@ -988,19 +1018,6 @@ $hasQueueFilters = $queueFilters['search'] !== ''
     }
 
     /* ─── Helpers ───────────────────────────────────────────── */
-    function calculateWorkingDays(startDateVal) {
-        if (!startDateVal) return 0;
-        const start = new Date(startDateVal);
-        const end   = new Date();
-        if (start > end) return 0;
-        let days = 0, cur = new Date(start);
-        while (cur < end) {
-            const d = cur.getDay();
-            if (d !== 0 && d !== 6) days++;
-            cur.setDate(cur.getDate() + 1);
-        }
-        return days;
-    }
 
     /* ─── Open modal and populate ───────────────────────────── */
     function openApplicationModal(appId) {
@@ -1010,6 +1027,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
         // Reset placeholders
         document.getElementById('modalAppTitle').textContent  = 'Loading…';
         document.getElementById('statusComment').value = "";
+        document.getElementById('correctionDocuments').value = "";
         document.getElementById('complianceList').innerHTML   = '<p style="color:var(--gray);font-size:0.85rem;">Loading compliance checks…</p>';
         document.getElementById('dynamicDetailsSection').innerHTML = '';
         document.getElementById('allDocumentsSection').innerHTML   = '<span style="color:var(--gray);font-size:0.8rem;">Loading documents…</span>';
@@ -1024,24 +1042,11 @@ $hasQueueFilters = $queueFilters['search'] !== ''
         document.getElementById('applicationModal').style.display = 'flex';
         document.querySelector('#applicationModal .modal-scroller').scrollTop = 0;
 
-        fetch(`../api/get_application_details.php?id=${encodeURIComponent(appId)}`)
-            .then(r => r.text())
-            .then(text => {
-                let app;
-                try { app = JSON.parse(text); }
-                catch(parseErr) {
-                    document.getElementById('complianceList').innerHTML =
-                        `<p style="color:red;"><strong>Server Error (non-JSON response):</strong><br><pre style="font-size:0.75rem;overflow:auto;">${text.substring(0,600)}</pre></p>`;
-                    return;
-                }
-                if (app.error) {
-                    document.getElementById('complianceList').innerHTML = `<p style="color:red;">${app.error}</p>`;
-                    return;
-                }
-
+        window.loadApplicationModalData(appId)
+            .then(app => {
+                if (!app) return;
                 currentWorkflowStatus = app.workflow_state || 'Received';
-
-                /* ── Title ── */
+                window.currentVerificationApplicationType = app.application_type || '';
                 document.getElementById('modalAppTitle').textContent = `Verifying: ${app.full_name} - ${getOfficialApplicationFormLabel(app.application_type)}`;
                 const officialFormButton = document.getElementById('btnOfficialForm');
                 officialFormButton.disabled = false;
@@ -1059,7 +1064,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                 });
 
                 /* ── Basic Info ── */
-                document.getElementById('infoName').innerHTML    = `<strong>${app.lastName}, ${app.firstName} ${app.middleName||''} ${app.suffix||''}</strong>`;
+                document.getElementById('infoName').textContent = app.full_name || [app.firstName, app.middleName, app.lastName, app.suffix].filter(Boolean).join(' ');
                 const birth = new Date(app.birth_date);
                 const today = new Date();
                 let age = today.getFullYear() - birth.getFullYear();
@@ -1097,8 +1102,12 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                 }
 
                 if (app.application_type === 'burial') {
-                    const ed = calculateWorkingDays(app.date_of_death);
-                    if (ed <= 30) {
+                    const ed = app.burial_filing_days;
+                    if (ed === null || ed === undefined) {
+                        approvalBlocked = true;
+                        approvalBlockReason = 'Correct the death date: it must be valid and on or before the original submission date.';
+                        ch += '<div class="compliance-item"><span>Filing deadline</span><span class="fail-tag">Missing or invalid filing dates</span></div>';
+                    } else if (ed <= 30) {
                         ch += `<div class="compliance-item"><span>Filing Deadline Check (Pasig Ord. 3/2026)</span><span class="pass-tag"><i class="fas fa-circle-check"></i> PASS: Filed in ${ed} working days</span></div>`;
                     } else {
                         approvalBlocked = true;
@@ -1120,6 +1129,8 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                 const btnReject = document.getElementById('btnRejectStatus');
                 const instruction = document.getElementById('statusInstructions');
 
+                btnNext.disabled = false;
+                btnNext.style.opacity = '';
                 btnReturn.style.display = 'block';
                 btnNext.style.display = 'block';
                 btnReject.style.display = 'block';
@@ -1127,10 +1138,13 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                 const existingBlockBanner = document.getElementById('policyBlockBanner');
                 if (existingBlockBanner) existingBlockBanner.remove();
 
-                if (currentWorkflowStatus === 'Received') {
+                if (currentWorkflowStatus === 'Needs Correction') {
+                    instruction.textContent = 'Waiting for barangay staff to correct the listed items and resubmit.';
+                    btnNext.style.display = 'none';
+                    btnReturn.style.display = 'none';
+                } else if (['Received', 'Submitted'].includes(currentWorkflowStatus)) {
                     instruction.innerHTML = "<strong>Status Action:</strong> Forward this application to the department desk for detailed evaluation.";
                     btnNext.textContent = "Forward to Review Desk";
-                    btnReturn.style.display = 'none';
                 } else if (currentWorkflowStatus === 'For Review') {
                     instruction.innerHTML = "<strong>Status Action:</strong> Mark document audits as Verified and lock the compliance records.";
                     btnNext.textContent = "Verify Application";
@@ -1161,10 +1175,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                 /* ── Paginated Timeline ── */
                 window.renderApplicationAuditHistory(app.history, 'timelineList', { pageSize: 5 });
             })
-            .catch(err => {
-                console.error(err);
-                document.getElementById('complianceList').innerHTML = `<p style="color:red;">Network error: ${err.message}</p>`;
-            });
+            .catch(error => window.showApplicationModalError('applicationModal', error));
     }
 
     async function submitStatusAction(action, confirmed = false) {
@@ -1177,6 +1188,12 @@ $hasQueueFilters = $queueFilters['search'] !== ''
             return;
         }
 
+        const correctionDocuments = document.getElementById('correctionDocuments').value.trim();
+        if (action === 'return' && !correctionDocuments) {
+            showCarelinkResult('List the documents or fields that need correction.', false);
+            document.getElementById('correctionDocuments').focus();
+            return;
+        }
         if (!confirmed) {
             const confirmation = action === 'reject'
                 ? 'Reject this application and move it to the Archive?'
@@ -1190,7 +1207,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
             formData.append('applicationId', currentAppId);
             formData.append('action', action);
             formData.append('comments', comment);
-
+            formData.append('correctionDocuments', correctionDocuments);
             const response = await fetch('../api/update_workflow_status.php', {
                 method: 'POST',
                 body: formData
@@ -1210,217 +1227,6 @@ $hasQueueFilters = $queueFilters['search'] !== ''
         }
     }
 
-    function getCompleteDetailsHtml(app) {
-        return window.renderApplicationVerificationDetails(app);
-        // Legacy renderer retained below only for source compatibility.
-        function getFieldHtml(label, val) {
-            if (val === null || val === undefined || val === '' || val === '0' || val === 0) return '';
-            if (val === 1 || val === '1') val = 'Yes';
-            return `
-                <div class="info-item">
-                    <label>${label}</label>
-                    <span>${val}</span>
-                </div>`;
-        }
-
-        let dynamicHtml = "";
-
-        // 1. Personal & Demographics Extra Info
-        let personalHtml = "";
-        personalHtml += getFieldHtml("Place of Birth", app.place_of_birth);
-        personalHtml += getFieldHtml("Gender", app.gender);
-        personalHtml += getFieldHtml("Civil Status", app.civil_status);
-        personalHtml += getFieldHtml("Mother's Maiden Name", app.mothers_maiden_name);
-        personalHtml += getFieldHtml("Nationality", app.nationality);
-
-        if (personalHtml) {
-            dynamicHtml += `
-                <div class="section-title" style="margin-top:20px;"><i class="fas fa-id-card-clip"></i> Personal Profile</div>
-                <div class="info-grid">
-                    ${personalHtml}
-                </div>`;
-        }
-
-        // 2. Household & Housing
-        let housingHtml = "";
-        housingHtml += getFieldHtml("Complete Address", app.complete_address);
-        if (app.application_type === 'senior' || app.application_type === 'landbank') {
-            housingHtml += getFieldHtml("ZIP Code", app.zip_code);
-        }
-        if (app.application_type === 'senior') {
-            housingHtml += getFieldHtml("Landmark", app.landmark);
-        }
-        if (app.application_type === 'pension' || app.application_type === 'national_pension') {
-            housingHtml += getFieldHtml("Owns House", app.owns_house);
-            housingHtml += getFieldHtml("Renter", app.is_renter);
-        }
-
-        if (housingHtml) {
-            dynamicHtml += `
-                <div class="section-title" style="margin-top:20px;"><i class="fas fa-house-user"></i> Address Details</div>
-                <div class="info-grid">
-                    ${housingHtml}
-                </div>`;
-        }
-
-        // 3. Financial & Pension Info
-        let financeHtml = "";
-        financeHtml += getFieldHtml("SSS Number", app.sss_number);
-        financeHtml += getFieldHtml("Pension Amount", app.pension_amount ? `₱${parseFloat(app.pension_amount).toFixed(2)}` : '');
-        financeHtml += getFieldHtml("Is Pensioner", app.is_pensioner);
-        financeHtml += getFieldHtml("Pension Source", app.pension_source);
-        financeHtml += getFieldHtml("Permanent Income", app.is_permanent_income);
-        financeHtml += getFieldHtml("Income Source", app.income_source);
-        financeHtml += getFieldHtml("Personal Income Amount", app.personal_income_amount ? `₱${parseFloat(app.personal_income_amount).toFixed(2)}` : '');
-        financeHtml += getFieldHtml("Source of Funds", app.source_of_funds);
-        financeHtml += getFieldHtml("Family Support Amount", app.family_support_amount ? `₱${parseFloat(app.family_support_amount).toFixed(2)}` : '');
-
-        if (financeHtml) {
-            dynamicHtml += `
-                <div class="section-title" style="margin-top:20px;"><i class="fas fa-wallet"></i> Financial Profile</div>
-                <div class="info-grid">
-                    ${financeHtml}
-                </div>`;
-        }
-
-        // 4. OSCA Registration & Banking info
-        let oscaRegHtml = "";
-        oscaRegHtml += getFieldHtml("Senior ID No", app.senior_id_no);
-        oscaRegHtml += getFieldHtml("ID Purpose", app.id_purpose);
-        oscaRegHtml += getFieldHtml("Control No", app.control_no);
-        oscaRegHtml += getFieldHtml("Landbank Card No", app.landbank_card_no);
-        oscaRegHtml += getFieldHtml("ATM Card No", app.atm_card_no);
-        oscaRegHtml += getFieldHtml("Name on Card", app.name_on_card);
-        oscaRegHtml += getFieldHtml("TIN", app.tin);
-        oscaRegHtml += getFieldHtml("ID Type Presented", app.id_type_presented);
-        oscaRegHtml += getFieldHtml("Parent Senior ID", app.parent_senior_id);
-
-        if (oscaRegHtml) {
-            dynamicHtml += `
-                <div class="section-title" style="margin-top:20px;"><i class="fas fa-piggy-bank"></i> Registration & Banking</div>
-                <div class="info-grid">
-                    ${oscaRegHtml}
-                </div>`;
-        }
-
-        // 5. Health & Living Arrangement
-        let healthHtml = "";
-        healthHtml += getFieldHtml("Health Status", app.health_status);
-        healthHtml += getFieldHtml("Health Condition", app.health_condition);
-        healthHtml += getFieldHtml("Living Arrangement", app.living_arrangement);
-        healthHtml += getFieldHtml("With Maintenance Meds", app.with_maintenance);
-        healthHtml += getFieldHtml("Maintenance Specification", app.maintenance_spec);
-
-        if (healthHtml) {
-            dynamicHtml += `
-                <div class="section-title" style="margin-top:20px;"><i class="fas fa-heart-pulse"></i> Health & Wellness</div>
-                <div class="info-grid">
-                    ${healthHtml}
-                </div>`;
-        }
-
-        // 6. Burial Claims
-        let burialHtml = "";
-        if (app.application_type === 'burial' || app.deceased_last_name) {
-            let decName = [app.deceased_last_name, app.deceased_first_name, app.deceased_middle_name, app.deceased_suffix].filter(Boolean).join(' ');
-            burialHtml += getFieldHtml("Deceased Senior Name", decName);
-            burialHtml += getFieldHtml("Date of Passing", app.date_of_death);
-            burialHtml += getFieldHtml("Relationship to Deceased", app.relationship_to_deceased);
-            burialHtml += getFieldHtml("Deceased Birth Date", app.deceased_birth_date);
-            burialHtml += getFieldHtml("Claimant Name", app.claimant_name);
-            burialHtml += getFieldHtml("Claimant Relationship", app.claimant_relationship);
-            burialHtml += getFieldHtml("Claimant Contact", app.claimant_contact);
-        }
-
-        if (burialHtml) {
-            dynamicHtml += `
-                <div class="section-title" style="margin-top:20px;"><i class="fas fa-ribbon"></i> Burial Claim Details</div>
-                <div class="info-grid">
-                    ${burialHtml}
-                </div>`;
-        }
-
-        // 7. PWD details
-        let pwdHtml = "";
-        pwdHtml += getFieldHtml("Disability Type", app.disability_type);
-        if (pwdHtml) {
-            dynamicHtml += `
-                <div class="section-title" style="margin-top:20px;"><i class="fas fa-wheelchair"></i> Disability Support Info</div>
-                <div class="info-grid">
-                    ${pwdHtml}
-                </div>`;
-        }
-
-        // 8. Milestone Gifts
-        let milestoneHtml = "";
-        milestoneHtml += getFieldHtml("Milestone Age", app.milestone_age);
-        milestoneHtml += getFieldHtml("Milestone Applicant Name", app.applicant_name);
-        if (milestoneHtml) {
-            dynamicHtml += `
-                <div class="section-title" style="margin-top:20px;"><i class="fas fa-cake-candles"></i> Milestone Celebration Details</div>
-                <div class="info-grid">
-                    ${milestoneHtml}
-                </div>`;
-        }
-
-        // 9. Home Visit summaries
-        let visitHtml = "";
-        visitHtml += getFieldHtml("Visit Purpose", app.visit_purpose);
-        visitHtml += getFieldHtml("Visit Summary", app.visit_summary);
-        if (visitHtml) {
-            dynamicHtml += `
-                <div class="section-title" style="margin-top:20px;"><i class="fas fa-person-walking-luggage"></i> Field Visit Summary</div>
-                <div class="info-grid">
-                    ${visitHtml}
-                </div>`;
-        }
-
-        // 10. Proxy Details
-        let proxyHtml = "";
-        if (app.is_proxy_application == 1) {
-            proxyHtml += getFieldHtml("Requested Benefit / Service", app.requested_benefit);
-            proxyHtml += getFieldHtml("ID Application Purpose", app.id_purpose);
-            proxyHtml += getFieldHtml("Home Visit Instructions", app.visit_summary);
-            proxyHtml += getFieldHtml("Pension Source", app.pension_source);
-            proxyHtml += getFieldHtml("Current Monthly Pension", app.pension_amount);
-            proxyHtml += getFieldHtml("Monthly Family Support", app.family_support_amount);
-            proxyHtml += getFieldHtml("Monthly Personal Income", app.personal_income_amount);
-            proxyHtml += getFieldHtml("Name on Cash Card", app.name_on_card);
-            proxyHtml += getFieldHtml("TIN", app.tin);
-            proxyHtml += getFieldHtml("Senior ID Presented", app.id_type_presented);
-            proxyHtml += getFieldHtml("Source of Funds", app.source_of_funds);
-            proxyHtml += getFieldHtml("Milestone Age", app.milestone_age);
-            proxyHtml += getFieldHtml("Other Assistance Details", app.additional_notes);
-            proxyHtml += getFieldHtml("Representative Name", app.proxy_name);
-            proxyHtml += getFieldHtml("Relationship", app.proxy_relationship);
-            proxyHtml += getFieldHtml("Representative Contact", app.proxy_contact_number);
-            proxyHtml += getFieldHtml("Representative Birth Date", app.proxy_birth_date);
-            proxyHtml += getFieldHtml("Representative Email", app.proxy_email);
-            proxyHtml += getFieldHtml("Representative Address", app.proxy_address);
-            proxyHtml += getFieldHtml("Government ID Type", app.proxy_id_type);
-            proxyHtml += getFieldHtml("Government ID Number", app.proxy_id_number);
-            proxyHtml += getFieldHtml("Representative Token", app.proxy_token);
-        }
-        if (proxyHtml) {
-            dynamicHtml += `
-                <div class="section-title" style="margin-top:20px;"><i class="fas fa-user-clock"></i> Representative Details</div>
-                <div class="info-grid">
-                    ${proxyHtml}
-                </div>`;
-        }
-
-        // 11. Additional Notes
-        let notesHtml = getFieldHtml("Additional Notes / Remarks", app.additional_notes);
-        if (notesHtml) {
-            dynamicHtml += `
-                <div class="section-title" style="margin-top:20px;"><i class="fas fa-comment-dots"></i> Additional Notes</div>
-                <div class="info-grid">
-                    ${notesHtml}
-                </div>`;
-        }
-
-        return dynamicHtml;
-    }
 
     /* ─── Build Complete Documents Section ─────────────────── */
     function buildAllDocumentsHtml(app, appId) {

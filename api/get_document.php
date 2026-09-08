@@ -13,6 +13,11 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['barangay_staf
 
 $userRole     = $_SESSION['role'];
 $userBarangay = $_SESSION['barangay'] ?? null;
+if ($userRole === 'barangay_staff' && !$userBarangay) {
+    http_response_code(403);
+    echo json_encode(['error' => 'A barangay assignment is required.']);
+    exit;
+}
 
 if (!isset($_GET['id'])) {
     http_response_code(400);
@@ -84,6 +89,24 @@ if (!in_array($docType, $allowed_doc_types)) {
 }
 
 try {
+    // A correction of a legacy upload supersedes its original file.
+    $replacementSql = 'SELECT d.mime_type, d.document_data FROM application_documents d
+        INNER JOIN applications a ON a.id_number = d.application_id
+        WHERE d.application_id = ? AND d.document_key = ?';
+    $replacementParams = [$appId, $docType];
+    if ($userRole === 'barangay_staff') {
+        $replacementSql .= ' AND a.barangay = ?';
+        $replacementParams[] = $userBarangay;
+    }
+    $replacementStmt = $conn->prepare($replacementSql . ' ORDER BY d.id DESC LIMIT 1');
+    $replacementStmt->execute($replacementParams);
+    $replacement = $replacementStmt->fetch(PDO::FETCH_ASSOC);
+    if ($replacement) {
+        header('Content-Type: ' . $replacement['mime_type']);
+        header('Cache-Control: private, no-store');
+        echo $replacement['document_data'];
+        exit;
+    }
     // For whitelisted fields, select the column along with id_number and barangay
     if ($userRole === 'barangay_staff' && $userBarangay) {
         $sql  = "SELECT {$docType}, id_number FROM applications WHERE id_number = ? AND barangay = ?";

@@ -33,7 +33,7 @@
 
     window.renderApplicationDocuments = function (app, appId, options = {}) {
         const storedDocuments = uniqueDocuments(Array.isArray(app.documents) ? app.documents : []);
-        const files = documentDefinitions.filter(([, , exists]) => Boolean(exists(app)));
+        const files = documentDefinitions.filter(([key, , exists]) => Boolean(exists(app)) && !storedDocuments.some(doc => doc.document_key === key));
         const type = escapeHtml((app.application_type || 'application').replace(/_/g, ' '));
         if (!storedDocuments.length && !files.length) return `<section class="application-documents"><div class="application-documents__header"><div><h3 class="application-documents__title"><i class="fas fa-folder-open" aria-hidden="true"></i> Submitted Documents</h3><p class="application-documents__hint">Documents attached to this application.</p></div><span class="application-documents__count">0 files</span></div><div class="application-documents__empty"><i class="fas fa-file-circle-xmark" aria-hidden="true"></i><span>No documents were submitted for this ${type} application.</span></div></section>`;
 
@@ -50,8 +50,7 @@
             };
         };
 
-        const cards = storedDocuments.length
-            ? storedDocuments.map(document => {
+        const cards = storedDocuments.map(document => {
                 const label = escapeHtml(document.document_label || 'Submitted Document');
                 const url = `../api/get_document.php?id=${encodeURIComponent(appId)}&document_id=${encodeURIComponent(document.id)}&v=${Date.now()}`;
                 const isPdf = document.mime_type === 'application/pdf';
@@ -59,24 +58,23 @@
                 const replacement = replacementControls(document.id);
                 const fileType = isPdf ? 'PDF' : 'Image';
                 return `<article class="application-document"><div class="application-document__meta"><div class="application-document__name">${label}</div><span class="application-document__type">${fileType}</span></div><div class="application-document__preview">${preview}</div>${replacement.input}<div class="application-document__actions${replacement.button ? ' has-replacement' : ''}"><a class="btn btn-primary btn-small application-document__view" href="${url}" target="_blank" rel="noopener"><i class="fas fa-up-right-from-square" aria-hidden="true"></i> Open document</a>${replacement.button}</div></article>`;
-            }).join('')
-            : files.map(([key, label, exists]) => {
+            }).join('') + files.map(([key, label, exists]) => {
             const rawValue = exists(app);
             // Bust the browser cache after a document replacement. The endpoint
             // intentionally remains the same so permissions and MIME handling
             // stay centralized.
             const url = `../api/get_document.php?id=${encodeURIComponent(appId)}&doc_type=${encodeURIComponent(key)}&v=${Date.now()}`;
-            const isPdf = typeof rawValue === 'string' && rawValue.toLowerCase().endsWith('.pdf');
+            const isPdf = app[key + '_type'] === 'application/pdf'
+                || (typeof rawValue === 'string' && rawValue.toLowerCase().endsWith('.pdf'));
             const preview = isPdf ? '<i class="fas fa-file-pdf" aria-hidden="true"></i>' : `<img src="${url}" alt="${label}">`;
-            const canReplaceLegacy = key === 'proof_of_address' || key === 'id_image';
-            const replacement = canReplaceLegacy ? replacementControls('', key) : { input: '', button: '' };
+            const replacement = replacementControls('', key);
             const fileType = isPdf ? 'PDF' : 'Image';
             return `<article class="application-document"><div class="application-document__meta"><div class="application-document__name">${label}</div><span class="application-document__type">${fileType}</span></div><div class="application-document__preview">${preview}</div>${replacement.input}<div class="application-document__actions${replacement.button ? ' has-replacement' : ''}"><a class="btn btn-primary btn-small application-document__view" href="${url}" target="_blank" rel="noopener"><i class="fas fa-up-right-from-square" aria-hidden="true"></i> Open document</a>${replacement.button}</div></article>`;
         }).join('');
         const hint = options.allowReplacement
             ? 'Choose the correct file under the document that needs correction, then select Save replacement.'
             : 'Files submitted with this application. Open a document to inspect it at full size.';
-        const count = storedDocuments.length || files.length;
+        const count = storedDocuments.length + files.length;
         return `<section class="application-documents"><div class="application-documents__header"><div><h3 class="application-documents__title"><i class="fas fa-folder-open" aria-hidden="true"></i> Submitted Documents</h3><p class="application-documents__hint">${hint}</p></div><span class="application-documents__count">${count} ${count === 1 ? 'file' : 'files'}</span></div><div class="application-documents__grid">${cards}</div></section>`;
     };
 })();

@@ -354,7 +354,7 @@ unset($_SESSION['application_submission_notice']);
         /* Footer */
         .page-footer { text-align:center; padding:24px; font-size:0.78rem; color:var(--gray); }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=17">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
     <script src="../assets/js/table-pagination.js?v=1" defer></script>
@@ -474,9 +474,9 @@ unset($_SESSION['application_submission_notice']);
 
             <!-- Return Warning Box -->
             <div id="returnedWarningBox" style="display:none; background-color: rgba(239, 68, 68, 0.08); border: 1.5px solid var(--danger); padding: 14px; border-radius: 10px; margin-bottom: 22px; color: #b91c1c; font-size: 0.88rem;">
-                <strong><i class="fas fa-exclamation-triangle"></i> SCANS REJECTED BY OFFICE REVIEWER:</strong>
+                <strong><i class="fas fa-exclamation-triangle"></i> CORRECTION REQUESTED BY OFFICE REVIEWER:</strong>
                 <p id="returnedReasonText" style="margin-top: 5px; font-style: italic;"></p>
-                <p style="margin-top: 10px; font-weight: bold; text-decoration: underline;">Please upload clean, high-resolution scans below and save changes to update.</p>
+                <p style="margin-top: 10px; font-weight: bold; text-decoration: underline;">Correct the listed fields or documents, save your changes, then submit to the review desk.</p>
             </div>
 
             <div class="modal-grid applicant-modal-layout">
@@ -627,15 +627,23 @@ unset($_SESSION['application_submission_notice']);
 <div id="exportModal" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="exportModalTitle">
     <div class="modal-box export-modal-box">
         <div class="modal-head">
-            <h2 id="exportModalTitle"><i class="fas fa-file-excel"></i> Export Queue to Excel</h2>
+            <h2 id="exportModalTitle"><i class="fas fa-file-export"></i> Generate Queue Report</h2>
             <button type="button" class="modal-close" id="closeExportModalBtn" aria-label="Close export dialog">&times;</button>
         </div>
         <form id="exportReportForm" method="GET" action="../api/export_records_excel.php">
             <div class="export-modal-body">
-                <p>Set the filters for your queue Excel report. Only applications matching these criteria will be included.</p>
+                <p>Choose a file format and set the queue filters. Only matching applications will be included.</p>
                 <input type="hidden" name="scope" value="barangay">
                 <input type="hidden" name="report_mode" value="queue">
                 <div class="export-filter-grid">
+                    <div class="export-field">
+                        <label for="exportFormat">File Format</label>
+                        <select name="format" id="exportFormat" required>
+                            <option value="">Choose a format</option>
+                            <option value="pdf">PDF</option>
+                            <option value="excel">Excel (.xlsx)</option>
+                        </select>
+                    </div>
                     <div class="export-field">
                         <label for="exportType">Application Type</label>
                         <select name="type" id="exportType">
@@ -659,16 +667,16 @@ unset($_SESSION['application_submission_notice']);
                     </div>
                     <div class="export-field">
                         <label for="exportDateFrom">Date From</label>
-                        <input type="date" name="date_from" id="exportDateFrom">
+                        <input type="date" name="date_from" id="exportDateFrom" required>
                     </div>
                     <div class="export-field">
                         <label for="exportDateTo">Date To</label>
-                        <input type="date" name="date_to" id="exportDateTo">
+                        <input type="date" name="date_to" id="exportDateTo" required>
                     </div>
                 </div>
                 <div class="export-actions">
                     <button type="button" class="btn btn-ghost" id="cancelExportBtn">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-file-excel"></i> Generate Excel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-download"></i> Generate Report</button>
                 </div>
             </div>
         </form>
@@ -700,11 +708,12 @@ unset($_SESSION['application_submission_notice']);
 
 <script src="../assets/js/sidebar-toggle.js?v=3"></script>
 <script src="../assets/js/osca-form-fields.js?v=3"></script>
-<script src="../assets/js/application-documents.js?v=8"></script>
-<script src="../assets/js/application-details.js?v=9"></script>
+<script src="../assets/js/application-documents.js?v=9"></script>
+<script src="../assets/js/application-details.js?v=13"></script>
+<script src="../assets/js/application-modal-data.js?v=1"></script>
 <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 <script src="../assets/js/application-form-generator.js?v=1"></script>
-<script src="../assets/js/report-validation.js?v=1"></script>
+<script src="../assets/js/report-validation.js?v=2"></script>
 <script>
     const TYPE_LABELS = <?php echo json_encode(getApplicationTypeOptions()); ?>;
     
@@ -769,6 +778,8 @@ unset($_SESSION['application_submission_notice']);
         setVisibility(emergencyRow, showEmergency);
     }
 
+    function escapeQueueText(value) { const el = document.createElement('span'); el.textContent = value ?? ''; return el.innerHTML; }
+
     function fetchApplications(page = applicationsPage) {
         applicationsPage = page;
         tableBody.innerHTML = '<tr><td colspan="9" style="text-align:center;">Loading applications…</td></tr>';
@@ -776,7 +787,7 @@ unset($_SESSION['application_submission_notice']);
         let url = `../api/search_applications.php?query=${encodeURIComponent(searchInput.value)}&page=${applicationsPage}&per_page=25`;
         if (applicationTypeFilter.value) url += `&type=${encodeURIComponent(applicationTypeFilter.value)}`;
         // Verified is the final state and belongs in Barangay Records.
-        url += `&status=${encodeURIComponent('Received,For Review')}`;
+        url += `&status=${encodeURIComponent('Received,Submitted,For Review,Needs Correction')}`;
         if (userBarangay)                url += `&barangay=${encodeURIComponent(userBarangay)}`;
 
         fetch(url)
@@ -802,8 +813,8 @@ unset($_SESSION['application_submission_notice']);
                     if (state === 'Released')   stateBadge = 'badge-released';
 
                     let blurryWarning = '';
-                    if (state === 'Received' && app.return_comments) {
-                        blurryWarning = `<div class="alert-blurry"><i class="fas fa-exclamation-triangle"></i> Resubmit scans: "${app.return_comments}"</div>`;
+                    if (['Received', 'Needs Correction'].includes(state) && app.return_comments) {
+                        blurryWarning = `<div class="alert-blurry"><i class="fas fa-exclamation-triangle"></i> Correction needed: "${escapeQueueText(app.return_comments)}"</div>`;
                     }
 
                     const typeLabel = TYPE_LABELS[app.application_type] || app.application_type;
@@ -909,18 +920,9 @@ unset($_SESSION['application_submission_notice']);
             if (el) el.className = 'step';
         });
 
-        fetch(`../api/get_application_details.php?id=${encodeURIComponent(appId)}`)
-            .then(r => r.text())
-            .then(text => {
-                let app;
-                try { app = JSON.parse(text); }
-                catch(parseErr) {
-                    window.showCarelinkResult("Server error. " + text.substring(0, 1000), false);
-                    console.error("Non-JSON response:", text);
-                    return;
-                }
-                if (app.error) { window.showCarelinkResult(app.error, false); return; }
-
+        window.loadApplicationModalData(appId)
+            .then(app => {
+                if (!app) return;
                 document.getElementById('modalAppTitle').textContent = `Edit application: ${app.full_name}`;
                 document.getElementById('applicationId').value       = app.id_number;
                 document.getElementById('applicationType').value     = app.application_type;
@@ -977,9 +979,9 @@ unset($_SESSION['application_submission_notice']);
 
                 // Rejected Warning Banner
                 document.getElementById('returnedWarningBox').style.display = 'none';
-                if ((currentState === 'Received' || currentState === 'Submitted') && app.return_comments) {
+                if ((['Received', 'Submitted', 'Needs Correction'].includes(currentState)) && app.return_comments) {
                     document.getElementById('returnedWarningBox').style.display = 'block';
-                    document.getElementById('returnedReasonText').textContent = `"${app.return_comments}"`;
+                    document.getElementById('returnedReasonText').textContent = `"${escapeQueueText(app.return_comments)}"`;
                 }
 
                 // Render Proxy Docs
@@ -1018,7 +1020,7 @@ unset($_SESSION['application_submission_notice']);
                 }
 
                 // Edit state toggling
-                const isEditable = (currentState === 'Received' || currentState === 'Submitted');
+                const isEditable = (['Received', 'Submitted', 'Needs Correction'].includes(currentState));
                 const inputs = document.querySelectorAll('#applicationDetailForm input, #applicationDetailForm textarea, #applicationDetailForm select');
                 inputs.forEach(inp => {
                     if (inp.id !== 'applicationType' && inp.id !== 'applicationId' && inp.id !== 'pensionAmount') {
@@ -1029,7 +1031,7 @@ unset($_SESSION['application_submission_notice']);
 
                 // SHDO can correct a submitted requirement while the
                 // application is still at the barangay stage.
-                const canCorrectDocuments = currentState === 'Received' || currentState === 'Submitted';
+                const canCorrectDocuments = ['Received', 'Submitted', 'Needs Correction'].includes(currentState);
                 renderAllSubmittedDocuments(app, appId, { allowReplacement: canCorrectDocuments });
 
                 // Action Buttons
@@ -1039,7 +1041,7 @@ unset($_SESSION['application_submission_notice']);
                 }
                 btns += `<button type="button" class="btn btn-primary" onclick="openOfficialApplicationForm('${app.id_number}')"><i class="fas fa-file-pdf"></i> Generate Official Form</button>`;
                 
-                if (currentState === 'Received' || currentState === 'Submitted') {
+                if (['Received', 'Submitted', 'Needs Correction'].includes(currentState)) {
                     btns += `<button type="button" class="btn" style="background:#3b82f6; color:#fff;" onclick="forwardToReviewDesk()"><i class="fas fa-paper-plane"></i> Submit to Review Desk</button>`;
                 } else {
                     btns += `<span style="color:var(--gray);font-style:italic;font-size:0.84rem;margin-left:10px;"><i class="fas fa-lock"></i> Locked Status: [${currentState}]</span>`;
@@ -1049,7 +1051,7 @@ unset($_SESSION['application_submission_notice']);
                 // Paginated Audit History
                 window.renderApplicationAuditHistory(app.history, 'timelineList', { pageSize: 5 });
             })
-            .catch(err => { console.error(err); window.showCarelinkResult("Connection or network error: " + err.message, false); });
+            .catch(error => window.showApplicationModalError('applicationModal', error));
     }
 
     /* ─── Toast notification helper ─── */
@@ -1134,6 +1136,13 @@ unset($_SESSION['application_submission_notice']);
         if (typeof window.renderApplicationDocuments === 'function') {
             section.style.display = 'block';
             section.innerHTML = window.renderApplicationDocuments(app, appId, options);
+            if (options.allowReplacement) {
+                const card = document.createElement('div');
+                card.className = 'application-document';
+                card.innerHTML = '<label>Add a missing requirement<input type="text" class="missing-document-label" maxlength="150" placeholder="Document name, e.g. PSA birth certificate"></label><label>Choose document<input type="file" accept="image/jpeg,image/png,image/gif,application/pdf"></label><button type="button" class="btn btn-primary" onclick="replaceSubmittedDocument(this)">Save document</button>';
+                card.querySelector('button').dataset.applicationId = appId;
+                section.append(card);
+            }
             return;
         }
 
@@ -1217,12 +1226,13 @@ unset($_SESSION['application_submission_notice']);
             data.append('documentId', documentId);
             data.append('replacementDocument', file);
         } else {
-            const legacyInputs = { proof_of_address: 'proofOfAddress', id_image: 'idImage' };
-            if (!legacyInputs[documentKey]) {
-                showToast('This older document cannot be replaced automatically. Please contact the administrator.', false);
-                return;
+            if (documentKey) data.append('documentKey', documentKey);
+            else {
+                const label = card.querySelector('.missing-document-label')?.value.trim();
+                if (!label) { showToast('Enter the name of the missing document.', false); return; }
+                data.append('documentLabel', label);
             }
-            data.append(legacyInputs[documentKey], file);
+            data.append('replacementDocument', file);
         }
 
         const original = button.innerHTML;
@@ -1265,6 +1275,8 @@ unset($_SESSION['application_submission_notice']);
     }
 
     document.addEventListener('DOMContentLoaded', function() {
+        const requestedApplication = new URLSearchParams(window.location.search).get('application');
+        if (requestedApplication) openApplicationModal(requestedApplication);
         if (new URLSearchParams(window.location.search).get('openScanner') === '1') {
             const cleanUrl = new URL(window.location.href);
             cleanUrl.searchParams.delete('openScanner');

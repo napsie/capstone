@@ -5,14 +5,17 @@ session_start();
 try {
     require_once '../includes/db_connect.php';
     require_once '../includes/application_types.php';
+    require_once '../includes/filing_deadline.php';
 } catch (Throwable $boot_err) {
     header('Content-Type: application/json');
     http_response_code(500);
-    echo json_encode(['error' => 'Database connection failed: ' . $boot_err->getMessage()]);
+    error_log('Application details connection failed: ' . $boot_err->getMessage());
+    echo json_encode(['error' => 'Application details are temporarily unavailable.']);
     exit();
 }
 
 header('Content-Type: application/json');
+header('Cache-Control: private, no-store');
 
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['barangay_staff', 'department_admin', 'super_admin'])) {
     http_response_code(401);
@@ -22,6 +25,11 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['barangay_staf
 
 $userRole     = $_SESSION['role'];
 $userBarangay = $_SESSION['barangay'] ?? null;
+if ($userRole === 'barangay_staff' && !$userBarangay) {
+    http_response_code(403);
+    echo json_encode(['error' => 'A barangay assignment is required.']);
+    exit;
+}
 
 $oscaCols = implode(', ', array_map(fn($c) => "a.$c", getOscaExtraColumns()));
 $baseCols = "a.id_number, a.full_name, a.application_type, a.requested_benefit, a.birth_date, a.contact_number, a.complete_address,
@@ -53,8 +61,8 @@ try {
     if ($userRole === 'barangay_staff' && $userBarangay) {
         $sql = "SELECT $baseCols,
                        (SELECT h.comments FROM application_history h
-                        WHERE h.application_id = a.id_number AND h.new_state = 'Received'
-                          AND h.previous_state IN ('For Review', 'Verified', 'Approved')
+                        WHERE h.application_id = a.id_number AND (h.new_state = 'Needs Correction' OR (h.new_state = 'Received'
+                          AND h.previous_state IN ('For Review', 'Verified', 'Approved')))
                         ORDER BY h.changed_at DESC LIMIT 1) as return_comments
                 FROM applications a WHERE a.id_number = ? AND a.barangay = ?";
         $stmt = $conn->prepare($sql);
@@ -62,8 +70,8 @@ try {
     } else {
         $sql = "SELECT $baseCols,
                        (SELECT h.comments FROM application_history h
-                        WHERE h.application_id = a.id_number AND h.new_state = 'Received'
-                          AND h.previous_state IN ('For Review', 'Verified', 'Approved')
+                        WHERE h.application_id = a.id_number AND (h.new_state = 'Needs Correction' OR (h.new_state = 'Received'
+                          AND h.previous_state IN ('For Review', 'Verified', 'Approved')))
                         ORDER BY h.changed_at DESC LIMIT 1) as return_comments
                 FROM applications a WHERE a.id_number = ?";
         $stmt = $conn->prepare($sql);
@@ -75,6 +83,10 @@ try {
         http_response_code(404);
         echo json_encode(['error' => 'Application not found or access denied.']);
         exit();
+    }
+
+    if ($application['workflow_state'] === 'Needs Correction' && !empty($application['return_reason'])) {
+        $application['return_comments'] = $application['return_reason'];
     }
 
     if (empty(trim($application['complete_address'] ?? ''))) {
@@ -122,11 +134,14 @@ try {
     }
     $application['documents'] = array_values($documentsByKey);
 
+    $application['burial_filing_days'] = $application['application_type'] === 'burial'
+        ? filingWorkingDays($application['date_of_death'], $application['date_submitted']) : null;
     echo json_encode($application);
 
 } catch (Exception $e) {
     http_response_code(500);
-    echo json_encode(['error' => $e->getMessage()]);
+    error_log('Application details failed: ' . $e->getMessage());
+    echo json_encode(['error' => 'Application details are temporarily unavailable.']);
 }
 
 $stmt = null;

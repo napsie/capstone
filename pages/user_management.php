@@ -270,9 +270,9 @@ try {
         #editUserModal .modal-header h2 i { display: grid; place-items: center; width: 40px; height: 40px; margin: 0; color: #1d4ed8; background: #eff6ff; border-radius: 10px; }
         #editUserModal .modal-close { display: grid; place-items: center; width: 40px; min-width: 40px; height: 40px; padding: 0; color: #64748b; background: transparent; border: 0; border-radius: 10px; cursor: pointer; font-size: 1.25rem; transition: background-color .2s ease, color .2s ease; }
         #editUserModal .modal-close:hover, #editUserModal .modal-close:focus-visible { color: #0f172a; background: #f1f5f9; outline: none; }
-        #editUserModal .modal-body { min-height: 0; padding: 0; overflow: hidden; }
-        #editUserForm { display: flex; flex-direction: column; max-height: calc(100dvh - 125px); }
-        #editUserModal .modal-form-fields { padding: 22px 24px 8px; overflow-y: auto; overscroll-behavior: contain; }
+        #editUserModal .modal-body { display: flex; flex: 1 1 auto; min-height: 0; padding: 0; overflow: hidden; }
+        #editUserForm { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; max-height: none; overflow: hidden; }
+        #editUserModal .modal-form-fields { flex: 1 1 auto; min-height: 0; padding: 22px 24px 18px; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
         #editUserModal .form-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
         #editUserModal .form-group { margin-bottom: 16px; }
         #editUserModal .form-group label { margin-bottom: 7px; font-weight: 650; color: #334155; }
@@ -283,7 +283,7 @@ try {
         #editUserModal .profile-upload input[type="file"] { width: 100%; background: #fff; }
         #editUserModal .field-help { display: block; margin-top: 6px; color: #64748b; font-size: 12px; line-height: 1.4; }
         #editAlert { display: none; margin: 18px 24px 0; }
-        #editUserModal .modal-actions { display: flex; flex: 0 0 auto; justify-content: flex-end; gap: 10px; margin: 0; padding: 16px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; }
+        #editUserModal .modal-actions { position: relative; z-index: 2; display: flex; flex: 0 0 auto; justify-content: flex-end; gap: 10px; margin: 0; padding: 16px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; box-shadow: 0 -8px 18px rgba(15, 23, 42, .06); }
         #editUserModal .modal-actions .btn { display: inline-flex; align-items: center; justify-content: center; min-width: 122px; min-height: 44px; padding: 10px 18px; border-radius: 9px; font-size: 14px; font-weight: 700; }
         #editUserModal .modal-actions .btn-secondary { color: #334155; background: #fff; border: 1px solid #cbd5e1; }
         #editUserModal .modal-actions .btn-secondary:hover { background: #f1f5f9; }
@@ -292,8 +292,8 @@ try {
             #editUserModal { padding: 0 !important; align-items: stretch !important; }
             #editUserModal .modal-content { height: 100dvh; max-height: 100dvh !important; overflow: hidden !important; border-radius: 0 !important; }
             #editUserModal .modal-header { min-height: 68px; padding: 14px 16px !important; }
-            #editUserModal .modal-body { max-height: none !important; padding: 0 !important; overflow: hidden !important; }
-            #editUserForm { max-height: calc(100dvh - 70px); }
+            #editUserModal .modal-body { flex: 1 1 auto; min-height: 0; max-height: none !important; padding: 0 !important; overflow: hidden !important; }
+            #editUserForm { min-height: 0; max-height: none; }
             #editUserModal .modal-form-fields { padding: 18px 16px 6px; }
             #editUserModal .form-row { grid-template-columns: minmax(0, 1fr); gap: 0; }
             #editUserModal .profile-upload { grid-template-columns: 60px minmax(0, 1fr); gap: 12px; }
@@ -699,6 +699,7 @@ try {
         const closeButtons = editUserModal.querySelectorAll('.modal-close, .modal-cancel');
         const usersTableBody = document.getElementById('usersTableBody');
         const editAlert = document.getElementById('editAlert');
+        let userDetailsRequest = null;
 
         function toggleBarangayField(roleSelect, barangayGroup) {
             barangayGroup.style.display = (roleSelect.value === 'barangay_staff') ? 'block' : 'none';
@@ -714,12 +715,20 @@ try {
                 if (editButton) {
                     const userId = editButton.dataset.id;
                     editAlert.style.display = 'none';
+                    userDetailsRequest?.abort();
+                    const request = new AbortController();
+                    userDetailsRequest = request;
                     
-                    fetch(`edit_user.php?id=${userId}&modal=true`)
-                        .then(response => response.json())
+                    fetch(`edit_user.php?id=${encodeURIComponent(userId)}&modal=true`, { signal: request.signal, cache: 'no-store' })
+                        .then(async response => {
+                            if (!response.ok) throw new Error(response.status === 401 ? 'Your session expired. Please sign in again.' : 'Unable to load user details.');
+                            return response.json();
+                        })
                         .then(data => {
+                            if (request.signal.aborted || userDetailsRequest !== request) return;
                             if (data.success) {
                                 const user = data.user;
+                                if (String(user.id) !== userId) throw new Error('The requested user could not be verified.');
                                 document.getElementById('editUserId').value = user.id;
                                 document.getElementById('editFirstName').value = user.first_name;
                                 document.getElementById('editLastName').value = user.last_name;
@@ -741,6 +750,7 @@ try {
                             }
                         })
                         .catch(error => {
+                            if (request.signal.aborted) return;
                             console.error('Error fetching user details:', error);
                             window.showCarelinkResult('An error occurred while fetching user details.', false);
                         });
@@ -785,6 +795,7 @@ try {
 
         function closeEditUserModal() {
             if (!editUserModal) return;
+            userDetailsRequest?.abort();
             editUserModal.style.display = 'none';
             editUserModal.setAttribute('aria-hidden', 'true');
             document.body.style.overflow = '';

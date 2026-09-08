@@ -1,10 +1,11 @@
 <?php
 require_once __DIR__ . '/db_connect.php';
+require_once __DIR__ . '/filing_deadline.php';
 
 /**
  * Helper function to save uploaded files to the uploads/ directory
  */
-function saveUploadedProxyFile(string $fileKey, string $prefix, string $fieldName): ?string
+function saveUploadedProxyFile(string $fileKey, string $prefix, string $fieldName, bool $imageOnly = false): ?string
 {
     if (!isset($_FILES[$fileKey]) || $_FILES[$fileKey]['error'] !== UPLOAD_ERR_OK) {
         return null;
@@ -23,6 +24,12 @@ function saveUploadedProxyFile(string $fileKey, string $prefix, string $fieldNam
         'image/gif' => 'gif',
         'application/pdf' => 'pdf',
     ];
+    if ($imageOnly) {
+        $allowedMimes = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+        ];
+    }
     $finfo = new finfo(FILEINFO_MIME_TYPE);
     $mimeType = $finfo->file($tmpName);
     
@@ -45,6 +52,45 @@ function saveUploadedProxyFile(string $fileKey, string $prefix, string $fieldNam
     }
     
     return null;
+}
+
+/**
+ * Generate a compact, non-sequential tracking code. Four characters provide
+ * more than one million combinations; the code grows automatically when half
+ * of the available space for the current length is in use.
+ */
+function generateCompactApplicationToken(PDO $conn, string $prefix): string
+{
+    $alphabet = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+    $alphabetSize = strlen($alphabet);
+    $countStmt = $conn->prepare('SELECT COUNT(*) FROM applications WHERE id_number LIKE ?');
+    $countStmt->execute([$prefix . '-%']);
+    $existingCount = (int)$countStmt->fetchColumn();
+    $length = 4;
+
+    while ($existingCount >= (int)floor(($alphabetSize ** $length) / 2)) {
+        $length++;
+    }
+
+    $existsStmt = $conn->prepare('SELECT 1 FROM applications WHERE id_number = ? OR proxy_token = ? LIMIT 1');
+    for ($attempt = 0; $attempt < 80; $attempt++) {
+        $suffix = '';
+        for ($i = 0; $i < $length; $i++) {
+            $suffix .= $alphabet[random_int(0, $alphabetSize - 1)];
+        }
+        $token = $prefix . '-' . $suffix;
+        $existsStmt->execute([$token, $token]);
+        if (!$existsStmt->fetchColumn()) {
+            return $token;
+        }
+
+        // An unusual number of collisions indicates a crowded code space.
+        if ($attempt === 39) {
+            $length++;
+        }
+    }
+
+    throw new RuntimeException('Unable to generate a unique application token.');
 }
 
 /**
@@ -92,12 +138,12 @@ function processProxyRegistration(): array
             $houseNo, $street, $barangay !== '' ? 'Barangay ' . $barangay : '',
             'Pasig City', $zipCode,
         ])));
-        $healthCondition = trim($_POST['healthCondition'] ?? '');
+        $healthCondition = '';
         $mobilityStatus = trim($_POST['mobilityStatus'] ?? '');
         $livingArrangement = trim($_POST['livingArrangement'] ?? '');
-        $visitPurpose = trim($_POST['visitPurpose'] ?? '');
         $applicationType = trim($_POST['applicationType'] ?? 'senior');
         $requestedBenefit = trim($_POST['requestedBenefit'] ?? '');
+        $visitPurpose = $requestedBenefit;
         $idPurpose = trim($_POST['idPurpose'] ?? '');
         $emergencyContactName = trim($_POST['emergencyContactName'] ?? '');
         $emergencyContact = trim($_POST['emergencyContact'] ?? '');
@@ -145,7 +191,6 @@ function processProxyRegistration(): array
             'Civil Status' => $civilStatus, 'House / Unit Number' => $houseNo,
             'Street / Subdivision' => $street, 'Barangay' => $barangay,
             'Mobility Status' => $mobilityStatus, 'Living Arrangement' => $livingArrangement,
-            'Requested Assistance' => $visitPurpose,
         ];
         foreach ($requiredFields as $label => $value) {
             if ($value === '') {
@@ -176,12 +221,19 @@ function processProxyRegistration(): array
             'Local Social Pension Assessment',
             'Land Bank Cash Card Enrollment',
             'Milestone Cash Gift',
-            'Other OSCA Assistance',
+            'Burial Assistance',
         ];
         if (!in_array($requestedBenefit, $allowedBenefits, true)) {
             $result['message'] = 'Please select a valid benefit or service.';
             return $result;
         }
+        $applicationType = [
+            'Senior Citizen ID Registration' => 'senior',
+            'Local Social Pension Assessment' => 'pension',
+            'Land Bank Cash Card Enrollment' => 'landbank',
+            'Milestone Cash Gift' => 'milestone_gift',
+            'Burial Assistance' => 'burial',
+        ][$requestedBenefit];
 
         switch ($requestedBenefit) {
             case 'Senior Citizen ID Registration':
@@ -233,9 +285,18 @@ function processProxyRegistration(): array
                     return $result;
                 }
                 break;
-            case 'Other OSCA Assistance':
-                if ($otherAssistanceDetails === '') {
-                    $result['message'] = 'Please describe the other OSCA assistance being requested.';
+            case 'Burial Assistance':
+                if ($dateOfDeath === '' || $relationshipToDeceased === '') {
+                    $result['message'] = 'Date of passing and relationship to the deceased are required.';
+                    return $result;
+                }
+                $burialFilingDays = filingWorkingDays($dateOfDeath, date('Y-m-d'));
+                if ($burialFilingDays === null) {
+                    $result['message'] = 'Please provide a valid date of passing that is not in the future.';
+                    return $result;
+                }
+                if ($burialFilingDays > 30) {
+                    $result['message'] = "Burial assistance must be filed within 30 working days from the date of passing ({$burialFilingDays} working days elapsed).";
                     return $result;
                 }
                 break;
@@ -284,9 +345,7 @@ function processProxyRegistration(): array
             $claimantRelationship = '';
             $claimantContact = '';
         }
-        if ($requestedBenefit !== 'Other OSCA Assistance') {
-            $otherAssistanceDetails = '';
-        }
+        $otherAssistanceDetails = '';
 
         if (!in_array($gender, ['Male', 'Female'], true) ||
             !in_array($civilStatus, ['Single', 'Married', 'Widowed', 'Separated'], true) ||
@@ -328,13 +387,14 @@ function processProxyRegistration(): array
             'Local Social Pension Assessment' => ['Senior Citizen ID or Valid Government ID', 'Barangay Certificate of Indigency', 'SSS / GSIS Pension Record or Certification'],
             'Land Bank Cash Card Enrollment' => ['Senior Citizen ID or Proof of Registration', 'Valid Government-Issued ID', 'Proof of Address'],
             'Milestone Cash Gift' => ['Senior Citizen ID', 'Certified PSA Birth Certificate', 'Latest Whole-Body Photo'],
-            'Other OSCA Assistance' => ['Senior Citizen ID or Valid Government ID', 'Proof of Address', 'Supporting Document for the Request'],
+            'Burial Assistance' => ['Death Certificate', 'Senior Citizen ID or Proof of Senior Status', 'Claimant ID and Proof of Relationship'],
         ];
         $selectedDocumentLabels = $benefitDocumentLabels[$requestedBenefit];
         $requiredUploads = [
             'psa_birth_cert_file' => $selectedDocumentLabels[0],
             'barangay_residency_file' => $selectedDocumentLabels[1],
             'comelec_cert_file' => $selectedDocumentLabels[2],
+            'id_photo_file' => 'Senior ID Photo',
             'proof_of_life_file' => 'Current Senior Photo / Proof of Life',
         ];
         foreach ($requiredUploads as $key => $label) {
@@ -344,17 +404,18 @@ function processProxyRegistration(): array
             }
         }
 
-        $transactionId = 'PRX-' . strtoupper(bin2hex(random_bytes(3)));
+        $transactionId = generateCompactApplicationToken($conn, 'PRX');
         $priorityLevel = 'normal';
 
         // Handle File Uploads
         $psaBirthCert = saveUploadedProxyFile('psa_birth_cert_file', $transactionId, 'psa_birth_cert');
         $barangayResidency = saveUploadedProxyFile('barangay_residency_file', $transactionId, 'barangay_residency');
         $comelecCert = saveUploadedProxyFile('comelec_cert_file', $transactionId, 'comelec_cert');
+        $idImage = saveUploadedProxyFile('id_photo_file', $transactionId, 'id_photo', true);
         $proofOfLife = saveUploadedProxyFile('proof_of_life_file', $transactionId, 'proof_of_life');
         $authLetter = $proxyId = $proxyBirthCert = null;
 
-        $requiredProcessedFiles = [$psaBirthCert, $barangayResidency, $comelecCert, $proofOfLife];
+        $requiredProcessedFiles = [$psaBirthCert, $barangayResidency, $comelecCert, $idImage, $proofOfLife];
         if (in_array(null, $requiredProcessedFiles, true)) {
             $result['message'] = 'One or more documents could not be processed. Upload only valid JPEG, PNG, GIF, or PDF files and try again.';
             return $result;
@@ -367,7 +428,7 @@ function processProxyRegistration(): array
             // standard barangay counter queue.
             $sql = "INSERT INTO applications (
                         id_number, full_name, lastName, firstName, middleName, suffix,
-                        birth_date, contact_number, complete_address, barangay,
+                        birth_date, contact_number, emergency_contact, emergency_contact_name, complete_address, barangay,
                         status, workflow_state, requested_benefit, is_proxy_application, proxy_name,
                         proxy_relationship, proxy_contact_number, proxy_token, priority_level, application_type,
                         sss_number, pension_amount, date_of_death, relationship_to_deceased,
@@ -376,18 +437,19 @@ function processProxyRegistration(): array
                         email_address, place_of_birth, gender, civil_status, mothers_maiden_name,
                         house_no, street, city, province, zip_code, landmark, health_status,
                         health_condition, living_arrangement, visit_purpose,
-                        id_purpose, emergency_contact_name, emergency_contact, visit_summary, is_pensioner, pension_source,
+                        id_purpose, visit_summary, is_pensioner, pension_source,
                         family_support, family_support_amount, personal_income, personal_income_amount,
                         income_source, owns_house, is_renter,
                         name_on_card, tin, id_type_presented, nationality, source_of_funds, milestone_age,
                         claimant_name, claimant_relationship, claimant_contact, additional_notes,
-                        proxy_birth_date, proxy_email, proxy_address, proxy_id_type, proxy_id_number
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        proxy_birth_date, proxy_email, proxy_address, proxy_id_type, proxy_id_number,
+                        id_image
+                    ) VALUES (" . implode(', ', array_fill(0, 75, '?')) . ")";
 
             $stmt = $conn->prepare($sql);
             $stmt->execute([
                 $transactionId, $fullName, $lastName, $firstName, $middleName, $suffix,
-                $birthDate, $contactNumber, $completeAddress, $barangay,
+                $birthDate, $contactNumber, $emergencyContact, $emergencyContactName ?: null, $completeAddress, $barangay,
                 'pending', 'For Review', $requestedBenefit, 0, null,
                 $proxyRelationship ?: null, $proxyContactNumber ?: null, $transactionId, $priorityLevel, $applicationType,
                 $sssNumber, $pensionAmount, !empty($dateOfDeath) ? $dateOfDeath : null, !empty($relationshipToDeceased) ? $relationshipToDeceased : null,
@@ -396,15 +458,15 @@ function processProxyRegistration(): array
                 $seniorEmail ?: null, $placeOfBirth, $gender, $civilStatus, $mothersMaidenName ?: null,
                 $houseNo, $street, 'Pasig City', 'Metro Manila', $zipCode ?: null, $landmark ?: null, $mobilityStatus,
                 $healthCondition, $livingArrangement, $visitPurpose,
-                $idPurpose ?: null, $emergencyContactName ?: null, $emergencyContact ?: null,
-                $visitSummary ?: null, $isPensioner, $pensionSource ?: null,
+                $idPurpose ?: null, $visitSummary ?: null, $isPensioner, $pensionSource ?: null,
                 $familySupport, $familySupportAmount, $personalIncome, $personalIncomeAmount,
                 $incomeSource ?: null, $ownsHouse, $isRenter,
                 $nameOnCard ?: null, $tin ?: null, $seniorIdTypePresented ?: null, $nationality ?: null,
                 $sourceOfFunds ?: null, $milestoneAge ?: null,
                 $claimantName ?: null, $claimantRelationship ?: null, $claimantContact ?: null,
                 $otherAssistanceDetails ?: null,
-                $proxyBirthDate ?: null, $proxyEmail ?: null, $proxyAddress ?: null, $proxyIdType ?: null, $proxyIdNumber ?: null
+                $proxyBirthDate ?: null, $proxyEmail ?: null, $proxyAddress ?: null, $proxyIdType ?: null, $proxyIdNumber ?: null,
+                $idImage
             ]);
 
             // Add workflow history entry for the active counter queue.
@@ -438,6 +500,19 @@ function processProxyRegistration(): array
             if ($conn->inTransaction()) {
                 $conn->rollBack();
             }
+            // The uploaded files are named with this transaction token and do
+            // not belong in storage when the database record was not created.
+            foreach ([$psaBirthCert, $barangayResidency, $comelecCert, $proofOfLife, $idImage] as $uploadedFile) {
+                if (!$uploadedFile) continue;
+                $uploadedPath = __DIR__ . '/../uploads/' . basename($uploadedFile);
+                if (is_file($uploadedPath)) @unlink($uploadedPath);
+            }
+            error_log(sprintf(
+                'Public %s application save failed for token %s: %s',
+                $applicationType,
+                $transactionId,
+                $e->getMessage()
+            ));
             $result['message'] = "We could not save the pre-registration. Please review the form and try again.";
         }
 
@@ -451,14 +526,15 @@ function processProxyRegistration(): array
         }
 
         try {
-            // Accept either the issued OSCA ID or the older transaction number.
+            // The benefit request must reference the official Senior Citizen ID;
+            // PRX/PEN application tokens are only for status tracking.
             $stmtVerify = $conn->prepare("SELECT * FROM applications
                                           WHERE application_type = 'senior'
-                                            AND (senior_id_no = ? OR id_number = ?)
+                                            AND senior_id_no = ?
                                             AND workflow_state IN ('Verified', 'Approved', 'Released')
-                                          ORDER BY CASE WHEN senior_id_no = ? THEN 0 ELSE 1 END
+                                            AND COALESCE(is_archived, 0) = 0
                                           LIMIT 1");
-            $stmtVerify->execute([$seniorCitizenId, $seniorCitizenId, $seniorCitizenId]);
+            $stmtVerify->execute([$seniorCitizenId]);
             $senior = $stmtVerify->fetch(PDO::FETCH_ASSOC);
 
             if (!$senior) {
@@ -467,14 +543,15 @@ function processProxyRegistration(): array
             }
 
             // Generate Pension Tracking ID
-            $pensionTransactionId = 'PEN-' . strtoupper(bin2hex(random_bytes(3)));
+            $pensionTransactionId = generateCompactApplicationToken($conn, 'PEN');
 
             // Handle uploads
             $homeVisitationForm = saveUploadedProxyFile('home_visitation_form_file', $pensionTransactionId, 'home_visitation_form');
             $landbankForm = saveUploadedProxyFile('landbank_enrollment_form_file', $pensionTransactionId, 'landbank_enrollment_form');
+            $pensionIdImage = saveUploadedProxyFile('pension_id_photo_file', $pensionTransactionId, 'id_photo', true);
 
-            if (!$homeVisitationForm || !$landbankForm) {
-                $result['message'] = "Please upload both required documents (Home Visitation Form and Land Bank Cash Card Enrollment Form).";
+            if (!$homeVisitationForm || !$landbankForm || !$pensionIdImage) {
+                $result['message'] = "Please upload the Senior ID Photo, Home Visitation Form, and Land Bank Cash Card Enrollment Form.";
                 return $result;
             }
 
@@ -488,8 +565,8 @@ function processProxyRegistration(): array
                         proxy_relationship, proxy_contact_number, proxy_token, priority_level, application_type,
                         senior_id_no, parent_senior_id, home_visitation_form, landbank_enrollment_form,
                         proxy_birth_date, proxy_email, proxy_address, proxy_id_type, proxy_id_number,
-                        home_visit_status
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        home_visit_status, id_image
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             
             $stmtPension = $conn->prepare($sql);
             $stmtPension->execute([
@@ -499,7 +576,7 @@ function processProxyRegistration(): array
                 null, null, $pensionTransactionId, 'normal', 'pension',
                 $senior['senior_id_no'], $senior['id_number'], $homeVisitationForm, $landbankForm,
                 null, null, null, null, null,
-                'Waiting for Home Visit'
+                'Waiting for Home Visit', $pensionIdImage
             ]);
 
             // Enter the standard processing queue so barangay and department

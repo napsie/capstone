@@ -47,6 +47,10 @@ try {
         $app['senior_id_issued_at'] = $issuance['changed_at'] ?? null;
     }
 
+    // Keep only a lightweight availability flag. The printable form loads the
+    // photo through the authenticated document endpoint instead of embedding
+    // the potentially large BLOB in the page data.
+    $app['has_id_image'] = !empty($app['id_image']);
     unset($app['proof_of_address'], $app['id_image']);
 
     $formTemplates = [

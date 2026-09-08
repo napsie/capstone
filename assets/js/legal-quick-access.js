@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!button || !drawer || !backdrop || !closeButton) return;
 
     let previouslyFocused = null;
-    let currentNotificationSignature = '';
+    let currentNotificationSignatures = [];
     const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), summary, [tabindex]:not([tabindex="-1"])';
 
     const openDrawer = () => {
@@ -81,19 +81,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const notificationStorageKey = `seniorlink-quick-notifications-${notificationPanel?.dataset.role || 'user'}`;
 
     const markNotificationsSeen = () => {
-        if (!currentNotificationSignature) return;
-        sessionStorage.setItem(notificationStorageKey, currentNotificationSignature);
+        if (!currentNotificationSignatures.length) return;
+        sessionStorage.setItem(notificationStorageKey, JSON.stringify(currentNotificationSignatures));
         if (notificationBadge) notificationBadge.hidden = true;
+    };
+
+    const readSeenNotifications = () => {
+        const stored = sessionStorage.getItem(notificationStorageKey) || '';
+        if (!stored) return [];
+        try {
+            const parsed = JSON.parse(stored);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            // Migrate the original pipe-delimited signature format.
+            return stored.split('|').filter(Boolean);
+        }
     };
 
     const renderQuickNotifications = notifications => {
         if (!notificationList || !notificationBadge) return;
         const recent = getRecentNotifications(notifications);
-        currentNotificationSignature = recent.map(item => `${item.id || item.id_number || ''}:${item.workflow_state || item.status || ''}:${item.date_submitted || ''}`).join('|');
-        const seenSignature = sessionStorage.getItem(notificationStorageKey) || '';
-        notificationBadge.textContent = String(recent.length);
-        notificationBadge.setAttribute('aria-label', `${recent.length} recent update${recent.length === 1 ? '' : 's'}`);
-        notificationBadge.hidden = recent.length === 0 || currentNotificationSignature === seenSignature || notificationPanel?.classList.contains('is-open');
+        currentNotificationSignatures = recent.map(item => `${item.id || item.id_number || ''}:${item.workflow_state || item.status || ''}:${item.date_submitted || ''}`);
+        const seenNotifications = new Set(readSeenNotifications());
+        const unreadCount = currentNotificationSignatures.filter(signature => !seenNotifications.has(signature)).length;
+        notificationBadge.textContent = String(unreadCount);
+        notificationBadge.setAttribute('aria-label', `${unreadCount} new update${unreadCount === 1 ? '' : 's'}`);
+        notificationBadge.hidden = unreadCount === 0 || notificationPanel?.classList.contains('is-open');
         if (!recent.length) {
             notificationList.innerHTML = '<div class="notification-quick-state"><i class="fas fa-circle-check" aria-hidden="true"></i><strong>No recent updates</strong><br>There are no recent applications to display.</div>';
             return;
@@ -125,12 +138,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadQuickNotifications = async () => {
         if (!notificationPanel?.dataset.endpoint) return;
         try {
-            const response = await fetch(notificationPanel.dataset.endpoint, { headers: { Accept: 'application/json' } });
+            const response = await fetch(notificationPanel.dataset.endpoint, { cache: 'no-store', headers: { Accept: 'application/json' } });
             if (!response.ok) throw new Error(`Request failed (${response.status})`);
             const result = await response.json();
             renderQuickNotifications(result?.data?.notifications || []);
         } catch (error) {
-            currentNotificationSignature = '';
+            currentNotificationSignatures = [];
             if (notificationBadge) notificationBadge.hidden = true;
             if (notificationList) notificationList.innerHTML = '<div class="notification-quick-state"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i>Notifications could not be loaded.</div>';
         }
@@ -171,7 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     loadQuickNotifications();
-    window.setInterval(loadQuickNotifications, 60000);
+    window.setInterval(loadQuickNotifications, 15000);
 
     topics.forEach(topic => {
         topic.addEventListener('toggle', () => {

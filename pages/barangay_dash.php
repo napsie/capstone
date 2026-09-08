@@ -130,6 +130,8 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
     <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=3">
+    <link rel="stylesheet" href="../assets/css/metric-cards.css?v=1">
+<script src="../assets/js/dashboard-chart-fallback.js?v=1"></script>
 </head>
 <body class="dashboard-page barangay-dashboard">
     <div class="container">
@@ -159,7 +161,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                 <div class="command-copy">
                     <span class="command-eyebrow"><i class="fas fa-location-dot" aria-hidden="true"></i> Barangay operations</span>
                     <h2 id="barangayOverviewTitle">Today’s service overview</h2>
-                    <p>Review the local queue, register applicants, and monitor records that need attention.</p>
+                    <p>Review the local queue, register applicants, and monitor recent activity.</p>
                 </div>
                 <nav class="dashboard-quick-actions" aria-label="Barangay quick actions">
                     <a class="quick-action primary" href="new_application.php"><i class="fas fa-user-plus" aria-hidden="true"></i><span><strong>New application</strong><small>Register an applicant</small></span></a>
@@ -350,7 +352,8 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
             })
             .then(result => {
                 if (result.success) {
-                    initializeCharts(result.data);
+                    if (typeof Chart !== 'undefined') initializeCharts(result.data);
+                    else showUnavailableCharts();
                     renderNotifications(result.data.notifications);
                     renderStatsStrip(result.data);
                 } else {
@@ -440,6 +443,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
         // Workflow status to icon and color mapping
         const stateConfig = {
             'received':   { icon: 'fa-inbox',        color: '#94a3b8', bg: 'rgba(148,163,184,0.15)', label: 'Received'   },
+            'pending':    { icon: 'fa-clock',        color: '#d97706', bg: 'rgba(245,158,11,0.14)', label: 'Pending'    },
             'for review': { icon: 'fa-search',        color: '#3b82f6', bg: 'rgba(59,130,246,0.12)',  label: 'For Review' },
             'verified':   { icon: 'fa-check',         color: '#14b8a6', bg: 'rgba(20,184,166,0.12)',  label: 'Verified'   },
             'deceased':   { icon: 'fa-cross',         color: '#64748b', bg: 'rgba(100,116,139,0.12)', label: 'Deceased'   },
@@ -530,7 +534,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
         // --- Status Chart ---
         const statusCtx = document.getElementById('statusChart')?.getContext('2d');
         if (statusCtx && data.workflow_stats) {
-            const statusOrder = ['Received', 'For Review', 'Verified', 'Rejected', 'Deceased'];
+            const statusOrder = ['Received', 'Pending', 'For Review', 'Verified', 'Rejected', 'Deceased'];
             const workflowStats = [...data.workflow_stats].sort((a, b) => {
                 const aIndex = statusOrder.indexOf(a.workflow_state);
                 const bIndex = statusOrder.indexOf(b.workflow_state);
@@ -540,6 +544,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
             const counts = workflowStats.map(s => parseInt(s.count, 10));
             const statusColors = {
                 'Received':   '#94a3b8',
+                'Pending':    '#f59e0b',
                 'For Review': '#3b82f6',
                 'Verified':   '#14b8a6',
                 'Rejected':   '#ef4444',

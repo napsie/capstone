@@ -216,4 +216,4 @@ $notificationQueueUrl = $quickAccessRole === 'barangay_staff'
         <p>This quick guide is a summary. Consult the complete reference for detailed provisions.</p>
     </footer>
 </aside>
-<script src="../assets/js/legal-quick-access.js?v=6" defer></script>
+<script src="../assets/js/legal-quick-access.js?v=7" defer></script>

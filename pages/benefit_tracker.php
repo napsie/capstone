@@ -8,12 +8,13 @@ $history = [];
 $error = '';
 
 if ($token !== '') {
-    if (!preg_match('/^(PEN|PRX)-[A-F0-9]{6}$/', $token)) {
-        $error = 'Enter a valid application token, such as PRX-ABC123 or PEN-ABC123.';
+    if (!preg_match('/^(PEN|PRX)-[A-Z0-9]{4,12}$/', $token)) {
+        $error = 'Enter a valid application token, such as PRX-7K2M or PEN-4X9P.';
     } else {
-        $stmt = $conn->prepare("SELECT id_number, full_name, application_type, requested_benefit, workflow_state, status, home_visit_status, date_submitted
+        $stmt = $conn->prepare("SELECT id_number, full_name, application_type, requested_benefit, workflow_state, status, home_visit_status, date_submitted,
+                                       senior_id_no, birth_date, complete_address, barangay
                                 FROM applications
-                                WHERE (id_number = ? OR proxy_token = ?) AND is_proxy_application = 1
+                                WHERE (id_number = ? OR proxy_token = ?) AND COALESCE(is_archived, 0) = 0
                                 LIMIT 1");
         $stmt->execute([$token, $token]);
         $application = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -23,7 +24,7 @@ if ($token !== '') {
                                            FROM application_history
                                            WHERE application_id = ?
                                            ORDER BY changed_at ASC");
-            $historyStmt->execute([$token]);
+            $historyStmt->execute([$application['id_number']]);
             $history = $historyStmt->fetchAll(PDO::FETCH_ASSOC);
         } else {
             $error = 'No application was found for that token. Check the code and try again.';
@@ -37,7 +38,7 @@ $homeVisitStatus = ($application['application_type'] ?? '') === 'pension'
     ? trim((string)($application['home_visit_status'] ?? 'Waiting for Home Visit'))
     : '';
 if (($application['application_type'] ?? '') === 'pension' && $homeVisitStatus === '') $homeVisitStatus = 'Waiting for Home Visit';
-$displayStatus = ($homeVisitStatus !== '' && $homeVisitStatus !== 'Completed') ? 'Waiting for Home Visitation' : $status;
+$displayStatus = ($homeVisitStatus !== '' && $homeVisitStatus !== 'Completed') ? 'Pending' : $status;
 $steps = ['Received', 'For Review', 'Verified'];
 $currentIndex = array_search($status, $steps, true);
 if ($currentIndex === false) $currentIndex = -1;
@@ -46,6 +47,26 @@ $tokenType = str_starts_with($token, 'PEN-') ? 'Benefit Claim' : 'Pre-Registrati
 $serviceLabel = trim((string)($application['requested_benefit'] ?? ''));
 if ($serviceLabel === '' && $application) {
     $serviceLabel = applicationTypeLabel($application['application_type']);
+}
+$digitalIdEligible = $application
+    && ($application['application_type'] ?? '') === 'senior'
+    && in_array($rawStatus, ['Verified', 'Approved', 'Released'], true)
+    && trim((string)($application['senior_id_no'] ?? '')) !== ''
+    && !preg_match('/^OSCA-[0-9]{4}-[0-9A-F]{6}$/i', trim((string)$application['senior_id_no']));
+$digitalIdIssuedAt = '';
+if ($digitalIdEligible) {
+    foreach (array_reverse($history) as $event) {
+        if (($event['new_state'] ?? '') === 'Verified') {
+            $digitalIdIssuedAt = (string)($event['changed_at'] ?? '');
+            break;
+        }
+    }
+    if ($digitalIdIssuedAt === '') $digitalIdIssuedAt = (string)$application['date_submitted'];
+}
+$digitalIdAge = null;
+if ($digitalIdEligible && !empty($application['birth_date'])) {
+    try { $digitalIdAge = (new DateTimeImmutable($application['birth_date']))->diff(new DateTimeImmutable('today'))->y; }
+    catch (Exception $e) { $digitalIdAge = null; }
 }
 ?>
 <!DOCTYPE html>
@@ -81,13 +102,39 @@ if ($serviceLabel === '' && $application) {
         .step.current { background:#dbeafe; color:#1d4ed8; outline:2px solid #60a5fa; }
         .status-note { margin:0 0 22px; padding:13px 14px; color:#155e35; background:#ecfdf3; border:1px solid #bbf7d0; border-radius:10px; }
         .status-note.rejected { color:#991b1b; background:#fef2f2; border-color:#fecaca; }
+        .digital-id-section { margin:28px 0; padding:20px; border:1px solid #bfdbfe; border-radius:14px; background:#eff6ff; }
+        .digital-id-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:14px; }
+        .digital-id-heading h2 { margin:0 0 4px; font-size:1.05rem; color:#172033; }
+        .digital-id-heading p { margin:0; color:#52657d; font-size:.82rem; }
+        .temporary-badge { flex:none; padding:6px 9px; border-radius:999px; background:#fef3c7; color:#92400e; font-size:.68rem; font-weight:900; letter-spacing:.06em; }
+        .digital-id { position:relative; overflow:hidden; width:min(100%,680px); aspect-ratio:1.586/1; margin:auto; border-radius:18px; background:#fdfdfb; border:1px solid #b7c2d0; box-shadow:0 14px 30px rgba(15,23,42,.18); color:#111827; }
+        .digital-id::after { content:"TEMPORARY"; position:absolute; left:20%; top:48%; transform:rotate(-22deg); color:rgba(37,99,235,.07); font-size:3.4rem; font-weight:900; letter-spacing:.1em; pointer-events:none; }
+        .digital-id-head { height:28%; padding:13px 18px; box-sizing:border-box; display:flex; align-items:center; gap:13px; color:#fff; background:linear-gradient(135deg,#0b1938,#172554 70%,#1e3a8a); border-bottom:9px solid #3b82f6; }
+        .digital-id-logo { width:56px; height:56px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,.75); }
+        .digital-id-agency { flex:1; text-align:center; line-height:1.05; text-transform:uppercase; }
+        .digital-id-agency small { display:block; font-size:.62rem; letter-spacing:.12em; margin-bottom:3px; }
+        .digital-id-agency strong { display:block; font-size:1.12rem; }
+        .digital-id-agency span { display:block; margin-top:4px; font-size:.75rem; font-weight:800; }
+        .digital-id-body { height:72%; box-sizing:border-box; padding:18px 20px 14px; display:grid; grid-template-columns:minmax(0,1fr) 126px; grid-template-rows:1fr auto; gap:10px 18px; }
+        .digital-id-fields { min-width:0; }
+        .digital-id-number { margin-bottom:12px; color:#dc2626; font-size:1.3rem; font-weight:900; letter-spacing:.04em; }
+        .digital-id-number span { color:#334155; font-size:.72rem; margin-right:7px; }
+        .digital-field { display:grid; grid-template-columns:72px minmax(0,1fr); align-items:end; margin:8px 0; }
+        .digital-field span { font-size:.66rem; font-weight:900; }
+        .digital-field strong { overflow:hidden; padding:0 3px 3px; border-bottom:1px solid #475569; font-size:.91rem; line-height:1.1; text-transform:uppercase; white-space:nowrap; text-overflow:ellipsis; }
+        .digital-photo-wrap { position:relative; display:grid; place-items:center; width:126px; height:150px; overflow:hidden; border:2px solid #334155; background:#e2e8f0; color:#94a3b8; font-size:2.5rem; }
+        .digital-id-photo { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center; background:#e2e8f0; }
+        .digital-id-footer { grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr; gap:22px; text-align:center; }
+        .digital-id-footer div { border-bottom:1px solid #475569; padding-bottom:3px; font-size:.8rem; font-weight:800; }
+        .digital-id-footer span { display:block; border:0; margin-top:4px; color:#475569; font-size:.56rem; font-weight:900; letter-spacing:.05em; }
+        .digital-id-notice { margin:12px 0 0; color:#475569; text-align:center; font-size:.74rem; font-weight:700; }
         .timeline { border-left:2px solid #dbe3ef; padding-left:18px; }
         .event { position:relative; margin:0 0 18px; }
         .event::before { content:""; position:absolute; left:-24px; top:5px; width:10px; height:10px; border-radius:50%; background:#2563eb; }
         .event strong { display:block; }
         .event time { color:#64748b; font-size:.78rem; }
         .back { display:inline-block; margin-top:20px; color:#1d4ed8; text-decoration:none; font-weight:700; }
-        @media(max-width:600px){.lookup{grid-template-columns:1fr}.lookup button{padding:12px}.summary{grid-template-columns:1fr}.progress{grid-template-columns:1fr}.tracker-body{padding:20px}}
+        @media(max-width:600px){.lookup{grid-template-columns:1fr}.lookup button{padding:12px}.summary{grid-template-columns:1fr}.progress{grid-template-columns:1fr}.tracker-body{padding:20px}.digital-id-section{padding:12px}.digital-id{aspect-ratio:auto}.digital-id-head{height:auto}.digital-id-logo{width:42px;height:42px}.digital-id-agency strong{font-size:.78rem}.digital-id-agency span{font-size:.58rem}.digital-id-body{height:auto;padding:12px;grid-template-columns:minmax(0,1fr) 88px}.digital-photo-wrap{width:88px;height:108px}.digital-id-number{font-size:.9rem}.digital-field{grid-template-columns:54px 1fr}.digital-field strong{font-size:.68rem}.digital-id::after{font-size:2rem}}
     </style>
 </head>
 <body>
@@ -100,7 +147,7 @@ if ($serviceLabel === '' && $application) {
         <div class="tracker-body">
             <form method="get" class="lookup">
                 <label for="token" class="sr-only">Application token</label>
-                <input id="token" name="token" value="<?php echo htmlspecialchars($token); ?>" placeholder="PRX-ABC123 or PEN-ABC123" maxlength="24" autocomplete="off" spellcheck="false" required>
+                <input id="token" name="token" value="<?php echo htmlspecialchars($token); ?>" placeholder="PRX-7K2M or PEN-4X9P" maxlength="24" autocomplete="off" spellcheck="false" required>
                 <button type="submit"><i class="fas fa-magnifying-glass" aria-hidden="true"></i> Check Status</button>
             </form>
 
@@ -118,9 +165,48 @@ if ($serviceLabel === '' && $application) {
 
                 <p class="status-note <?php echo $isRejected ? 'rejected' : ''; ?>" role="status">
                     <?php if ($isRejected): ?>This application is marked <strong><?php echo htmlspecialchars($status); ?></strong>. Please contact your local senior services office for assistance.
-                    <?php elseif ($homeVisitStatus !== '' && $homeVisitStatus !== 'Completed'): ?>Your Local Pension application is <strong>Waiting for Home Visitation</strong>. The interview is completed through the required unannounced home visit; no visit date is selected during submission.
+                    <?php elseif ($homeVisitStatus !== '' && $homeVisitStatus !== 'Completed'): ?>Your Local Pension application is <strong>Pending</strong> until the required home visit is completed. The reviewing office manages the visit schedule.
                     <?php else: ?>Your application is currently <strong><?php echo htmlspecialchars($status ?: 'Received'); ?></strong>. This page will reflect updates made by the reviewing office.<?php endif; ?>
                 </p>
+
+                <?php if ($digitalIdEligible): ?>
+                    <section class="digital-id-section" aria-labelledby="digitalIdTitle">
+                        <div class="digital-id-heading">
+                            <div>
+                                <h2 id="digitalIdTitle"><i class="fas fa-id-card" aria-hidden="true"></i> Temporary Digital Senior Citizen ID</h2>
+                                <p>Your digital ID is available because your Senior Citizen ID application was approved.</p>
+                            </div>
+                            <span class="temporary-badge">TEMPORARY</span>
+                        </div>
+                        <div class="digital-id" role="img" aria-label="Temporary digital Senior Citizen ID for <?php echo htmlspecialchars($application['full_name']); ?>">
+                            <div class="digital-id-head">
+                                <img class="digital-id-logo" src="../images/logo.jpg" alt="SENIORLINK logo">
+                                <div class="digital-id-agency">
+                                    <small>Republic of the Philippines</small>
+                                    <strong>City Government of Pasig</strong>
+                                    <span>Office for Senior Citizens Affairs</span>
+                                </div>
+                            </div>
+                            <div class="digital-id-body">
+                                <div class="digital-id-fields">
+                                    <div class="digital-id-number"><span>ID NO.</span><?php echo htmlspecialchars($application['senior_id_no']); ?></div>
+                                    <div class="digital-field"><span>NAME</span><strong><?php echo htmlspecialchars($application['full_name']); ?></strong></div>
+                                    <div class="digital-field"><span>ADDRESS</span><strong><?php echo htmlspecialchars($application['complete_address']); ?></strong></div>
+                                    <div class="digital-field"><span>BARANGAY</span><strong><?php echo htmlspecialchars($application['barangay']); ?>, PASIG CITY</strong></div>
+                                </div>
+                                <div class="digital-photo-wrap">
+                                    <i class="fas fa-user" aria-hidden="true"></i>
+                                    <img class="digital-id-photo" src="../api/digital_id_photo.php?token=<?php echo rawurlencode($token); ?>&amp;v=<?php echo rawurlencode((string)$digitalIdIssuedAt); ?>" alt="Applicant ID photo" onerror="this.remove()">
+                                </div>
+                                <div class="digital-id-footer">
+                                    <div><?php echo htmlspecialchars(date('m/d/Y', strtotime($application['birth_date']))); ?><?php echo $digitalIdAge !== null ? ' (' . $digitalIdAge . ')' : ''; ?><span>DATE OF BIRTH / AGE</span></div>
+                                    <div><?php echo htmlspecialchars(date('m/d/Y', strtotime($digitalIdIssuedAt))); ?><span>DATE ISSUED</span></div>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="digital-id-notice"><i class="fas fa-circle-info" aria-hidden="true"></i> Temporary digital credential only. Use it while waiting for the physical OSCA card.</p>
+                    </section>
+                <?php endif; ?>
 
                 <h2>Processing Progress</h2>
                 <div class="progress" aria-label="Application processing progress">

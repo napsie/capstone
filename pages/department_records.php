@@ -16,7 +16,6 @@ $barangayFilter  = $_GET['barangay'] ?? 'all';
 $typeFilter      = $_GET['type'] ?? 'all';
 $page            = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
 $recordsPerPage  = 15;
-$offset          = ($page - 1) * $recordsPerPage;
 
 // Build dynamic query
 $baseQuery    = "FROM applications";
@@ -40,19 +39,36 @@ if ($typeFilter !== 'all') {
 
 $whereSql = " WHERE " . implode(' AND ', $whereClauses);
 
-// Total count
-$totalStmt = $conn->prepare("SELECT COUNT(*) " . $baseQuery . $whereSql);
-$totalStmt->execute($params);
-$totalRecords = $totalStmt->fetchColumn();
-$totalPages   = ceil($totalRecords / $recordsPerPage);
-
-// Paginated records
-$recordsStmt = $conn->prepare("SELECT id_number as id, full_name, application_type, barangay, date_submitted, CASE WHEN COALESCE(workflow_state, status) IN ('Approved','Released') THEN 'Verified' ELSE COALESCE(workflow_state, status) END as status " . $baseQuery . $whereSql . " ORDER BY date_submitted DESC LIMIT :limit OFFSET :offset");
+// Group verified applications by person. Pagination is based on seniors, not
+// individual benefit records, so one person's history never splits over pages.
+$recordsStmt = $conn->prepare("SELECT id_number as id, full_name, birth_date, application_type, requested_benefit, barangay, date_submitted, CASE WHEN COALESCE(workflow_state, status) IN ('Approved','Released') THEN 'Verified' ELSE COALESCE(workflow_state, status) END as status " . $baseQuery . $whereSql . " ORDER BY date_submitted DESC, id_number DESC");
 foreach ($params as $k => &$v) $recordsStmt->bindParam($k, $v);
-$recordsStmt->bindParam(':limit',  $recordsPerPage, PDO::PARAM_INT);
-$recordsStmt->bindParam(':offset', $offset,         PDO::PARAM_INT);
 $recordsStmt->execute();
-$applications = $recordsStmt->fetchAll(PDO::FETCH_ASSOC);
+$allApplications = $recordsStmt->fetchAll(PDO::FETCH_ASSOC);
+$totalRecords = count($allApplications);
+$groupedApplicants = [];
+foreach ($allApplications as $application) {
+    $normalizedName = mb_strtolower(preg_replace('/\s+/', ' ', trim((string)$application['full_name'])));
+    $groupKey = hash('sha256', $normalizedName . '|' . (string)$application['birth_date']);
+    if (!isset($groupedApplicants[$groupKey])) {
+        $groupedApplicants[$groupKey] = [
+            'key' => substr($groupKey, 0, 12),
+            'full_name' => $application['full_name'],
+            'birth_date' => $application['birth_date'],
+            'barangay' => $application['barangay'],
+            'latest_date' => $application['date_submitted'],
+            'applications' => [],
+            'benefit_count' => 0,
+        ];
+    }
+    $groupedApplicants[$groupKey]['applications'][] = $application;
+    if ($application['application_type'] !== 'senior') $groupedApplicants[$groupKey]['benefit_count']++;
+}
+$totalApplicants = count($groupedApplicants);
+$totalPages = max(1, (int)ceil($totalApplicants / $recordsPerPage));
+$page = min(max(1, $page), $totalPages);
+$offset = ($page - 1) * $recordsPerPage;
+$applicantGroups = array_slice(array_values($groupedApplicants), $offset, $recordsPerPage);
 
 function getStatusBadge($status) {
     switch (strtolower($status)) {
@@ -217,6 +233,8 @@ function getStatusBadge($status) {
         .search-wrap { position: relative; }
         .search-wrap i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--gray); font-size: 0.85rem; }
         .search-wrap input { padding-left: 32px; min-width: 230px; }
+        .filter-auto-hint { display:inline-flex; align-items:center; gap:6px; min-height:36px; padding:0 4px; color:#64748b; font-size:.75rem; white-space:nowrap; }
+        .filter-auto-hint i { color:#2563eb; }
         .btn-apply {
             display: inline-flex;
             align-items: center;
@@ -278,6 +296,25 @@ function getStatusBadge($status) {
             white-space: nowrap;
         }
         .btn-view:hover { background: var(--primary); color: #fff; border-color: var(--primary); transform: translateY(-1px); }
+
+        .person-row.is-expanded { background: #f5f9ff; }
+        .person-birth-date { display:block; margin-top:3px; color:#64748b; font-size:.73rem; }
+        .application-summary { display:flex; flex-direction:column; gap:4px; }
+        .application-summary strong { color:#0f172a; font-size:.86rem; }
+        .application-summary small { color:#64748b; font-size:.73rem; }
+        .type-chips { display:flex; flex-wrap:wrap; gap:5px; margin-top:3px; }
+        .type-chip { display:inline-flex; max-width:210px; padding:2px 7px; overflow:hidden; color:#334155; background:#eef2f7; border-radius:999px; font-size:.68rem; font-weight:650; text-overflow:ellipsis; white-space:nowrap; }
+        .group-toggle { min-height:36px; }
+        .group-toggle .toggle-icon { transition:transform .2s ease; }
+        .group-toggle[aria-expanded="true"] .toggle-icon { transform:rotate(180deg); }
+        .application-detail-row[hidden] { display:none; }
+        .application-detail-row > td { padding:0 18px 16px; background:#f5f9ff; border-bottom:1px solid #dbe7f3; }
+        .application-list { display:grid; gap:8px; padding:13px; background:#fff; border:1px solid #dbe7f3; border-radius:10px; }
+        .application-list-item { display:grid; grid-template-columns:minmax(220px,1.4fr) minmax(150px,.8fr) minmax(120px,.7fr) auto; align-items:center; gap:14px; padding:10px 12px; border:1px solid #e7edf4; border-radius:8px; }
+        .application-list-item strong { display:block; color:#0f172a; font-size:.82rem; }
+        .application-list-item small { color:#64748b; font-size:.71rem; }
+        .application-list-label { margin-bottom:2px; color:#64748b; font-size:.66rem; font-weight:750; letter-spacing:.05em; text-transform:uppercase; }
+        @media (max-width: 820px) { .application-list-item { grid-template-columns:1fr 1fr; } .application-list-item .btn-view { justify-self:start; } }
 
         .empty-state { text-align: center; padding: 60px 20px; color: var(--gray); }
         .empty-state i { font-size: 3rem; margin-bottom: 16px; opacity: 0.4; display: block; }
@@ -440,7 +477,8 @@ function getStatusBadge($status) {
         /* Footer */
         .page-footer { text-align:center; padding:24px; font-size:0.78rem; color:var(--gray); }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=17">
+    <link rel="stylesheet" href="../assets/css/metric-cards.css?v=1">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
@@ -475,19 +513,21 @@ function getStatusBadge($status) {
         </div>
 
         <!-- Stats Strip -->
-        <div class="stats-strip">
+        <div class="stats-strip" style="--metric-columns:4">
             <div class="stat-card">
                 <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
                 <div>
                     <div class="stat-label">Total on Page</div>
-                    <div class="stat-value"><?php echo $totalRecords; ?></div>
+                    <div class="stat-value"><?php echo count($applicantGroups); ?></div>
+                    <div class="stat-meta">Seniors shown on this page</div>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon blue"><i class="fas fa-city"></i></div>
                 <div>
                     <div class="stat-label">Coverage</div>
-                    <div class="stat-value" style="font-size:1rem;padding-top:4px;">Pasig City</div>
+                    <div class="stat-value stat-value--text">Pasig City</div>
+                    <div class="stat-meta">City-wide record coverage</div>
                 </div>
             </div>
             <div class="stat-card">
@@ -495,6 +535,7 @@ function getStatusBadge($status) {
                 <div>
                     <div class="stat-label">Current Page</div>
                     <div class="stat-value"><?php echo $page; ?> / <?php echo max($totalPages, 1); ?></div>
+                    <div class="stat-meta">Browse paginated results</div>
                 </div>
             </div>
             <div class="stat-card">
@@ -502,6 +543,7 @@ function getStatusBadge($status) {
                 <div>
                     <div class="stat-label">All Records</div>
                     <div class="stat-value"><?php echo number_format($totalRecords); ?></div>
+                    <div class="stat-meta"><?php echo number_format($totalApplicants); ?> seniors represented</div>
                 </div>
             </div>
         </div>
@@ -518,18 +560,18 @@ function getStatusBadge($status) {
             </div>
 
             <!-- Filter Bar -->
-            <form method="GET" action="department_records.php" id="recordsFilterForm">
+            <form method="GET" action="department_records.php" id="recordsFilterForm" data-live-record-filters>
                 <div class="filter-bar">
                     <div class="filter-group">
                         <label for="searchInput">Search</label>
                         <div class="search-wrap">
                             <i class="fas fa-search"></i>
-                            <input type="text" id="searchInput" name="search" placeholder="Name or ID…" value="<?php echo htmlspecialchars($search); ?>">
+                            <input type="search" id="searchInput" name="search" placeholder="Name or ID…" value="<?php echo htmlspecialchars($search); ?>" autocomplete="off" aria-describedby="searchFilterHint">
                         </div>
                     </div>
                     <div class="filter-group">
                         <label for="barangayFilter">Barangay</label>
-                        <select id="barangayFilter" name="barangay" onchange="this.form.submit()">
+                        <select id="barangayFilter" name="barangay">
                             <option value="all">All Barangays</option>
                             <?php foreach ($barangays_list as $b): ?>
                                 <option value="<?php echo htmlspecialchars($b); ?>" <?php echo ($barangayFilter === $b) ? 'selected' : ''; ?>><?php echo htmlspecialchars($b); ?></option>
@@ -538,14 +580,14 @@ function getStatusBadge($status) {
                     </div>
                     <div class="filter-group">
                         <label for="typeFilter">Application Type</label>
-                        <select id="typeFilter" name="type" onchange="this.form.submit()">
+                        <select id="typeFilter" name="type">
                             <option value="all">All Types</option>
                             <?php foreach (getApplicationTypeOptions() as $val => $label): ?>
                                 <option value="<?php echo htmlspecialchars($val); ?>" <?php echo ($typeFilter === $val) ? 'selected' : ''; ?>><?php echo htmlspecialchars(applicationTypeLabel($val)); ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <button type="submit" class="btn-apply" style="display:none;"><i class="fas fa-search"></i> Apply Filters</button>
+                    <span id="searchFilterHint" class="filter-auto-hint" aria-live="polite"><i class="fas fa-bolt" aria-hidden="true"></i> Filters update automatically</span>
                     <?php if (!empty($search) || $barangayFilter !== 'all' || $typeFilter !== 'all'): ?>
                         <a href="department_records.php" class="btn-apply" style="background:#64748b;text-decoration:none;"><i class="fas fa-times"></i> Clear</a>
                     <?php endif; ?>
@@ -558,7 +600,7 @@ function getStatusBadge($status) {
                     <thead>
                         <tr>
                             <th>Applicant</th>
-                            <th>Application Type</th>
+                            <th>Benefit History</th>
                             <th>Barangay</th>
                             <th>Date Submitted</th>
                             <th>Status</th>
@@ -566,7 +608,7 @@ function getStatusBadge($status) {
                         </tr>
                     </thead>
                     <tbody>
-                    <?php if (empty($applications)): ?>
+                    <?php if (empty($applicantGroups)): ?>
                         <tr><td colspan="6">
                             <div class="empty-state">
                                 <i class="fas fa-folder-open"></i>
@@ -575,29 +617,56 @@ function getStatusBadge($status) {
                             </div>
                         </td></tr>
                     <?php else: ?>
-                        <?php foreach ($applications as $app):
-                            [$badgeClass, $badgeIcon] = getStatusBadge($app['status']);
+                        <?php foreach ($applicantGroups as $person):
+                            $personApplications = $person['applications'];
+                            $applicationCount = count($personApplications);
+                            $typeLabels = [];
+                            foreach ($personApplications as $application) {
+                                $typeLabel = applicationTypeLabel($application['application_type']);
+                                if (!in_array($typeLabel, $typeLabels, true)) $typeLabels[] = $typeLabel;
+                            }
+                            $detailsId = 'person-applications-' . $person['key'];
                         ?>
-                        <tr class="record-row" data-id="<?php echo htmlspecialchars($app['id']); ?>" tabindex="0" role="button" aria-label="View applicant details">
+                        <tr class="person-row">
                             <td>
                                 <div class="name-cell">
-                                    <div class="full-name"><?php echo htmlspecialchars($app['full_name']); ?></div>
-                                    <div class="app-id"><?php echo htmlspecialchars($app['id']); ?></div>
+                                    <div class="full-name"><?php echo htmlspecialchars($person['full_name']); ?></div>
+                                    <span class="person-birth-date">Born <?php echo date('M d, Y', strtotime($person['birth_date'])); ?></span>
                                 </div>
                             </td>
-                            <td><?php echo htmlspecialchars(applicationTypeLabel($app['application_type'])); ?></td>
-                            <td><?php echo htmlspecialchars($app['barangay']); ?></td>
-                            <td><?php echo date('M d, Y', strtotime($app['date_submitted'])); ?></td>
                             <td>
-                                <span class="badge <?php echo $badgeClass; ?>">
-                                    <i class="fas <?php echo $badgeIcon; ?>"></i>
-                                    <?php echo htmlspecialchars(ucfirst($app['status'])); ?>
-                                </span>
+                                <div class="application-summary">
+                                    <strong><?php echo $person['benefit_count']; ?> benefit <?php echo $person['benefit_count'] === 1 ? 'application' : 'applications'; ?></strong>
+                                    <small><?php echo $applicationCount; ?> total verified <?php echo $applicationCount === 1 ? 'record' : 'records'; ?></small>
+                                    <div class="type-chips" aria-label="Application types">
+                                        <?php foreach (array_slice($typeLabels, 0, 3) as $typeLabel): ?><span class="type-chip" title="<?php echo htmlspecialchars($typeLabel); ?>"><?php echo htmlspecialchars($typeLabel); ?></span><?php endforeach; ?>
+                                        <?php if (count($typeLabels) > 3): ?><span class="type-chip">+<?php echo count($typeLabels) - 3; ?> more</span><?php endif; ?>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><?php echo htmlspecialchars($person['barangay']); ?></td>
+                            <td><?php echo date('M d, Y', strtotime($person['latest_date'])); ?><br><small style="color:#64748b;">Most recent</small></td>
+                            <td>
+                                <span class="badge badge-default"><i class="fas fa-circle-check"></i> Verified</span>
                             </td>
                             <td>
-                                <button class="btn-view view-details-btn" data-id="<?php echo htmlspecialchars($app['id']); ?>">
-                                    <i class="fas fa-eye"></i> View
+                                <button type="button" class="btn-view group-toggle" aria-expanded="false" aria-controls="<?php echo $detailsId; ?>">
+                                    <i class="fas fa-layer-group"></i><span class="toggle-label">Show <?php echo $applicationCount; ?></span><i class="fas fa-chevron-down toggle-icon" aria-hidden="true"></i>
                                 </button>
+                            </td>
+                        </tr>
+                        <tr class="application-detail-row" id="<?php echo $detailsId; ?>" hidden>
+                            <td colspan="6">
+                                <div class="application-list" role="region" aria-label="Applications for <?php echo htmlspecialchars($person['full_name']); ?>">
+                                    <?php foreach ($personApplications as $app): ?>
+                                    <div class="application-list-item">
+                                        <div><div class="application-list-label">Application</div><strong><?php echo htmlspecialchars(applicationTypeLabel($app['application_type'])); ?></strong><small><?php echo htmlspecialchars($app['id']); ?></small></div>
+                                        <div><div class="application-list-label">Barangay</div><strong><?php echo htmlspecialchars($app['barangay']); ?></strong></div>
+                                        <div><div class="application-list-label">Submitted</div><strong><?php echo date('M d, Y', strtotime($app['date_submitted'])); ?></strong></div>
+                                        <button type="button" class="btn-view view-details-btn" data-id="<?php echo htmlspecialchars($app['id']); ?>"><i class="fas fa-eye"></i> View record</button>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
                             </td>
                         </tr>
                         <?php endforeach; ?>
@@ -613,7 +682,7 @@ function getStatusBadge($status) {
             ?>
             <div class="pagination-bar">
                 <div class="pagination-info">
-                    Page <?php echo $page; ?> of <?php echo $totalPages; ?> &bull; <?php echo number_format($totalRecords); ?> total records
+                    Page <?php echo $page; ?> of <?php echo $totalPages; ?> &bull; <?php echo number_format($totalApplicants); ?> seniors &bull; <?php echo number_format($totalRecords); ?> applications
                 </div>
                 <div class="pagination-links">
                     <?php if ($page > 1): ?>
@@ -743,16 +812,24 @@ function getStatusBadge($status) {
 <div id="exportModal" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="exportModalTitle">
     <div class="modal-box export-modal-box">
         <div class="modal-head">
-            <h2 id="exportModalTitle"><i class="fas fa-file-excel"></i> Generate Excel Report</h2>
+            <h2 id="exportModalTitle"><i class="fas fa-file-export"></i> Generate Report</h2>
             <button type="button" class="modal-close" id="closeExportModalBtn" aria-label="Close report dialog">&times;</button>
         </div>
         <form id="exportReportForm" method="GET" action="../api/export_records_excel.php">
             <div class="export-modal-body">
-                <p>Choose the filters and barangay coverage for this report. Only matching records will be included in the Excel workbook.</p>
+                <p>Choose a file format, filters, and barangay coverage. Only matching records will be included.</p>
                 <input type="hidden" name="scope" value="department">
                 <input type="hidden" name="barangay" id="exportBarangayValue" value="all">
 
                 <div class="export-filter-grid">
+                    <div class="export-field">
+                        <label for="exportFormat">File Format</label>
+                        <select name="format" id="exportFormat" required>
+                            <option value="">Choose a format</option>
+                            <option value="pdf">PDF</option>
+                            <option value="excel">Excel (.xlsx)</option>
+                        </select>
+                    </div>
                     <div class="export-field">
                         <label for="exportType">Application Type</label>
                         <select name="type" id="exportType">
@@ -771,11 +848,11 @@ function getStatusBadge($status) {
                     </div>
                     <div class="export-field">
                         <label for="exportDateFrom">Date From</label>
-                        <input type="date" name="date_from" id="exportDateFrom">
+                        <input type="date" name="date_from" id="exportDateFrom" required>
                     </div>
                     <div class="export-field">
                         <label for="exportDateTo">Date To</label>
-                        <input type="date" name="date_to" id="exportDateTo">
+                        <input type="date" name="date_to" id="exportDateTo" required>
                     </div>
                     <div class="export-field">
                         <label for="exportYear">Year (if no date range)</label>
@@ -812,7 +889,7 @@ function getStatusBadge($status) {
                 </div>
                 <div class="export-actions">
                     <button type="button" class="btn btn-ghost" id="cancelExportBtn">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-file-excel"></i> Generate Excel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-download"></i> Generate Report</button>
                 </div>
             </div>
         </form>
@@ -821,8 +898,9 @@ function getStatusBadge($status) {
 
 <script src="../assets/js/sidebar-toggle.js?v=3"></script>
 <script src="../assets/js/application-documents.js?v=8"></script>
-<script src="../assets/js/report-validation.js?v=1"></script>
-<script src="../assets/js/application-details.js?v=9"></script>
+<script src="../assets/js/report-validation.js?v=2"></script>
+<script src="../assets/js/application-details.js?v=13"></script>
+<script src="../assets/js/application-modal-data.js?v=1"></script>
 <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 <script src="../assets/js/application-form-generator.js?v=2"></script>
 <script>
@@ -837,8 +915,42 @@ function getStatusBadge($status) {
 
     /* ─── Modal open/close ──────────────────────────────────── */
     document.addEventListener('DOMContentLoaded', function() {
+        const liveFilterForm = document.querySelector('[data-live-record-filters]');
+        const liveSearch = document.getElementById('searchInput');
+        const liveFilterHint = document.getElementById('searchFilterHint');
+        let liveFilterTimer;
+        const submitLiveFilters = () => {
+            if (liveFilterHint) liveFilterHint.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Updating results…';
+            sessionStorage.setItem('focusDepartmentRecordSearch', document.activeElement === liveSearch ? '1' : '0');
+            liveFilterForm.requestSubmit();
+        };
+        liveSearch?.addEventListener('input', () => {
+            clearTimeout(liveFilterTimer);
+            if (liveFilterHint) liveFilterHint.innerHTML = '<i class="fas fa-clock" aria-hidden="true"></i> Waiting for you to finish typing…';
+            liveFilterTimer = setTimeout(submitLiveFilters, 550);
+        });
+        ['barangayFilter', 'typeFilter'].forEach(id => document.getElementById(id)?.addEventListener('change', submitLiveFilters));
+        if (sessionStorage.getItem('focusDepartmentRecordSearch') === '1') {
+            sessionStorage.removeItem('focusDepartmentRecordSearch');
+            liveSearch?.focus();
+            liveSearch?.setSelectionRange(liveSearch.value.length, liveSearch.value.length);
+        }
+
         const tableWrap = document.querySelector('.table-wrap');
         tableWrap.addEventListener('click', function(e) {
+            const toggle = e.target.closest('.group-toggle');
+            if (toggle) {
+                const details = document.getElementById(toggle.getAttribute('aria-controls'));
+                if (!details) return;
+                const expanded = toggle.getAttribute('aria-expanded') === 'true';
+                toggle.setAttribute('aria-expanded', String(!expanded));
+                details.hidden = expanded;
+                toggle.closest('.person-row')?.classList.toggle('is-expanded', !expanded);
+                toggle.querySelector('.toggle-label').textContent = expanded
+                    ? `Show ${details.querySelectorAll('.application-list-item').length}`
+                    : 'Hide applications';
+                return;
+            }
             const btn = e.target.closest('.view-details-btn');
             if (btn) {
                 openApplicationModal(btn.dataset.id);
@@ -913,19 +1025,6 @@ function getStatusBadge($status) {
     }
 
     /* ─── Helpers ───────────────────────────────────────────── */
-    function calculateWorkingDays(startDateVal) {
-        if (!startDateVal) return 0;
-        const start = new Date(startDateVal);
-        const end   = new Date();
-        if (start > end) return 0;
-        let days = 0, cur = new Date(start);
-        while (cur < end) {
-            const d = cur.getDay();
-            if (d !== 0 && d !== 6) days++;
-            cur.setDate(cur.getDate() + 1);
-        }
-        return days;
-    }
 
     /* ─── Open modal and populate ───────────────────────────── */
     function openApplicationModal(appId) {
@@ -946,22 +1045,9 @@ function getStatusBadge($status) {
         document.getElementById('applicationModal').style.display = 'flex';
         document.querySelector('#applicationModal .modal-scroller').scrollTop = 0;
 
-        fetch(`../api/get_application_details.php?id=${encodeURIComponent(appId)}`)
-            .then(r => r.text())
-            .then(text => {
-                let app;
-                try { app = JSON.parse(text); }
-                catch(parseErr) {
-                    document.getElementById('complianceList').innerHTML =
-                        `<p style="color:red;"><strong>Server Error:</strong><br><pre style="font-size:0.75rem;overflow:auto;">${text.substring(0,600)}</pre></p>`;
-                    return;
-                }
-                if (app.error) {
-                    document.getElementById('complianceList').innerHTML = `<p style="color:red;">${app.error}</p>`;
-                    return;
-                }
-
-                /* ── Title ── */
+        window.loadApplicationModalData(appId)
+            .then(app => {
+                if (!app) return;
                 document.getElementById('modalAppTitle').textContent = `${app.full_name} - ${getOfficialApplicationFormLabel(app.application_type)}`;
                 const officialFormButton = document.getElementById('btnOfficialForm');
                 officialFormButton.disabled = false;
@@ -983,7 +1069,7 @@ function getStatusBadge($status) {
                 });
 
                 /* ── Basic Info ── */
-                document.getElementById('infoName').innerHTML    = `<strong>${app.lastName}, ${app.firstName} ${app.middleName||''} ${app.suffix||''}</strong>`;
+                document.getElementById('infoName').textContent = app.full_name || [app.firstName, app.middleName, app.lastName, app.suffix].filter(Boolean).join(' ');
                 const birth = new Date(app.birth_date);
                 const today = new Date();
                 let age = today.getFullYear() - birth.getFullYear();
@@ -1010,8 +1096,8 @@ function getStatusBadge($status) {
                         : `<div class="compliance-item"><span>SSS Pension Limit (Pasig Ord. 17/2025)</span><span class="fail-tag"><i class="fas fa-circle-xmark"></i> FAIL — ₱${pa.toFixed(2)} exceeds ₱4,000</span></div>`;
                 }
                 if (app.application_type === 'burial') {
-                    const ed = calculateWorkingDays(app.date_of_death);
-                    ch += ed <= 30
+                    const ed = app.burial_filing_days;
+                    ch += ed === null || ed === undefined ? '<div class="compliance-item"><span>Filing deadline</span><span class="fail-tag">Missing or invalid filing dates</span></div>' : ed <= 30
                         ? `<div class="compliance-item"><span>Filing Deadline (Pasig Ord. 3/2026)</span><span class="pass-tag"><i class="fas fa-circle-check"></i> PASS — ${ed} working days</span></div>`
                         : `<div class="compliance-item"><span>Filing Deadline (Pasig Ord. 3/2026)</span><span class="fail-tag"><i class="fas fa-circle-xmark"></i> FAIL — ${ed} days elapsed</span></div>`;
                 }
@@ -1025,251 +1111,9 @@ function getStatusBadge($status) {
                 /* ── Paginated Timeline ── */
                 window.renderApplicationAuditHistory(app.history, 'timelineList', { pageSize: 5 });
             })
-            .catch(err => {
-                console.error(err);
-                document.getElementById('complianceList').innerHTML = '<p style="color:red;">Failed to load details. Please try again.</p>';
-            });
+            .catch(error => window.showApplicationModalError('applicationModal', error));
     }
 
-    function releaseApplication(appId, confirmed = false) {
-        if (!confirmed) {
-            window.showCarelinkConfirm('Release this approved application? This will mark it as released.', () => releaseApplication(appId, true));
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('applicationId', appId);
-        formData.append('action', 'next');
-        formData.append('comments', 'Application released by the department.');
-
-        fetch('../api/update_workflow_status.php', { method: 'POST', body: formData })
-            .then(response => response.json())
-            .then(result => {
-                if (!result.success) {
-                    showCarelinkResult('Release failed: ' + (result.message || 'Please try again.'), false);
-                    return;
-                }
-                showCarelinkResult('Application released successfully.', true);
-                document.getElementById('applicationModal').style.display = 'none';
-                setTimeout(() => window.location.reload(), 900);
-            })
-            .catch(error => {
-                console.error(error);
-                showCarelinkResult('Unable to release the application. Please try again.', false);
-            });
-    }
-
-    function getCompleteDetailsHtml(app) {
-        return window.renderApplicationRecordDetails(app);
-        // Legacy renderer retained below only for source compatibility.
-        function getFieldHtml(label, val) {
-            if (val === null || val === undefined || val === '' || val === '0' || val === 0) return '';
-            if (val === 1 || val === '1') val = 'Yes';
-            return `
-                <div class="info-item">
-                    <label>${label}</label>
-                    <span>${val}</span>
-                </div>`;
-        }
-
-        let dynamicHtml = "";
-
-        // 1. Personal & Demographics Extra Info
-        let personalHtml = "";
-        personalHtml += getFieldHtml("Place of Birth", app.place_of_birth);
-        personalHtml += getFieldHtml("Gender", app.gender);
-        personalHtml += getFieldHtml("Civil Status", app.civil_status);
-        personalHtml += getFieldHtml("Mother's Maiden Name", app.mothers_maiden_name);
-        personalHtml += getFieldHtml("Nationality", app.nationality);
-
-        if (personalHtml) {
-            dynamicHtml += `
-                <div class="section-title" style="margin-top:20px;"><i class="fas fa-id-card-clip"></i> Personal Profile</div>
-                <div class="info-grid">
-                    ${personalHtml}
-                </div>`;
-        }
-
-        // 2. Household & Housing
-        let housingHtml = "";
-        housingHtml += getFieldHtml("Complete Address", app.complete_address);
-        if (app.application_type === 'senior' || app.application_type === 'landbank') {
-            housingHtml += getFieldHtml("ZIP Code", app.zip_code);
-        }
-        if (app.application_type === 'senior') {
-            housingHtml += getFieldHtml("Landmark", app.landmark);
-        }
-        if (app.application_type === 'pension' || app.application_type === 'national_pension') {
-            housingHtml += getFieldHtml("Owns House", app.owns_house);
-            housingHtml += getFieldHtml("Renter", app.is_renter);
-        }
-
-        if (housingHtml) {
-            dynamicHtml += `
-                <div class="section-title" style="margin-top:20px;"><i class="fas fa-house-user"></i> Address Details</div>
-                <div class="info-grid">
-                    ${housingHtml}
-                </div>`;
-        }
-
-        // 3. Financial & Pension Info
-        let financeHtml = "";
-        financeHtml += getFieldHtml("SSS Number", app.sss_number);
-        financeHtml += getFieldHtml("Pension Amount", app.pension_amount ? `₱${parseFloat(app.pension_amount).toFixed(2)}` : '');
-        financeHtml += getFieldHtml("Is Pensioner", app.is_pensioner);
-        financeHtml += getFieldHtml("Pension Source", app.pension_source);
-        financeHtml += getFieldHtml("Permanent Income", app.is_permanent_income);
-        financeHtml += getFieldHtml("Income Source", app.income_source);
-        financeHtml += getFieldHtml("Personal Income Amount", app.personal_income_amount ? `₱${parseFloat(app.personal_income_amount).toFixed(2)}` : '');
-        financeHtml += getFieldHtml("Source of Funds", app.source_of_funds);
-        financeHtml += getFieldHtml("Family Support Amount", app.family_support_amount ? `₱${parseFloat(app.family_support_amount).toFixed(2)}` : '');
-
-        if (financeHtml) {
-            dynamicHtml += `
-                <div class="section-title" style="margin-top:20px;"><i class="fas fa-wallet"></i> Financial Profile</div>
-                <div class="info-grid">
-                    ${financeHtml}
-                </div>`;
-        }
-
-        // 4. OSCA Registration & Banking info
-        let oscaRegHtml = "";
-        oscaRegHtml += getFieldHtml("Senior ID No", app.senior_id_no);
-        oscaRegHtml += getFieldHtml("ID Purpose", app.id_purpose);
-        oscaRegHtml += getFieldHtml("Control No", app.control_no);
-        oscaRegHtml += getFieldHtml("Landbank Card No", app.landbank_card_no);
-        oscaRegHtml += getFieldHtml("ATM Card No", app.atm_card_no);
-        oscaRegHtml += getFieldHtml("Name on Card", app.name_on_card);
-        oscaRegHtml += getFieldHtml("TIN", app.tin);
-        oscaRegHtml += getFieldHtml("ID Type Presented", app.id_type_presented);
-        oscaRegHtml += getFieldHtml("Parent Senior ID", app.parent_senior_id);
-
-        if (oscaRegHtml) {
-            dynamicHtml += `
-                <div class="section-title" style="margin-top:20px;"><i class="fas fa-piggy-bank"></i> Registration & Banking</div>
-                <div class="info-grid">
-                    ${oscaRegHtml}
-                </div>`;
-        }
-
-        // 5. Health & Living Arrangement
-        let healthHtml = "";
-        healthHtml += getFieldHtml("Health Status", app.health_status);
-        healthHtml += getFieldHtml("Health Condition", app.health_condition);
-        healthHtml += getFieldHtml("Living Arrangement", app.living_arrangement);
-        healthHtml += getFieldHtml("With Maintenance Meds", app.with_maintenance);
-        healthHtml += getFieldHtml("Maintenance Specification", app.maintenance_spec);
-
-        if (healthHtml) {
-            dynamicHtml += `
-                <div class="section-title" style="margin-top:20px;"><i class="fas fa-heart-pulse"></i> Health & Wellness</div>
-                <div class="info-grid">
-                    ${healthHtml}
-                </div>`;
-        }
-
-        // 6. Burial Claims
-        let burialHtml = "";
-        if (app.application_type === 'burial' || app.deceased_last_name) {
-            let decName = [app.deceased_last_name, app.deceased_first_name, app.deceased_middle_name, app.deceased_suffix].filter(Boolean).join(' ');
-            burialHtml += getFieldHtml("Deceased Senior Name", decName);
-            burialHtml += getFieldHtml("Date of Passing", app.date_of_death);
-            burialHtml += getFieldHtml("Relationship to Deceased", app.relationship_to_deceased);
-            burialHtml += getFieldHtml("Deceased Birth Date", app.deceased_birth_date);
-            burialHtml += getFieldHtml("Claimant Name", app.claimant_name);
-            burialHtml += getFieldHtml("Claimant Relationship", app.claimant_relationship);
-            burialHtml += getFieldHtml("Claimant Contact", app.claimant_contact);
-        }
-
-        if (burialHtml) {
-            dynamicHtml += `
-                <div class="section-title" style="margin-top:20px;"><i class="fas fa-ribbon"></i> Burial Claim Details</div>
-                <div class="info-grid">
-                    ${burialHtml}
-                </div>`;
-        }
-
-        // 7. PWD details
-        let pwdHtml = "";
-        pwdHtml += getFieldHtml("Disability Type", app.disability_type);
-        if (pwdHtml) {
-            dynamicHtml += `
-                <div class="section-title" style="margin-top:20px;"><i class="fas fa-wheelchair"></i> Disability Support Info</div>
-                <div class="info-grid">
-                    ${pwdHtml}
-                </div>`;
-        }
-
-        // 8. Milestone Gifts
-        let milestoneHtml = "";
-        milestoneHtml += getFieldHtml("Milestone Age", app.milestone_age);
-        milestoneHtml += getFieldHtml("Milestone Applicant Name", app.applicant_name);
-        if (milestoneHtml) {
-            dynamicHtml += `
-                <div class="section-title" style="margin-top:20px;"><i class="fas fa-cake-candles"></i> Milestone Celebration Details</div>
-                <div class="info-grid">
-                    ${milestoneHtml}
-                </div>`;
-        }
-
-        // 9. Home Visit summaries
-        let visitHtml = "";
-        visitHtml += getFieldHtml("Visit Purpose", app.visit_purpose);
-        visitHtml += getFieldHtml("Visit Summary", app.visit_summary);
-        if (visitHtml) {
-            dynamicHtml += `
-                <div class="section-title" style="margin-top:20px;"><i class="fas fa-person-walking-luggage"></i> Field Visit Summary</div>
-                <div class="info-grid">
-                    ${visitHtml}
-                </div>`;
-        }
-
-        // 10. Proxy Details
-        let proxyHtml = "";
-        if (app.is_proxy_application == 1) {
-            proxyHtml += getFieldHtml("Requested Benefit / Service", app.requested_benefit);
-            proxyHtml += getFieldHtml("ID Application Purpose", app.id_purpose);
-            proxyHtml += getFieldHtml("Home Visit Instructions", app.visit_summary);
-            proxyHtml += getFieldHtml("Pension Source", app.pension_source);
-            proxyHtml += getFieldHtml("Current Monthly Pension", app.pension_amount);
-            proxyHtml += getFieldHtml("Monthly Family Support", app.family_support_amount);
-            proxyHtml += getFieldHtml("Monthly Personal Income", app.personal_income_amount);
-            proxyHtml += getFieldHtml("Name on Cash Card", app.name_on_card);
-            proxyHtml += getFieldHtml("TIN", app.tin);
-            proxyHtml += getFieldHtml("Senior ID Presented", app.id_type_presented);
-            proxyHtml += getFieldHtml("Source of Funds", app.source_of_funds);
-            proxyHtml += getFieldHtml("Milestone Age", app.milestone_age);
-            proxyHtml += getFieldHtml("Other Assistance Details", app.additional_notes);
-            proxyHtml += getFieldHtml("Representative Name", app.proxy_name);
-            proxyHtml += getFieldHtml("Relationship", app.proxy_relationship);
-            proxyHtml += getFieldHtml("Representative Contact", app.proxy_contact_number);
-            proxyHtml += getFieldHtml("Representative Birth Date", app.proxy_birth_date);
-            proxyHtml += getFieldHtml("Representative Email", app.proxy_email);
-            proxyHtml += getFieldHtml("Representative Address", app.proxy_address);
-            proxyHtml += getFieldHtml("Government ID Type", app.proxy_id_type);
-            proxyHtml += getFieldHtml("Government ID Number", app.proxy_id_number);
-            proxyHtml += getFieldHtml("Representative Token", app.proxy_token);
-        }
-        if (proxyHtml) {
-            dynamicHtml += `
-                <div class="section-title" style="margin-top:20px;"><i class="fas fa-user-clock"></i> Representative Details</div>
-                <div class="info-grid">
-                    ${proxyHtml}
-                </div>`;
-        }
-
-        // 11. Additional Notes
-        let notesHtml = getFieldHtml("Additional Notes / Remarks", app.additional_notes);
-        if (notesHtml) {
-            dynamicHtml += `
-                <div class="section-title" style="margin-top:20px;"><i class="fas fa-comment-dots"></i> Additional Notes</div>
-                <div class="info-grid">
-                    ${notesHtml}
-                </div>`;
-        }
-
-        return dynamicHtml;
-    }
 
     /* ─── Build Complete Documents Section ─────────────────── */
     function buildAllDocumentsHtml(app, appId) {

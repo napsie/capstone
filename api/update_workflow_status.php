@@ -2,6 +2,7 @@
 session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/audit_logger.php';
+require_once '../includes/filing_deadline.php';
 require_once '../includes/request_security.php';
 requireSameOriginMutation();
 
@@ -28,35 +29,6 @@ if (!$isAdmin && !$isStaff) {
 function sanitize_str(?string $value): ?string {
     if ($value === null) return null;
     return htmlspecialchars(strip_tags(trim($value)), ENT_QUOTES, 'UTF-8');
-}
-
-/**
- * Calculate working days (Mon–Fri only) from a given date to today.
- */
-function countWorkingDays(string $startDate): int {
-    $start = new DateTime($startDate);
-    $end   = new DateTime();
-    if ($start > $end) return 0;
-    $days = 0;
-    $cur  = clone $start;
-    while ($cur <= $end) {
-        $dow = (int)$cur->format('N');
-        if ($dow < 6) $days++;
-        $cur->modify('+1 day');
-    }
-    return $days;
-}
-
-/** Generate an official OSCA ID not already present in any application. */
-function generateUniqueSeniorId(PDO $conn): string {
-    for ($attempt = 0; $attempt < 10; $attempt++) {
-        $candidate = 'OSCA-' . date('Y') . '-' . strtoupper(bin2hex(random_bytes(3)));
-        $stmt = $conn->prepare('SELECT 1 FROM applications WHERE senior_id_no = ? LIMIT 1');
-        $stmt->execute([$candidate]);
-        if (!$stmt->fetchColumn()) return $candidate;
-    }
-
-    throw new RuntimeException('Unable to generate a unique OSCA ID.');
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -91,6 +63,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             exit();
         }
 
+        if (!empty($app['is_archived'])) {
+            echo json_encode(['success' => false, 'message' => 'Archived applications cannot change status.']);
+            exit;
+        }
         $currentStatus  = $app['workflow_state'] ?: 'Received';
         $applicationType = $app['application_type'] ?? '';
         $nextStatus     = $currentStatus;
@@ -98,12 +74,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Direct, rule-based status handling.
         if ($action === 'next') {
             // Staff can only move from initial states.
-            if ($isStaff && !in_array($currentStatus, ['Received', 'Submitted'], true)) {
+            if ($isStaff && !in_array($currentStatus, ['Received', 'Submitted', 'Needs Correction'], true)) {
                 echo json_encode(['success' => false, 'message' => 'SHDO can only submit newly received applications for department review.']);
                 exit();
             }
 
-            if (in_array($currentStatus, ['Submitted', 'Received'], true)) {
+            if (in_array($currentStatus, ['Submitted', 'Received', 'Needs Correction'], true)) {
+                if ($currentStatus === 'Needs Correction' && !$isStaff) {
+                    echo json_encode(['success' => false, 'message' => 'Barangay staff must correct and resubmit this application.']);
+                    exit;
+                }
                 $nextStatus = 'For Review';
             } elseif ($currentStatus === 'For Review') {
                 $nextStatus = 'Verified';
@@ -111,7 +91,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 echo json_encode(['success' => false, 'message' => 'Application is already verified and complete.']);
                 exit();
             } else {
-                $nextStatus = 'Received';
+                echo json_encode(['success' => false, 'message' => 'This application cannot advance from its current state.']);
+                exit;
             }
 
             // ──────────────────────────────────────────────────────────────────
@@ -176,15 +157,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 // ── (C) BURIAL ASSISTANCE: Must be filed within 30 working days ─
                 if ($applicationType === 'burial') {
                     $dateOfDeath = $app['date_of_death'] ?? '';
-                    if (!empty($dateOfDeath)) {
-                        $elapsedWorkingDays = countWorkingDays($dateOfDeath);
-                        if ($elapsedWorkingDays > 30) {
-                            echo json_encode([
-                                'success' => false,
-                                'message' => "APPLICATION BLOCKED — POLICY VIOLATION: SUBMITTED BEYOND THE 30-DAY LIMIT — Burial assistance must be filed within 30 working days of death registration. Elapsed: {$elapsedWorkingDays} working days (Pasig Ordinance 3-2026)."
-                            ]);
-                            exit();
-                        }
+                    $elapsedWorkingDays = filingWorkingDays($dateOfDeath, $app['date_submitted'] ?? null);
+                    if ($elapsedWorkingDays === null) {
+                        echo json_encode(['success' => false, 'message' => 'A valid death date on or before the original submission date is required. Return the application for correction.']);
+                        exit;
+                    }
+                    if ($elapsedWorkingDays > 30) {
+                        echo json_encode([
+                            'success' => false,
+                            'message' => "APPLICATION BLOCKED — POLICY VIOLATION: SUBMITTED BEYOND THE 30-DAY LIMIT — Burial assistance must be filed within 30 working days of death registration. Elapsed: {$elapsedWorkingDays} working days (Pasig Ordinance 3-2026)."
+                        ]);
+                        exit();
                     }
                 }
             }
@@ -197,18 +180,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 echo json_encode(['success' => false, 'message' => 'Only department admins can return applications.']);
                 exit();
             }
-            if ($currentStatus === 'Received') {
-                echo json_encode(['success' => false, 'message' => 'Application is already in the Received state.']);
+            if (!in_array($currentStatus, ['Received', 'Submitted', 'For Review'], true)) {
+                echo json_encode(['success' => false, 'message' => 'Only active applications awaiting review can be returned for correction.']);
                 exit();
             }
-            $nextStatus = 'Received';
-            $defaultComment = "Returned to Received state for document correction / rescan.";
+            $correctionDocuments = trim(strip_tags((string)($_POST['correctionDocuments'] ?? '')));
+            $reason = trim(strip_tags((string)($_POST['comments'] ?? '')));
+            if ($reason === '' || $correctionDocuments === '') {
+                echo json_encode(['success' => false, 'message' => 'List the documents or fields needing correction and explain what must be fixed.']);
+                exit;
+            }
+            $comments = "Items to correct: {$correctionDocuments}\nReason: {$reason}";
+            if (mb_strlen($comments) > 500) {
+                echo json_encode(['success' => false, 'message' => 'Keep the correction items and reason within 500 characters combined.']);
+                exit;
+            }
+            $nextStatus = 'Needs Correction';
+            $defaultComment = $comments;
         } else if ($action === 'reject') {
             if (!$isAdmin) {
                 echo json_encode(['success' => false, 'message' => 'Only department admins can reject applications.']);
                 exit();
             }
-            if (!in_array($currentStatus, ['Received', 'Submitted', 'For Review'], true)) {
+            if (!in_array($currentStatus, ['Received', 'Submitted', 'For Review', 'Needs Correction'], true)) {
                 echo json_encode(['success' => false, 'message' => 'Only active applications can be rejected.']);
                 exit();
             }
@@ -228,6 +222,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         // Begin Transaction
         $conn->beginTransaction();
+        // Reject stale actions before any state change or verification side effect.
+        $lock = $conn->prepare('SELECT workflow_state, is_archived FROM applications WHERE id_number = ? FOR UPDATE');
+        $lock->execute([$appId]);
+        $locked = $lock->fetch(PDO::FETCH_ASSOC);
+        if (!$locked || !empty($locked['is_archived']) || ($locked['workflow_state'] ?: 'Received') !== $currentStatus) {
+            $conn->rollBack();
+            http_response_code(409);
+            echo json_encode(['success' => false, 'message' => 'This application changed while you were reviewing it. Reload it and try again.']);
+            exit;
+        }
         $oscaIdNo = null;
 
         // 1. Update applications table state
@@ -243,24 +247,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 throw new RuntimeException('The application is already archived or could not be rejected.');
             }
         } else {
-            $stmtUpdate = $conn->prepare("UPDATE applications SET workflow_state = ? WHERE id_number = ?");
-            $stmtUpdate->execute([$nextStatus, $appId]);
+            $stmtUpdate = $conn->prepare("UPDATE applications SET workflow_state = ?, return_reason = ? WHERE id_number = ?");
+            $stmtUpdate->execute([$nextStatus, $nextStatus === 'Needs Correction' ? $finalComment : null, $appId]);
         }
 
         // ──────────────────────────────────────────────────────────────────────
         // Final-verification side effects
         // ──────────────────────────────────────────────────────────────────────
-
-        // (A) SENIOR ID VERIFICATION → Auto-generate OSCA ID number if not yet set
-        if ($applicationType === 'senior' && $nextStatus === 'Verified') {
-            $existingOscaId = $app['senior_id_no'] ?? '';
-            if (empty($existingOscaId)) {
-                $oscaIdNo = generateUniqueSeniorId($conn);
-                $stmtOsca = $conn->prepare("UPDATE applications SET senior_id_no = ? WHERE id_number = ?");
-                $stmtOsca->execute([$oscaIdNo, $appId]);
-                $finalComment .= " | OSCA ID auto-generated: {$oscaIdNo}";
-            }
-        }
 
         // (B) BURIAL ASSISTANCE VERIFICATION → Mark deceased senior's status + log Landbank freeze
         if ($applicationType === 'burial' && $nextStatus === 'Verified') {
@@ -353,4 +346,3 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     exit();
 }
 ?>
-

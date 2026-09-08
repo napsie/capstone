@@ -38,12 +38,24 @@ try {
     // 2. Get workflow status distribution chart data
     $workflowStmt = $conn->prepare("
         SELECT 
-            CASE WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') IN ('Approved','Released') THEN 'Verified' ELSE COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') END as workflow_state,
+            CASE
+                WHEN workflow_state = 'Needs Correction' THEN 'Needs Correction'
+                WHEN (application_type = 'pension' OR requested_benefit = 'Local Social Pension Assessment')
+                     AND COALESCE(home_visit_status, '') <> 'Completed' THEN 'Pending'
+                WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') IN ('Approved','Released') THEN 'Verified'
+                ELSE COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received')
+            END as workflow_state,
             COUNT(*) as count 
         FROM applications 
         WHERE barangay = :barangay 
           AND (is_archived = 0 OR is_archived IS NULL)
-        GROUP BY CASE WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') IN ('Approved','Released') THEN 'Verified' ELSE COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') END
+        GROUP BY CASE
+                     WHEN workflow_state = 'Needs Correction' THEN 'Needs Correction'
+                WHEN (application_type = 'pension' OR requested_benefit = 'Local Social Pension Assessment')
+                          AND COALESCE(home_visit_status, '') <> 'Completed' THEN 'Pending'
+                     WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') IN ('Approved','Released') THEN 'Verified'
+                     ELSE COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received')
+                 END
     ");
     $workflowStmt->execute(['barangay' => $barangay]);
     $response['data']['workflow_stats'] = $workflowStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -55,7 +67,7 @@ try {
                 AND COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') = 'Received'
                 THEN 1 ELSE 0 END) AS priority_count,
             SUM(CASE WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received')
-                IN ('Received', 'For Review') THEN 1 ELSE 0 END) AS queue_count
+                IN ('Received', 'Submitted', 'For Review', 'Needs Correction') THEN 1 ELSE 0 END) AS queue_count
         FROM applications 
         WHERE barangay = :barangay 
           AND (is_archived = 0 OR is_archived IS NULL)
@@ -91,13 +103,19 @@ try {
             full_name,
             application_type,
             status,
-            CASE WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') IN ('Approved','Released') THEN 'Verified' ELSE COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') END as workflow_state,
+            CASE
+                WHEN workflow_state = 'Needs Correction' THEN 'Needs Correction'
+                WHEN (application_type = 'pension' OR requested_benefit = 'Local Social Pension Assessment')
+                     AND COALESCE(home_visit_status, '') <> 'Completed' THEN 'Pending'
+                WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') IN ('Approved','Released') THEN 'Verified'
+                ELSE COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received')
+            END as workflow_state,
             priority_level,
             date_submitted
         FROM applications
         WHERE barangay = :barangay
           AND (is_archived = 0 OR is_archived IS NULL)
-        ORDER BY CASE WHEN priority_level = 'high' THEN 0 ELSE 1 END, date_submitted DESC
+        ORDER BY date_submitted DESC, CASE WHEN priority_level = 'high' THEN 0 ELSE 1 END
         LIMIT 8
     ");
     $notifStmt->execute(['barangay' => $barangay]);

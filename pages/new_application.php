@@ -3,7 +3,7 @@ session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/proxy_token_resolver.php';
 require_once '../includes/application_types.php';
-require_once '../includes/sms_service.php';
+require_once '../includes/filing_deadline.php';
 
 if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'barangay_staff') {
     header('Location: ../index.php');
@@ -15,26 +15,6 @@ if ($sessionDisplayName === '') {
     $sessionDisplayName = (string)($_SESSION['username'] ?? 'SHDO');
 }
 
-// Helper function to calculate working days (excluding Sat/Sun)
-function getWorkingDays($startDate, $endDate) {
-    $begin = new DateTime($startDate);
-    $end = new DateTime($endDate);
-    if ($begin > $end) {
-        $temp = $begin;
-        $begin = $end;
-        $end = $temp;
-    }
-    $no_days = 0;
-    $interval = new DateInterval('P1D');
-    $period = new DatePeriod($begin, $interval, $end);
-    foreach ($period as $dt) {
-        $curr = $dt->format('D');
-        if ($curr !== 'Sat' && $curr !== 'Sun') {
-            $no_days++;
-        }
-    }
-    return $no_days;
-}
 
 $errorMessage = "";
 $successMessage = "";
@@ -92,6 +72,27 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $errorMessage = 'Please select a valid application type.';
     }
 
+    // A person may submit multiple benefit applications using the same Senior
+    // Citizen ID. Duplicate-person blocking belongs only to the base Senior ID
+    // registration, where name and birth date identify an existing enrollment.
+    if (empty($errorMessage) && $applicationType === 'senior' && $birthDate !== '') {
+        $duplicateSeniorStmt = $conn->prepare(
+            "SELECT id_number FROM applications
+             WHERE application_type = 'senior'
+               AND LOWER(TRIM(firstName)) = LOWER(TRIM(?))
+               AND LOWER(TRIM(lastName)) = LOWER(TRIM(?))
+               AND birth_date = ?
+               AND id_number <> ?
+               AND COALESCE(is_archived, 0) = 0
+               AND COALESCE(workflow_state, '') <> 'Rejected'
+             LIMIT 1"
+        );
+        $duplicateSeniorStmt->execute([$firstName, $lastName, $birthDate, $idNumber]);
+        if ($duplicateSeniorStmt->fetchColumn()) {
+            $errorMessage = 'A Senior Citizen ID application already exists for this person. Open the existing record instead of creating another ID registration.';
+        }
+    }
+
     // Rule-Based Compliance validation on backend
     if (!empty($birthDate)) {
         $birthDateObj = new DateTime($birthDate);
@@ -128,8 +129,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if (empty($dateOfDeath)) {
             $errorMessage = "Localized Compliance Check Failed: Date of Death is required for burial assistance.";
         } else {
-            $workingDays = getWorkingDays($dateOfDeath, date('Y-m-d'));
-            if ($workingDays > 30) {
+            $workingDays = filingWorkingDays($dateOfDeath, date('Y-m-d'));
+            if ($workingDays === null) {
+                $errorMessage = 'Date of Death must be valid and cannot be after the submission date.';
+            } elseif ($workingDays > 30) {
                 $errorMessage = "Localized Compliance Check Failed: Application must be filed within 30 working days from passing (elapsed: $workingDays working days).";
             }
         }
@@ -352,7 +355,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $conn->commit();
 
                     $submissionMessage = $applicationType === 'pension'
-                        ? 'Application submitted successfully. Status: Waiting for Home Visit.'
+                        ? 'Application submitted successfully. Status: Pending until the home visit is completed.'
                         : 'Application submitted successfully.';
 
                     $_SESSION['application_submission_notice'] = $submissionMessage;
@@ -1787,7 +1790,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Senior ID No.</label>
-                                            <input type="text" id="burialScIdNo" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'seniorIdNo')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="OSCA-YYYY-XXXXXX">
+                                            <input type="text" id="burialScIdNo" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'seniorIdNo')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="Official Senior ID No.">
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Birth Date of Deceased</label>
@@ -2081,7 +2084,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">SC ID No.</label>
-                                            <input type="text" id="hvScIdNo" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'seniorIdNo')" onfocus="this.style.borderColor='#0891b2';" onblur="this.style.borderColor='#d0dae8';" placeholder="OSCA-YYYY-XXXXXX">
+                                            <input type="text" id="hvScIdNo" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'seniorIdNo')" onfocus="this.style.borderColor='#0891b2';" onblur="this.style.borderColor='#d0dae8';" placeholder="Official Senior ID No.">
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Birth Date (MM/DD/YYYY)</label>
@@ -2689,7 +2692,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Senior ID No.</label>
-                                            <input type="text" id="penScIdNo" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'seniorIdNo')" onfocus="this.style.borderColor='#b45309';" onblur="this.style.borderColor='#d0dae8';" placeholder="OSCA-YYYY-XXXXXX">
+                                            <input type="text" id="penScIdNo" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'seniorIdNo')" onfocus="this.style.borderColor='#b45309';" onblur="this.style.borderColor='#d0dae8';" placeholder="Official Senior ID No.">
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">ATM No. or Temporary Cash Card Stub No.</label>
@@ -2739,7 +2742,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         <i class="fas fa-house-medical" style="color:#2563eb;"></i> Required Home Visit
                                     </div>
                                     <p style="font-size:0.82rem;color:#1e40af;line-height:1.55;margin:0 0 10px;">
-                                        After submission, this Local Pension application will automatically be marked <strong>Waiting for Home Visit</strong>.
+                                        After submission, this Local Pension application will be marked <strong>Pending</strong> until the required home visit is completed.
                                     </p>
                                     <div style="font-size:0.78rem;color:#334155;background:#fff;border-radius:8px;padding:10px 12px;line-height:1.5;">
                                         <i class="fas fa-user-shield" style="color:#178b4b;margin-right:6px;"></i>The Department Admin privately assigns the personnel and visit date. No schedule is selected or disclosed during application submission because the visit is unannounced.
@@ -3023,7 +3026,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Senior ID No.</label>
-                                            <input type="text" id="lbSeniorIdNo" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'seniorIdNo')" onfocus="this.style.borderColor='#059669';" onblur="this.style.borderColor='#d0dae8';" placeholder="OSCA-YYYY-XXXXXX">
+                                            <input type="text" id="lbSeniorIdNo" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'seniorIdNo')" onfocus="this.style.borderColor='#059669';" onblur="this.style.borderColor='#d0dae8';" placeholder="Official Senior ID No.">
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Mother's Maiden Name</label>
@@ -4459,8 +4462,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         function updateBurialDaysFiled(dateOfDeath) {
             const el = document.getElementById('burialDaysFiled');
             if (!el || !dateOfDeath) { if (el) el.value = ''; return; }
-            const start = new Date(dateOfDeath);
-            const end = new Date();
+            const start = new Date(dateOfDeath + 'T00:00:00');
+            const end = new Date(); end.setHours(0, 0, 0, 0);
             if (start > end) { el.value = 'Invalid date'; return; }
             let wd = 0;
             let cur = new Date(start);
@@ -4628,8 +4631,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
 
             // Calculate working days
-            const start = new Date(dateOfDeathVal);
-            const end = new Date();
+            const start = new Date(dateOfDeathVal + 'T00:00:00');
+            const end = new Date(); end.setHours(0, 0, 0, 0);
             if (start > end) {
                 container.innerHTML = `<span class="compliance-badge compliance-fail"><i class="fas fa-times"></i> Invalid date (Future death date)</span>`;
                 return;
@@ -4686,8 +4689,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             // Burial deadline compliance block
             if (type === 'burial') {
                 const dateOfDeathVal = document.getElementById('dateOfDeath').value;
-                const start = new Date(dateOfDeathVal);
-                const end = new Date();
+                const start = new Date(dateOfDeathVal + 'T00:00:00');
+                const end = new Date(); end.setHours(0, 0, 0, 0);
                 let workingDays = 0;
                 let curDate = new Date(start.getTime());
                 while (curDate < end) {

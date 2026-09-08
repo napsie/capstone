@@ -25,18 +25,24 @@
         document.body.classList.add('archive-modal-open');
         closeButton.focus();
 
-        fetch(`../api/get_application_details.php?id=${encodeURIComponent(applicationId)}`)
-            .then(response => response.json())
+        window.loadApplicationModalData(applicationId, 'archiveApplicationModal', () => openModal(applicationId, applicationName))
             .then(application => {
-                if (application.error) throw new Error(application.error);
+                if (!application) return;
                 title.textContent = `${application.full_name} - Archived Application`;
                 body.innerHTML = typeof window.renderApplicationRecordDetails === 'function'
-                    ? window.renderApplicationRecordDetails(application)
+                    ? window.renderArchivedApplicationDetails(application)
                     : '<div class="archive-detail-error">Application details renderer is unavailable.</div>';
+                const documents = document.createElement('div');
+                documents.innerHTML = window.renderApplicationDocuments(application, applicationId);
+                body.append(documents);
+                const heading = document.createElement('h3');
+                heading.textContent = 'Application History';
+                const history = document.createElement('div');
+                body.append(heading, history);
+                window.renderApplicationAuditHistory(application.history, history, { pageSize: 5 });
             })
             .catch(error => {
-                body.innerHTML = '<div class="archive-detail-error"><i class="fas fa-circle-exclamation"></i> <span></span></div>';
-                body.querySelector('span').textContent = String(error.message || 'Unable to load application details.');
+                window.showApplicationModalError('archiveApplicationModal', error);
             });
     }
 
