@@ -18,6 +18,9 @@ $conn->exec("USE `$name`");
 $conn->exec($schema);
 // The existing burial side effect uses this status; match the deployed migration.
 $conn->exec("ALTER TABLE applications MODIFY status VARCHAR(30) NOT NULL DEFAULT 'pending'");
+$migration = file_get_contents(dirname(__DIR__) . '/database/migrations/20260909_data_reporting_foundation.sql');
+$migration = preg_replace('/USE `capstone1`;/i', '', $migration);
+$conn->exec($migration);
 $user = $conn->prepare('INSERT INTO users (username, password, role, first_name, last_name, email, barangay) VALUES (?, ?, ?, ?, ?, ?, ?)');
 foreach ([['test-admin', 'department_admin', null], ['test-staff', 'barangay_staff', 'Bagong Ilog'], ['test-other', 'barangay_staff', 'Ugong'], ['test-unassigned', 'barangay_staff', '']] as [$username, $role, $barangay]) {
     $user->execute([$username, password_hash('TestOnly!2026', PASSWORD_DEFAULT), $role, 'Test', 'Reviewer', $username . '@example.invalid', $barangay]);

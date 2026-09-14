@@ -29,10 +29,20 @@ $milestones = ['80' => '₱10,000', '85' => '₱15,000', '90' => '₱25,000', '9
         <tr><th><?php echo $m; ?> years</th><td class="val"><?php echo oscaCheck(($app['milestone_age'] ?? '') == $m); ?> <?php echo $amt; ?></td></tr>
         <?php endforeach; ?>
     </table>
+    <div class="section-title">QUALIFICATIONS</div>
+    <div class="checkbox-row">1. Must have a Pasig City Senior Citizen's ID.<br>2. Must have at least two years actual residency in Pasig City.<br>3. Must have reached age 80 years old and above.</div>
+    <div class="section-title">PRIMARY REQUIREMENTS</div>
+    <div class="checkbox-row" style="font-size:9px;line-height:1.55;">
+        ☐ PSA-issued or authenticated Certificate of Live Birth<br>
+        ☐ Senior Citizen OSCA ID, front and back<br>
+        ☐ Latest A4-size whole-body picture<br>
+        <strong>If primary birth documents are unavailable, submit any two:</strong> PSA late-registration certificate; Philippine government ID showing citizenship and birth year; eldest child's birth certificate; valid Philippine passport; baptismal/church record; NCIP certification for Indigenous Peoples; or NCMF certification for Muslim Filipinos.
+    </div>
     <?php oscaFieldRow(['Claimant Name' => $app['claimant_name'] ?? '', 'Relationship' => $app['claimant_relationship'] ?? '', 'Contact' => $app['claimant_contact'] ?? '']); ?>
-    <div class="cert-box">I authorize the City Government of Pasig to process and validate my data with GSIS, SSS, DSWD and other agencies.</div>
+    <div class="cert-box">I hereby certify under law on perjury that the information provided in this form is complete, true, correct, and of my knowledge. I further authorize the City Government of Pasig to process my data, validate, and confirm the answers herein with third parties such as the GSIS, SSS, DSWD and other Government/Private Agencies.</div>
     <div class="sig-line">Signature/Thumbmark over printed name of the Senior Citizen</div>
-    <div class="stub"><strong>OCTO LOCAL</strong> — <?php echo oscaVal($app['full_name']); ?> | Claimant: <?php echo oscaVal($app['claimant_name'] ?? ''); ?> | Barangay: <?php echo oscaVal($app['barangay']); ?></div>
+    <?php oscaFieldRow(['Received by' => '', 'Approved by' => '']); ?>
+    <div class="stub"><strong>OCTO LOCAL — PRESENT UPON CLAIMING</strong><br>Name of Senior Citizen: <?php echo oscaVal($app['full_name']); ?> | Name of Claimant: <?php echo oscaVal($app['claimant_name'] ?? ''); ?> | Relationship: <?php echo oscaVal($app['claimant_relationship'] ?? ''); ?> | Barangay: <?php echo oscaVal($app['barangay']); ?> | Date &amp; Time: <?php echo oscaFmtDate($app['date_submitted'] ?? null); ?></div>
 </div>
 </body>
 </html>

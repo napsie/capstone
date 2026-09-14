@@ -33,6 +33,20 @@ try {
         exit();
     }
 
+    $requestedForm = trim((string)($_GET['form'] ?? ''));
+    if ($requestedForm === 'f8' && ($app['application_type'] ?? '') === 'pension') {
+        if (!empty($app['home_visit_personnel_id'])) {
+            $personStmt = $conn->prepare('SELECT full_name FROM home_visit_personnel WHERE id = ?');
+            $personStmt->execute([$app['home_visit_personnel_id']]);
+            $app['home_visit_personnel_name'] = (string)($personStmt->fetchColumn() ?: '');
+        }
+        if (!empty($app['home_visit_assessed_by'])) {
+            $assessorStmt = $conn->prepare("SELECT CONCAT(first_name, ' ', last_name) FROM users WHERE id = ?");
+            $assessorStmt->execute([$app['home_visit_assessed_by']]);
+            $app['home_visit_assessor_name'] = (string)($assessorStmt->fetchColumn() ?: '');
+        }
+    }
+
     // Approval history is the issuance audit trail displayed on form F1.
     if (!empty($app['senior_id_no'])) {
         $issuedStmt = $conn->prepare(
@@ -65,7 +79,9 @@ try {
     ];
 
     $type = $app['application_type'] ?? 'senior';
-    $templateFile = $formTemplates[$type] ?? 'f1_senior_id.php';
+    $templateFile = $requestedForm === 'f8' && $type === 'pension'
+        ? 'f8_home_visit.php'
+        : ($formTemplates[$type] ?? 'f1_senior_id.php');
     $templatePath = __DIR__ . '/../templates/forms/' . $templateFile;
 
     if (!file_exists($templatePath)) {

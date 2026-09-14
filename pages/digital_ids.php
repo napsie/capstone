@@ -44,7 +44,7 @@ function hasOfficialSeniorId(array $record): bool {
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Digital IDs — SENIORLINK</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/<?= $isDepartment ? 'department' : 'barangay' ?>-sidebar.css?v=4">
+    <link rel="stylesheet" href="../assets/css/<?= $isDepartment ? 'department' : 'barangay' ?>-sidebar.css?v=<?= $isDepartment ? '5' : '4' ?>">
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
     <style>

@@ -1,9 +1,6 @@
 <?php
 require __DIR__ . '/_helpers.php';
 $age = oscaAge($app['birth_date'] ?? null);
-$visitSchedule = !empty($app['home_visit_scheduled_at'])
-    ? (new DateTime($app['home_visit_scheduled_at']))->format('F j, Y \a\t g:i A')
-    : '';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -20,16 +17,15 @@ $visitSchedule = !empty($app['home_visit_scheduled_at'])
     <?php oscaFieldRow(['Address' => $app['complete_address'] ?? '', 'Control No.' => $app['control_no'] ?? $app['id_number'] ?? '']); ?>
     <?php oscaFieldRow(['Birthdate' => oscaFmtDate($app['birth_date'] ?? null), 'Age' => $age, 'Sex' => $app['gender'] ?? '', 'Contact No.' => $app['contact_number'] ?? '']); ?>
     <?php oscaFieldRow(['Senior ID No.' => oscaSeniorId($app), 'ATM/Temp Card Stub No.' => $app['atm_card_no'] ?? '', "Mother's Maiden Name" => $app['mothers_maiden_name'] ?? '']); ?>
-    <?php if (($app['application_type'] ?? '') === 'pension'): ?>
-        <div class="section-title">HOME VISITATION</div>
-        <?php oscaFieldRow(['Scheduled Date & Time' => $visitSchedule, 'Visit Status' => $app['home_visit_status'] ?? '', 'SMS Notification' => $app['sms_notification_status'] ?? '']); ?>
-    <?php endif; ?>
     <div class="section-title">ECONOMIC STATUS</div>
-    <?php oscaFieldRow(['SSS Number' => $app['sss_number'] ?? '', 'Verified Pension' => isset($app['pension_amount']) ? 'P' . number_format((float)$app['pension_amount'], 2) : '', 'Pension Source' => $app['pension_source'] ?? '']); ?>
-    <?php oscaFieldRow(['Permanent Income Source' => $app['income_source'] ?? '', 'Own House' => ($app['owns_house'] ?? null) ? 'Yes' : 'No', 'Renter' => ($app['is_renter'] ?? null) ? 'Yes' : 'No']); ?>
-    <?php oscaFieldRow(['Condition / Illness' => $app['health_condition'] ?? $app['medical_conditions'] ?? '']); ?>
-    <div class="cert-box">I hereby certify under law on perjury that the information provided is complete, true and correct to the best of my knowledge.</div>
+    <?php oscaFieldRow(['Pensioner?' => ($app['is_pensioner'] ?? null) === null ? '' : ((int)$app['is_pensioner'] === 1 ? 'Yes' : 'No'), 'Source' => $app['pension_source'] ?? '', 'Amount' => isset($app['pension_amount']) ? 'P' . number_format((float)$app['pension_amount'], 2) : '']); ?>
+    <?php oscaFieldRow(['Permanent source of income?' => ($app['is_permanent_income'] ?? null) === null ? '' : ((int)$app['is_permanent_income'] === 1 ? 'Yes' : 'No'), 'Income Source' => $app['income_source'] ?? '']); ?>
+    <?php oscaFieldRow(['Regular family support?' => ($app['family_support'] ?? null) === null ? '' : ((int)$app['family_support'] === 1 ? 'Yes' : 'No'), 'Type of Support' => $app['family_support_type'] ?? '', 'Cash Amount' => isset($app['family_support_amount']) ? 'P' . number_format((float)$app['family_support_amount'], 2) : '']); ?>
+    <?php oscaFieldRow(['Condition / Illness' => $app['health_condition'] ?? $app['medical_conditions'] ?? '', 'Own House' => ($app['owns_house'] ?? null) === null ? '' : ((int)$app['owns_house'] === 1 ? 'Yes' : 'No'), 'Renter' => ($app['is_renter'] ?? null) === null ? '' : ((int)$app['is_renter'] === 1 ? 'Yes' : 'No')]); ?>
+    <div class="cert-box">I hereby certify under law on perjury that the information provided in this form is complete, true and correct to the best of my knowledge. I further authorize the City Government of Pasig to process my data, validate, and confirm the answers herein with the GSIS, SSS, DSWD and other Government/Private Agencies.</div>
     <div class="sig-line">Signature/Thumbmark over printed name of the Senior Citizen</div>
+    <?php oscaFieldRow(["OSCA Personnel's Name & Signature" => '', 'Date' => '']); ?>
+    <?php oscaFieldRow(['Name of Encoder' => '', 'Date Encoded' => '']); ?>
     <div class="stub"><strong>PASIG CITY LOCAL SENIOR PENSION</strong> — <?php echo oscaVal($app['full_name']); ?> | Control: <?php echo oscaVal($app['control_no'] ?? $app['id_number']); ?></div>
 </div>
 </body>

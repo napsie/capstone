@@ -21,7 +21,7 @@ unset($_SESSION['application_submission_notice']);
     <title>Queue – Barangay <?php echo $loggedInBarangay; ?></title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=4">
-    <link rel="stylesheet" href="../assets/css/application-documents.css?v=7">
+    <link rel="stylesheet" href="../assets/css/application-documents.css?v=8">
     <style>
         /* ─── Variables ─────────────────────────────────────────────────── */
         :root {
@@ -213,6 +213,9 @@ unset($_SESSION['application_submission_notice']);
         .badge-verified { background-color: #ccfbf1; color: #0f766e; }
         .badge-approved { background-color: #dcfce7; color: #15803d; }
         .badge-released { background-color: #f3e8ff; color: #6b21a8; }
+        .badge-pending { background-color: #dcfce7; color: #166534; }
+        .badge-rejected { background-color: #fee2e2; color: #b91c1c; }
+        .badge-correction { background-color: #fef3c7; color: #92400e; }
 
         /* ─── Modal ──────────────────────────────────────────────────────── */
         .modal-overlay {
@@ -354,7 +357,7 @@ unset($_SESSION['application_submission_notice']);
         /* Footer */
         .page-footer { text-align:center; padding:24px; font-size:0.78rem; color:var(--gray); }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=17">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=18">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
     <script src="../assets/js/table-pagination.js?v=1" defer></script>
@@ -525,6 +528,10 @@ unset($_SESSION['application_submission_notice']);
                                     <input type="date" id="birthDate" name="birthDate" required>
                                 </div>
                                 <div class="form-group">
+                                    <label for="applicantAge">Age</label>
+                                    <input type="text" id="applicantAge" readonly aria-readonly="true">
+                                </div>
+                                <div class="form-group">
                                     <label for="contactNumber">Contact Number</label>
                                     <input type="text" id="contactNumber" name="contactNumber" required>
                                 </div>
@@ -552,32 +559,19 @@ unset($_SESSION['application_submission_notice']);
                                     <label for="emergencyContact">Emergency Contact Number</label>
                                     <input type="text" id="emergencyContact" name="emergencyContact">
                                 </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="emailAddress">Email Address</label>
-                                <input type="email" id="emailAddress" name="emailAddress">
-                            </div>
-                            <div class="form-group">
-                                <label for="additionalNotes">Additional Notes</label>
-                                <textarea id="additionalNotes" name="additionalNotes" rows="3"></textarea>
+                                <div class="form-group">
+                                    <label for="emergencyContactRelationship">Relationship</label>
+                                    <select id="emergencyContactRelationship" name="emergencyContactRelationship">
+                                        <option value="">Select relationship</option>
+                                        <?php foreach (getEmergencyContactRelationshipOptions() as $relationship): ?>
+                                            <option value="<?= htmlspecialchars($relationship) ?>"><?= htmlspecialchars($relationship) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
                         <?php $formFieldPrefix = ''; include '../partials/osca_form_sections.php'; ?>
-
-                        <div id="pension-fields-modal" class="form-section" style="display:none;">
-                            <h3><i class="fas fa-wallet"></i> Social Pension Details</h3>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="sssNumber">SSS Number</label>
-                                    <input type="text" id="sssNumber" name="sssNumber">
-                                </div>
-                                <div class="form-group">
-                                    <label for="pensionAmount">Monthly Pension Amount (PHP)</label>
-                                    <input type="number" step="0.01" min="0" id="pensionAmount" name="pensionAmount">
-                                </div>
-                            </div>
-                        </div>
 
                         <div id="burial-fields-modal" class="form-section" style="display:none;">
                             <h3><i class="fas fa-ribbon"></i> Burial Assistance Details</h3>
@@ -588,7 +582,12 @@ unset($_SESSION['application_submission_notice']);
                                 </div>
                                 <div class="form-group">
                                     <label for="relationshipToDeceased">Relationship to Deceased</label>
-                                    <input type="text" id="relationshipToDeceased" name="relationshipToDeceased">
+                                    <select id="relationshipToDeceased" name="relationshipToDeceased">
+                                        <option value="">Select relationship</option>
+                                        <?php foreach (getDeceasedRelationshipOptions() as $relationship): ?>
+                                            <option value="<?= htmlspecialchars($relationship) ?>"><?= htmlspecialchars($relationship) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
                                 </div>
                             </div>
                         </div>
@@ -614,7 +613,7 @@ unset($_SESSION['application_submission_notice']);
                 <div>
                     <div class="section-title"><i class="fas fa-clock-rotate-left"></i> Audit Trail History Log</div>
                     <div class="timeline" id="timelineList"></div>
-                    <div class="section-title" style="margin-top:24px;"><i class="fas fa-rectangle-list"></i> Application Context</div>
+                    <div class="section-title" id="applicationContextTitle" style="margin-top:24px;"><i class="fas fa-rectangle-list"></i> Additional Context</div>
                     <div id="dynamicDetailsSection"></div>
                 </div>
             </div>
@@ -667,11 +666,11 @@ unset($_SESSION['application_submission_notice']);
                     </div>
                     <div class="export-field">
                         <label for="exportDateFrom">Date From</label>
-                        <input type="date" name="date_from" id="exportDateFrom" required>
+                        <input type="date" name="date_from" id="exportDateFrom">
                     </div>
                     <div class="export-field">
                         <label for="exportDateTo">Date To</label>
-                        <input type="date" name="date_to" id="exportDateTo" required>
+                        <input type="date" name="date_to" id="exportDateTo">
                     </div>
                 </div>
                 <div class="export-actions">
@@ -707,13 +706,13 @@ unset($_SESSION['application_submission_notice']);
 </div>
 
 <script src="../assets/js/sidebar-toggle.js?v=3"></script>
-<script src="../assets/js/osca-form-fields.js?v=3"></script>
-<script src="../assets/js/application-documents.js?v=9"></script>
-<script src="../assets/js/application-details.js?v=13"></script>
+<script src="../assets/js/osca-form-fields.js?v=4"></script>
+<script src="../assets/js/application-documents.js?v=10"></script>
+<script src="../assets/js/application-details.js?v=16"></script>
 <script src="../assets/js/application-modal-data.js?v=1"></script>
 <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 <script src="../assets/js/application-form-generator.js?v=1"></script>
-<script src="../assets/js/report-validation.js?v=2"></script>
+<script src="../assets/js/report-validation.js?v=3"></script>
 <script>
     const TYPE_LABELS = <?php echo json_encode(getApplicationTypeOptions()); ?>;
     
@@ -759,6 +758,67 @@ unset($_SESSION['application_submission_notice']);
         if (el) el.value = value ?? '';
     }
 
+    function updateApplicantAge() {
+        const birthValue = document.getElementById('birthDate')?.value || '';
+        const ageField = document.getElementById('applicantAge');
+        if (!ageField) return;
+        if (!birthValue) { ageField.value = ''; return; }
+        const [year, month, day] = birthValue.split('-').map(Number);
+        const today = new Date();
+        let age = today.getFullYear() - year;
+        if (today.getMonth() + 1 < month || (today.getMonth() + 1 === month && today.getDate() < day)) age--;
+        ageField.value = Number.isFinite(age) && age >= 0 ? `${age} years old` : '';
+    }
+
+    function restoreUnansweredModalFields() {
+        document.querySelectorAll('#applicationDetailForm [data-hidden-unanswered="1"]').forEach(element => {
+            element.style.display = '';
+            element.removeAttribute('data-hidden-unanswered');
+            element.querySelectorAll?.('input, select, textarea').forEach(field => { field.disabled = false; });
+        });
+    }
+
+    function hideUnansweredModalFields() {
+        const alwaysShow = new Set(['applicationType', 'lastName', 'firstName', 'birthDate', 'applicantAge', 'contactNumber', 'completeAddress']);
+        document.querySelectorAll('#applicationDetailForm .form-group').forEach(group => {
+            if (group.closest('[style*="display:none"]')) return;
+            const fields = [...group.querySelectorAll('input, select, textarea')].filter(field => !field.disabled);
+            if (!fields.length || fields.some(field => alwaysShow.has(field.id))) return;
+            const answered = fields.some(field => field.type === 'checkbox' || field.type === 'radio' ? field.checked : String(field.value ?? '').trim() !== '');
+            if (!answered) {
+                group.style.display = 'none';
+                group.dataset.hiddenUnanswered = '1';
+                fields.forEach(field => { field.disabled = true; });
+            }
+        });
+        document.querySelectorAll('#applicationDetailForm .osca-type-fields').forEach(section => {
+            if (section.style.display === 'none') return;
+            const visibleGroups = [...section.querySelectorAll('.form-group')].some(group => group.style.display !== 'none');
+            if (!visibleGroups) {
+                section.style.display = 'none';
+                section.dataset.hiddenUnanswered = '1';
+            }
+        });
+    }
+
+    function syncAutomaticMilestoneAge() {
+        const birthValue = document.getElementById('birthDate')?.value || '';
+        const milestone = document.getElementById('milestoneAge');
+        if (!milestone || !birthValue) return;
+        const [year, month, day] = birthValue.split('-').map(Number);
+        const today = new Date();
+        let age = today.getFullYear() - year;
+        if (today.getMonth() + 1 < month || (today.getMonth() + 1 === month && today.getDate() < day)) age--;
+        const allowed = [80, 85, 90, 95, 100];
+        milestone.value = age >= 100 ? '100' : (allowed.includes(age) ? String(age) : '');
+        milestone.setCustomValidity(milestone.value ? '' : `Milestone cash gifts are not available at age ${age}.`);
+    }
+
+    document.getElementById('birthDate')?.addEventListener('change', () => {
+        updateApplicantAge();
+        syncAutomaticMilestoneAge();
+    });
+
     function setModalFormFieldVisibility(applicationType) {
         const zipRow = document.getElementById('zipLandmarkRow');
         const landmarkGroup = document.getElementById('landmarkGroup');
@@ -779,6 +839,10 @@ unset($_SESSION['application_submission_notice']);
     }
 
     function escapeQueueText(value) { const el = document.createElement('span'); el.textContent = value ?? ''; return el.innerHTML; }
+    function renderQueueDeadlineAlerts(alerts) {
+        if (!Array.isArray(alerts) || !alerts.length) return '';
+        return `<div class="deadline-alerts">${alerts.map(alert => `<span class="deadline-alert deadline-alert--${escapeQueueText(alert.level || 'info')}" title="${escapeQueueText(alert.detail || '')}"><i class="fas fa-clock"></i>${escapeQueueText(alert.label)}</span>`).join('')}</div>`;
+    }
 
     function fetchApplications(page = applicationsPage) {
         applicationsPage = page;
@@ -811,6 +875,9 @@ unset($_SESSION['application_submission_notice']);
                     if (state === 'Verified')   stateBadge = 'badge-verified';
                     if (state === 'Approved')   stateBadge = 'badge-approved';
                     if (state === 'Released')   stateBadge = 'badge-released';
+                    if (displayState === 'Pending') stateBadge = 'badge-pending';
+                    if (displayState === 'Rejected') stateBadge = 'badge-rejected';
+                    if (displayState === 'Needs Correction') stateBadge = 'badge-correction';
 
                     let blurryWarning = '';
                     if (['Received', 'Needs Correction'].includes(state) && app.return_comments) {
@@ -825,6 +892,7 @@ unset($_SESSION['application_submission_notice']);
                                 <div class="name-cell">
                                     <a href="#" class="name-link" data-id="${app.id}">${app.full_name}</a>
                                     ${blurryWarning}
+                                    ${renderQueueDeadlineAlerts(app.deadline_alerts)}
                                 </div>
                             </td>
                             <td>${typeLabel}</td>
@@ -905,6 +973,7 @@ unset($_SESSION['application_submission_notice']);
 
     function openApplicationModal(appId) {
         currentAppId = appId;
+        restoreUnansweredModalFields();
         document.getElementById('applicationDetailForm').reset();
         document.getElementById('applicationModal').style.display = 'flex';
         document.querySelector('#applicationModal .modal-scroller').scrollTop = 0;
@@ -931,6 +1000,7 @@ unset($_SESSION['application_submission_notice']);
                 document.getElementById('middleName').value          = app.middleName || '';
                 document.getElementById('suffix').value              = app.suffix || '';
                 document.getElementById('birthDate').value           = app.birth_date || '';
+                updateApplicantAge();
                 document.getElementById('contactNumber').value       = app.contact_number || '';
                 const displayAddress = app.complete_address || buildAddressFromParts(app);
                 document.getElementById('completeAddress').value     = displayAddress;
@@ -938,31 +1008,25 @@ unset($_SESSION['application_submission_notice']);
                 setValue('landmark', app.landmark || '');
                 document.getElementById('emergencyContactName').value = app.emergency_contact_name || '';
                 document.getElementById('emergencyContact').value     = app.emergency_contact || '';
-                document.getElementById('emailAddress').value         = app.email_address || '';
-                document.getElementById('additionalNotes').value      = app.additional_notes || '';
-
+                document.getElementById('emergencyContactRelationship').value = app.claimant_relationship || '';
                 const modalFormType = getOscaFormType(app.application_type, app.requested_benefit);
                 populateOscaFields(app, '');
+                syncAutomaticMilestoneAge();
                 setModalFormFieldVisibility(modalFormType);
-                document.getElementById('dynamicDetailsSection').innerHTML = window.renderApplicationEditContext(app);
+                const contextHtml = window.renderApplicationEditContext(app);
+                document.getElementById('dynamicDetailsSection').innerHTML = contextHtml;
+                document.getElementById('applicationContextTitle').style.display = contextHtml.trim() ? '' : 'none';
 
                 // Toggle type-specific sections
-                const pm = document.getElementById('pension-fields-modal');
                 const bm = document.getElementById('burial-fields-modal');
-                pm.style.display = 'none';
                 bm.style.display = 'none';
-
-                if (modalFormType === 'pension' || modalFormType === 'national_pension') {
-                    pm.style.display = 'block';
-                    document.getElementById('sssNumber').value = app.sss_number || '';
-                    document.getElementById('pensionAmount').value = app.pension_amount || '';
-                }
                 if (modalFormType === 'burial') {
                     bm.style.display = 'block';
                     document.getElementById('dateOfDeath').value = app.date_of_death || '';
                     document.getElementById('relationshipToDeceased').value = app.relationship_to_deceased || '';
                 }
                 toggleOscaFormFields(modalFormType, '');
+                hideUnansweredModalFields();
 
                 // Stepper state highlighting
                 const steps = ['Received','For Review','Verified'];
@@ -995,6 +1059,7 @@ unset($_SESSION['application_submission_notice']);
                         { key: 'psa_birth_cert', label: 'PSA Birth Certificate' },
                         { key: 'barangay_residency', label: 'Barangay Residency' },
                         { key: 'comelec_cert', label: 'COMELEC Certificate' },
+                        { key: 'deceased_landbank_card', label: 'Deceased Landbank Cash Card' },
                         { key: 'proof_of_life', label: 'Current Senior Photo / Proof of Life' },
                         { key: 'auth_letter', label: 'Auth Letter' },
                         { key: 'proxy_id', label: 'Representative Government ID' },
@@ -1153,6 +1218,7 @@ unset($_SESSION['application_submission_notice']);
             ['psa_birth_cert', 'PSA Birth Certificate', app.psa_birth_cert],
             ['barangay_residency', 'Barangay Residency', app.barangay_residency],
             ['comelec_cert', 'COMELEC Certificate', app.comelec_cert],
+            ['deceased_landbank_card', 'Deceased Landbank Cash Card', app.deceased_landbank_card],
             ['proof_of_life', 'Current Senior Photo / Proof of Life', app.proof_of_life],
             ['auth_letter', 'Authorization Letter', app.auth_letter],
             ['proxy_id', 'Representative Government ID', app.proxy_id],
@@ -1398,5 +1464,24 @@ unset($_SESSION['application_submission_notice']);
 </script>
 <script src="../assets/js/vendor/html5-qrcode.min.js?v=2.3.8"></script>
 <script src="../assets/js/simple-code-scanner.js?v=3"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const selector = 'input[type="tel"],input[name*="contact" i]:not([type="hidden"]),input[id*="contact" i]:not([type="hidden"]),input[name="phone" i],input[id="phone" i],input[oninput*="contactNumber"],input[oninput*="emergencyContact"]';
+    const restrictContact = input => {
+        const identity = `${input.name || ''} ${input.id || ''} ${input.getAttribute('oninput') || ''}`.toLowerCase();
+        if (identity.includes('contactname') || identity.includes('contact-name') || input.readOnly) return;
+        input.type = 'tel';
+        input.inputMode = 'numeric';
+        input.maxLength = 11;
+        input.pattern = '09[0-9]{9}';
+        input.title = 'Enter exactly 11 digits beginning with 09.';
+        input.addEventListener('input', () => {
+            input.value = input.value.replace(/\D/g, '').slice(0, 11);
+            input.setCustomValidity(input.value && !/^09\d{9}$/.test(input.value) ? 'Enter exactly 11 digits beginning with 09.' : '');
+        });
+    };
+    document.querySelectorAll(selector).forEach(restrictContact);
+});
+</script>
 </body>
 </html>

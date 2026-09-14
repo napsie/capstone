@@ -29,6 +29,15 @@ function toggleOscaFormFields(type, prefix = '') {
         }
     });
 
+    ['placeOfBirth', 'civilStatus'].forEach(name => {
+        const control = document.getElementById(prefix + name);
+        const group = control?.closest('.form-group');
+        if (!group) return;
+        const omit = type === 'pension';
+        group.style.display = omit ? 'none' : '';
+        control.disabled = omit;
+    });
+
     // Document label updates
     const labelProof = document.getElementById(prefix ? 'labelProofOfAddress' : 'labelProofOfAddress');
     const labelId = document.getElementById(prefix ? 'labelIdImage' : 'labelIdImage');
@@ -107,11 +116,13 @@ function populateOscaFields(app, prefix = '') {
     set('personalIncome', app.personal_income != null ? String(app.personal_income) : '');
     set('personalIncomeAmount', app.personal_income_amount);
     set('familySupportAmount', app.family_support_amount);
+    set('familySupportType', app.family_support_type);
     set('withMaintenance', app.with_maintenance != null ? String(app.with_maintenance) : '');
     set('ownsHouse', app.owns_house != null ? String(app.owns_house) : '');
     set('isRenter', app.is_renter != null ? String(app.is_renter) : '');
     set('isPermanentIncome', app.is_permanent_income != null ? String(app.is_permanent_income) : '');
     set('pensionSource', app.pension_source);
+    set('pensionAmount', app.pension_amount);
     set('healthCondition', app.health_condition);
     set('maintenanceSpec', app.maintenance_spec);
     set('visitSummary', app.visit_summary);

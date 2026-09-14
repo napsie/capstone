@@ -38,7 +38,7 @@ if (isset($_POST['id'])) {
         }
 
         // Fetch application details first for logging
-        $fetchStmt = $conn->prepare("SELECT full_name, barangay, application_type, psa_birth_cert, barangay_residency, comelec_cert, proof_of_life, auth_letter, proxy_id, proxy_birth_cert FROM applications WHERE $where");
+        $fetchStmt = $conn->prepare("SELECT full_name, barangay, application_type, psa_birth_cert, barangay_residency, comelec_cert, deceased_landbank_card, proof_of_life, auth_letter, proxy_id, proxy_birth_cert FROM applications WHERE $where");
         $fetchStmt->execute($params);
         $app = $fetchStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -76,6 +76,7 @@ if (isset($_POST['id'])) {
                             $app['psa_birth_cert'] ?? '',
                             $app['barangay_residency'] ?? '',
                             $app['comelec_cert'] ?? '',
+                            $app['deceased_landbank_card'] ?? '',
                             $app['proof_of_life'] ?? '',
                             $app['auth_letter'] ?? '',
                             $app['proxy_id'] ?? '',

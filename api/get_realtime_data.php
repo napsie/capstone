@@ -25,9 +25,10 @@ try {
             application_type,
             status,
             CASE
+                WHEN COALESCE(home_visit_status, '') IN ('Rejected', 'Cancelled') THEN 'Rejected'
                 WHEN workflow_state = 'Needs Correction' THEN 'Needs Correction'
                 WHEN (application_type = 'pension' OR requested_benefit = 'Local Social Pension Assessment')
-                     AND COALESCE(home_visit_status, '') <> 'Completed' THEN 'Pending'
+                     AND COALESCE(home_visit_status, '') NOT IN ('Completed', 'Rejected', 'Cancelled') THEN 'Pending'
                 WHEN COALESCE(workflow_state, 'Received') IN ('Approved','Released') THEN 'Verified'
                 ELSE COALESCE(workflow_state, 'Received')
             END as workflow_state,
@@ -71,18 +72,20 @@ try {
     // Workflow status distribution (for extended stat cards)
     $stmt = $conn->prepare("
         SELECT CASE
+                   WHEN COALESCE(home_visit_status, '') IN ('Rejected', 'Cancelled') THEN 'Rejected'
                    WHEN workflow_state = 'Needs Correction' THEN 'Needs Correction'
                 WHEN (application_type = 'pension' OR requested_benefit = 'Local Social Pension Assessment')
-                        AND COALESCE(home_visit_status, '') <> 'Completed' THEN 'Pending'
+                        AND COALESCE(home_visit_status, '') NOT IN ('Completed', 'Rejected', 'Cancelled') THEN 'Pending'
                    WHEN COALESCE(workflow_state, 'Received') IN ('Approved','Released') THEN 'Verified'
                    ELSE COALESCE(workflow_state, 'Received')
                END as workflow_state, COUNT(*) as count
         FROM applications
         WHERE (is_archived = 0 OR is_archived IS NULL)
         GROUP BY CASE
+                     WHEN COALESCE(home_visit_status, '') IN ('Rejected', 'Cancelled') THEN 'Rejected'
                      WHEN workflow_state = 'Needs Correction' THEN 'Needs Correction'
                 WHEN (application_type = 'pension' OR requested_benefit = 'Local Social Pension Assessment')
-                          AND COALESCE(home_visit_status, '') <> 'Completed' THEN 'Pending'
+                          AND COALESCE(home_visit_status, '') NOT IN ('Completed', 'Rejected', 'Cancelled') THEN 'Pending'
                      WHEN COALESCE(workflow_state, 'Received') IN ('Approved','Released') THEN 'Verified'
                      ELSE COALESCE(workflow_state, 'Received')
                  END

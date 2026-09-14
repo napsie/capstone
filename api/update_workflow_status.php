@@ -109,6 +109,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         ]);
                         exit();
                     }
+                    if (($app['home_visit_eligibility'] ?? '') !== 'Eligible') {
+                        echo json_encode(['success' => false, 'message' => 'APPLICATION BLOCKED: The final home-visit evaluation is not Eligible.']);
+                        exit();
+                    }
 
                     // Rule 1: SSS pension must not exceed ₱4,000
                     $sssAmount = floatval($app['pension_amount'] ?? 0);
@@ -156,10 +160,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 // ── (C) BURIAL ASSISTANCE: Must be filed within 30 working days ─
                 if ($applicationType === 'burial') {
-                    $dateOfDeath = $app['date_of_death'] ?? '';
-                    $elapsedWorkingDays = filingWorkingDays($dateOfDeath, $app['date_submitted'] ?? null);
+                    $filingStart = $app['date_of_death'] ?? '';
+                    $elapsedWorkingDays = filingWorkingDays($filingStart, $app['date_submitted'] ?? null);
                     if ($elapsedWorkingDays === null) {
-                        echo json_encode(['success' => false, 'message' => 'A valid death date on or before the original submission date is required. Return the application for correction.']);
+                        echo json_encode(['success' => false, 'message' => 'A valid date of passing on or before the original submission date is required. Return the application for correction.']);
                         exit;
                     }
                     if ($elapsedWorkingDays > 30) {
@@ -206,10 +210,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 echo json_encode(['success' => false, 'message' => 'Only active applications can be rejected.']);
                 exit();
             }
-            if ($comments === '') {
-                echo json_encode(['success' => false, 'message' => 'A rejection reason is required.']);
-                exit();
-            }
+            if ($comments === '') $comments = 'Application rejected by the Department Admin.';
             $nextStatus = 'Rejected';
             $defaultComment = 'Application rejected and automatically moved to the archive.';
         } else {

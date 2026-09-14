@@ -19,6 +19,12 @@ if (isset($_GET['field'])) {
         $exists = $stmt->fetchColumn() > 0;
         echo json_encode(['exists' => $exists]);
 
+    } else if ($field === 'phone') {
+        $stmt = $conn->prepare("SELECT COUNT(*) FROM users WHERE phone = :value");
+        $stmt->execute(['value' => $value]);
+        $exists = $stmt->fetchColumn() > 0;
+        echo json_encode(['exists' => $exists]);
+
     } else if ($field === 'barangay') {
         $stmt = $conn->prepare("SELECT COUNT(*) FROM users WHERE role = 'barangay_staff' AND barangay = :value");
         $stmt->execute(['value' => $value]);

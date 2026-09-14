@@ -364,6 +364,7 @@
 
 .dashboard-page .dashboard-panels {
     gap: 16px;
+    margin-bottom: 0;
 }
 
 .dashboard-page :is(.left-panel, .right-panel, .charts-container) {
@@ -419,6 +420,11 @@
 
 .dashboard-page .calendar-card {
     padding: 0;
+    height: 435px;
+    min-height: 435px;
+    max-height: 435px;
+    flex: 0 0 435px;
+    align-self: start;
 }
 
 .dashboard-page #current-time {
@@ -430,17 +436,17 @@
 }
 
 .dashboard-page .calendar-body {
-    padding: 12px 14px 16px;
+    padding: 8px 14px 10px;
 }
 
 .dashboard-page .calendar-header {
-    min-height: 40px;
-    margin-bottom: 8px;
+    min-height: 34px;
+    margin: 4px 0 6px;
 }
 
 .dashboard-page .calendar-header button {
-    width: 38px;
-    height: 38px;
+    width: 34px;
+    height: 34px;
     display: grid;
     place-items: center;
     color: #345b78;
@@ -472,10 +478,31 @@
 
 .dashboard-page .calendar-table th,
 .dashboard-page .calendar-table td {
-    height: 32px;
-    padding: 3px 1px;
+    height: 29px;
+    padding: 1px;
     border: 0;
     font-size: .68rem;
+}
+
+.dashboard-page .calendar-table .calendar-day {
+    width: 28px;
+    height: 28px;
+}
+
+.dashboard-page .calendar-toolbar {
+    margin-bottom: 6px;
+    padding-bottom: 7px;
+}
+
+.dashboard-page .calendar-toolbar #current-time {
+    padding: 0;
+    font-size: .75rem;
+    text-align: right;
+}
+
+.dashboard-page .calendar-selection {
+    margin-top: 7px;
+    padding: 7px 10px;
 }
 
 .dashboard-page .calendar-table th {
@@ -624,8 +651,8 @@
 }
 
 .dashboard-page .footer {
-    margin-top: 16px;
-    padding: 12px 0;
+    margin-top: 0;
+    padding: 8px 0 0;
     color: #758796;
     background: transparent;
     border: 0;
@@ -633,7 +660,18 @@
     text-align: center;
 }
 
+.dashboard-page .main-content {
+    padding-bottom: 0;
+}
+
 @media (max-width: 1100px) {
+    .dashboard-page .calendar-card {
+        height: auto;
+        min-height: 0;
+        max-height: none;
+        flex-basis: auto;
+        align-self: stretch;
+    }
     .dashboard-command-bar {
         grid-template-columns: 1fr;
         gap: 16px;
@@ -652,7 +690,7 @@
 
 @media (max-width: 640px) {
     .dashboard-page .main-content {
-        padding: 14px 12px 28px;
+        padding: 14px 12px 0;
     }
 
     .dashboard-command-bar {

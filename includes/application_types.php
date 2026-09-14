@@ -4,20 +4,32 @@
  */
 
 function getApplicationTypeOptions(): array {
-    return [
-        'senior'           => 'Senior Citizens ID Application',
-        'landbank'         => 'Land Bank Cash Card Enrollment',
-        'pension'          => 'Local Senior Pension Form',
-        'national_pension' => 'National DSWD Pension (RA 11916)',
-        'milestone_gift'   => 'Octogenarian / Nonagenarian / Centenarian',
-        'burial'           => 'Burial Assistance',
-        'home_visit'       => 'Home Visitation / Confirmation',
-    ];
+    $options = [];
+    foreach (getApplicationBenefitDetails() as $type => $definition) {
+        // National DSWD Pension is retained below only for historical-record
+        // compatibility; it is no longer an available application type.
+        if ($type === 'national_pension') continue;
+        $options[$type] = $definition['label'];
+    }
+    return $options;
 }
 
 function applicationTypeLabel(string $type): string {
-    $options = getApplicationTypeOptions();
-    return $options[$type] ?? ucwords(str_replace('_', ' ', $type));
+    $definitions = getApplicationBenefitDetails();
+    return $definitions[$type]['label'] ?? ucwords(str_replace('_', ' ', $type));
+}
+
+function getDeceasedRelationshipOptions(): array {
+    return ['Spouse', 'Child', 'Parent', 'Sibling', 'Grandchild', 'Other Relative', 'Legal Representative'];
+}
+
+function getEmergencyContactRelationshipOptions(): array {
+    return ['Spouse', 'Child', 'Parent', 'Sibling', 'Grandchild', 'Other Relative', 'Caregiver', 'Friend', 'Legal Guardian'];
+}
+
+function milestoneAgeForCurrentAge(int $age): ?int {
+    if ($age >= 100) return 100;
+    return in_array($age, [80, 85, 90, 95], true) ? $age : null;
 }
 
 /**
@@ -26,6 +38,13 @@ function applicationTypeLabel(string $type): string {
 function getApplicationBenefitDetails(): array {
     return [
         'senior' => [
+            'label'        => 'Senior Citizens ID Application',
+            'public_request' => 'Senior Citizen ID Registration',
+            'minimum_age'  => 60,
+            'icon'         => 'fas fa-id-card',
+            'accent'       => '#60a5fa',
+            'required_fields' => ['idPurpose', 'healthStatus', 'emergencyContactName', 'emergencyContact', 'emergencyContactRelationship'],
+            'support_assessment' => false,
             'summary'      => 'Official registration for the Senior Citizens Identification Card issued by OSCA.',
             'benefits'     => [
                 'Valid government-recognized senior ID for discounts and privileges',
@@ -35,16 +54,29 @@ function getApplicationBenefitDetails(): array {
             'requirements' => [
                 'Applicant must be at least 60 years old',
                 'Must be a resident of the barangay where application is filed',
-                'Valid proof of identity and proof of address',
-                'Personal appearance or authorized representative with complete documents',
+                'Purpose-specific documents for New, Lost, Change, or Transfer',
+                'Personal appearance with physical original documents for verification',
             ],
             'documents' => [
-                'Birth certificate or valid government-issued ID',
-                'Proof of address (utility bill, barangay certificate, etc.)',
-                '1×1 or 2×2 ID photo (if required by local OSCA)',
+                'Two recent 1×1 ID photos with white background',
+                'Birth certificate and original barangay residency certificate for new applicants',
+                'Original ID, affidavit, or transfer certificates according to application purpose',
+            ],
+            'form_documents' => [
+                ['field' => 'psa_birth_cert_file', 'label' => 'PSA Birth Certificate', 'description' => "Clear copy of the senior citizen's PSA birth certificate or accepted proof of age."],
+                ['field' => 'barangay_residency_file', 'label' => 'Barangay Residency Certificate', 'description' => 'Current barangay certificate confirming Pasig residency.'],
+                ['field' => 'comelec_cert_file', 'label' => '2-Year COMELEC Certification', 'description' => 'Official voter residency certification of the senior citizen applicant.'],
+                ['field' => 'id_photo_file', 'label' => 'Two Recent 1×1 ID Photos', 'description' => 'Upload a clear recent 1×1 portrait with a white background; bring two printed copies for verification.', 'extra' => true, 'image_only' => true],
             ],
         ],
         'landbank' => [
+            'label'        => 'Land Bank Cash Card Enrollment',
+            'public_request' => 'Land Bank Cash Card Enrollment',
+            'minimum_age'  => 60,
+            'icon'         => 'fas fa-credit-card',
+            'accent'       => '#34d399',
+            'required_fields' => ['nameOnCard', 'tin', 'seniorIdTypePresented', 'nationality', 'sourceOfFunds', 'mothersMaidenName'],
+            'support_assessment' => false,
             'summary'      => 'Enrollment for Land Bank cash card disbursement of senior citizen benefits.',
             'benefits'     => [
                 'Direct crediting of approved cash benefits to a Land Bank account',
@@ -63,8 +95,20 @@ function getApplicationBenefitDetails(): array {
                 'Proof of address',
                 'Completed Land Bank enrollment details (name on card, TIN, etc.)',
             ],
+            'form_documents' => [
+                ['field' => 'psa_birth_cert_file', 'label' => 'Senior Citizen ID or Proof of Registration', 'description' => 'Senior Citizen ID or proof of an active senior registration.'],
+                ['field' => 'barangay_residency_file', 'label' => 'Valid Government-Issued ID', 'description' => 'Government ID presented for Land Bank identity verification.'],
+                ['field' => 'comelec_cert_file', 'label' => 'Proof of Address', 'description' => 'Current barangay certificate, utility bill, or equivalent address document.'],
+            ],
         ],
         'pension' => [
+            'label'        => 'Local Senior Pension Form',
+            'public_request' => 'Local Social Pension Assessment',
+            'minimum_age'  => 65,
+            'icon'         => 'fas fa-wallet',
+            'accent'       => '#fbbf24',
+            'required_fields' => ['atmCardNo', 'mothersMaidenName', 'isPensioner', 'isPermanentIncome', 'familySupport', 'healthCondition', 'ownsHouse', 'isRenter'],
+            'support_assessment' => false,
             'summary'      => 'Local social pension for indigent seniors with limited or no SSS/GSIS pension.',
             'benefits'     => [
                 'Monthly local social pension assistance (subject to LGU allocation)',
@@ -73,18 +117,31 @@ function getApplicationBenefitDetails(): array {
             ],
             'requirements' => [
                 'Applicant must be at least 65 years old',
-                'Verified SSS pension must not exceed ₱4,000 per month',
                 'Must be a resident of the applying barangay',
-                'Complete SSS verification during application',
+                'Complete the economic-status declaration on the official Local Senior Pension Form',
+                'Present the Senior Citizens ID and ATM or temporary cash-card stub for verification',
             ],
             'documents' => [
+                'Latest senior citizen ID photo',
                 'Senior Citizens ID or valid government ID',
-                'SSS number for pension verification',
                 'Proof of address',
-                'Supporting documents for indigency assessment (if required)',
+                'Pension or income supporting record, when applicable',
+            ],
+            'form_documents' => [
+                ['field' => 'psa_birth_cert_file', 'label' => 'Senior Citizen ID or Valid Government ID', 'description' => 'Identification document of the senior citizen.'],
+                ['field' => 'barangay_residency_file', 'label' => 'Barangay Certificate of Indigency', 'description' => 'Current indigency and residency certification issued by the barangay.'],
+                ['field' => 'comelec_cert_file', 'label' => 'SSS / GSIS Pension Record or Certification', 'description' => 'Document showing the pension source and monthly amount, or proof that no pension is received.'],
+                ['field' => 'id_photo_file', 'label' => 'Latest Senior Citizen ID Photo', 'description' => 'Upload a clear, recent portrait for the photo box on the Local Senior Pension Form.', 'extra' => true, 'image_only' => true],
             ],
         ],
         'national_pension' => [
+            'label'        => 'National DSWD Pension (RA 11916)',
+            'public_request' => null,
+            'minimum_age'  => 65,
+            'icon'         => 'fas fa-landmark',
+            'accent'       => '#6366f1',
+            'required_fields' => ['sssNumber'],
+            'support_assessment' => true,
             'summary'      => 'National DSWD social pension under Republic Act 11916 for qualified indigent seniors.',
             'benefits'     => [
                 'National government social pension for eligible seniors',
@@ -105,6 +162,14 @@ function getApplicationBenefitDetails(): array {
             ],
         ],
         'milestone_gift' => [
+            'label'        => 'Octogenarian / Nonagenarian / Centenarian',
+            'public_request' => 'Milestone Cash Gift',
+            'minimum_age'  => 80,
+            'milestone_ages' => [80, 85, 90, 95, 100],
+            'icon'         => 'fas fa-gift',
+            'accent'       => '#f472b6',
+            'required_fields' => ['milestoneAge', 'claimantName', 'claimantRelationship', 'claimantContact'],
+            'support_assessment' => false,
             'summary'      => 'Cash gift for seniors reaching milestone ages (octogenarian, nonagenarian, centenarian).',
             'benefits'     => [
                 'One-time cash gift at ages 80, 85, 90, 95, or 100+',
@@ -112,19 +177,32 @@ function getApplicationBenefitDetails(): array {
                 'Processed through OSCA milestone verification',
             ],
             'requirements' => [
-                'Applicant age must match a milestone bracket (80, 85, 90, 95, or 100+)',
-                'Must be a registered senior citizen',
-                'Claimant details required if filed by a representative',
-                'Milestone age must match birth date on record',
+                'Must have a Pasig City Senior Citizen ID',
+                'Must have at least two years actual residency in Pasig City',
+                'Must have reached an eligible milestone age: 80, 85, 90, 95, or 100',
+                'If primary birth documents are unavailable, submit any two accepted secondary age documents',
             ],
             'documents' => [
-                'Senior Citizens ID',
-                'Birth certificate or valid ID showing date of birth',
-                'Proof of address',
-                'Claimant authorization documents (if applicable)',
+                'PSA-issued or authenticated Certificate of Live Birth',
+                'Senior Citizen identification card (OSCA ID), front and back',
+                'Latest A4-size whole-body picture',
+                'Alternative documents when needed: PSA late registration, government ID, eldest child birth certificate, passport, baptismal/church record, NCIP certification, or NCMF certification',
+            ],
+            'form_documents' => [
+                ['field' => 'psa_birth_cert_file', 'label' => 'PSA Certificate of Live Birth', 'description' => 'Certificate of live birth duly issued or authenticated by the Philippine Statistics Authority.'],
+                ['field' => 'barangay_residency_file', 'label' => 'Senior Citizen OSCA ID (Front and Back)', 'description' => 'Clear front-and-back copy of the Pasig City Senior Citizen identification card.'],
+                ['field' => 'comelec_cert_file', 'label' => 'Latest A4-Size Whole-Body Picture', 'description' => 'Recent whole-body photograph in A4 portrait format.', 'image_only' => true],
             ],
         ],
         'burial' => [
+            'label'        => 'Burial Assistance',
+            'public_request' => 'Burial Assistance',
+            'minimum_age'  => 60,
+            'filing_working_days' => 30,
+            'icon'         => 'fas fa-ribbon',
+            'accent'       => '#94a3b8',
+            'required_fields' => ['dateOfDeath', 'relationshipToDeceased', 'claimantName', 'claimantContact', 'seniorIdNo', 'landbankCardNo', 'idTypePresented'],
+            'support_assessment' => false,
             'summary'      => 'Financial assistance for burial expenses of a deceased senior citizen.',
             'benefits'     => [
                 'Burial assistance for families of deceased seniors (60+)',
@@ -133,19 +211,33 @@ function getApplicationBenefitDetails(): array {
             ],
             'requirements' => [
                 'Deceased must be at least 60 years old at time of passing',
-                'Application must be filed within 30 working days from date of death',
+                'Application must be submitted within the required 30-working-day filing period',
                 'Claimant must state relationship to the deceased',
                 'Complete deceased senior and claimant information',
             ],
             'documents' => [
-                'Death certificate of the deceased senior',
-                'Senior Citizens ID or proof senior status of deceased',
-                'Valid ID of claimant',
-                'Proof of relationship to deceased',
-                'Burial contract or funeral service documents (if available)',
+                'Certified True Copy of Death Certificate with registry number (original and one photocopy)',
+                'Two valid claimant IDs, front and back, with three signatures (original and two photocopies)',
+                'Senior Citizen ID of deceased, front and back (original and two photocopies)',
+                'Landbank cash card of deceased, front and back (original and two photocopies)',
+                'Proof of relationship: marriage contract, birth certificate, or other accepted proof',
+                'Original copy of affidavit, if applicable: kinship, discrepancy, died single without a child, cohabitation, or other',
+            ],
+            'form_documents' => [
+                ['field' => 'psa_birth_cert_file', 'label' => 'Certified True Copy of Death Certificate', 'description' => 'Upload the certificate showing its Local Civil Registry number.'],
+                ['field' => 'barangay_residency_file', 'label' => 'Two Valid IDs of Claimant', 'description' => 'Upload front and back copies showing three specimen signatures.'],
+                ['field' => 'comelec_cert_file', 'label' => 'Deceased Senior Citizen ID', 'description' => 'Upload the front and back of the deceased senior citizen ID.'],
+                ['field' => 'deceased_landbank_card_file', 'label' => 'Deceased Landbank Cash Card', 'description' => 'Upload the front and back of the deceased Landbank cash card.', 'extra' => true],
             ],
         ],
         'home_visit' => [
+            'label'        => 'Home Visitation / Confirmation',
+            'public_request' => null,
+            'minimum_age'  => 60,
+            'icon'         => 'fas fa-house-user',
+            'accent'       => '#14b8a6',
+            'required_fields' => ['visitPurpose', 'livingArrangement', 'isPensioner', 'familySupport', 'personalIncome', 'healthCondition', 'withMaintenance', 'visitSummary'],
+            'support_assessment' => true,
             'summary'      => 'Home visitation and confirmation for bedridden, immobile, or hard-to-reach seniors.',
             'benefits'     => [
                 'OSCA field validation without requiring personal appearance at office',
@@ -168,6 +260,39 @@ function getApplicationBenefitDetails(): array {
     ];
 }
 
+/** Public request-name keyed definitions used by the public form and handler. */
+function getPublicBenefitDefinitions(): array {
+    $public = [];
+    foreach (getApplicationBenefitDetails() as $type => $definition) {
+        $request = $definition['public_request'] ?? null;
+        if (!$request) continue;
+        $definition['type'] = $type;
+        $public[$request] = $definition;
+    }
+    return $public;
+}
+
+function getPublicBenefitDefinition(string $request): ?array {
+    $definitions = getPublicBenefitDefinitions();
+    return $definitions[$request] ?? null;
+}
+
+function getApplicationAgeRule(string $type): array {
+    $definition = getApplicationBenefitDetails()[$type] ?? [];
+    return [
+        'minimum_age' => (int)($definition['minimum_age'] ?? 0),
+        'milestone_ages' => array_map('intval', $definition['milestone_ages'] ?? []),
+    ];
+}
+
+function isApplicationAgeEligible(string $type, int $age, ?int $claimedMilestone = null): bool {
+    $rule = getApplicationAgeRule($type);
+    if ($age < $rule['minimum_age']) return false;
+    if (!$rule['milestone_ages']) return true;
+    if ($claimedMilestone === null || !in_array($claimedMilestone, $rule['milestone_ages'], true)) return false;
+    return $claimedMilestone === 100 ? $age >= 100 : $age === $claimedMilestone;
+}
+
 function getOscaExtraColumns(): array {
     return [
         'place_of_birth', 'gender', 'civil_status', 'mothers_maiden_name',
@@ -175,9 +300,9 @@ function getOscaExtraColumns(): array {
         'health_status', 'senior_id_no', 'id_purpose', 'milestone_age',
         'claimant_name', 'claimant_relationship', 'claimant_contact',
         'deceased_last_name', 'deceased_first_name', 'deceased_middle_name',
-        'deceased_suffix', 'deceased_birth_date', 'landbank_card_no', 'applicant_name',
+        'deceased_suffix', 'deceased_birth_date', 'death_registration_date', 'landbank_card_no', 'applicant_name',
         'visit_purpose', 'living_arrangement', 'is_pensioner', 'pension_source',
-        'family_support', 'family_support_amount', 'personal_income', 'personal_income_amount',
+        'family_support', 'family_support_type', 'family_support_amount', 'personal_income', 'personal_income_amount',
         'health_condition', 'with_maintenance', 'maintenance_spec', 'visit_summary',
         'name_on_card', 'tin', 'id_type_presented', 'nationality', 'source_of_funds',
         'atm_card_no', 'control_no', 'is_permanent_income', 'income_source',
@@ -213,13 +338,14 @@ function parseOscaFormPost(array $post): array {
         'id_purpose'             => $str('idPurpose'),
         'milestone_age'          => $str('milestoneAge'),
         'claimant_name'          => $str('claimantName'),
-        'claimant_relationship'  => $str('claimantRelationship'),
+        'claimant_relationship'  => $str('claimantRelationship') ?? $str('emergencyContactRelationship'),
         'claimant_contact'       => $str('claimantContact'),
         'deceased_last_name'     => $str('deceasedLastName'),
         'deceased_first_name'    => $str('deceasedFirstName'),
         'deceased_middle_name'   => $str('deceasedMiddleName'),
         'deceased_suffix'        => $str('deceasedSuffix'),
         'deceased_birth_date'    => $str('deceasedBirthDate'),
+        'death_registration_date'=> $str('deathRegistrationDate'),
         'landbank_card_no'       => $str('landbankCardNo'),
         'applicant_name'         => $str('applicantName'),
         'visit_purpose'          => $visitPurpose,
@@ -227,6 +353,7 @@ function parseOscaFormPost(array $post): array {
         'is_pensioner'           => $bool('isPensioner'),
         'pension_source'         => $str('pensionSource'),
         'family_support'         => $bool('familySupport'),
+        'family_support_type'    => $str('familySupportType'),
         'family_support_amount'  => $float('familySupportAmount'),
         'personal_income'        => $bool('personalIncome'),
         'personal_income_amount' => $float('personalIncomeAmount'),
@@ -237,7 +364,7 @@ function parseOscaFormPost(array $post): array {
         'name_on_card'           => $str('nameOnCard'),
         'tin'                    => $str('tin'),
         'id_type_presented'      => $str('idTypePresented'),
-        'nationality'            => $str('nationality') ?: 'Filipino',
+        'nationality'            => $str('nationality'),
         'source_of_funds'        => $str('sourceOfFunds'),
         'atm_card_no'            => $str('atmCardNo'),
         'control_no'             => $str('controlNo'),

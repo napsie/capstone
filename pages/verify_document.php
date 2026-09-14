@@ -3,6 +3,7 @@ session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/application_types.php';
 require_once '../includes/barangays_list.php';
+require_once '../includes/deadline_alerts.php';
 
 // Check if user is logged in and authorized
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['department_admin', 'super_admin'])) {
@@ -10,21 +11,10 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['department_ad
     exit();
 }
 
-// Fetch stats for the queue counters
-$statsQuery = "SELECT 
-    COUNT(*) as total_queue,
-    SUM(CASE WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') = 'For Review' THEN 1 ELSE 0 END) as for_review,
-    SUM(CASE WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') = 'Verified' THEN 1 ELSE 0 END) as verified
-    FROM applications
+$totalQStmt = $conn->query("SELECT COUNT(*) FROM applications
     WHERE COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') NOT IN ('Verified', 'Approved', 'Released')
-      AND (is_archived = 0 OR is_archived IS NULL)";
-$statsStmt = $conn->prepare($statsQuery);
-$statsStmt->execute();
-$queueStats = $statsStmt->fetch(PDO::FETCH_ASSOC);
-
-$totalQCount   = $queueStats['total_queue'] ?? 0;
-$forReviewC    = $queueStats['for_review'] ?? 0;
-$verifiedC     = $queueStats['verified'] ?? 0;
+      AND (is_archived = 0 OR is_archived IS NULL)");
+$totalQCount = (int)$totalQStmt->fetchColumn();
 
 // Verification queue filters
 $queueFilters = [
@@ -73,7 +63,9 @@ $queuePage = min($queuePage, $queueTotalPages);
 $queueOffset = ($queuePage - 1) * $queuePerPage;
 
 $queueSql = "SELECT id_number as id, full_name, application_type, requested_benefit, barangay, date_submitted,
-                    status, workflow_state, home_visit_status,
+                    status, workflow_state, home_visit_status, home_visit_scheduled_at, date_of_death, death_registration_date,
+                    COALESCE((SELECT MAX(h.changed_at) FROM application_history h
+                              WHERE h.application_id = applications.id_number AND h.new_state = applications.workflow_state), date_submitted) AS workflow_changed_at,
                     COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') AS effective_state
              FROM applications
              WHERE " . implode(' AND ', $queueConditions) . "
@@ -97,8 +89,8 @@ $hasQueueFilters = $queueFilters['search'] !== ''
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SENIORLINK — Document Verification Terminal</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=4">
-    <link rel="stylesheet" href="../assets/css/application-documents.css?v=7">
+    <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=5">
+    <link rel="stylesheet" href="../assets/css/application-documents.css?v=8">
     <style>
         /* ─── Variables ─────────────────────────────────────────────────── */
         :root {
@@ -166,40 +158,6 @@ $hasQueueFilters = $queueFilters['search'] !== ''
         .header-user img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); }
         .header-user-info h3 { font-size: 0.9rem; font-weight: 700; color: var(--primary); margin: 0; }
         .header-user-info p  { font-size: 0.75rem; color: var(--gray); margin: 0; }
-
-        /* ─── Stats ──────────────────────────────────────────────────────── */
-        .stats-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 28px; }
-        .stat-card {
-            position: relative;
-            overflow: hidden;
-            background: var(--card);
-            border-radius: 16px;
-            min-height: 126px;
-            padding: 22px 24px;
-            border: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            box-shadow: 0 6px 18px rgba(15,23,42,0.05);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .stat-card::before { content: ''; position: absolute; inset: 0 0 auto; height: 4px; }
-        .stat-card:nth-child(1) { background: linear-gradient(145deg,#fff 45%,#eff6ff); border-color:#cfe0ff; }
-        .stat-card:nth-child(2) { background: linear-gradient(145deg,#fff 45%,#f5f0ff); border-color:#e1d5ff; }
-        .stat-card:nth-child(3) { background: linear-gradient(145deg,#fff 45%,#ecfdf5); border-color:#c8eedf; }
-        .stat-card:nth-child(1)::before { background:linear-gradient(90deg,#2563eb,#60a5fa); }
-        .stat-card:nth-child(2)::before { background:linear-gradient(90deg,#7c3aed,#a78bfa); }
-        .stat-card:nth-child(3)::before { background:linear-gradient(90deg,#059669,#34d399); }
-        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.07); }
-        .stat-icon { width: 54px; height: 54px; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; flex-shrink: 0; box-shadow:inset 0 0 0 1px rgba(255,255,255,.65); }
-        .stat-icon.green  { background: rgba(16,185,129,0.12); color: var(--success); }
-        .stat-icon.blue   { background: rgba(37,99,235,0.12);  color: var(--accent); }
-        .stat-icon.purple { background: rgba(139,92,246,0.12); color: var(--purple); }
-        .stat-icon.amber  { background: rgba(245,158,11,0.12); color: var(--warning); }
-        .stat-copy { min-width:0; }
-        .stat-label { margin-bottom:5px; font-size: 0.73rem; color: #64748b; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; }
-        .stat-value { font-size: 2rem; font-weight: 850; color: #0f172a; line-height: .95; }
-        .stat-meta { margin-top:7px; color:#64748b; font-size:.72rem; line-height:1.25; }
 
         /* ─── Queue Card ─────────────────────────────────────────────────── */
         .queue-card { background: var(--card); border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(15,23,42,0.06); overflow: hidden; }
@@ -292,6 +250,9 @@ $hasQueueFilters = $queueFilters['search'] !== ''
         .badge-verified { background-color: #ccfbf1; color: #0f766e; }
         .badge-approved { background-color: #dcfce7; color: #15803d; }
         .badge-released { background-color: #f3e8ff; color: #6b21a8; }
+        .badge-pending { background-color: #dcfce7; color: #166534; }
+        .badge-rejected { background-color: #fee2e2; color: #b91c1c; }
+        .badge-correction { background-color: #fef3c7; color: #92400e; }
 
         .btn {
             display: inline-flex;
@@ -480,7 +441,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
         /* Footer */
         .page-footer { text-align:center; padding:24px; font-size:0.78rem; color:var(--gray); }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=17">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=18">
     <link rel="stylesheet" href="../assets/css/metric-cards.css?v=1">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
@@ -513,34 +474,6 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                 <div class="header-user-info">
                     <h3><?php echo htmlspecialchars($_SESSION['first_name'] . ' ' . $_SESSION['last_name']); ?></h3>
                     <p><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $_SESSION['role']))); ?> · Pasig City</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Stats Strip -->
-        <div class="stats-strip">
-            <div class="stat-card">
-                <div class="stat-icon blue"><i class="fas fa-list-check"></i></div>
-                <div class="stat-copy">
-                    <div class="stat-label">Active Queue</div>
-                    <div class="stat-value"><?php echo $totalQCount; ?></div>
-                    <div class="stat-meta">Applications requiring action</div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon purple"><i class="fas fa-search"></i></div>
-                <div class="stat-copy">
-                    <div class="stat-label">For evaluation</div>
-                    <div class="stat-value"><?php echo $forReviewC; ?></div>
-                    <div class="stat-meta">Ready for department review</div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon green"><i class="fas fa-file-signature"></i></div>
-                <div class="stat-copy">
-                    <div class="stat-label">Verified (Sign-off)</div>
-                    <div class="stat-value"><?php echo $verifiedC; ?></div>
-                    <div class="stat-meta">Completed verification checks</div>
                 </div>
             </div>
         </div>
@@ -617,24 +550,32 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                             </td></tr>
                         <?php else:
                             foreach ($result as $row):
+                                $homeVisitRejected = in_array(($row['home_visit_status'] ?? ''), ['Rejected', 'Cancelled'], true);
                                 $requiresHomeVisit = ($row['application_type'] === 'pension'
                                     || ($row['requested_benefit'] ?? '') === 'Local Social Pension Assessment')
-                                    && ($row['home_visit_status'] ?? '') !== 'Completed';
+                                    && !in_array(($row['home_visit_status'] ?? ''), ['Completed', 'Rejected', 'Cancelled'], true);
                                 $state = $row['effective_state'];
-                                $displayState = $requiresHomeVisit && $state !== 'Needs Correction' ? 'Pending' : $state;
+                                $displayState = $homeVisitRejected ? 'Rejected' : ($requiresHomeVisit && $state !== 'Needs Correction' ? 'Pending' : $state);
                                 $stateBadgeClass = 'badge-received';
                                 if ($state === 'For Review') $stateBadgeClass = 'badge-review';
                                 if ($state === 'Verified') $stateBadgeClass = 'badge-verified';
                                 if ($state === 'Approved') $stateBadgeClass = 'badge-approved';
                                 if ($state === 'Released') $stateBadgeClass = 'badge-released';
+                                if ($displayState === 'Pending') $stateBadgeClass = 'badge-pending';
+                                if ($displayState === 'Rejected') $stateBadgeClass = 'badge-rejected';
+                                if ($displayState === 'Needs Correction') $stateBadgeClass = 'badge-correction';
 
                                 $typeLabel = applicationTypeLabel($row['application_type']);
+                                $deadlineAlerts = applicationDeadlineAlerts($row);
                             ?>
                             <tr class="applicant-row" data-id="<?php echo htmlspecialchars($row['id']); ?>" tabindex="0" role="button" aria-label="Open applicant review">
                                 <td>
                                     <div class="name-cell">
                                         <div class="full-name"><?php echo htmlspecialchars($row['full_name']); ?></div>
                                         <div class="app-id"><?php echo htmlspecialchars($row['id']); ?></div>
+                                        <?php if ($deadlineAlerts): ?><div class="deadline-alerts">
+                                            <?php foreach ($deadlineAlerts as $alert): ?><span class="deadline-alert deadline-alert--<?php echo htmlspecialchars($alert['level']); ?>" title="<?php echo htmlspecialchars($alert['detail']); ?>"><i class="fas fa-clock"></i><?php echo htmlspecialchars($alert['label']); ?></span><?php endforeach; ?>
+                                        </div><?php endif; ?>
                                     </div>
                                 </td>
                                 <td><?php echo htmlspecialchars($typeLabel); ?></td>
@@ -753,8 +694,8 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                         <div class="workflow-instructions" id="statusInstructions">Loading instructions…</div>
                         <label for="correctionDocuments">Documents or fields needing correction (required when returning)</label>
                         <textarea id="correctionDocuments" class="workflow-comment" maxlength="180" placeholder="Example: PSA birth certificate; contact number"></textarea>
-                        <label for="statusComment">Reason / instructions</label>
-                        <textarea id="statusComment" maxlength="280" class="workflow-comment" placeholder="Write status update details or reason for return/blurry scan here…"></textarea>
+                        <label for="statusComment">Reason / instructions (optional for rejection)</label>
+                        <textarea id="statusComment" maxlength="280" class="workflow-comment" placeholder="Add details for correction or rejection. A standard rejection reason is used when left blank."></textarea>
                         <div class="workflow-buttons">
                             <button type="button" class="btn btn-primary" id="btnOfficialForm" disabled><i class="fas fa-file-pdf"></i> Generate Official Form</button>
                             <button type="button" class="btn btn-primary" id="btnAdvanceStatus" onclick="submitStatusAction('next')">Advance Status</button>
@@ -819,11 +760,11 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                     </div>
                     <div class="export-field">
                         <label for="exportDateFrom">Date From</label>
-                        <input type="date" name="date_from" id="exportDateFrom" required>
+                        <input type="date" name="date_from" id="exportDateFrom">
                     </div>
                     <div class="export-field">
                         <label for="exportDateTo">Date To</label>
-                        <input type="date" name="date_to" id="exportDateTo" required>
+                        <input type="date" name="date_to" id="exportDateTo">
                     </div>
                 </div>
                 <div class="export-divider">
@@ -855,12 +796,12 @@ $hasQueueFilters = $queueFilters['search'] !== ''
 </div>
 
 <script src="../assets/js/sidebar-toggle.js?v=3"></script>
-<script src="../assets/js/application-documents.js?v=9"></script>
-<script src="../assets/js/application-details.js?v=13"></script>
+<script src="../assets/js/application-documents.js?v=10"></script>
+<script src="../assets/js/application-details.js?v=16"></script>
 <script src="../assets/js/application-modal-data.js?v=1"></script>
 <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 <script src="../assets/js/application-form-generator.js?v=2"></script>
-<script src="../assets/js/report-validation.js?v=2"></script>
+<script src="../assets/js/report-validation.js?v=3"></script>
 <script>
     /* ─── Greeting ──────────────────────────────────────────── */
     (function(){
@@ -1181,10 +1122,9 @@ $hasQueueFilters = $queueFilters['search'] !== ''
     async function submitStatusAction(action, confirmed = false) {
         const comment = document.getElementById('statusComment').value.trim();
 
-        if (['return', 'reject'].includes(action) && !comment) {
-            showCarelinkResult(action === 'reject'
-                ? "Please enter the reason for rejecting this application."
-                : "Please input comment remarks explaining why this application is being returned to the Barangay (e.g. Blurry Documents / Missing IDs).", false);
+        if (action === 'return' && !comment) {
+            showCarelinkResult("Please input comment remarks explaining why this application is being returned to the Barangay (e.g. Blurry Documents / Missing IDs).", false);
+            document.getElementById('statusComment').focus();
             return;
         }
 
@@ -1206,7 +1146,9 @@ $hasQueueFilters = $queueFilters['search'] !== ''
             const formData = new FormData();
             formData.append('applicationId', currentAppId);
             formData.append('action', action);
-            formData.append('comments', comment);
+            formData.append('comments', action === 'reject' && !comment
+                ? 'Application rejected by the Department Admin.'
+                : comment);
             formData.append('correctionDocuments', correctionDocuments);
             const response = await fetch('../api/update_workflow_status.php', {
                 method: 'POST',
@@ -1271,7 +1213,8 @@ $hasQueueFilters = $queueFilters['search'] !== ''
 
         const additionalDocs = [
             ['psa_birth_cert', 'PSA Birth Certificate'], ['barangay_residency', 'Barangay Residency'],
-            ['comelec_cert', 'COMELEC Certificate'], ['proof_of_life', 'Current Senior Photo / Proof of Life'],
+            ['comelec_cert', 'COMELEC Certificate'], ['deceased_landbank_card', 'Deceased Landbank Cash Card'],
+            ['proof_of_life', 'Current Senior Photo / Proof of Life'],
             ['auth_letter', 'Authorization Letter'], ['proxy_id', 'Representative Government ID'],
             ['proxy_birth_cert', 'Representative Birth Certificate'], ['home_visitation_form', 'Home Visitation Form'],
             ['landbank_enrollment_form', 'Land Bank Enrollment Form']

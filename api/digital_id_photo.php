@@ -25,7 +25,7 @@ if (!$application) {
 
 $replacement = $conn->prepare("SELECT mime_type, document_data
                                FROM application_documents
-                               WHERE application_id = ? AND document_key = 'id_image'
+                               WHERE application_id = ? AND document_key = 'id_image' AND is_current = 1
                                ORDER BY id DESC LIMIT 1");
 $replacement->execute([$application['id_number']]);
 $document = $replacement->fetch(PDO::FETCH_ASSOC);

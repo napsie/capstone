@@ -2,6 +2,7 @@
 session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/password_validation.php';
+require_once '../includes/data_normalizer.php';
 
 // Check if the user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -34,10 +35,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateProfile'])) {
     $firstName = $_POST['firstName'];
     $lastName  = $_POST['lastName'];
     $email     = $_POST['email'];
+    $phone     = normalizePhoneNumber($_POST['phone'] ?? '');
 
-    try {
-        $stmt = $conn->prepare("UPDATE users SET first_name = :first_name, last_name = :last_name, email = :email WHERE id = :id");
-        $stmt->execute(['first_name' => $firstName, 'last_name' => $lastName, 'email' => $email, 'id' => $user_id]);
+    if (!isValidPhilippineMobileNumber($phone, true)) {
+        $error = 'Phone number must contain exactly 11 digits and begin with 09.';
+    } else try {
+        $stmt = $conn->prepare("UPDATE users SET first_name = :first_name, last_name = :last_name, email = :email, phone = :phone WHERE id = :id");
+        $stmt->execute(['first_name' => $firstName, 'last_name' => $lastName, 'email' => $email, 'phone' => $phone ?: null, 'id' => $user_id]);
         $message = "Profile updated successfully!";
         $stmt = $conn->prepare("SELECT u.*, s.language, s.notifications FROM users u LEFT JOIN settings s ON u.id = s.user_id WHERE u.id = :id");
         $stmt->execute(['id' => $user_id]);
@@ -421,7 +425,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updatePassword'])) {
                     </div>
                     <div class="form-group">
                         <label for="phone">Phone (optional)</label>
-                        <input type="text" id="phone" name="phone" value="<?php echo htmlspecialchars($user['phone'] ?? ''); ?>" oninput="this.value = this.value.replace(/[^0-9]/g, '')" disabled>
+                        <input type="tel" id="phone" name="phone" maxlength="11" pattern="09[0-9]{9}" inputmode="numeric" value="<?php echo htmlspecialchars($user['phone'] ?? ''); ?>" disabled>
                     </div>
                     <div class="actions">
                         <button type="button" class="btn btn-small" id="editProfileBtn"><i class="fas fa-edit"></i> Edit Profile</button>
@@ -533,6 +537,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updatePassword'])) {
             });
         }
     });
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const selector = 'input[type="tel"],input[name*="contact" i]:not([type="hidden"]),input[id*="contact" i]:not([type="hidden"]),input[name="phone" i],input[id="phone" i],input[oninput*="contactNumber"],input[oninput*="emergencyContact"]';
+    const restrictContact = input => {
+        const identity = `${input.name || ''} ${input.id || ''} ${input.getAttribute('oninput') || ''}`.toLowerCase();
+        if (identity.includes('contactname') || identity.includes('contact-name') || input.readOnly) return;
+        input.type = 'tel';
+        input.inputMode = 'numeric';
+        input.maxLength = 11;
+        input.pattern = '09[0-9]{9}';
+        input.title = 'Enter exactly 11 digits beginning with 09.';
+        input.addEventListener('input', () => {
+            input.value = input.value.replace(/\D/g, '').slice(0, 11);
+            input.setCustomValidity(input.value && !/^09\d{9}$/.test(input.value) ? 'Enter exactly 11 digits beginning with 09.' : '');
+        });
+    };
+    document.querySelectorAll(selector).forEach(restrictContact);
+});
 </script>
 </body>
 </html>

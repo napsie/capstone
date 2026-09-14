@@ -1,7 +1,9 @@
 <?php
 session_start();
 require_once '../includes/db_connect.php';
+require_once '../includes/deadline_alerts.php';
 require_once '../includes/audit_logger.php';
+require_once '../includes/data_normalizer.php';
 
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'] ?? '', ['barangay_staff', 'department_admin'], true)) {
     header('Location: ../index.php');
@@ -61,6 +63,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $contact = trim(strip_tags((string)($_POST['contact_number'] ?? '')));
             $assignedBarangay = trim(strip_tags((string)($_POST['barangay'] ?? '')));
             if ($name === '') operationsRedirect('Personnel name is required.', false);
+            $contact = normalizePhoneNumber($contact);
+            if (!isValidPhilippineMobileNumber($contact, true)) operationsRedirect('Contact number must contain exactly 11 digits and begin with 09.', false);
 
             $stmt = $conn->prepare('INSERT INTO home_visit_personnel (full_name, position, contact_number, barangay, created_by) VALUES (?, ?, ?, ?, ?)');
             $stmt->execute([$name, $position ?: null, $contact ?: null, $assignedBarangay ?: null, $_SESSION['user_id']]);
@@ -100,8 +104,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $validDate = $date && ($errors === false || ($errors['warning_count'] === 0 && $errors['error_count'] === 0));
                 if (!$personnelId) operationsRedirect('Assign personnel to the visit.', false);
                 if (!$validDate || $date <= new DateTime('now', $tz)) operationsRedirect('Choose a future visit date and time.', false);
-                if (in_array($date->format('N'), ['6', '7'], true) || (int)$date->format('H') < 8 || (int)$date->format('H') >= 17 || !in_array($date->format('i'), ['00', '30'], true)) {
-                    operationsRedirect('Visits must be Monday-Friday, 8:00 AM-4:30 PM, in 30-minute slots.', false);
+                $hour = (int)$date->format('H');
+                $minute = $date->format('i');
+                if (in_array($date->format('N'), ['6', '7'], true) || $hour < 8 || $hour > 17 || ($hour === 17 && $minute !== '00') || !in_array($minute, ['00', '30'], true)) {
+                    operationsRedirect('Visits must be scheduled Monday-Friday from 8:00 AM to 5:00 PM, in 30-minute slots.', false);
                 }
                 if ($isDepartment) {
                     $personStmt = $conn->prepare('SELECT COUNT(*) FROM home_visit_personnel WHERE id = ? AND is_active = 1');
@@ -112,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 if ((int)$personStmt->fetchColumn() === 0) operationsRedirect('Selected personnel is unavailable.', false);
                 $schedule = $date->format('Y-m-d H:i:s');
-                $conflictStmt = $conn->prepare("SELECT COUNT(*) FROM applications WHERE home_visit_personnel_id = ? AND home_visit_scheduled_at = ? AND id_number <> ? AND COALESCE(home_visit_status, '') NOT IN ('Cancelled', 'Completed')");
+                $conflictStmt = $conn->prepare("SELECT COUNT(*) FROM applications WHERE home_visit_personnel_id = ? AND home_visit_scheduled_at = ? AND id_number <> ? AND COALESCE(home_visit_status, '') NOT IN ('Rejected', 'Cancelled', 'Completed')");
                 $conflictStmt->execute([$personnelId, $schedule, $applicationId]);
                 if ((int)$conflictStmt->fetchColumn() > 0) operationsRedirect('That personnel already has a visit at the selected time.', false);
                 $status = 'Scheduled';
@@ -131,14 +137,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $app = fetchScopedApplication($conn, $applicationId, $isDepartment, $barangay);
             if (!$app) operationsRedirect('Application not found.', false);
             $status = (string)($_POST['visit_status'] ?? '');
-            $allowed = ['Scheduled', 'In Progress', 'Completed', 'Cancelled'];
+            $allowed = ['Scheduled', 'In Progress', 'Completed', 'Rejected'];
             if (!in_array($status, $allowed, true)) operationsRedirect('Invalid visit status.', false);
             $notes = trim(strip_tags((string)($_POST['notes'] ?? '')));
             if ($status === 'Completed' && $notes === '') operationsRedirect('Completion notes are required.', false);
-            $stmt = $conn->prepare("UPDATE applications SET home_visit_status = ?, home_visit_notes = ?, home_visit_completed_at = CASE WHEN ? = 'Completed' THEN CURRENT_TIMESTAMP ELSE NULL END WHERE id_number = ?");
-            $stmt->execute([$status, $notes ?: ($app['home_visit_notes'] ?? null), $status, $applicationId]);
-            logAudit($conn, 'UPDATE_HOME_VISIT_STATUS', "{$applicationId}: home visit changed to {$status}.");
-            operationsRedirect('Home visit status updated.');
+            $eligibility = trim((string)($_POST['eligibility'] ?? ''));
+            $eligibilityReason = trim(strip_tags((string)($_POST['eligibility_reason'] ?? '')));
+            if ($status === 'Completed' && !in_array($eligibility, ['Eligible', 'Not Eligible'], true)) operationsRedirect('Select the final evaluation.', false);
+            if ($status === 'Completed' && $eligibility === 'Not Eligible' && $eligibilityReason === '') operationsRedirect('Enter the reason for a Not Eligible decision.', false);
+            if ($status === 'Rejected') {
+                $previousState = $app['workflow_state'] ?: 'Received';
+                $rejectionReason = $notes ?: 'Required home visit was rejected.';
+                $archiveActor = (string)($_SESSION['username'] ?? $_SESSION['user_id'] ?? 'Department Admin');
+
+                $conn->beginTransaction();
+                $stmt = $conn->prepare("UPDATE applications
+                    SET home_visit_status = 'Rejected', home_visit_notes = ?, home_visit_completed_at = NULL,
+                        workflow_state = 'Rejected', status = 'rejected', return_reason = ?,
+                        is_archived = 1, archived_at = CURRENT_TIMESTAMP, archived_by = ?
+                    WHERE id_number = ? AND COALESCE(is_archived, 0) = 0");
+                $stmt->execute([$rejectionReason, $rejectionReason, $archiveActor, $applicationId]);
+                if ($stmt->rowCount() !== 1) {
+                    throw new RuntimeException('The application could not be rejected and archived.');
+                }
+                if ($previousState !== 'Rejected') {
+                    $history = $conn->prepare('INSERT INTO application_history (application_id, previous_state, new_state, changed_by, comments) VALUES (?, ?, ?, ?, ?)');
+                    $history->execute([$applicationId, $previousState, 'Rejected', $archiveActor, $rejectionReason]);
+                }
+                logAudit($conn, 'ARCHIVE_REJECTED_APPLICATION', "{$applicationId}: rejected after home visit and moved to archive.");
+                $conn->commit();
+            } else {
+                $livingArrangement = trim(strip_tags((string)($_POST['living_arrangement'] ?? '')));
+                $isPensioner = ($_POST['is_pensioner'] ?? '') === '' ? null : (int)$_POST['is_pensioner'];
+                $pensionSource = trim(strip_tags((string)($_POST['pension_source'] ?? '')));
+                $pensionAmount = ($_POST['pension_amount'] ?? '') === '' ? null : max(0, (float)$_POST['pension_amount']);
+                $familySupport = ($_POST['family_support'] ?? '') === '' ? null : (int)$_POST['family_support'];
+                $familySupportAmount = ($_POST['family_support_amount'] ?? '') === '' ? null : max(0, (float)$_POST['family_support_amount']);
+                $personalIncome = ($_POST['personal_income'] ?? '') === '' ? null : (int)$_POST['personal_income'];
+                $personalIncomeAmount = ($_POST['personal_income_amount'] ?? '') === '' ? null : max(0, (float)$_POST['personal_income_amount']);
+                $healthCondition = trim(strip_tags((string)($_POST['health_condition'] ?? '')));
+                $withMaintenance = ($_POST['with_maintenance'] ?? '') === '' ? null : (int)$_POST['with_maintenance'];
+                $maintenanceSpec = trim(strip_tags((string)($_POST['maintenance_spec'] ?? '')));
+                $confirmationName = trim(strip_tags((string)($_POST['confirmation_name'] ?? '')));
+                $confirmationContact = trim(strip_tags((string)($_POST['confirmation_contact'] ?? '')));
+                $stmt = $conn->prepare("UPDATE applications SET home_visit_status = ?, home_visit_notes = ?, home_visit_completed_at = CASE WHEN ? = 'Completed' THEN CURRENT_TIMESTAMP ELSE NULL END,
+                    home_visit_eligibility = CASE WHEN ? = 'Completed' THEN ? ELSE home_visit_eligibility END,
+                    home_visit_eligibility_reason = CASE WHEN ? = 'Completed' THEN ? ELSE home_visit_eligibility_reason END,
+                    visit_purpose = 'Local Pension', living_arrangement = ?, is_pensioner = ?, pension_source = ?, pension_amount = ?,
+                    family_support = ?, family_support_amount = ?, personal_income = ?, personal_income_amount = ?, health_condition = ?,
+                    with_maintenance = ?, maintenance_spec = ?, visit_summary = ?, claimant_name = ?, claimant_contact = ? WHERE id_number = ?");
+                $stmt->execute([$status, $notes ?: ($app['home_visit_notes'] ?? null), $status,
+                    $status, $eligibility ?: null, $status, $eligibilityReason ?: null,
+                    $livingArrangement ?: null, $isPensioner, $pensionSource ?: null, $pensionAmount,
+                    $familySupport, $familySupportAmount, $personalIncome, $personalIncomeAmount, $healthCondition ?: null,
+                    $withMaintenance, $maintenanceSpec ?: null, $notes ?: null, $confirmationName ?: null, $confirmationContact ?: null, $applicationId]);
+                logAudit($conn, 'UPDATE_HOME_VISIT_STATUS', "{$applicationId}: home visit changed to {$status}.");
+            }
+            operationsRedirect($status === 'Rejected'
+                ? 'Application rejected and moved to the barangay and department archives.'
+                : 'Home visit status updated.');
         }
 
     } catch (Throwable $e) {
@@ -157,7 +214,7 @@ $activePersonnel = array_values(array_filter($personnel, static function ($p) us
         && ($isDepartment || empty($p['barangay']) || $p['barangay'] === $barangay);
 }));
 
-$visitSql = "SELECT a.id_number, a.full_name, a.barangay, a.contact_number, a.workflow_state,
+$visitSql = "SELECT a.id_number, a.full_name, a.barangay, a.contact_number, a.workflow_state, a.application_type, a.date_submitted,
                     a.home_visit_eligibility, a.home_visit_eligibility_reason, a.home_visit_scheduled_at,
                     a.home_visit_status, a.home_visit_notes, a.home_visit_personnel_id,
                     p.full_name personnel_name
@@ -188,7 +245,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
     <title>SENIORLINK - Field Operations</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="<?= htmlspecialchars($sidebarCss) ?>?v=4">
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=18">
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
     <script src="../assets/js/table-pagination.js?v=1" defer></script>
     <style>
@@ -225,7 +282,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
         .badge { display:inline-flex; padding:4px 8px; border-radius:999px; font-size:.68rem; font-weight:800; background:#e2e8f0; color:#334155; }
         .badge.eligible,.badge.completed,.badge.complete,.badge.received { background:#dcfce7; color:#166534; }
         .badge.scheduled,.badge.released { background:#dbeafe; color:#1d4ed8; }
-        .badge.incomplete,.badge.cancelled,.badge.not-eligible { background:#fee2e2; color:#991b1b; }
+        .badge.incomplete,.badge.cancelled,.badge.rejected,.badge.not-eligible { background:#fee2e2; color:#991b1b; }
         .muted { color:var(--muted); font-size:.78rem; }
         .sr-only { position:absolute!important; width:1px!important; height:1px!important; padding:0!important; margin:-1px!important; overflow:hidden!important; clip:rect(0,0,0,0)!important; white-space:nowrap!important; border:0!important; }
         .notice { display:flex; align-items:center; gap:10px; }
@@ -284,15 +341,18 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
                         <tbody data-paginate="10" data-pagination-label="Home visit pages">
                         <?php if (!$visits): ?><tr><td colspan="<?= $isDepartment ? 7 : 6 ?>">No local pension applications found.</td></tr><?php endif; ?>
                         <?php foreach ($visits as $visit): ?>
+                            <?php $visitDeadlineAlerts = applicationDeadlineAlerts($visit); ?>
                             <tr>
                                 <td><strong><?= htmlspecialchars($visit['full_name']) ?></strong><br><span class="muted"><?= htmlspecialchars($visit['id_number']) ?></span></td>
                                 <td><?= htmlspecialchars($visit['barangay']) ?></td>
                                 <td><span class="badge <?= strtolower(str_replace(' ', '-', $visit['home_visit_eligibility'] ?? 'pending')) ?>"><?= htmlspecialchars($visit['home_visit_eligibility'] ?: 'Pending') ?></span><br><span class="muted"><?= htmlspecialchars($visit['home_visit_eligibility_reason'] ?? '') ?></span></td>
-                                <td><?= $visit['home_visit_scheduled_at'] ? htmlspecialchars(date('M j, Y g:i A', strtotime($visit['home_visit_scheduled_at']))) : '-' ?></td>
+                                <td><?= $visit['home_visit_scheduled_at'] ? htmlspecialchars(date('M j, Y g:i A', strtotime($visit['home_visit_scheduled_at']))) : '-' ?>
+                                    <?php if ($visitDeadlineAlerts): ?><div class="deadline-alerts"><?php foreach ($visitDeadlineAlerts as $alert): if ($alert['type'] !== 'home_visit') continue; ?><span class="deadline-alert deadline-alert--<?= htmlspecialchars($alert['level']) ?>" title="<?= htmlspecialchars($alert['detail']) ?>"><i class="fas fa-clock"></i><?= htmlspecialchars($alert['label']) ?></span><?php endforeach; ?></div><?php endif; ?>
+                                </td>
                                 <td><?= htmlspecialchars($visit['personnel_name'] ?? '-') ?></td>
-                                <?php $visitStatus = $visit['home_visit_status'] ?: 'Waiting for Home Visit'; ?>
+                                <?php $visitStatus = ($visit['home_visit_status'] ?? '') === 'Cancelled' ? 'Rejected' : ($visit['home_visit_status'] ?: 'Waiting for Home Visit'); ?>
                                 <td><span class="badge <?= strtolower(str_replace(' ', '-', $visitStatus)) ?>"><?= htmlspecialchars($visitStatus) ?></span></td>
-                                <?php if ($isDepartment): ?><td><button class="btn btn-primary" type="button" onclick='openVisit(<?= json_encode($visit, JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>Assign / Schedule</button></td><?php endif; ?>
+                                <?php if ($isDepartment): ?><td><button class="btn btn-primary" type="button" onclick='openVisit(<?= json_encode($visit, JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>Assign / Schedule</button> <a class="btn btn-muted" href="../api/export_application_pdf.php?id=<?= rawurlencode($visit['id_number']) ?>&amp;form=f8" target="_blank" rel="noopener"><i class="fas fa-download"></i> Download F8</a></td><?php endif; ?>
                             </tr>
                         <?php endforeach; ?>
                         </tbody>
@@ -310,7 +370,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
                         <input type="hidden" name="application_id" id="visitApplicationId">
                         <div class="field full"><span class="muted"><i class="fas fa-circle-info"></i> This required home visit is privately scheduled by the Department Admin. Do not disclose the date in advance.</span></div>
                         <div class="field visit-assignment"><label>Assigned Personnel</label><select name="personnel_id" id="visitPersonnel"><option value="">Select personnel</option><?php foreach ($activePersonnel as $p): ?><option value="<?= (int)$p['id'] ?>"><?= htmlspecialchars($p['full_name'] . (!empty($p['position']) ? ' - ' . $p['position'] : '')) ?></option><?php endforeach; ?></select></div>
-                        <div class="field visit-assignment"><label>Schedule</label><input type="datetime-local" name="scheduled_at" id="visitSchedule" step="1800" onclick="if (this.showPicker && !this.disabled) this.showPicker()"></div>
+                        <div class="field visit-assignment"><label>Schedule (Mon-Fri, 8:00 AM-5:00 PM)</label><input type="datetime-local" name="scheduled_at" id="visitSchedule" step="1800" title="Choose Monday-Friday from 8:00 AM to 5:00 PM." onclick="if (this.showPicker && !this.disabled) this.showPicker()"></div>
                         <div class="field"><label>Internal scheduling note (optional)</label><input name="reason" id="visitReason" maxlength="255" placeholder="Internal reason or assignment note"></div>
                         <div class="field full"><label>Assessment / Visit Notes</label><textarea name="notes" id="visitNotes" placeholder="Assessment notes, address instructions, or visit result"></textarea></div>
                         <div class="full"><button class="btn btn-primary" type="submit"><i class="fas fa-save"></i> Save Assessment</button></div>
@@ -320,8 +380,23 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
                         <input type="hidden" name="action" value="update_visit_status">
                         <input type="hidden" name="application_id" id="statusApplicationId">
-                        <div class="field"><label>Visit Status</label><select name="visit_status" required><option>Scheduled</option><option>In Progress</option><option>Completed</option><option>Cancelled</option></select></div>
-                        <div class="field" style="grid-column:span 2;"><label>Status / Completion Notes</label><input name="notes" placeholder="Required when completing a visit"></div>
+                        <div class="field"><label>Visit Status</label><select name="visit_status" required><option>Scheduled</option><option>In Progress</option><option>Completed</option><option>Rejected</option></select></div>
+                        <div class="field"><label>Living Arrangement</label><select name="living_arrangement"><option value="">Select</option><option>Owned</option><option>Living Alone</option><option>Living with Relatives</option><option>Rent</option><option>Others</option></select></div>
+                        <div class="field"><label>Pensioner?</label><select name="is_pensioner"><option value="">Select</option><option value="1">Yes</option><option value="0">No</option></select></div>
+                        <div class="field"><label>Pension Source</label><input name="pension_source"></div>
+                        <div class="field"><label>Pension Amount</label><input type="number" min="0" step="0.01" name="pension_amount"></div>
+                        <div class="field"><label>Regular Family Support?</label><select name="family_support"><option value="">Select</option><option value="1">Yes</option><option value="0">No</option></select></div>
+                        <div class="field"><label>Family Support Amount</label><input type="number" min="0" step="0.01" name="family_support_amount"></div>
+                        <div class="field"><label>Personal Income?</label><select name="personal_income"><option value="">Select</option><option value="1">Yes</option><option value="0">No</option></select></div>
+                        <div class="field"><label>Personal Income Amount</label><input type="number" min="0" step="0.01" name="personal_income_amount"></div>
+                        <div class="field full"><label>Condition / Illness</label><input name="health_condition"></div>
+                        <div class="field"><label>With Maintenance?</label><select name="with_maintenance"><option value="">Select</option><option value="1">Yes</option><option value="0">No</option></select></div>
+                        <div class="field"><label>Maintenance Details</label><input name="maintenance_spec"></div>
+                        <div class="field"><label>Confirmation Made With</label><input name="confirmation_name"></div>
+                        <div class="field"><label>Confirmation Contact No.</label><input type="tel" name="confirmation_contact" maxlength="11" pattern="09[0-9]{9}"></div>
+                        <div class="field"><label>Final Evaluation</label><select name="eligibility"><option value="">Select</option><option>Eligible</option><option>Not Eligible</option></select></div>
+                        <div class="field"><label>Reason for Decision</label><input name="eligibility_reason"></div>
+                        <div class="field full"><label>Visit Summary / Completion Notes</label><textarea name="notes" placeholder="Required when completing a visit"></textarea></div>
                         <div class="full"><button class="btn btn-success" type="submit"><i class="fas fa-check"></i> Update Status</button></div>
                     </form>
                 </div>
@@ -337,7 +412,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
                 <form method="post" class="form-grid"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>"><input type="hidden" name="action" value="add_personnel">
                     <div class="field"><label>Full Name</label><input name="full_name" maxlength="150" required></div>
                     <div class="field"><label>Position</label><input name="position" maxlength="100" placeholder="Social Worker"></div>
-                    <div class="field"><label>Contact Number</label><input name="contact_number" maxlength="30"></div>
+                    <div class="field"><label>Contact Number</label><input type="tel" name="contact_number" maxlength="11" pattern="09[0-9]{9}" inputmode="numeric" placeholder="09XXXXXXXXX" title="Enter an 11-digit Philippine mobile number beginning with 09."></div>
                     <div class="field"><label>Barangay Assignment (optional)</label><input name="barangay" maxlength="100" placeholder="Leave blank for city-wide"></div>
                     <div class="full"><button class="btn btn-primary" type="submit"><i class="fas fa-user-plus"></i> Add Personnel</button></div>
                 </form>
@@ -403,7 +478,44 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
     const visitPersonnel = document.getElementById('visitPersonnel');
     const visitSchedule = document.getElementById('visitSchedule');
     if (visitPersonnel) visitPersonnel.required = true;
-    if (visitSchedule) visitSchedule.required = true;
+    if (visitSchedule) {
+        visitSchedule.required = true;
+        const validateVisitSchedule = () => {
+            visitSchedule.setCustomValidity('');
+            if (!visitSchedule.value) return;
+            const selected = new Date(visitSchedule.value);
+            const day = selected.getDay();
+            const hour = selected.getHours();
+            const minute = selected.getMinutes();
+            const validSlot = day >= 1 && day <= 5
+                && hour >= 8 && hour <= 17
+                && !(hour === 17 && minute !== 0)
+                && (minute === 0 || minute === 30);
+            if (!validSlot) visitSchedule.setCustomValidity('Choose Monday-Friday from 8:00 AM to 5:00 PM, in 30-minute slots.');
+        };
+        visitSchedule.addEventListener('input', validateVisitSchedule);
+        visitSchedule.addEventListener('change', validateVisitSchedule);
+        document.getElementById('visitForm')?.addEventListener('submit', validateVisitSchedule);
+    }
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const selector = 'input[type="tel"],input[name*="contact" i]:not([type="hidden"]),input[id*="contact" i]:not([type="hidden"]),input[name="phone" i],input[id="phone" i],input[oninput*="contactNumber"],input[oninput*="emergencyContact"]';
+    const restrictContact = input => {
+        const identity = `${input.name || ''} ${input.id || ''} ${input.getAttribute('oninput') || ''}`.toLowerCase();
+        if (identity.includes('contactname') || identity.includes('contact-name') || input.readOnly) return;
+        input.type = 'tel';
+        input.inputMode = 'numeric';
+        input.maxLength = 11;
+        input.pattern = '09[0-9]{9}';
+        input.title = 'Enter exactly 11 digits beginning with 09.';
+        input.addEventListener('input', () => {
+            input.value = input.value.replace(/\D/g, '').slice(0, 11);
+            input.setCustomValidity(input.value && !/^09\d{9}$/.test(input.value) ? 'Enter exactly 11 digits beginning with 09.' : '');
+        });
+    };
+    document.querySelectorAll(selector).forEach(restrictContact);
+});
 </script>
 </body>
 </html>

@@ -41,6 +41,7 @@ CREATE TABLE `users` (
   `first_name`         varchar(100) NOT NULL,
   `last_name`          varchar(100) NOT NULL,
   `email`              varchar(100) NOT NULL,
+  `phone`              varchar(20)  DEFAULT NULL,
   `barangay`           varchar(100) DEFAULT NULL,
   `created_at`         timestamp    NOT NULL DEFAULT current_timestamp(),
   `profile_picture`    varchar(255) DEFAULT 'default.jpg',
@@ -51,7 +52,8 @@ CREATE TABLE `users` (
   `archived_by`        varchar(100) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`),
-  UNIQUE KEY `email`    (`email`)
+  UNIQUE KEY `email`    (`email`),
+  UNIQUE KEY `phone`    (`phone`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ============================================================
@@ -158,6 +160,7 @@ CREATE TABLE `applications` (
   `deceased_middle_name`       varchar(255) DEFAULT NULL,
   `deceased_suffix`            varchar(50)  DEFAULT NULL,
   `deceased_birth_date`        date         DEFAULT NULL,
+  `death_registration_date`    date         DEFAULT NULL,
   `landbank_card_no`           varchar(50)  DEFAULT NULL,
   `applicant_name`             varchar(255) DEFAULT NULL,
   `visit_purpose`              varchar(255) DEFAULT NULL,
@@ -165,6 +168,7 @@ CREATE TABLE `applications` (
   `is_pensioner`               tinyint(1)   DEFAULT NULL,
   `pension_source`             varchar(255) DEFAULT NULL,
   `family_support`             tinyint(1)   DEFAULT NULL,
+  `family_support_type`        varchar(255) DEFAULT NULL,
   `family_support_amount`      decimal(10,2) DEFAULT NULL,
   `personal_income`            tinyint(1)   DEFAULT NULL,
   `personal_income_amount`     decimal(10,2) DEFAULT NULL,
@@ -188,6 +192,7 @@ CREATE TABLE `applications` (
   `psa_birth_cert`             varchar(255) DEFAULT NULL,
   `barangay_residency`         varchar(255) DEFAULT NULL,
   `comelec_cert`               varchar(255) DEFAULT NULL,
+  `deceased_landbank_card`     varchar(255) DEFAULT NULL,
   `proof_of_life`              varchar(255) DEFAULT NULL,
   `auth_letter`                varchar(255) DEFAULT NULL,
   `proxy_id`                   varchar(255) DEFAULT NULL,

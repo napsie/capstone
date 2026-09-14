@@ -1,6 +1,8 @@
 <?php
 $current_page = basename($_SERVER['PHP_SELF']);
 ?>
+<!-- Loaded here so mobile-only overrides follow each page's inline styles. -->
+<link rel="stylesheet" href="../assets/css/department-mobile.css?v=1">
 <div class="sidebar system-sidebar">
     <div class="sidebar-header">
         <div class="logo">

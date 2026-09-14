@@ -8,6 +8,12 @@
     box-shadow: 0 8px 24px rgba(15, 23, 42, .05);
 }
 
+.application-document__version { display:block; margin-top:4px; color:#64748b; font-size:.66rem; line-height:1.35; }
+.application-document__history { margin:0 12px 10px; padding:8px 10px; border:1px solid #dbe4ef; border-radius:8px; background:#f8fafc; font-size:.72rem; }
+.application-document__history summary { color:#1d4ed8; font-weight:750; cursor:pointer; }
+.application-document__history a { display:block; margin-top:7px; color:#334155; text-decoration:none; }
+.application-document__history a:hover { color:#1d4ed8; text-decoration:underline; }
+
 .application-documents__header {
     display: flex;
     align-items: flex-start;

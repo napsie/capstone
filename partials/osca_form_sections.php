@@ -12,8 +12,8 @@ $id = static fn(string $name): string => $prefix . $name;
             <input type="text" id="<?php echo $id('placeOfBirth'); ?>" name="placeOfBirth">
         </div>
         <div class="form-group">
-            <label for="<?php echo $id('nationality'); ?>">Nationality</label>
-            <input type="text" id="<?php echo $id('nationality'); ?>" name="nationality">
+            <label for="<?php echo $id('mothersMaidenName'); ?>">Mother's Maiden Name</label>
+            <input type="text" id="<?php echo $id('mothersMaidenName'); ?>" name="mothersMaidenName">
         </div>
     </div>
     <div class="form-row">
@@ -47,7 +47,7 @@ $id = static fn(string $name): string => $prefix . $name;
         <div class="form-group"><label for="<?php echo $id('controlNo'); ?>">Control Number</label><input type="text" id="<?php echo $id('controlNo'); ?>" name="controlNo"></div>
     </div>
     <div class="form-row">
-        <div class="form-group"><label for="<?php echo $id('idTypePresented'); ?>">ID Type Presented</label><input type="text" id="<?php echo $id('idTypePresented'); ?>" name="idTypePresented"></div>
+        <div class="form-group"><label for="<?php echo $id('idTypePresented'); ?>">ID Presented</label><input type="text" id="<?php echo $id('idTypePresented'); ?>" name="idTypePresented"></div>
         <div class="form-group"><label for="<?php echo $id('tin'); ?>">TIN</label><input type="text" id="<?php echo $id('tin'); ?>" name="tin"></div>
     </div>
     <div class="form-group"><label for="<?php echo $id('healthStatus'); ?>">Health Status</label><textarea id="<?php echo $id('healthStatus'); ?>" name="healthStatus" rows="2"></textarea></div>
@@ -57,37 +57,43 @@ $id = static fn(string $name): string => $prefix . $name;
     <h3><i class="fas fa-building-columns"></i> Land Bank Enrollment</h3>
     <div class="form-row">
         <div class="form-group"><label for="<?php echo $id('nameOnCard'); ?>">Name on Card</label><input type="text" id="<?php echo $id('nameOnCard'); ?>" name="nameOnCard"></div>
-        <div class="form-group"><label for="<?php echo $id('mothersMaidenName'); ?>">Mother's Maiden Name</label><input type="text" id="<?php echo $id('mothersMaidenName'); ?>" name="mothersMaidenName"></div>
+        <div class="form-group"><label for="<?php echo $id('mothersMaidenName'); ?>-bank">Mother's Maiden Name</label><input type="text" id="<?php echo $id('mothersMaidenName'); ?>-bank" name="mothersMaidenName" data-populate-field="mothersMaidenName"></div>
     </div>
     <div class="form-row">
         <div class="form-group"><label for="<?php echo $id('tin'); ?>-bank">TIN</label><input type="text" id="<?php echo $id('tin'); ?>-bank" name="tin" data-populate-field="tin"></div>
-        <div class="form-group"><label for="<?php echo $id('idTypePresented'); ?>-bank">ID Type Presented</label><input type="text" id="<?php echo $id('idTypePresented'); ?>-bank" name="idTypePresented" data-populate-field="idTypePresented"></div>
+        <div class="form-group"><label for="<?php echo $id('idTypePresented'); ?>-bank">ID Presented</label><select id="<?php echo $id('idTypePresented'); ?>-bank" name="idTypePresented" data-populate-field="idTypePresented"><option value="">Select ID</option><option>OSCA / Senior Citizen ID</option><option>PhilSys ID</option><option>Passport</option><option>Driver’s License</option><option>Other Government ID</option></select></div>
     </div>
     <div class="form-row">
         <div class="form-group"><label for="<?php echo $id('landbankCardNo'); ?>">Cash Card Number</label><input type="text" id="<?php echo $id('landbankCardNo'); ?>" name="landbankCardNo"></div>
         <div class="form-group"><label for="<?php echo $id('atmCardNo'); ?>">ATM / Temporary Stub No.</label><input type="text" id="<?php echo $id('atmCardNo'); ?>" name="atmCardNo"></div>
     </div>
-    <div class="form-group"><label for="<?php echo $id('sourceOfFunds'); ?>">Source of Funds</label><input type="text" id="<?php echo $id('sourceOfFunds'); ?>" name="sourceOfFunds"></div>
+    <div class="form-row">
+        <div class="form-group"><label for="<?php echo $id('nationality'); ?>">Nationality</label><select id="<?php echo $id('nationality'); ?>" name="nationality"><option value="">Select nationality</option><option>Filipino</option><option>Dual Citizen</option><option>Foreign National</option></select></div>
+        <div class="form-group"><label for="<?php echo $id('sourceOfFunds'); ?>">Source of Funds</label><select id="<?php echo $id('sourceOfFunds'); ?>" name="sourceOfFunds"><option value="">Select source</option><option>Senior Pension</option><option>Government Assistance</option><option>Family Support</option><option>Employment / Business Income</option><option>Savings</option><option>Other</option></select></div>
+    </div>
 </div>
 
 <div id="<?php echo $id('pension-extra-fields'); ?>" class="form-section osca-type-fields" style="display:none;">
-    <h3><i class="fas fa-coins"></i> Pension and Household Assessment</h3>
+    <h3><i class="fas fa-coins"></i> Local Senior Pension — Economic Status</h3>
+    <div class="form-row">
+        <div class="form-group"><label for="<?php echo $id('controlNo'); ?>-pension">Control Number</label><input type="text" id="<?php echo $id('controlNo'); ?>-pension" name="controlNo" data-populate-field="controlNo"></div>
+        <div class="form-group"><label for="<?php echo $id('atmCardNo'); ?>-pension">ATM / Temporary Cash Card Stub No.</label><input type="text" id="<?php echo $id('atmCardNo'); ?>-pension" name="atmCardNo" data-populate-field="atmCardNo"></div>
+    </div>
     <div class="form-row">
         <div class="form-group"><label for="<?php echo $id('isPensioner'); ?>">Currently a Pensioner?</label><select id="<?php echo $id('isPensioner'); ?>" name="isPensioner"><option value="">Select</option><option value="1">Yes</option><option value="0">No</option></select></div>
         <div class="form-group"><label for="<?php echo $id('pensionSource'); ?>">Pension Source</label><input type="text" id="<?php echo $id('pensionSource'); ?>" name="pensionSource"></div>
+        <div class="form-group"><label for="<?php echo $id('pensionAmount'); ?>">Monthly Pension Amount</label><input type="number" min="0" step="0.01" id="<?php echo $id('pensionAmount'); ?>" name="pensionAmount"></div>
     </div>
     <div class="form-row">
         <div class="form-group"><label for="<?php echo $id('isPermanentIncome'); ?>">Permanent Income?</label><select id="<?php echo $id('isPermanentIncome'); ?>" name="isPermanentIncome"><option value="">Select</option><option value="1">Yes</option><option value="0">No</option></select></div>
         <div class="form-group"><label for="<?php echo $id('incomeSource'); ?>">Income Source</label><input type="text" id="<?php echo $id('incomeSource'); ?>" name="incomeSource"></div>
     </div>
     <div class="form-row">
-        <div class="form-group"><label for="<?php echo $id('personalIncome'); ?>">Personal Income?</label><select id="<?php echo $id('personalIncome'); ?>" name="personalIncome"><option value="">Select</option><option value="1">Yes</option><option value="0">No</option></select></div>
-        <div class="form-group"><label for="<?php echo $id('personalIncomeAmount'); ?>">Personal Income Amount</label><input type="number" min="0" step="0.01" id="<?php echo $id('personalIncomeAmount'); ?>" name="personalIncomeAmount"></div>
-    </div>
-    <div class="form-row">
         <div class="form-group"><label for="<?php echo $id('familySupport'); ?>">Family Support?</label><select id="<?php echo $id('familySupport'); ?>" name="familySupport"><option value="">Select</option><option value="1">Yes</option><option value="0">No</option></select></div>
-        <div class="form-group"><label for="<?php echo $id('familySupportAmount'); ?>">Family Support Amount</label><input type="number" min="0" step="0.01" id="<?php echo $id('familySupportAmount'); ?>" name="familySupportAmount"></div>
+        <div class="form-group"><label for="<?php echo $id('familySupportType'); ?>">Type of Support</label><input type="text" id="<?php echo $id('familySupportType'); ?>" name="familySupportType"></div>
+        <div class="form-group"><label for="<?php echo $id('familySupportAmount'); ?>">Cash Amount</label><input type="number" min="0" step="0.01" id="<?php echo $id('familySupportAmount'); ?>" name="familySupportAmount"></div>
     </div>
+    <div class="form-group"><label for="<?php echo $id('healthCondition'); ?>-pension">Condition / Illness</label><input type="text" id="<?php echo $id('healthCondition'); ?>-pension" name="healthCondition" data-populate-field="healthCondition"></div>
     <div class="form-row">
         <div class="form-group"><label for="<?php echo $id('ownsHouse'); ?>">Owns House?</label><select id="<?php echo $id('ownsHouse'); ?>" name="ownsHouse"><option value="">Select</option><option value="1">Yes</option><option value="0">No</option></select></div>
         <div class="form-group"><label for="<?php echo $id('isRenter'); ?>">Renter?</label><select id="<?php echo $id('isRenter'); ?>" name="isRenter"><option value="">Select</option><option value="1">Yes</option><option value="0">No</option></select></div>
@@ -97,7 +103,7 @@ $id = static fn(string $name): string => $prefix . $name;
 <div id="<?php echo $id('milestone-fields'); ?>" class="form-section osca-type-fields" style="display:none;">
     <h3><i class="fas fa-cake-candles"></i> Milestone Gift Claim</h3>
     <div class="form-row">
-        <div class="form-group"><label for="<?php echo $id('milestoneAge'); ?>">Milestone Age</label><select id="<?php echo $id('milestoneAge'); ?>" name="milestoneAge"><option value="">Select milestone</option><option value="80">80 years old</option><option value="85">85 years old</option><option value="90">90 years old</option><option value="95">95 years old</option><option value="100">100+ years old</option></select></div>
+        <div class="form-group"><label for="<?php echo $id('milestoneAge'); ?>">Milestone Age (Automatic)</label><select id="<?php echo $id('milestoneAge'); ?>" name="milestoneAge"><option value="">Calculated from birth date</option><option value="80">80 years old</option><option value="85">85 years old</option><option value="90">90 years old</option><option value="95">95 years old</option><option value="100">100+ years old</option></select></div>
         <div class="form-group"><label for="<?php echo $id('applicantName'); ?>">Applicant Name</label><input type="text" id="<?php echo $id('applicantName'); ?>" name="applicantName"></div>
     </div>
     <div class="form-row">
@@ -119,12 +125,20 @@ $id = static fn(string $name): string => $prefix . $name;
     </div>
     <div class="form-row">
         <div class="form-group"><label for="<?php echo $id('deceasedBirthDate'); ?>">Deceased Birth Date</label><input type="date" id="<?php echo $id('deceasedBirthDate'); ?>" name="deceasedBirthDate"></div>
-        <div class="form-group"><label for="<?php echo $id('applicantName'); ?>-burial">Applicant / Claimant Name</label><input type="text" id="<?php echo $id('applicantName'); ?>-burial" name="applicantName" data-populate-field="applicantName"></div>
     </div>
     <div class="form-row">
-        <div class="form-group"><label for="<?php echo $id('claimantName'); ?>-burial">Claimant Name</label><input type="text" id="<?php echo $id('claimantName'); ?>-burial" name="claimantName" data-populate-field="claimantName"></div>
+        <div class="form-group"><label for="<?php echo $id('seniorIdNo'); ?>-burial">Deceased Senior ID No.</label><input type="text" id="<?php echo $id('seniorIdNo'); ?>-burial" name="seniorIdNo" data-populate-field="seniorIdNo"></div>
+        <div class="form-group"><label for="<?php echo $id('landbankCardNo'); ?>-burial">Landbank Cash Card No.</label><input type="text" id="<?php echo $id('landbankCardNo'); ?>-burial" name="landbankCardNo" data-populate-field="landbankCardNo"></div>
+    </div>
+    <div class="form-row">
+        <div class="form-group"><label for="<?php echo $id('applicantName'); ?>-burial">Applicant / Claimant Name</label><input type="text" id="<?php echo $id('applicantName'); ?>-burial" name="applicantName" data-populate-field="applicantName"></div>
         <div class="form-group"><label for="<?php echo $id('claimantContact'); ?>-burial">Claimant Contact</label><input type="text" id="<?php echo $id('claimantContact'); ?>-burial" name="claimantContact" data-populate-field="claimantContact"></div>
     </div>
+    <div class="form-row">
+        <div class="form-group"><label for="<?php echo $id('idTypePresented'); ?>-burial">Proof of Relationship</label><select id="<?php echo $id('idTypePresented'); ?>-burial" name="idTypePresented" data-populate-field="idTypePresented"><option value="">Select proof</option><option>Marriage Contract</option><option>Birth Certificate</option><option>Other</option></select></div>
+        <div class="form-group"><label for="<?php echo $id('controlNo'); ?>-burial">Affidavit Type</label><select id="<?php echo $id('controlNo'); ?>-burial" name="controlNo" data-populate-field="controlNo"><option value="">Not applicable</option><option>Kinship</option><option>Discrepancy</option><option>Died single without a child</option><option>Cohabitation</option><option>Other</option></select></div>
+    </div>
+    <div class="form-group"><label for="<?php echo $id('visitSummary'); ?>-burial">Remarks / Notes</label><textarea id="<?php echo $id('visitSummary'); ?>-burial" name="visitSummary" data-populate-field="visitSummary" rows="3"></textarea></div>
 </div>
 
 <div id="<?php echo $id('homevisit-fields'); ?>" class="form-section osca-type-fields" style="display:none;">
@@ -133,6 +147,17 @@ $id = static fn(string $name): string => $prefix . $name;
     <div class="form-row">
         <div class="form-group"><label for="<?php echo $id('livingArrangement'); ?>">Living Arrangement</label><input type="text" id="<?php echo $id('livingArrangement'); ?>" name="livingArrangement"></div>
         <div class="form-group"><label for="<?php echo $id('healthCondition'); ?>">Health Condition</label><input type="text" id="<?php echo $id('healthCondition'); ?>" name="healthCondition"></div>
+    </div>
+    <div class="form-row">
+        <div class="form-group"><label for="<?php echo $id('isPensioner'); ?>-visit">Pensioner?</label><select id="<?php echo $id('isPensioner'); ?>-visit" name="isPensioner" data-populate-field="isPensioner"><option value="">Select</option><option value="1">Yes</option><option value="0">No</option></select></div>
+        <div class="form-group"><label for="<?php echo $id('pensionSource'); ?>-visit">Pension Source</label><input id="<?php echo $id('pensionSource'); ?>-visit" name="pensionSource" data-populate-field="pensionSource"></div>
+        <div class="form-group"><label for="<?php echo $id('pensionAmount'); ?>-visit">Pension Amount</label><input type="number" min="0" step="0.01" id="<?php echo $id('pensionAmount'); ?>-visit" name="pensionAmount" data-populate-field="pensionAmount"></div>
+    </div>
+    <div class="form-row">
+        <div class="form-group"><label for="<?php echo $id('familySupport'); ?>-visit">Family Support?</label><select id="<?php echo $id('familySupport'); ?>-visit" name="familySupport" data-populate-field="familySupport"><option value="">Select</option><option value="1">Yes</option><option value="0">No</option></select></div>
+        <div class="form-group"><label for="<?php echo $id('familySupportAmount'); ?>-visit">Family Support Amount</label><input type="number" min="0" step="0.01" id="<?php echo $id('familySupportAmount'); ?>-visit" name="familySupportAmount" data-populate-field="familySupportAmount"></div>
+        <div class="form-group"><label for="<?php echo $id('personalIncome'); ?>-visit">Personal Income?</label><select id="<?php echo $id('personalIncome'); ?>-visit" name="personalIncome" data-populate-field="personalIncome"><option value="">Select</option><option value="1">Yes</option><option value="0">No</option></select></div>
+        <div class="form-group"><label for="<?php echo $id('personalIncomeAmount'); ?>-visit">Personal Income Amount</label><input type="number" min="0" step="0.01" id="<?php echo $id('personalIncomeAmount'); ?>-visit" name="personalIncomeAmount" data-populate-field="personalIncomeAmount"></div>
     </div>
     <div class="form-row">
         <div class="form-group"><label for="<?php echo $id('withMaintenance'); ?>">Maintenance Medicine?</label><select id="<?php echo $id('withMaintenance'); ?>" name="withMaintenance"><option value="">Select</option><option value="1">Yes</option><option value="0">No</option></select></div>

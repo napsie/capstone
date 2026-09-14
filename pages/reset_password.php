@@ -133,6 +133,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['resetPassword'])) {
             background-color: rgba(255,255,255,0.02);
             color: var(--text);
         }
+        .password-field {
+            position: relative;
+        }
+        .password-field input {
+            padding-right: 44px;
+        }
+        .password-toggle {
+            position: absolute;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+            display: grid;
+            place-items: center;
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            border: 0;
+            border-radius: 5px;
+            background: transparent;
+            color: #64748b;
+            cursor: pointer;
+        }
+        .password-toggle:hover,
+        .password-toggle:focus-visible {
+            color: var(--secondary);
+            background: rgba(52, 152, 219, 0.1);
+        }
         .btn {
             background-color: var(--secondary);
             color: white;
@@ -179,11 +206,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['resetPassword'])) {
                 <input type="hidden" name="email" value="<?php echo htmlspecialchars($email); ?>">
                 <div class="form-group">
                     <label for="newPassword">New Password:</label>
-                    <input type="password" id="newPassword" name="newPassword" required>
+                    <div class="password-field">
+                        <input type="password" id="newPassword" name="newPassword" autocomplete="new-password" required>
+                        <button type="button" class="password-toggle" data-password-target="newPassword" aria-label="Show new password" aria-pressed="false">
+                            <i class="fas fa-eye" aria-hidden="true"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="confirmPassword">Confirm New Password:</label>
-                    <input type="password" id="confirmPassword" name="confirmPassword" required>
+                    <div class="password-field">
+                        <input type="password" id="confirmPassword" name="confirmPassword" autocomplete="new-password" required>
+                        <button type="button" class="password-toggle" data-password-target="confirmPassword" aria-label="Show confirmed password" aria-pressed="false">
+                            <i class="fas fa-eye" aria-hidden="true"></i>
+                        </button>
+                    </div>
                 </div>
                 <button type="submit" name="resetPassword" class="btn">Reset Password</button>
             </form>
@@ -192,5 +229,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['resetPassword'])) {
             <a href="../index.php" class="back-to-login">Back to Login</a>
         <?php endif; ?>
     </div>
+    <script>
+        document.querySelectorAll('.password-toggle').forEach(button => {
+            button.addEventListener('click', () => {
+                const input = document.getElementById(button.dataset.passwordTarget);
+                if (!input) return;
+
+                const isVisible = input.type === 'text';
+                input.type = isVisible ? 'password' : 'text';
+                button.setAttribute('aria-pressed', String(!isVisible));
+                button.setAttribute('aria-label', `${isVisible ? 'Show' : 'Hide'} ${input.id === 'confirmPassword' ? 'confirmed password' : 'new password'}`);
+                button.querySelector('i')?.classList.toggle('fa-eye', isVisible);
+                button.querySelector('i')?.classList.toggle('fa-eye-slash', !isVisible);
+            });
+        });
+    </script>
 </body>
 </html>

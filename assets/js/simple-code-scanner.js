@@ -79,6 +79,15 @@
         }
     }
 
+    function normalizeCameraPreview() {
+        const video = reader.querySelector('video');
+        if (!video) return;
+        video.style.setProperty('transform', 'none', 'important');
+        video.style.setProperty('-webkit-transform', 'none', 'important');
+        video.style.setProperty('rotate', '0deg', 'important');
+        video.style.setProperty('scale', '1 1', 'important');
+    }
+
     async function stopScanner() {
         if (scanner && cameraRunning) {
             try {
@@ -145,6 +154,8 @@
                 window.clearTimeout(cameraRequestTimer);
                 cameraRequestTimer = null;
             }
+            normalizeCameraPreview();
+            window.requestAnimationFrame(normalizeCameraPreview);
             setCameraState(true);
             setStatus('Camera ready. Center the complete QR code in the frame and hold it steady.', 'info');
             scanHintTimer = window.setTimeout(function () {

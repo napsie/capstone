@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/_helpers.php';
 $age = oscaAge($app['birth_date'] ?? null);
+$purpose = strtolower((string)($app['id_purpose'] ?? 'new'));
 $addr = trim(($app['house_no'] ?? '') . ' ' . ($app['street'] ?? '') . ', ' . ($app['barangay'] ?? '') . ', ' . ($app['city'] ?? 'Pasig City'));
 if ($addr === ', , Pasig City') $addr = $app['complete_address'] ?? '';
 ?>
@@ -22,10 +23,10 @@ if ($addr === ', , Pasig City') $addr = $app['complete_address'] ?? '';
     <div class="id-form-heading">
         <div class="checkbox-row id-form-purpose">
             <strong>Purpose:</strong>
-            <?php echo oscaCheck(($app['id_purpose'] ?? 'new') === 'new'); ?> New
-            <?php echo oscaCheck(($app['id_purpose'] ?? '') === 'lost'); ?> Lost
-            <?php echo oscaCheck(($app['id_purpose'] ?? '') === 'change'); ?> Change
-            <?php echo oscaCheck(($app['id_purpose'] ?? '') === 'transfer'); ?> Transfer
+            <?php echo oscaCheck($purpose === 'new'); ?> New
+            <?php echo oscaCheck($purpose === 'lost'); ?> Lost
+            <?php echo oscaCheck($purpose === 'change'); ?> Change
+            <?php echo oscaCheck(str_starts_with($purpose, 'transfer')); ?> Transfer
             <br><strong>Date Filed:</strong> <?php echo oscaFmtDate(substr($app['date_submitted'] ?? '', 0, 10), 'F j, Y'); ?>
         </div>
         <div class="id-photo-box">
@@ -76,8 +77,37 @@ if ($addr === ', , Pasig City') $addr = $app['complete_address'] ?? '';
         <strong>Health:</strong>
         <?php echo oscaCheck(($app['health_status'] ?? '') === 'Physically Fit'); ?> Physically Fit
         <?php echo oscaCheck(($app['health_status'] ?? '') === 'Bedridden'); ?> Bedridden
-        <?php echo oscaCheck(str_contains($app['health_status'] ?? '', 'Frail')); ?> Frail/Sickly
-        <?php echo oscaCheck(($app['health_status'] ?? '') === 'PWD'); ?> Disability Support
+        <?php echo oscaCheck(str_contains($app['health_status'] ?? '', 'Frail')); ?> Frail/Sickly:
+        <?php echo oscaVal($app['health_condition'] ?? ''); ?>
+        <?php echo oscaCheck(($app['health_status'] ?? '') === 'PWD'); ?> PWD:
+        <?php echo ($app['health_status'] ?? '') === 'PWD' ? oscaVal($app['health_condition'] ?? '') : ''; ?>
+    </div>
+
+    <div class="section-title">REQUIREMENTS</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:8px;line-height:1.35;">
+        <div>
+            <strong>NEW APPLICANT (FILIPINO CITIZEN)</strong><br>
+            • Two (2) recent 1×1 ID pictures, white background<br>
+            • Birth Certificate (original and photocopy)<br>
+            • Original Barangay Residency Certificate<br>
+            <strong>If no Birth Certificate:</strong> Negative Certification of Birth and two valid IDs showing birth date and Pasig address<br>
+            <strong>Dual Citizen:</strong> Oath of Allegiance/Naturalization, valid Philippine Passport, and proof of six-month Pasig residency
+            <br><br><strong>CHANGE / REPLACEMENT OF SENIOR CITIZEN ID</strong><br>
+            • Two (2) recent 1×1 ID pictures<br>• Original Senior Citizen ID
+        </div>
+        <div>
+            <strong>TRANSFER FROM OTHER CITY / MUNICIPALITY</strong><br>
+            • Two (2) recent 1×1 ID pictures, white background<br>
+            • Certificate of Cancellation from previous OSCA<br>
+            • Birth Certificate<br>• Original Barangay Residency Certificate
+            <br><br><strong>TRANSFER BETWEEN BARANGAYS</strong><br>
+            • Two (2) recent 1×1 ID pictures, white background<br>
+            • Original Senior Citizen ID<br>• Certificate of Transfer from previous barangay
+            <br><br><strong>LOST SENIOR CITIZEN ID</strong><br>
+            • Two (2) recent 1×1 ID pictures, white background<br>
+            • Original Affidavit of Loss<br>
+            • Photocopy of Senior ID / Landbank cash card / temporary cash-card stub (front and back)
+        </div>
     </div>
 
     <div class="cert-box">
@@ -88,7 +118,7 @@ if ($addr === ', , Pasig City') $addr = $app['complete_address'] ?? '';
 
     <?php oscaFieldRow([
         'Emergency Contact' => ($app['emergency_contact_name'] ?? '') . ' — ' . ($app['emergency_contact'] ?? ''),
-        'Relationship' => '',
+        'Relationship' => $app['claimant_relationship'] ?? '',
     ]); ?>
 
     <div class="stub">

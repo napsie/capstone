@@ -2,9 +2,12 @@
 require_once '../includes/db_connect.php';
 require_once '../includes/barangays_list.php';
 require_once '../includes/password_validation.php';
+require_once '../includes/master_password.php';
+require_once '../includes/data_normalizer.php';
 
 $success = '';
 $error = '';
+$isEmbedded = isset($_GET['embed']) && $_GET['embed'] === '1';
 
 function saveSignupProfilePicture(array $file): string
 {
@@ -43,23 +46,25 @@ function saveSignupProfilePicture(array $file): string
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $masterPassword = $_POST['masterPassword'];
-    $correctMasterPassword = 'CarelinkMaster2025!'; // This is the master password.
+    $masterPassword = (string)($_POST['masterPassword'] ?? '');
 
-    if ($masterPassword !== $correctMasterPassword) {
+    if (!verifyMasterPassword($masterPassword)) {
         $error = 'Invalid Master Password. Please try again.';
     } else {
         $firstName = trim($_POST['firstName']);
         $lastName = trim($_POST['lastName']);
         $email = trim($_POST['email']);
+        $phone = normalizePhoneNumber($_POST['phone'] ?? '');
         $username = trim($_POST['username']);
         $password = $_POST['password'];
         $confirmPassword = $_POST['confirmPassword'];
         $role = $_POST['role'];
         $barangay = isset($_POST['barangay']) ? $_POST['barangay'] : null;
 
-        if (empty($firstName) || empty($lastName) || empty($email) || empty($username) || empty($password) || empty($confirmPassword) || empty($role)) {
+        if (empty($firstName) || empty($lastName) || empty($email) || empty($phone) || empty($username) || empty($password) || empty($confirmPassword) || empty($role)) {
             $error = 'Please fill in all required fields.';
+        } else if (!isValidPhilippineMobileNumber($phone)) {
+            $error = 'Enter a valid 11-digit Philippine mobile number beginning with 09.';
         } else if ($password !== $confirmPassword) {
             $error = 'Passwords do not match.';
         } else {
@@ -84,10 +89,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $profilePicture = 'default.jpg';
                     try {
                         // Check if username or email already exists
-                        $stmt = $conn->prepare("SELECT * FROM users WHERE username = :username OR email = :email");
-                        $stmt->execute(['username' => $username, 'email' => $email]);
+                        $stmt = $conn->prepare("SELECT * FROM users WHERE username = :username OR email = :email OR phone = :phone");
+                        $stmt->execute(['username' => $username, 'email' => $email, 'phone' => $phone]);
                         if ($stmt->fetch()) {
-                            $error = 'Username or email already exists.';
+                            $error = 'Username, email, or mobile number already exists.';
                         } else {
                             try {
                                 $profilePicture = saveSignupProfilePicture($_FILES['profile_picture'] ?? []);
@@ -103,12 +108,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                             $conn->beginTransaction();
 
-                            $sql = "INSERT INTO users (first_name, last_name, email, username, password, role, barangay, profile_picture) VALUES (:first_name, :last_name, :email, :username, :password, :role, :barangay, :profile_picture)";
+                            $sql = "INSERT INTO users (first_name, last_name, email, phone, username, password, role, barangay, profile_picture) VALUES (:first_name, :last_name, :email, :phone, :username, :password, :role, :barangay, :profile_picture)";
                             $stmt = $conn->prepare($sql);
                             $stmt->execute([
                                 'first_name' => $firstName,
                                 'last_name' => $lastName,
                                 'email' => $email,
+                                'phone' => $phone,
                                 'username' => $username,
                                 'password' => $hashedPassword,
                                 'role' => $role,
@@ -125,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             $conn->commit();
 
                             $login_page = '../index.php?view=' . ($role === 'barangay_staff' ? 'staff' : 'admin');
-                            $success = "User registered successfully! You can now <a href='$login_page'>login</a>.";
+                            $success = "User registered successfully! You can now <a href='$login_page' target='_top'>login</a>.";
                         }
                     } catch (Throwable $e) {
                         if ($conn->inTransaction()) {
@@ -508,10 +514,46 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             .back-btn,
             .form-control { transition: none; }
         }
+
+        body.signup-embedded {
+            display: block;
+            min-height: 0;
+            overflow-x: hidden;
+            overflow-y: auto;
+            background: #ffffff;
+        }
+        .signup-embedded .background-image,
+        .signup-embedded .back-btn { display: none; }
+        .signup-embedded .signup-container {
+            position: relative;
+            inset: auto;
+            display: block;
+            min-height: 0;
+            padding: 4px;
+            overflow: visible;
+        }
+        .signup-embedded .signup-card {
+            max-width: none;
+            max-height: none;
+            padding: 8px 10px 18px;
+            overflow: visible;
+            border: 0;
+            border-radius: 0;
+            box-shadow: none;
+            transform: none;
+            backdrop-filter: none;
+        }
+        .signup-embedded .signup-header-topline { display: none; }
+        .signup-embedded .signup-header h1 { font-size: 1.3rem; }
+        .signup-embedded form,
+        .signup-embedded .form-fields {
+            overflow: visible;
+        }
+        .signup-embedded .form-fields { padding-right: 0; }
     </style>
     <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
 </head>
-<body>
+<body class="<?php echo $isEmbedded ? 'signup-embedded' : ''; ?>">
     <!-- Back Button -->
     <a href="../index.php" class="back-btn">
         <i class="fas fa-arrow-left"></i>
@@ -559,7 +601,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </div>
                 <div class="form-group">
                     <label for="username">Username</label>
-                    <input type="text" id="username" name="username" class="form-control" autocomplete="username" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')" required>
+                    <input type="text" id="username" name="username" class="form-control" autocomplete="username" required>
                     <span id="usernameError" class="error-message-inline" aria-live="polite"></span>
                 </div>
                 <div class="form-row">
@@ -593,9 +635,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <span id="barangayError" class="error-message-inline" aria-live="polite"></span>
                 </div>
                 <div class="form-group">
+                    <label for="phone">Mobile Number</label>
+                    <input type="tel" id="phone" name="phone" class="form-control" maxlength="11" pattern="09[0-9]{9}" inputmode="numeric" placeholder="09XXXXXXXXX" autocomplete="tel" value="<?php echo htmlspecialchars($_POST['phone'] ?? ''); ?>" required>
+                    <span class="form-hint">Used for account verification and one-time passwords.</span>
+                    <span id="phoneError" class="error-message-inline" aria-live="polite"></span>
+                </div>
+                <div class="form-group">
                     <label for="profile_picture" class="optional">Profile Photo <span class="form-hint" style="display:inline;">(optional)</span></label>
                     <div class="profile-upload">
-                        <img id="profilePicturePreview" class="profile-preview" src="../images/profile_pictures/default.jpg" alt="Profile photo preview">
+                        <img id="profilePicturePreview" class="profile-preview" src="../images/LOGO.jpg" alt="Profile photo preview">
                         <div style="min-width:0;flex:1;">
                             <input type="file" id="profile_picture" name="profile_picture" class="form-control" accept="image/jpeg,image/png,image/gif,image/webp" aria-describedby="profilePictureHint">
                             <span id="profilePictureHint" class="form-hint">JPG, PNG, GIF, or WebP up to 5 MB.</span>
@@ -683,10 +731,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // --- Username, Email, and Barangay Real-time Validation ---
         const usernameField = document.getElementById('username');
         const emailField = document.getElementById('email');
+        const phoneField = document.getElementById('phone');
         const barangayField = document.getElementById('barangay');
         
         const usernameError = document.getElementById('usernameError');
         const emailError = document.getElementById('emailError');
+        const phoneError = document.getElementById('phoneError');
         const barangayError = document.getElementById('barangayError');
 
         function debounce(func, delay = 500) {
@@ -731,6 +781,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         
         usernameField.addEventListener('input', debounce(e => checkAvailability('username', e.target.value, usernameError)));
         emailField.addEventListener('input', debounce(e => checkAvailability('email', e.target.value, emailError)));
+        phoneField.addEventListener('input', debounce(e => {
+            e.target.value = e.target.value.replace(/\D/g, '').slice(0, 11);
+            if (/^09\d{9}$/.test(e.target.value)) checkAvailability('phone', e.target.value, phoneError);
+            else if (e.target.value.length === 11) { phoneError.textContent = 'Use an 11-digit number beginning with 09.'; phoneError.style.display = 'block'; }
+            else phoneError.style.display = 'none';
+        }));
         barangayField.addEventListener('change', e => checkAvailability('barangay', e.target.value, barangayError));
 
         const profilePictureInput = document.getElementById('profile_picture');
@@ -738,12 +794,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         profilePictureInput.addEventListener('change', function () {
             const file = this.files[0];
             if (!file) {
-                profilePicturePreview.src = '../images/profile_pictures/default.jpg';
+                profilePicturePreview.src = '../images/LOGO.jpg';
                 return;
             }
             if (file.size > 5 * 1024 * 1024) {
                 this.value = '';
-                profilePicturePreview.src = '../images/profile_pictures/default.jpg';
+                profilePicturePreview.src = '../images/LOGO.jpg';
                 window.alert('Profile photo must be 5 MB or smaller.');
                 return;
             }

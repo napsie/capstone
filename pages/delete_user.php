@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && (isset($_POST['deleteUser']) || isse
         exit;
     }
 
-    $id = filter_var($_POST['id'], FILTER_SANITIZE_NUMBER_INT);
+    $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT);
     $isPermanent = isset($_POST['permanent']) && ($_POST['permanent'] === '1' || $_POST['permanent'] === 'true');
 
     if ($id) {
@@ -30,6 +30,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && (isset($_POST['deleteUser']) || isse
                 $_SESSION['error'] = 'User not found.';
                 header('Location: user_management.php');
                 exit;
+            }
+
+            if ((int)$id === (int)($_SESSION['user_id'] ?? 0)) {
+                $_SESSION['error'] = 'You cannot archive your own signed-in account.';
+                header('Location: user_management.php');
+                exit;
+            }
+
+            if (!$isPermanent && $targetUser['role'] === 'department_admin') {
+                $adminCountStmt = $conn->query("SELECT COUNT(*) FROM users WHERE role = 'department_admin' AND COALESCE(is_archived, 0) = 0");
+                if ((int)$adminCountStmt->fetchColumn() <= 1) {
+                    $_SESSION['error'] = 'The last active Department Admin cannot be archived.';
+                    header('Location: user_management.php');
+                    exit;
+                }
             }
 
             if (!$isPermanent) {

@@ -38,9 +38,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return false;
         }
 
-        if (!from || !to) {
+        if (Boolean(from) !== Boolean(to)) {
             const missingInput = !from ? dateFrom : dateTo;
-            missingInput?.setCustomValidity('Select both the start and end dates for the report period.');
+            missingInput?.setCustomValidity('Select both dates, or leave both blank to include all dates.');
             missingInput?.reportValidity();
             return false;
         }

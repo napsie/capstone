@@ -74,6 +74,7 @@ $allowed_doc_types = [
     'psa_birth_cert',
     'barangay_residency',
     'comelec_cert',
+    'deceased_landbank_card',
     'proof_of_life',
     'auth_letter',
     'proxy_id',
@@ -92,7 +93,7 @@ try {
     // A correction of a legacy upload supersedes its original file.
     $replacementSql = 'SELECT d.mime_type, d.document_data FROM application_documents d
         INNER JOIN applications a ON a.id_number = d.application_id
-        WHERE d.application_id = ? AND d.document_key = ?';
+        WHERE d.application_id = ? AND d.document_key = ? AND d.is_current = 1';
     $replacementParams = [$appId, $docType];
     if ($userRole === 'barangay_staff') {
         $replacementSql .= ' AND a.barangay = ?';

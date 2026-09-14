@@ -2,6 +2,7 @@
 session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/password_validation.php'; // Include the password validation function
+require_once '../includes/data_normalizer.php';
 
 // Check if the user is logged in and has the correct role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'department_admin') {
@@ -115,6 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
                 $firstName = $_POST['firstName'];
                 $lastName = $_POST['lastName'];
                 $email = $_POST['email'];
+                $phone = normalizePhoneNumber($_POST['phone'] ?? '');
                 $username = $_POST['username'];
                 $role = $_POST['role'];
                 $barangay = isset($_POST['barangay']) ? $_POST['barangay'] : null;
@@ -122,8 +124,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
                 $confirmPassword = $_POST['confirmPassword'];
                 $profilePicture = ($user && isset($user['profile_picture'])) ? $user['profile_picture'] : 'default.jpg'; // Safely get existing profile picture
 
-                if (empty($firstName) || empty($lastName) || empty($email) || empty($username) || empty($role)) {
+                if (empty($firstName) || empty($lastName) || empty($email) || empty($phone) || empty($username) || empty($role)) {
                     $response['message'] = 'Please fill in all required fields.'; // Changed from $response['error']
+                } elseif (!isValidPhilippineMobileNumber($phone)) {
+                    $response['message'] = 'Enter a valid 11-digit Philippine mobile number beginning with 09.';
                 } else {
                     // Validate barangay based on the selected role for the user being edited
                     if ($role === 'barangay_staff') {
@@ -150,6 +154,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
                         $stmt->execute(['email' => $email, 'id' => $id]);
                         if ($stmt->fetchColumn() > 0) {
                             $response['message'] = 'Email already exists. Please use a different one.'; // Changed from $response['error']
+                        }
+                    }
+
+                    if (empty($response['message'])) {
+                        $stmt = $conn->prepare("SELECT COUNT(*) FROM users WHERE phone = :phone AND id != :id");
+                        $stmt->execute(['phone' => $phone, 'id' => $id]);
+                        if ($stmt->fetchColumn() > 0) {
+                            $response['message'] = 'Mobile number already belongs to another user.';
                         }
                     }
 
@@ -200,11 +212,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
                     // Proceed with database update only if no errors
                     if (empty($response['message'])) { // Check $response['message'] for errors
                         try {
-                            $sql = "UPDATE users SET first_name = :first_name, last_name = :last_name, email = :email, username = :username, role = :role, barangay = :barangay, profile_picture = :profile_picture";
+                            $sql = "UPDATE users SET first_name = :first_name, last_name = :last_name, email = :email, phone = :phone, username = :username, role = :role, barangay = :barangay, profile_picture = :profile_picture";
                             $params = [
                                 'first_name' => $firstName,
                                 'last_name' => $lastName,
                                 'email' => $email,
+                                'phone' => $phone,
                                 'username' => $username,
                                 'role' => $role,
                                 'barangay' => $barangay,
@@ -295,7 +308,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SENIORLINK — Edit User</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=4">
+    <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=5">
     <style>
         * {
             margin: 0;

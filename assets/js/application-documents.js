@@ -6,6 +6,7 @@
         ['psa_birth_cert', 'PSA Birth Certificate', app => app.psa_birth_cert],
         ['barangay_residency', 'Barangay Residency Certificate', app => app.barangay_residency],
         ['comelec_cert', 'COMELEC Certificate', app => app.comelec_cert],
+        ['deceased_landbank_card', 'Deceased Landbank Cash Card', app => app.deceased_landbank_card],
         ['proof_of_life', 'Current Senior Photo / Proof of Life', app => app.proof_of_life],
         ['auth_letter', 'Authorization Letter', app => app.auth_letter],
         ['proxy_id', 'Representative Government ID', app => app.proxy_id],
@@ -57,7 +58,10 @@
                 const preview = isPdf ? '<i class="fas fa-file-pdf" aria-hidden="true"></i>' : `<img src="${url}" alt="${label}">`;
                 const replacement = replacementControls(document.id);
                 const fileType = isPdf ? 'PDF' : 'Image';
-                return `<article class="application-document"><div class="application-document__meta"><div class="application-document__name">${label}</div><span class="application-document__type">${fileType}</span></div><div class="application-document__preview">${preview}</div>${replacement.input}<div class="application-document__actions${replacement.button ? ' has-replacement' : ''}"><a class="btn btn-primary btn-small application-document__view" href="${url}" target="_blank" rel="noopener"><i class="fas fa-up-right-from-square" aria-hidden="true"></i> Open document</a>${replacement.button}</div></article>`;
+                const versions = (app.document_versions || []).filter(item => item.document_key === document.document_key);
+                const versionMeta = `<small class="application-document__version">Version ${Number(document.version || 1)}${document.uploaded_by ? ` · ${escapeHtml(document.uploaded_by)}` : ''}${document.created_at ? ` · ${escapeHtml(new Date(String(document.created_at).replace(' ', 'T')).toLocaleString('en-PH'))}` : ''}</small>`;
+                const history = versions.length > 1 ? `<details class="application-document__history"><summary>${versions.length} versions</summary>${versions.map(item => `<a href="../api/get_document.php?id=${encodeURIComponent(appId)}&document_id=${encodeURIComponent(item.id)}" target="_blank" rel="noopener">Version ${Number(item.version || 1)}${Number(item.is_current) ? ' (current)' : ''} · ${escapeHtml(item.uploaded_by || 'Unknown uploader')}</a>`).join('')}</details>` : '';
+                return `<article class="application-document"><div class="application-document__meta"><div><div class="application-document__name">${label}</div>${versionMeta}</div><span class="application-document__type">${fileType}</span></div><div class="application-document__preview">${preview}</div>${history}${replacement.input}<div class="application-document__actions${replacement.button ? ' has-replacement' : ''}"><a class="btn btn-primary btn-small application-document__view" href="${url}" target="_blank" rel="noopener"><i class="fas fa-up-right-from-square" aria-hidden="true"></i> Open document</a>${replacement.button}</div></article>`;
             }).join('') + files.map(([key, label, exists]) => {
             const rawValue = exists(app);
             // Bust the browser cache after a document replacement. The endpoint

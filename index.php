@@ -205,7 +205,7 @@ header('Expires: 0');
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/seniorlink-public.css?v=1">
-    <link rel="stylesheet" href="assets/css/landing.css?v=30">
+    <link rel="stylesheet" href="assets/css/landing.css?v=33">
     <link rel="stylesheet" href="assets/css/seniorlink-ui.css?v=17">
     <script src="assets/js/modal-hci.js?v=2" defer></script>
 </head>
@@ -231,10 +231,10 @@ header('Expires: 0');
                 </span>
             </div>
             <nav class="site-nav" aria-label="Main navigation">
-                <a href="pages/signup.php" class="btn-primary">
+                <button type="button" class="btn-primary" data-signup-view aria-controls="signupView">
                     <span>Sign Up</span>
                     <i class="fas fa-arrow-right" aria-hidden="true"></i>
-                </a>
+                </button>
             </nav>
         </div>
     </header>
@@ -312,14 +312,14 @@ header('Expires: 0');
                 </button>
 
                 <a href="pages/proxy_registration.php" class="portal-card" id="proxyCard"
-                   aria-label="Public new application service for senior citizens">
+                   aria-label="Open senior citizen application services">
                     <div class="portal-card-icon proxy" aria-hidden="true">
                         <i class="fas fa-qrcode"></i>
                     </div>
                     <div class="portal-card-body">
                         <span class="portal-role">For senior citizens</span>
-                        <h4>Apply for Benefit</h4>
-                        <p>Submit an online senior benefit application.</p>
+                        <h4>Senior Application Portal</h4>
+                        <p>Apply for a Senior ID or access senior benefits.</p>
                     </div>
                     <span class="portal-card-arrow" aria-hidden="true">
                         <i class="fas fa-arrow-right"></i>
@@ -338,6 +338,20 @@ header('Expires: 0');
                     <div class="form-group"><label for="staffBarangay">Barangay</label><select id="staffBarangay" name="barangay" class="form-control" required><option value="">Select your barangay</option><?php foreach ($barangays_list as $b): ?><option value="<?php echo htmlspecialchars($b); ?>" <?php echo $loginView === 'staff' && ($_POST['barangay'] ?? '') === $b ? 'selected' : ''; ?>><?php echo htmlspecialchars($b); ?></option><?php endforeach; ?></select></div>
                     <div class="portal-login-options"><label class="portal-remember"><input type="checkbox" name="remember"> Remember me</label><button type="button" class="portal-forgot" data-forgot-password>Forgot password?</button></div>
                     <button type="submit" class="portal-login-submit">Sign in to SHDO <i class="fas fa-arrow-right" aria-hidden="true"></i></button>
+                    <div class="forgot-password-message" data-reset-message aria-live="polite"></div>
+                    <div class="portal-otp-reset" data-otp-reset hidden>
+                        <div class="portal-reset-header">
+                            <span class="portal-reset-icon" aria-hidden="true"><i class="fas fa-key"></i></span>
+                            <div><strong>Reset SHDO password</strong><small>Enter the six-digit code sent to the account's registered email.</small></div>
+                        </div>
+                        <div class="form-group"><label for="staffResetOtp">Six-digit OTP</label><input id="staffResetOtp" type="text" data-reset-otp class="form-control" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" autocomplete="one-time-code" placeholder="000000" disabled></div>
+                        <div class="form-group"><label for="staffResetPassword">New password</label><input id="staffResetPassword" type="password" data-reset-password class="form-control" minlength="8" autocomplete="new-password" disabled></div>
+                        <div class="form-group"><label for="staffResetConfirm">Confirm new password</label><input id="staffResetConfirm" type="password" data-reset-confirm class="form-control" minlength="8" autocomplete="new-password" disabled></div>
+                        <div class="portal-reset-actions">
+                            <button type="button" class="portal-reset-back" data-reset-cancel><i class="fas fa-arrow-left" aria-hidden="true"></i> Back to sign in</button>
+                            <button type="button" class="portal-login-submit" data-reset-submit disabled>Change password</button>
+                        </div>
+                    </div>
                 </form>
             </div>
 
@@ -350,7 +364,26 @@ header('Expires: 0');
                     <div class="form-group"><label for="adminPassword">Password</label><div class="password-field"><input type="password" id="adminPassword" name="password" class="form-control" autocomplete="current-password" required><button type="button" class="toggle-password" data-password-target="adminPassword" aria-label="Show password"><i class="fas fa-eye"></i></button></div></div>
                     <div class="portal-login-options"><label class="portal-remember"><input type="checkbox" name="remember"> Remember me</label><button type="button" class="portal-forgot" data-forgot-password>Forgot password?</button></div>
                     <button type="submit" class="portal-login-submit">Sign in as Administrator <i class="fas fa-arrow-right" aria-hidden="true"></i></button>
+                    <div class="forgot-password-message" data-reset-message aria-live="polite"></div>
+                    <div class="portal-otp-reset" data-otp-reset hidden>
+                        <div class="portal-reset-header">
+                            <span class="portal-reset-icon" aria-hidden="true"><i class="fas fa-key"></i></span>
+                            <div><strong>Reset administrator password</strong><small>Enter the six-digit code sent to the account's registered email.</small></div>
+                        </div>
+                        <div class="form-group"><label for="adminResetOtp">Six-digit OTP</label><input id="adminResetOtp" type="text" data-reset-otp class="form-control" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" autocomplete="one-time-code" placeholder="000000" disabled></div>
+                        <div class="form-group"><label for="adminResetPassword">New password</label><input id="adminResetPassword" type="password" data-reset-password class="form-control" minlength="8" autocomplete="new-password" disabled></div>
+                        <div class="form-group"><label for="adminResetConfirm">Confirm new password</label><input id="adminResetConfirm" type="password" data-reset-confirm class="form-control" minlength="8" autocomplete="new-password" disabled></div>
+                        <div class="portal-reset-actions">
+                            <button type="button" class="portal-reset-back" data-reset-cancel><i class="fas fa-arrow-left" aria-hidden="true"></i> Back to sign in</button>
+                            <button type="button" class="portal-login-submit" data-reset-submit disabled>Change password</button>
+                        </div>
+                    </div>
                 </form>
+            </div>
+
+            <div class="portal-login-view portal-signup-view" id="signupView" data-login-panel="signup">
+                <button type="button" class="portal-login-back" data-login-back><i class="fas fa-arrow-left" aria-hidden="true"></i> Back to access choices</button>
+                <iframe class="signup-frame" id="signupFrame" src="pages/signup.php?embed=1" title="Create a SENIORLINK staff account" scrolling="yes"></iframe>
             </div>
 
         </section>
@@ -381,18 +414,6 @@ header('Expires: 0');
                 </div>
                 <small class="track-help"><i class="fas fa-shield-halved" aria-hidden="true"></i> Your code is used only to retrieve the application status.</small>
             </form>
-        </div>
-    </div>
-
-    <div class="cl-modal" id="forgotPasswordModal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="forgotPasswordTitle">
-        <div class="cl-modal-content">
-            <div class="cl-modal-header"><h2 id="forgotPasswordTitle">Reset your password</h2><button type="button" class="close-modal" id="forgotPasswordClose" aria-label="Close password reset">&times;</button></div>
-            <p class="forgot-password-copy">Enter the email associated with your staff account. If it is registered, reset instructions will be sent.</p>
-            <form id="forgotPasswordForm">
-                <div class="form-group"><label for="resetEmail">Email address</label><input type="email" id="resetEmail" class="form-control" autocomplete="email" required></div>
-                <button type="submit" class="btn btn-primary btn-block">Send reset instructions</button>
-            </form>
-            <div id="forgotPasswordMessage" class="forgot-password-message" aria-live="polite"></div>
         </div>
     </div>
 
@@ -453,18 +474,40 @@ header('Expires: 0');
             const heading = document.getElementById('portal-heading');
             const description = document.getElementById('portal-description');
             const panels = [...document.querySelectorAll('[data-login-panel]')];
+            const signupFrame = document.getElementById('signupFrame');
+
+            const closePasswordReset = (panel, clearMessage = true) => {
+                if (!panel) return;
+                const otpSection = panel.querySelector('[data-otp-reset]');
+                panel.classList.remove('is-resetting');
+                if (otpSection) {
+                    otpSection.hidden = true;
+                    otpSection.querySelectorAll('input').forEach(input => input.value = '');
+                    otpSection.querySelectorAll('input, button[data-reset-submit]').forEach(control => control.disabled = true);
+                }
+                const resetMessage = panel.querySelector('[data-reset-message]');
+                if (clearMessage && resetMessage) {
+                    resetMessage.textContent = '';
+                    resetMessage.classList.remove('is-error');
+                }
+            };
 
             const showLogin = view => {
+                document.documentElement.classList.toggle('signup-view-open', view === 'signup');
                 choices?.classList.add('is-hidden');
                 panels.forEach(panel => panel.classList.toggle('is-active', panel.dataset.loginPanel === view));
-                if (heading) heading.textContent = view === 'staff' ? 'SHDO sign in' : 'Administrator sign in';
-                if (description) description.textContent = 'Enter your account details to continue.';
+                if (heading) heading.textContent = view === 'staff' ? 'SHDO sign in' : (view === 'admin' ? 'Administrator sign in' : 'Create staff account');
+                if (description) description.textContent = view === 'signup' ? 'Enter the staff member’s details and assign the correct access role.' : 'Enter your account details to continue.';
                 const active = panels.find(panel => panel.dataset.loginPanel === view);
-                window.requestAnimationFrame(() => active?.querySelector('input:not([type="hidden"])')?.focus());
+                window.requestAnimationFrame(() => active?.querySelector('input:not([type="hidden"]), iframe')?.focus());
             };
 
             const showChoices = () => {
-                panels.forEach(panel => panel.classList.remove('is-active'));
+                document.documentElement.classList.remove('signup-view-open');
+                panels.forEach(panel => {
+                    closePasswordReset(panel);
+                    panel.classList.remove('is-active');
+                });
                 choices?.classList.remove('is-hidden');
                 if (heading) heading.textContent = 'What do you need?';
                 if (description) description.textContent = 'Choose one option to continue.';
@@ -475,6 +518,7 @@ header('Expires: 0');
             document.querySelectorAll('[data-login-view]').forEach(card => {
                 card.addEventListener('click', () => showLogin(card.dataset.loginView));
             });
+            document.querySelectorAll('[data-signup-view]').forEach(button => button.addEventListener('click', () => showLogin('signup')));
             document.querySelectorAll('[data-login-back]').forEach(button => button.addEventListener('click', showChoices));
             document.querySelectorAll('[data-password-target]').forEach(button => {
                 button.addEventListener('click', () => {
@@ -487,77 +531,95 @@ header('Expires: 0');
                 });
             });
 
-            const resetModal = document.getElementById('forgotPasswordModal');
-            const resetClose = document.getElementById('forgotPasswordClose');
-            const resetForm = document.getElementById('forgotPasswordForm');
-            const resetEmail = document.getElementById('resetEmail');
-            const resetMessage = document.getElementById('forgotPasswordMessage');
-            let resetTrigger = null;
-
-            const closeReset = () => {
-                if (!resetModal) return;
-                resetModal.classList.remove('is-open');
-                resetModal.setAttribute('aria-hidden', 'true');
-                document.body.style.overflow = '';
-                resetTrigger?.focus();
-            };
-
-            const openReset = event => {
-                if (!resetModal) return;
-                resetTrigger = event.currentTarget;
-                resetMessage.textContent = '';
-                resetMessage.classList.remove('is-error');
-                resetModal.classList.add('is-open');
-                resetModal.setAttribute('aria-hidden', 'false');
-                document.body.style.overflow = 'hidden';
-                window.requestAnimationFrame(() => resetEmail?.focus());
-            };
-
-            document.querySelectorAll('[data-forgot-password]').forEach(button => button.addEventListener('click', openReset));
-            resetClose?.addEventListener('click', closeReset);
-            resetModal?.addEventListener('click', event => {
-                if (event.target === resetModal) closeReset();
-            });
-            resetModal?.addEventListener('keydown', event => {
-                if (event.key === 'Escape') {
-                    closeReset();
+            document.querySelectorAll('[data-forgot-password]').forEach(button => button.addEventListener('click', async () => {
+                const panel = button.closest('[data-login-panel]');
+                const usernameInput = panel?.querySelector('input[name="username"]');
+                const resetMessage = panel?.querySelector('[data-reset-message]');
+                const username = usernameInput?.value.trim() || '';
+                if (!username) {
+                    resetMessage.textContent = 'Enter your username first so we can use its registered email.';
+                    resetMessage.classList.add('is-error');
+                    usernameInput?.focus();
                     return;
                 }
-                if (event.key !== 'Tab') return;
-                const focusable = [...resetModal.querySelectorAll('button, input, [tabindex]:not([tabindex="-1"])')]
-                    .filter(element => !element.disabled);
-                const first = focusable[0];
-                const last = focusable[focusable.length - 1];
-                if (event.shiftKey && document.activeElement === first) {
-                    event.preventDefault();
-                    last.focus();
-                } else if (!event.shiftKey && document.activeElement === last) {
-                    event.preventDefault();
-                    first.focus();
-                }
-            });
-            resetForm?.addEventListener('submit', async event => {
-                event.preventDefault();
-                const submit = resetForm.querySelector('button[type="submit"]');
-                submit.disabled = true;
+                button.disabled = true;
                 resetMessage.classList.remove('is-error');
-                resetMessage.textContent = 'Sending reset instructions…';
+                resetMessage.textContent = 'Sending reset instructions to your registered email…';
                 try {
                     const response = await fetch('api/forgot_password.php', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                        body: new URLSearchParams({email: resetEmail.value})
+                        body: new URLSearchParams({username})
                     });
                     const result = await response.json();
                     resetMessage.textContent = result.message || 'Please check your email for the next step.';
                     resetMessage.classList.toggle('is-error', !response.ok || !result.success);
+                    if (response.ok && result.success) {
+                        const otpSection = panel.querySelector('[data-otp-reset]');
+                        panel.classList.add('is-resetting');
+                        otpSection.hidden = false;
+                        otpSection.querySelectorAll('input, button').forEach(control => control.disabled = false);
+                        otpSection.querySelector('[data-reset-otp]')?.focus();
+                    }
                 } catch (error) {
                     resetMessage.textContent = 'We could not send the request. Please try again.';
                     resetMessage.classList.add('is-error');
                 } finally {
-                    submit.disabled = false;
+                    button.disabled = false;
                 }
-            });
+            }));
+
+            document.querySelectorAll('[data-reset-submit]').forEach(button => button.addEventListener('click', async () => {
+                const panel = button.closest('[data-login-panel]');
+                const resetMessage = panel.querySelector('[data-reset-message]');
+                const payload = {
+                    username: panel.querySelector('input[name="username"]').value.trim(),
+                    otp: panel.querySelector('[data-reset-otp]').value.replace(/\D/g, '').slice(0, 6),
+                    password: panel.querySelector('[data-reset-password]').value,
+                    confirmPassword: panel.querySelector('[data-reset-confirm]').value
+                };
+                button.disabled = true;
+                resetMessage.classList.remove('is-error');
+                resetMessage.textContent = 'Verifying your code…';
+                try {
+                    const response = await fetch('api/reset_password_otp.php', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: new URLSearchParams(payload)
+                    });
+                    const result = await response.json();
+                    resetMessage.textContent = result.message;
+                    resetMessage.classList.toggle('is-error', !response.ok || !result.success);
+                    if (response.ok && result.success) {
+                        closePasswordReset(panel, false);
+                        panel.querySelector('input[name="password"]')?.focus();
+                    }
+                } catch (error) {
+                    resetMessage.textContent = 'We could not verify the code. Please try again.';
+                    resetMessage.classList.add('is-error');
+                } finally {
+                    if (!button.closest('[data-otp-reset]').hidden) button.disabled = false;
+                }
+            }));
+
+            document.querySelectorAll('[data-reset-cancel]').forEach(button => button.addEventListener('click', () => {
+                const panel = button.closest('[data-login-panel]');
+                closePasswordReset(panel);
+                panel?.querySelector('input[name="password"]')?.focus();
+            }));
+
+            document.querySelectorAll('.portal-login-form').forEach(form => form.addEventListener('submit', event => {
+                const panel = form.closest('[data-login-panel]');
+                if (!panel?.classList.contains('is-resetting')) return;
+                event.preventDefault();
+                panel.querySelector('[data-reset-submit]')?.click();
+            }));
+
+            document.querySelectorAll('[data-otp-reset]').forEach(section => section.addEventListener('keydown', event => {
+                if (event.key !== 'Enter') return;
+                event.preventDefault();
+                section.querySelector('[data-reset-submit]')?.click();
+            }));
 
             document.querySelector('.portal-login-view.is-active .portal-login-error')?.focus();
         })();

@@ -20,11 +20,11 @@
     const yesNo = value => {
         if (value === true || value === 1 || value === '1' || String(value).toLowerCase() === 'yes') return 'Yes';
         if (value === false || value === 0 || value === '0' || String(value).toLowerCase() === 'no') return 'No';
-        return 'Not provided';
+        return '';
     };
     const money = value => hasValue(value) && !Number.isNaN(Number(value))
         ? `PHP ${Number(value).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-        : 'Not provided';
+        : '';
     const date = value => {
         if (!hasValue(value)) return 'Not provided';
         const normalized = String(value).slice(0, 10);
@@ -38,6 +38,14 @@
         const parsed = new Date(String(value).replace(' ', 'T'));
         return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString('en-PH');
     };
+    const deadlineAlerts = app => {
+        if (!Array.isArray(app.deadline_alerts) || !app.deadline_alerts.length) return '';
+        return `<div class="deadline-alerts deadline-alerts--detail" role="status">${app.deadline_alerts.map(alert => `
+            <span class="deadline-alert deadline-alert--${escapeHtml(alert.level || 'info')}">
+                <strong><i class="fas fa-clock" aria-hidden="true"></i> ${escapeHtml(alert.label)}</strong>
+                <small>${escapeHtml(alert.detail || '')}</small>
+            </span>`).join('')}</div>`;
+    };
     const fullName = (app, prefix) => [
         app[`${prefix}_first_name`], app[`${prefix}_middle_name`],
         app[`${prefix}_last_name`], app[`${prefix}_suffix`]
@@ -46,6 +54,7 @@
     function field(label, value, options = {}) {
         const shown = options.raw ? value : display(value);
         const empty = shown === 'Not provided' || shown === 'Not yet issued';
+        if (!hasValue(shown) || empty) return '';
         return `<div class="application-detail-field${options.wide ? ' application-detail-field--wide' : ''}">
             <span class="application-detail-label">${escapeHtml(label)}</span>
             <span class="application-detail-value${empty ? ' application-detail-value--empty' : ''}">${escapeHtml(shown)}</span>
@@ -53,9 +62,11 @@
     }
 
     function section(icon, title, fields) {
+        const visibleFields = fields.filter(Boolean);
+        if (!visibleFields.length) return '';
         return `<section class="application-detail-section">
             <h4><i class="fas ${escapeHtml(icon)}"></i>${escapeHtml(title)}</h4>
-            <div class="application-detail-grid">${fields.join('')}</div>
+            <div class="application-detail-grid">${visibleFields.join('')}</div>
         </section>`;
     }
 
@@ -83,7 +94,13 @@
     function isWaitingForHomeVisit(app) {
         const isLocalPension = app.application_type === 'pension'
             || app.requested_benefit === 'Local Social Pension Assessment';
-        return app.workflow_state !== 'Needs Correction' && isLocalPension && app.home_visit_status !== 'Completed';
+        return app.workflow_state !== 'Needs Correction' && isLocalPension
+            && !['Completed', 'Rejected', 'Cancelled'].includes(app.home_visit_status);
+    }
+
+    function processingStatus(app) {
+        if (['Rejected', 'Cancelled'].includes(app.home_visit_status)) return 'Rejected';
+        return isWaitingForHomeVisit(app) ? 'Pending' : (app.workflow_state || app.status || 'Received');
     }
 
     function applicationIdentity(app, title) {
@@ -92,9 +109,7 @@
             field('Application Type', typeLabels[app.application_type] || app.application_type),
             field('Requested Benefit / Service', app.requested_benefit),
             field('Senior Citizen ID No.', seniorId(app), { raw: true }),
-            field('Processing Status', isWaitingForHomeVisit(app)
-                ? 'Pending'
-                : (app.workflow_state || app.status || 'Received')),
+            field('Processing Status', processingStatus(app)),
             field('Date Submitted', dateTime(app.date_submitted), { raw: true })
         ]);
     }
@@ -124,7 +139,7 @@
                 field('Pensioner', yesNo(app.is_pensioner), { raw: true }), field('Pension Source', app.pension_source),
                 ...(type === 'pension' ? [
                     field('Home Visit Schedule', dateTime(app.home_visit_scheduled_at), { raw: true }),
-                    field('Home Visit Status', app.home_visit_status), field('SMS Notification', app.sms_notification_status)
+                    field('Home Visit Status', app.home_visit_status === 'Cancelled' ? 'Rejected' : app.home_visit_status), field('SMS Notification', app.sms_notification_status)
                 ] : []),
                 field('Permanent Income', yesNo(app.is_permanent_income), { raw: true }), field('Income Source', app.income_source),
                 field('Personal Income', yesNo(app.personal_income), { raw: true }),
@@ -141,7 +156,8 @@
             sections.push(section('fa-building-columns', 'Land Bank Enrollment', [
                 field('Name on Card', app.name_on_card), field('Cash Card Number', app.landbank_card_no),
                 field('ATM / Temporary Stub Number', app.atm_card_no), field('TIN', app.tin),
-                field('ID Type Presented', app.id_type_presented), field("Mother's Maiden Name", app.mothers_maiden_name),
+                field('ID Presented', app.id_type_presented), field("Mother's Maiden Name", app.mothers_maiden_name),
+                field('Nationality', app.nationality),
                 field('Source of Funds', app.source_of_funds)
             ]));
         }
@@ -218,7 +234,8 @@
         if (benefit === 'Land Bank Cash Card Enrollment') {
             return section('fa-building-columns', 'Requested Land Bank Enrollment', [
                 field('Name on Card', app.name_on_card), field('TIN', app.tin),
-                field('Nationality', app.nationality), field('Senior ID Presented', app.id_type_presented),
+                field('ID Presented', app.id_type_presented),
+                field('Nationality', app.nationality),
                 field('Source of Funds', app.source_of_funds, { wide: true })
             ]);
         }
@@ -239,23 +256,16 @@
     const wrap = sections => `<div class="application-detail-summary">${sections.filter(Boolean).join('')}</div>`;
 
     // The edit modal already contains the editable form, so its side panel does not repeat it.
-    window.renderApplicationEditContext = app => wrap([
-        section('fa-clipboard-list', 'Application Context', [
-            field('Application ID', app.id_number),
-            field('Application Type', typeLabels[app.application_type] || app.application_type),
-            field('Processing Status', isWaitingForHomeVisit(app)
-                ? 'Pending'
-                : (app.workflow_state || app.status || 'Received')),
-            field('Date Submitted', dateTime(app.date_submitted), { raw: true }),
-            ...(app.application_type === 'pension' ? [
+    window.renderApplicationEditContext = app => deadlineAlerts(app) + wrap([
+        app.application_type === 'pension' ? section('fa-house-user', 'Home Visit Information', [
                 field('Home Visit Schedule', dateTime(app.home_visit_scheduled_at), { raw: true }),
+                field('Home Visit Status', app.home_visit_status === 'Cancelled' ? 'Rejected' : app.home_visit_status),
                 field('SMS Notification', app.sms_notification_status)
-            ] : [])
-        ])
+        ]) : ''
     ]);
 
     // Verification shows only the reference and facts needed to assess this application type.
-    window.renderApplicationVerificationDetails = app => wrap([
+    window.renderApplicationVerificationDetails = app => deadlineAlerts(app) + wrap([
         digitalSeniorId(app), applicationIdentity(app, 'Verification Reference'), ...typeSpecificSections(app),
         requestedBenefitSection(app), representativeSection(app),
         hasValue(app.return_reason || app.return_comments)
@@ -264,7 +274,7 @@
     ]);
 
     // Record viewing adds profile facts that are not already in the modal's applicant summary.
-    window.renderApplicationRecordDetails = app => wrap([
+    window.renderApplicationRecordDetails = app => deadlineAlerts(app) + wrap([
         digitalSeniorId(app), applicationIdentity(app, 'Record Reference'),
         String(app.is_archived) === '1'
             ? section('fa-box-archive', 'Archive Information', [

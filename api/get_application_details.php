@@ -6,6 +6,7 @@ try {
     require_once '../includes/db_connect.php';
     require_once '../includes/application_types.php';
     require_once '../includes/filing_deadline.php';
+    require_once '../includes/deadline_alerts.php';
 } catch (Throwable $boot_err) {
     header('Content-Type: application/json');
     http_response_code(500);
@@ -45,7 +46,7 @@ $baseCols = "a.id_number, a.full_name, a.application_type, a.requested_benefit, 
              a.medical_conditions, a.return_reason,
              a.proof_of_address_type, a.id_image_type, a.birth_certificate_type,
              a.medical_certificate_type, a.client_identification_type,
-             a.psa_birth_cert, a.barangay_residency, a.comelec_cert, a.proof_of_life,
+             a.psa_birth_cert, a.barangay_residency, a.comelec_cert, a.deceased_landbank_card, a.proof_of_life,
              a.auth_letter, a.proxy_id, a.proxy_birth_cert, a.home_visitation_form,
              a.landbank_enrollment_form, a.parent_senior_id,
              $oscaCols";
@@ -106,18 +107,25 @@ try {
                                    FROM application_history WHERE application_id = ? ORDER BY changed_at ASC");
     $stmtHistory->execute([$appId]);
     $application['history'] = $stmtHistory->fetchAll(PDO::FETCH_ASSOC);
+    foreach (array_reverse($application['history']) as $historyEntry) {
+        if (($historyEntry['new_state'] ?? '') === ($application['workflow_state'] ?? '')) {
+            $application['workflow_changed_at'] = $historyEntry['changed_at'];
+            break;
+        }
+    }
+    $application['deadline_alerts'] = applicationDeadlineAlerts($application);
 
     // Template-based forms can submit many requirements. Return their
     // metadata separately so every modal can render the same document cards.
     if ($userRole === 'barangay_staff' && $userBarangay) {
-        $documentsSql = 'SELECT d.id, d.document_key, d.document_label, d.mime_type
+        $documentsSql = 'SELECT d.id, d.document_key, d.document_label, d.mime_type, d.version, d.uploaded_by, d.created_at
                          FROM application_documents d
                          INNER JOIN applications a ON a.id_number = d.application_id
-                         WHERE d.application_id = ? AND a.barangay = ? ORDER BY d.id';
+                         WHERE d.application_id = ? AND d.is_current = 1 AND a.barangay = ? ORDER BY d.id';
         $documentsStmt = $conn->prepare($documentsSql);
         $documentsStmt->execute([$appId, $userBarangay]);
     } else {
-        $documentsStmt = $conn->prepare('SELECT id, document_key, document_label, mime_type FROM application_documents WHERE application_id = ? ORDER BY id');
+        $documentsStmt = $conn->prepare('SELECT id, document_key, document_label, mime_type, version, uploaded_by, created_at FROM application_documents WHERE application_id = ? AND is_current = 1 ORDER BY id');
         $documentsStmt->execute([$appId]);
     }
     // Older databases may contain repeated rows from before the
@@ -133,9 +141,17 @@ try {
         $documentsByKey[$key] = $document;
     }
     $application['documents'] = array_values($documentsByKey);
+    if ($userRole === 'barangay_staff' && $userBarangay) {
+        $versionsStmt = $conn->prepare('SELECT d.id,d.document_key,d.document_label,d.mime_type,d.version,d.is_current,d.uploaded_by,d.created_at FROM application_documents d INNER JOIN applications a ON a.id_number=d.application_id WHERE d.application_id=? AND a.barangay=? ORDER BY d.document_key,d.version DESC');
+        $versionsStmt->execute([$appId, $userBarangay]);
+    } else {
+        $versionsStmt = $conn->prepare('SELECT id,document_key,document_label,mime_type,version,is_current,uploaded_by,created_at FROM application_documents WHERE application_id=? ORDER BY document_key,version DESC');
+        $versionsStmt->execute([$appId]);
+    }
+    $application['document_versions'] = $versionsStmt->fetchAll(PDO::FETCH_ASSOC);
 
     $application['burial_filing_days'] = $application['application_type'] === 'burial'
-        ? filingWorkingDays($application['date_of_death'], $application['date_submitted']) : null;
+        ? filingWorkingDays($application['date_of_death'] ?? '', $application['date_submitted']) : null;
     echo json_encode($application);
 
 } catch (Exception $e) {

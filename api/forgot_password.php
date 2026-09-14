@@ -16,18 +16,18 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
-if (!$email) {
+$username = trim((string)($_POST['username'] ?? ''));
+if ($username === '' || strlen($username) > 50) {
     http_response_code(422);
-    echo json_encode(['success' => false, 'message' => 'Please provide a valid email address.']);
+    echo json_encode(['success' => false, 'message' => 'Please provide a valid username.']);
     exit;
 }
 
-$genericMessage = 'If your email address is in our database, you will receive a password reset link.';
+$genericMessage = 'If the account exists, a six-digit OTP will be sent to its registered email.';
 
 try {
-    $stmt = $conn->prepare('SELECT id, username FROM users WHERE email = :email');
-    $stmt->execute(['email' => $email]);
+    $stmt = $conn->prepare('SELECT id, username, email FROM users WHERE username = :username AND COALESCE(is_archived, 0) = 0 LIMIT 1');
+    $stmt->execute(['username' => $username]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     // Always use the same response so this endpoint cannot be used to discover accounts.
@@ -35,6 +35,7 @@ try {
         echo json_encode(['success' => true, 'message' => $genericMessage]);
         exit;
     }
+    $email = (string)$user['email'];
 
     $smtpHost = trim((string) getenv('SMTP_HOST'));
     $smtpUsername = trim((string) getenv('SMTP_USERNAME'));
@@ -59,10 +60,9 @@ try {
         $baseUrl = $scheme . '://' . ($host ?: 'localhost') . rtrim($projectPath, '/');
     }
 
-    $token = bin2hex(random_bytes(32));
-    $expiry = date('Y-m-d H:i:s', strtotime('+1 hour'));
-    $resetLink = $baseUrl . '/pages/reset_password.php?token=' . rawurlencode($token)
-        . '&email=' . rawurlencode($email);
+    $otp = (string) random_int(100000, 999999);
+    $tokenHash = password_hash($otp, PASSWORD_DEFAULT);
+    $expiry = date('Y-m-d H:i:s', strtotime('+10 minutes'));
 
     $mail = new PHPMailer(true);
     $mail->isSMTP();
@@ -81,18 +81,18 @@ try {
     $mail->isHTML(true);
     $mail->Subject = 'Password Reset Request for SeniorLink Account';
     $safeName = htmlspecialchars($user['username'], ENT_QUOTES, 'UTF-8');
-    $safeLink = htmlspecialchars($resetLink, ENT_QUOTES, 'UTF-8');
-    $mail->Body = "Hello {$safeName},<br><br>Use the link below to reset your password:<br><br>"
-        . "<a href=\"{$safeLink}\">Reset password</a><br><br>This link expires in one hour. "
+    $safeOtp = htmlspecialchars($otp, ENT_QUOTES, 'UTF-8');
+    $mail->Body = "Hello {$safeName},<br><br>Your SENIORLINK password reset code is:<br><br>"
+        . "<strong style=\"font-size:24px;letter-spacing:5px\">{$safeOtp}</strong><br><br>This code expires in 10 minutes. "
         . 'If you did not request this change, you may ignore this email.';
-    $mail->AltBody = "Hello {$user['username']},\n\nReset your password using this link:\n{$resetLink}\n\n"
-        . 'This link expires in one hour. If you did not request this change, you may ignore this email.';
+    $mail->AltBody = "Hello {$user['username']},\n\nYour SENIORLINK password reset code is: {$otp}\n\n"
+        . 'This code expires in 10 minutes. If you did not request this change, you may ignore this email.';
 
     $mail->send();
 
     // Store a usable token only after the email has been accepted by the mail server.
     $stmt = $conn->prepare('UPDATE users SET reset_token = :token, reset_token_expiry = :expiry WHERE id = :id');
-    $stmt->execute(['token' => $token, 'expiry' => $expiry, 'id' => $user['id']]);
+    $stmt->execute(['token' => $tokenHash, 'expiry' => $expiry, 'id' => $user['id']]);
 
     echo json_encode(['success' => true, 'message' => $genericMessage]);
 } catch (Exception $e) {

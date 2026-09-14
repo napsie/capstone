@@ -3,6 +3,8 @@ session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/application_types.php';
 require_once '../includes/request_security.php';
+require_once '../includes/data_normalizer.php';
+require_once '../includes/barangays_list.php';
 requireSameOriginMutation();
 
 header('Content-Type: application/json');
@@ -26,6 +28,8 @@ if (empty($_POST) && empty($_FILES) && $_SERVER['CONTENT_LENGTH'] > 0) {
     echo json_encode(['success' => false, 'message' => 'Upload failed: request size exceeds server limit.']);
     exit();
 }
+
+$_POST = normalizeApplicationInput($_POST, $barangays_list);
 
 $appId = sanitize_str($_POST['applicationId'] ?? null);
 if (empty($appId)) {
@@ -83,6 +87,19 @@ foreach ($required as $fieldName => $fieldValue) {
 $fullName = trim("{$firstName} {$middleName} {$lastName} {$suffix}");
 $oscaData = parseOscaFormPost($_POST);
 
+if (!isValidPhilippineMobileNumber($contactNumber)) {
+    echo json_encode(['success' => false, 'message' => 'Contact number must contain exactly 11 digits and begin with 09.']);
+    exit;
+}
+if ($emergencyContact !== '' && !isValidPhilippineMobileNumber($emergencyContact)) {
+    echo json_encode(['success' => false, 'message' => 'Emergency contact number must contain exactly 11 digits and begin with 09.']);
+    exit;
+}
+if (($oscaData['claimant_contact'] ?? '') !== '' && !isValidPhilippineMobileNumber($oscaData['claimant_contact'])) {
+    echo json_encode(['success' => false, 'message' => 'Claimant contact number must contain exactly 11 digits and begin with 09.']);
+    exit;
+}
+
 // Only update a form-specific column when its field was actually present in
 // the submitted modal. This keeps stored application data intact when a
 // field is intentionally not part of the selected official form.
@@ -93,13 +110,15 @@ $oscaInputMap = [
     // senior_id_no is intentionally excluded: only OSCA approval may issue or change it.
     'health_status' => 'healthStatus', 'id_purpose' => 'idPurpose',
     'milestone_age' => 'milestoneAge', 'claimant_name' => 'claimantName',
-    'claimant_relationship' => 'claimantRelationship', 'claimant_contact' => 'claimantContact',
+    'claimant_relationship' => array_key_exists('emergencyContactRelationship', $_POST) ? 'emergencyContactRelationship' : 'claimantRelationship', 'claimant_contact' => 'claimantContact',
     'deceased_last_name' => 'deceasedLastName', 'deceased_first_name' => 'deceasedFirstName',
     'deceased_middle_name' => 'deceasedMiddleName', 'deceased_suffix' => 'deceasedSuffix',
-    'deceased_birth_date' => 'deceasedBirthDate', 'landbank_card_no' => 'landbankCardNo',
+    'deceased_birth_date' => 'deceasedBirthDate', 'death_registration_date' => 'deathRegistrationDate',
+    'landbank_card_no' => 'landbankCardNo',
     'applicant_name' => 'applicantName', 'visit_purpose' => 'visit_purpose',
     'living_arrangement' => 'livingArrangement', 'is_pensioner' => 'isPensioner',
     'pension_source' => 'pensionSource', 'family_support' => 'familySupport',
+    'family_support_type' => 'familySupportType',
     'family_support_amount' => 'familySupportAmount', 'personal_income' => 'personalIncome',
     'personal_income_amount' => 'personalIncomeAmount', 'health_condition' => 'healthCondition',
     'with_maintenance' => 'withMaintenance', 'maintenance_spec' => 'maintenanceSpec',
@@ -114,6 +133,32 @@ $oscaData = array_filter(
     static fn($column) => isset($oscaInputMap[$column]) && array_key_exists($oscaInputMap[$column], $_POST),
     ARRAY_FILTER_USE_KEY
 );
+// For burial assistance this is the deceased person's existing OSCA ID, not a
+// newly issued ID, so authorized staff may correct it with the rest of F7.
+if ($applicationType === 'burial' && array_key_exists('seniorIdNo', $_POST)) {
+    $oscaData['senior_id_no'] = sanitize_str($_POST['seniorIdNo']);
+}
+if ($applicationType === 'milestone_gift' && $birthDate) {
+    try {
+        $dob = new DateTimeImmutable($birthDate);
+        $today = new DateTimeImmutable('today');
+        $automaticMilestone = $dob <= $today ? milestoneAgeForCurrentAge($today->diff($dob)->y) : null;
+        if ($automaticMilestone === null) {
+            echo json_encode(['success' => false, 'message' => 'The birth date is not currently eligible for a milestone cash gift.']);
+            exit;
+        }
+        $oscaData['milestone_age'] = (string)$automaticMilestone;
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Please provide a valid birth date.']);
+        exit;
+    }
+}
+if ($applicationType === 'milestone_gift' && (
+    empty($oscaData['claimant_name']) || empty($oscaData['claimant_relationship']) || empty($oscaData['claimant_contact'])
+)) {
+    echo json_encode(['success' => false, 'message' => 'Complete the family representative or claimant details.']);
+    exit;
+}
 
 if (!empty($oscaData['house_no']) || !empty($oscaData['street'])) {
     $parts = array_filter([
@@ -128,6 +173,26 @@ $sssNumber    = !empty($_POST['sssNumber']) ? sanitize_str($_POST['sssNumber']) 
 $pensionAmount = !empty($_POST['pensionAmount']) ? floatval($_POST['pensionAmount']) : null;
 $dateOfDeath            = !empty($_POST['dateOfDeath']) ? sanitize_str($_POST['dateOfDeath']) : null;
 $relationshipToDeceased = !empty($_POST['relationshipToDeceased']) ? sanitize_str($_POST['relationshipToDeceased']) : null;
+if ($applicationType === 'burial' && !in_array($relationshipToDeceased, getDeceasedRelationshipOptions(), true)) {
+    echo json_encode(['success' => false, 'message' => 'Please select a valid relationship to the deceased.']);
+    exit;
+}
+if ($applicationType === 'burial') {
+    if ($dateOfDeath === null || empty($oscaData['senior_id_no']) ||
+        empty($oscaData['landbank_card_no']) || empty($oscaData['claimant_name']) ||
+        empty($oscaData['claimant_contact']) || empty($oscaData['id_type_presented'])) {
+        echo json_encode(['success' => false, 'message' => 'Complete all required deceased, claimant, and proof-of-relationship fields.']);
+        exit;
+    }
+    if (!isValidPhilippineMobileNumber((string)$oscaData['claimant_contact'])) {
+        echo json_encode(['success' => false, 'message' => 'Claimant contact number must contain exactly 11 digits and begin with 09.']);
+        exit;
+    }
+    if (!in_array($oscaData['id_type_presented'], ['Marriage Contract', 'Birth Certificate', 'Other'], true)) {
+        echo json_encode(['success' => false, 'message' => 'Please select a valid proof of relationship.']);
+        exit;
+    }
+}
 $emailAddress          = array_key_exists('emailAddress', $_POST) && !empty($_POST['emailAddress']) ? sanitize_str($_POST['emailAddress']) : null;
 $additionalNotes       = !empty($_POST['additionalNotes']) ? sanitize_str($_POST['additionalNotes']) : null;
 

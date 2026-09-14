@@ -222,6 +222,10 @@ body {
     width: 100%;
     max-width: 560px;
     color: #fff;
+    align-self: start;
+    margin-top: clamp(24px, 8vh, 64px);
+    transform: none;
+    transition: none;
 }
 
 .hero-content::before {
@@ -519,9 +523,31 @@ button.portal-card {
 .portal-login-form label { display: block; margin-bottom: 6px; color: #334155; font-size: .76rem; font-weight: 700; }
 .portal-login-form .form-control { min-height: 48px; width: 100%; padding: 11px 13px; border: 1px solid #b9c8d8; border-radius: 10px; background: #fff; color: #172033; font: inherit; }
 .portal-login-form .form-control:focus { outline: 3px solid rgba(37, 99, 235, .16); border-color: #3b82f6; }
-.portal-login-form .password-field { position: relative; }
-.portal-login-form .password-field .form-control { padding-right: 50px; }
-.portal-login-form .toggle-password { position: absolute; top: 50%; right: 4px; transform: translateY(-50%); width: 40px; height: 40px; border: 0; border-radius: 8px; background: transparent; color: #64748b; cursor: pointer; }
+.portal-login-form .password-field { position: relative; height: 48px; }
+.portal-login-form .password-field .form-control { height: 48px; min-height: 48px; padding-right: 52px; }
+.portal-login-form .toggle-password {
+    position: absolute;
+    z-index: 2;
+    top: 4px;
+    right: 4px;
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    min-height: 40px !important;
+    max-height: 40px;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    line-height: 1;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #64748b;
+    cursor: pointer;
+    transform: none;
+}
+.portal-login-form .toggle-password i { width: 18px; line-height: 1; text-align: center; }
 .portal-login-form .toggle-password:hover { color: #174f83; background: #edf5fb; }
 .portal-login-options { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 38px; }
 .portal-remember { display: flex !important; align-items: center; gap: 8px; margin: 0 !important; font-weight: 600 !important; }
@@ -534,6 +560,27 @@ button.portal-card {
 .forgot-password-copy { color: #52657a; font-size: .84rem; line-height: 1.55; }
 .forgot-password-message { min-height: 20px; color: #166534; font-size: .78rem; line-height: 1.45; }
 .forgot-password-message.is-error { color: #b91c1c; }
+.portal-login-view.is-resetting .portal-login-form > .form-group,
+.portal-login-view.is-resetting .portal-login-options,
+.portal-login-view.is-resetting .portal-login-form > .portal-login-submit { display: none; }
+.portal-login-view.is-resetting .forgot-password-message {
+    min-height: 0;
+    padding: 10px 12px;
+    border: 1px solid #bbf7d0;
+    border-radius: 10px;
+    background: #f0fdf4;
+}
+.portal-login-view.is-resetting .forgot-password-message.is-error { border-color: #fecaca; background: #fef2f2; }
+.portal-otp-reset { display: grid; gap: 12px; }
+.portal-otp-reset[hidden] { display: none; }
+.portal-reset-header { display: flex; align-items: center; gap: 11px; padding-bottom: 2px; }
+.portal-reset-icon { display: grid; place-items: center; flex: 0 0 42px; width: 42px; height: 42px; border-radius: 11px; background: #e9f8ef; color: #178b4b; }
+.portal-reset-header strong { display: block; color: #172033; font-size: .9rem; }
+.portal-reset-header small { display: block; margin-top: 3px; color: #64748b; font-size: .72rem; line-height: 1.4; }
+.portal-reset-actions { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 10px; align-items: stretch; }
+.portal-reset-back { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 48px; border: 1px solid #b9c8d8; border-radius: 10px; background: #fff; color: #34516d; font: 700 .78rem Inter,sans-serif; cursor: pointer; }
+.portal-reset-back:hover { border-color: #7fa2c2; background: #f6f9fc; }
+.portal-reset-back:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 
 .portal-card {
     position: relative;
@@ -822,6 +869,7 @@ button.portal-card {
 
     .hero-content {
         max-width: 720px;
+        margin-top: 0;
     }
 
     .hero-content h2 {
@@ -966,4 +1014,63 @@ button.portal-card {
     }
 
     .portal-login-view.is-active { animation: none; }
+}
+.portal-signup-view.is-active {
+    width: 100%;
+    min-height: 0;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+}
+
+.signup-frame {
+    display: block;
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    height: 100%;
+    border: 0;
+    border-radius: 14px;
+    background: #fff;
+}
+
+/* Registration keeps the landing page fixed and gives its form a single,
+   clearly bounded scrolling region inside the portal card. */
+html.signup-view-open,
+html.signup-view-open body {
+    height: 100%;
+    overflow: hidden;
+}
+
+html.signup-view-open .landing-wrapper {
+    height: 100dvh;
+    min-height: 0;
+}
+
+html.signup-view-open .landing-main {
+    min-height: 0;
+    overflow: hidden;
+}
+
+html.signup-view-open .portal-panel {
+    height: min(720px, calc(100dvh - 135px));
+    max-height: calc(100dvh - 135px);
+    display: flex;
+    flex-direction: column;
+}
+
+html.signup-view-open .portal-panel-header,
+html.signup-view-open .portal-login-back {
+    flex-shrink: 0;
+}
+
+html.signup-view-open .site-footer { display: none; }
+
+@media (max-width: 600px) {
+    html.signup-view-open .portal-panel {
+        height: calc(100dvh - 100px);
+        max-height: calc(100dvh - 100px);
+        padding: 20px 16px;
+    }
+    html.signup-view-open .hero-content { display: none; }
 }

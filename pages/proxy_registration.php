@@ -229,6 +229,7 @@ $resetUrl = 'proxy_registration.php';
         }
     </style>
     <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
+    <link rel="stylesheet" href="../assets/css/benefit-information-modal.css?v=1">
 </head>
 <body>
     <a href="../index.php" class="back-btn">
@@ -246,8 +247,8 @@ $resetUrl = 'proxy_registration.php';
                         <i class="fas fa-people-roof" aria-hidden="true"></i>
                         Public Senior Service
                     </div>
-                    <h2 id="proxy-heading">New Senior Application</h2>
-                    <p>Complete the senior citizen's information and upload the documents required for the selected benefit.</p>
+                    <h2 id="proxy-heading">Senior Application Portal</h2>
+                    <p>Choose whether to apply for a Senior Citizen ID or access benefits using an approved ID and permanent token.</p>
                 </div>
                 <div class="proxy-panel-body">
                     <?php include '../partials/proxy_form.php'; ?>
@@ -406,7 +407,7 @@ $resetUrl = 'proxy_registration.php';
             if (workingDays <= 30) {
                 resultEl.innerHTML = `<span style="color:#1b8a4a;"><i class="fas fa-check-circle"></i> ${workingDays} working day(s) elapsed — Within deadline</span>`;
             } else {
-                resultEl.innerHTML = `<span style="color:#b91c1c;"><i class="fas fa-times-circle"></i> ${workingDays} working day(s) — Exceeds 30-day filing window</span>`;
+                resultEl.innerHTML = `<span style="color:#b91c1c;"><i class="fas fa-times-circle"></i> ${workingDays} working day(s) — Exceeds 30 days from date of passing</span>`;
             }
         }
 
@@ -414,5 +415,28 @@ $resetUrl = 'proxy_registration.php';
         window.scrollTo({ top: 0, behavior: 'smooth' });
         <?php endif; ?>
     </script>
+    <script src="../assets/js/form-drafts.js?v=1"></script>
+    <script>
+        SeniorlinkFormDrafts.initialize({ clearOnSuccess: <?php echo $proxySuccess ? 'true' : 'false'; ?> });
+    </script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const selector = 'input[type="tel"],input[name*="contact" i]:not([type="hidden"]),input[id*="contact" i]:not([type="hidden"]),input[name="phone" i],input[id="phone" i],input[oninput*="contactNumber"],input[oninput*="emergencyContact"]';
+    const restrictContact = input => {
+        const identity = `${input.name || ''} ${input.id || ''} ${input.getAttribute('oninput') || ''}`.toLowerCase();
+        if (identity.includes('contactname') || identity.includes('contact-name') || input.readOnly) return;
+        input.type = 'tel';
+        input.inputMode = 'numeric';
+        input.maxLength = 11;
+        input.pattern = '09[0-9]{9}';
+        input.title = 'Enter exactly 11 digits beginning with 09.';
+        input.addEventListener('input', () => {
+            input.value = input.value.replace(/\D/g, '').slice(0, 11);
+            input.setCustomValidity(input.value && !/^09\d{9}$/.test(input.value) ? 'Enter exactly 11 digits beginning with 09.' : '');
+        });
+    };
+    document.querySelectorAll(selector).forEach(restrictContact);
+});
+</script>
 </body>
 </html>

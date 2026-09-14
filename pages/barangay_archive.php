@@ -56,9 +56,9 @@ if ($typeFilter !== 'all' && !empty($typeFilter)) {
     $appParams[] = $typeFilter;
 }
 
-$appSql = "SELECT id_number, full_name, application_type, barangay, date_submitted, archived_at, archived_by 
-           FROM applications 
-           WHERE " . implode(' AND ', $appWhere) . " 
+$appSql = "SELECT id_number, full_name, application_type, barangay, date_submitted, workflow_state, status, archived_at, archived_by
+           FROM applications
+           WHERE " . implode(' AND ', $appWhere) . "
            ORDER BY archived_at DESC, date_submitted DESC";
 
 try {
@@ -227,6 +227,9 @@ $auditHasFilters = ($activeTab === 'audit' && $search !== '') || $auditEventFilt
 
         .badge-type { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
         .type-senior { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+        .archive-status { display:inline-flex; align-items:center; gap:5px; padding:5px 10px; border-radius:20px; font-size:.74rem; font-weight:800; text-transform:uppercase; white-space:nowrap; }
+        .archive-status--rejected { color:#b91c1c; background:#fee2e2; border:1px solid #fecaca; }
+        .archive-status--default { color:#475569; background:#e2e8f0; border:1px solid #cbd5e1; }
         .type-pension { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
         .type-burial { background: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
         .type-default { background: #f1f5f9; color: #475569; }
@@ -248,7 +251,7 @@ $auditHasFilters = ($activeTab === 'audit' && $search !== '') || $auditEventFilt
     <link rel="stylesheet" href="../assets/css/audit-log.css?v=2">
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
     <script src="../assets/js/table-pagination.js?v=1" defer></script>
-<link rel="stylesheet" href="../assets/css/application-documents.css?v=7">
+<link rel="stylesheet" href="../assets/css/application-documents.css?v=8">
 </head>
 <body>
 <div class="container">
@@ -315,6 +318,7 @@ $auditHasFilters = ($activeTab === 'audit' && $search !== '') || $auditEventFilt
                                 <th>ID Number</th>
                                 <th>Applicant Name</th>
                                 <th>Type</th>
+                                <th>Status</th>
                                 <th>Date Submitted</th>
                                 <th>Archived Date</th>
                                 <th>Archived By</th>
@@ -324,7 +328,7 @@ $auditHasFilters = ($activeTab === 'audit' && $search !== '') || $auditEventFilt
                         <tbody data-paginate="10" data-pagination-label="Archived application pages">
                             <?php if (empty($archivedApplications)): ?>
                                 <tr>
-                                    <td colspan="7">
+                                    <td colspan="8">
                                         <div class="empty-state">
                                             <i class="fas fa-box-open"></i>
                                             <p>No archived applications found</p>
@@ -337,11 +341,14 @@ $auditHasFilters = ($activeTab === 'audit' && $search !== '') || $auditEventFilt
                                     if ($app['application_type'] === 'senior') $typeClass = 'type-senior';
                                     elseif ($app['application_type'] === 'pension') $typeClass = 'type-pension';
                                     elseif ($app['application_type'] === 'burial') $typeClass = 'type-burial';
+                                    $archiveStatus = ($app['workflow_state'] ?? '') ?: (($app['status'] ?? '') ?: 'Archived');
+                                    $archiveStatusClass = strtolower($archiveStatus) === 'rejected' ? 'archive-status--rejected' : 'archive-status--default';
                                 ?>
                                     <tr class="archive-application-row" data-id="<?php echo htmlspecialchars($app['id_number']); ?>" data-name="<?php echo htmlspecialchars($app['full_name']); ?>" tabindex="0" role="button" aria-label="Open archived application for <?php echo htmlspecialchars($app['full_name']); ?>">
                                         <td><strong><?php echo htmlspecialchars($app['id_number']); ?></strong></td>
                                         <td><?php echo htmlspecialchars($app['full_name']); ?></td>
                                         <td><span class="badge-type <?php echo $typeClass; ?>"><?php echo htmlspecialchars(applicationTypeLabel($app['application_type'])); ?></span></td>
+                                        <td><span class="archive-status <?php echo $archiveStatusClass; ?>"><i class="fas <?php echo $archiveStatusClass === 'archive-status--rejected' ? 'fa-circle-xmark' : 'fa-box-archive'; ?>"></i><?php echo htmlspecialchars($archiveStatus); ?></span></td>
                                         <td><?php echo date('M d, Y', strtotime($app['date_submitted'])); ?></td>
                                         <td><?php echo !empty($app['archived_at']) ? date('M d, Y h:i A', strtotime($app['archived_at'])) : '—'; ?></td>
                                         <td><?php echo htmlspecialchars($archiveActorNames[$app['archived_by']] ?? ($app['archived_by'] ?: 'System')); ?></td>
@@ -453,9 +460,9 @@ $auditHasFilters = ($activeTab === 'audit' && $search !== '') || $auditEventFilt
 </div>
 
     <script src="../assets/js/sidebar-toggle.js?v=3"></script>
-    <script src="../assets/js/application-details.js?v=13"></script>
+    <script src="../assets/js/application-details.js?v=16"></script>
     <script src="../assets/js/application-modal-data.js?v=1"></script>
-    <script src="../assets/js/application-documents.js?v=9"></script>
+    <script src="../assets/js/application-documents.js?v=10"></script>
     <script src="../assets/js/archive-application-modal.js?v=3"></script>
     <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
     <script>

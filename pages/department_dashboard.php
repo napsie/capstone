@@ -22,7 +22,7 @@ if (empty($_SESSION['login_audit_recorded'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Centralized Profiling and Record Authentication System</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=4">
+    <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=5">
     <style>
         :root {
             --primary: #0f172a;
@@ -571,9 +571,11 @@ if (empty($_SESSION['login_audit_recorded'])) {
     <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
-    <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=3">
+    <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=5">
     <link rel="stylesheet" href="../assets/css/metric-cards.css?v=1">
+    <link rel="stylesheet" href="../assets/css/dashboard-calendar.css?v=1">
 <script src="../assets/js/dashboard-chart-fallback.js?v=1"></script>
+<script src="../assets/js/dashboard-calendar.js?v=1" defer></script>
 </head>
 <body class="dashboard-page department-dashboard">
     <div class="container">
@@ -671,18 +673,19 @@ if (empty($_SESSION['login_audit_recorded'])) {
         
                         <div class="right-panel">
                             <div class="calendar-card">
-                                <h2 id="current-time" aria-live="polite"></h2>
                                 <h3><span><i class="fas fa-calendar-alt"></i> Calendar</span><small>Navigate dates and schedules</small></h3>
                                 <div class="calendar-body">
                                     <div class="calendar-header">
-                                        <button id="prev-month" type="button" aria-label="Show previous month"><i class="fas fa-chevron-left"></i></button>
-                                        <span id="month-year"></span>
-                                        <button id="next-month" type="button" aria-label="Show next month"><i class="fas fa-chevron-right"></i></button>
+                                        <button class="calendar-nav" id="prev-month" type="button" aria-label="Show previous month"><i class="fas fa-chevron-left" aria-hidden="true"></i></button>
+                                        <span class="month-year" id="month-year" aria-live="polite"></span>
+                                        <button class="calendar-nav" id="next-month" type="button" aria-label="Show next month"><i class="fas fa-chevron-right" aria-hidden="true"></i></button>
                                     </div>
+                                    <div class="calendar-toolbar"><button class="calendar-today-button" id="calendar-today" type="button"><i class="fas fa-location-crosshairs" aria-hidden="true"></i> Today</button><span class="calendar-clock" id="current-time" aria-live="polite"></span></div>
                                     <table class="calendar-table">
-                                        <thead><tr><th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th></tr></thead>
+                                        <thead><tr><th scope="col">Sun</th><th scope="col">Mon</th><th scope="col">Tue</th><th scope="col">Wed</th><th scope="col">Thu</th><th scope="col">Fri</th><th scope="col">Sat</th></tr></thead>
                                         <tbody id="calendar-days"></tbody>
                                     </table>
+                                    <p class="calendar-selection" id="calendar-selection" aria-live="polite"></p>
                                 </div>
                             </div>
                             <div class="notifications-card recent-apps-card">
@@ -836,49 +839,6 @@ if (empty($_SESSION['login_audit_recorded'])) {
             const hour = new Date().getHours();
             let greeting = (hour < 12) ? "Good morning" : (hour < 18) ? "Good afternoon" : "Good evening";
             welcomeMessage.innerHTML = `${greeting}, <strong>${firstName} ${lastName}</strong>!`;
-        }
-
-        function initializeCalendar() {
-            const monthYearEl = document.getElementById('month-year');
-            const calendarDaysEl = document.getElementById('calendar-days');
-            const prevMonthBtn = document.getElementById('prev-month');
-            const nextMonthBtn = document.getElementById('next-month');
-            if (!monthYearEl || !calendarDaysEl || !prevMonthBtn || !nextMonthBtn) return;
-            let currentDate = new Date();
-            function renderCalendar() {
-                const year = currentDate.getFullYear(), month = currentDate.getMonth();
-                const today = new Date();
-                const firstDayOfMonth = new Date(year, month, 1), lastDayOfMonth = new Date(year, month + 1, 0);
-                const firstDayOfWeek = firstDayOfMonth.getDay(), totalDays = lastDayOfMonth.getDate();
-                const prevMonthDays = new Date(year, month, 0).getDate();
-                monthYearEl.textContent = `${firstDayOfMonth.toLocaleString('default', { month: 'long' })} ${year}`;
-                calendarDaysEl.innerHTML = '';
-                let date = 1, nextMonthDate = 1;
-                for (let i = 0; i < 6; i++) {
-                    const row = document.createElement('tr');
-                    let weekHasDays = false;
-                    for (let j = 0; j < 7; j++) {
-                        const cell = document.createElement('td');
-                        if (i === 0 && j < firstDayOfWeek) {
-                            cell.textContent = prevMonthDays - firstDayOfWeek + j + 1;
-                            cell.classList.add('inactive');
-                        } else if (date > totalDays) {
-                            cell.textContent = nextMonthDate++;
-                            cell.classList.add('inactive');
-                        } else {
-                            cell.textContent = date;
-                            if (date === today.getDate() && month === today.getMonth() && year === today.getFullYear()) cell.classList.add('today');
-                            date++;
-                            weekHasDays = true;
-                        }
-                        row.appendChild(cell);
-                    }
-                    if (weekHasDays || i === 0) calendarDaysEl.appendChild(row);
-                }
-            }
-            prevMonthBtn.addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); });
-            nextMonthBtn.addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); });
-            renderCalendar();
         }
 
         function renderNotifications(notifications) {

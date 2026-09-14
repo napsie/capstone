@@ -38,11 +38,14 @@ $homeVisitStatus = ($application['application_type'] ?? '') === 'pension'
     ? trim((string)($application['home_visit_status'] ?? 'Waiting for Home Visit'))
     : '';
 if (($application['application_type'] ?? '') === 'pension' && $homeVisitStatus === '') $homeVisitStatus = 'Waiting for Home Visit';
-$displayStatus = ($homeVisitStatus !== '' && $homeVisitStatus !== 'Completed') ? 'Pending' : $status;
+if ($homeVisitStatus === 'Cancelled') $homeVisitStatus = 'Rejected';
+$displayStatus = $homeVisitStatus === 'Rejected'
+    ? 'Rejected'
+    : (($homeVisitStatus !== '' && $homeVisitStatus !== 'Completed') ? 'Pending' : $status);
 $steps = ['Received', 'For Review', 'Verified'];
 $currentIndex = array_search($status, $steps, true);
 if ($currentIndex === false) $currentIndex = -1;
-$isRejected = in_array(strtolower($status), ['rejected', 'declined', 'cancelled'], true);
+$isRejected = in_array(strtolower($displayStatus), ['rejected', 'declined', 'cancelled'], true);
 $tokenType = str_starts_with($token, 'PEN-') ? 'Benefit Claim' : 'Pre-Registration';
 $serviceLabel = trim((string)($application['requested_benefit'] ?? ''));
 if ($serviceLabel === '' && $application) {
@@ -164,7 +167,8 @@ if ($digitalIdEligible && !empty($application['birth_date'])) {
                 </div>
 
                 <p class="status-note <?php echo $isRejected ? 'rejected' : ''; ?>" role="status">
-                    <?php if ($isRejected): ?>This application is marked <strong><?php echo htmlspecialchars($status); ?></strong>. Please contact your local senior services office for assistance.
+                    <?php if ($isRejected): ?>This application is marked <strong><?php echo htmlspecialchars($displayStatus); ?></strong>. Please contact your local senior services office for assistance.
+                    <?php elseif ($homeVisitStatus === 'Rejected'): ?>The required home visit was <strong>Rejected</strong>. Contact the reviewing office if you need more information.
                     <?php elseif ($homeVisitStatus !== '' && $homeVisitStatus !== 'Completed'): ?>Your Local Pension application is <strong>Pending</strong> until the required home visit is completed. The reviewing office manages the visit schedule.
                     <?php else: ?>Your application is currently <strong><?php echo htmlspecialchars($status ?: 'Received'); ?></strong>. This page will reflect updates made by the reviewing office.<?php endif; ?>
                 </p>

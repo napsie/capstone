@@ -3,7 +3,11 @@ session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/proxy_token_resolver.php';
 require_once '../includes/application_types.php';
+require_once '../includes/document_repository.php';
+require_once '../includes/data_normalizer.php';
 require_once '../includes/filing_deadline.php';
+require_once '../includes/duplicate_detector.php';
+require_once '../includes/audit_logger.php';
 
 if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'barangay_staff') {
     header('Location: ../index.php');
@@ -33,6 +37,7 @@ if (isset($_GET['token'])) {
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $_POST = normalizeApplicationInput($_POST);
     // Sanitize and validate input
     $lastName = isset($_POST['lastName']) ? trim(strip_tags($_POST['lastName'])) : '';
     $firstName = isset($_POST['firstName']) ? trim(strip_tags($_POST['firstName'])) : '';
@@ -71,26 +76,37 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (!array_key_exists($applicationType, $availableApplicationTypes)) {
         $errorMessage = 'Please select a valid application type.';
     }
-
-    // A person may submit multiple benefit applications using the same Senior
-    // Citizen ID. Duplicate-person blocking belongs only to the base Senior ID
-    // registration, where name and birth date identify an existing enrollment.
-    if (empty($errorMessage) && $applicationType === 'senior' && $birthDate !== '') {
-        $duplicateSeniorStmt = $conn->prepare(
-            "SELECT id_number FROM applications
-             WHERE application_type = 'senior'
-               AND LOWER(TRIM(firstName)) = LOWER(TRIM(?))
-               AND LOWER(TRIM(lastName)) = LOWER(TRIM(?))
-               AND birth_date = ?
-               AND id_number <> ?
-               AND COALESCE(is_archived, 0) = 0
-               AND COALESCE(workflow_state, '') <> 'Rejected'
-             LIMIT 1"
-        );
-        $duplicateSeniorStmt->execute([$firstName, $lastName, $birthDate, $idNumber]);
-        if ($duplicateSeniorStmt->fetchColumn()) {
-            $errorMessage = 'A Senior Citizen ID application already exists for this person. Open the existing record instead of creating another ID registration.';
+    if (!isValidPhilippineMobileNumber($contactNumber)) {
+        $errorMessage = 'Contact number must contain exactly 11 digits and begin with 09.';
+    } elseif ($emergencyContact !== '' && !isValidPhilippineMobileNumber($emergencyContact)) {
+        $errorMessage = 'Emergency contact number must contain exactly 11 digits and begin with 09.';
+    } elseif (($oscaData['claimant_contact'] ?? '') !== '' && !isValidPhilippineMobileNumber($oscaData['claimant_contact'])) {
+        $errorMessage = 'Claimant contact number must contain exactly 11 digits and begin with 09.';
+    }
+    if ($applicationType === 'senior' && empty($errorMessage)) {
+        if (!in_array($oscaData['id_purpose'] ?? '', ['new', 'lost', 'change', 'transfer'], true)) {
+            $errorMessage = 'Please select a valid Senior Citizen ID application purpose.';
+        } elseif (($oscaData['place_of_birth'] ?? '') === '') {
+            $errorMessage = 'Place of birth is required for the Senior Citizen ID application.';
+        } elseif (!in_array($oscaData['health_status'] ?? '', ['Physically Fit', 'Bedridden', 'Frail/Sickly', 'PWD'], true)) {
+            $errorMessage = 'Please select the senior citizen\'s health status.';
+        } elseif (in_array($oscaData['health_status'], ['Frail/Sickly', 'PWD'], true) && ($oscaData['health_condition'] ?? '') === '') {
+            $errorMessage = 'Please specify the Frail/Sickly or PWD condition.';
+        } elseif ($emergencyContactName === '' || $emergencyContact === '' || ($oscaData['claimant_relationship'] ?? '') === '') {
+            $errorMessage = 'Emergency contact name, number, and relationship are required.';
         }
+    }
+
+    $duplicateOverride = ($_POST['duplicate_override'] ?? '') === '1';
+    $duplicateOverrideReason = trim(strip_tags((string)($_POST['duplicate_override_reason'] ?? '')));
+    $duplicateInput = [
+        'id_number' => $idNumber, 'senior_id_no' => $oscaData['senior_id_no'] ?? '',
+        'first_name' => $firstName, 'last_name' => $lastName, 'full_name' => $fullName,
+        'birth_date' => $birthDate, 'contact_number' => $contactNumber, 'barangay' => $barangay,
+    ];
+    $duplicateMatches = empty($errorMessage) ? findLikelyBeneficiaryDuplicates($conn, $duplicateInput) : [];
+    if ($duplicateMatches && (!$duplicateOverride || mb_strlen($duplicateOverrideReason) < 10)) {
+        $errorMessage = 'Possible duplicate records were found. Review them and provide an override reason of at least 10 characters to continue.';
     }
 
     // Rule-Based Compliance validation on backend
@@ -99,13 +115,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $today = new DateTime();
         $age = $today->diff($birthDateObj)->y;
         
-        if (($applicationType === 'senior' || $applicationType === 'burial' || $applicationType === 'landbank') && $age < 60) {
-            $errorMessage = "Localized Compliance Check Failed: Applicant must be at least 60 years old (current age: $age).";
-        } elseif (($applicationType === 'pension' || $applicationType === 'national_pension') && $age < 65) {
-            $errorMessage = "Localized Compliance Check Failed: Local/National Social Pension requires applicant to be at least 65 years old (current age: $age).";
+        $ageRule = getApplicationAgeRule($applicationType);
+        if ($ageRule['minimum_age'] > 0 && $age < $ageRule['minimum_age']) {
+            $errorMessage = "Localized Compliance Check Failed: " . applicationTypeLabel($applicationType) .
+                " requires applicant to be at least {$ageRule['minimum_age']} years old (current age: $age).";
         } elseif ($applicationType === 'milestone_gift') {
-            if ($age < 80) {
-                $errorMessage = "Localized Compliance Check Failed: Octogenarian / Nonagenarian / Centenarian Cash Gift is available to applicants aged 80 and above (current age: $age).";
+            $claimedMilestone = milestoneAgeForCurrentAge($age);
+            $oscaData['milestone_age'] = $claimedMilestone;
+            if (!isApplicationAgeEligible($applicationType, $age, $claimedMilestone)) {
+                $errorMessage = "Localized Compliance Check Failed: milestone cash gifts are not available at the applicant's current age ({$age}).";
+            } elseif (($oscaData['claimant_name'] ?? '') === '' || ($oscaData['claimant_relationship'] ?? '') === '' || ($oscaData['claimant_contact'] ?? '') === '') {
+                $errorMessage = 'Complete the family representative or claimant name, relationship, and contact number.';
             }
         }
     }
@@ -119,6 +139,36 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $pensionAmountRaw = trim($_POST['pensionAmount'] ?? '');
         $pensionAmount = is_numeric($pensionAmountRaw) ? floatval($pensionAmountRaw) : null;
     }
+    if ($applicationType === 'pension') {
+        $requiredPensionFields = ['atm_card_no', 'mothers_maiden_name', 'is_pensioner', 'is_permanent_income', 'family_support', 'health_condition', 'owns_house', 'is_renter'];
+        foreach ($requiredPensionFields as $field) {
+            if (($oscaData[$field] ?? null) === null || $oscaData[$field] === '') {
+                $errorMessage = 'Complete all required fields on the Local Senior Pension Form.';
+                break;
+            }
+        }
+        if (empty($errorMessage) && (int)$oscaData['is_pensioner'] === 1 && (($oscaData['pension_source'] ?? '') === '' || $pensionAmount === null)) {
+            $errorMessage = 'Enter the pension source and amount.';
+        }
+        if (empty($errorMessage) && (int)$oscaData['is_permanent_income'] === 1 && ($oscaData['income_source'] ?? '') === '') {
+            $errorMessage = 'Enter the permanent source of income.';
+        }
+        if (empty($errorMessage) && (int)$oscaData['family_support'] === 1 && (($oscaData['family_support_type'] ?? '') === '' || ($oscaData['family_support_amount'] ?? null) === null)) {
+            $errorMessage = 'Enter the type and cash amount of regular family support.';
+        }
+    }
+
+    if ($applicationType === 'landbank') {
+        foreach (['name_on_card', 'tin', 'id_type_presented', 'nationality', 'source_of_funds', 'mothers_maiden_name'] as $field) {
+            if (($oscaData[$field] ?? '') === '') {
+                $errorMessage = 'Complete all required fields on the Land Bank Cash Card Enrollment Form.';
+                break;
+            }
+        }
+        if (mb_strlen((string)($oscaData['name_on_card'] ?? '')) > 23) {
+            $errorMessage = 'The name on the cash card cannot exceed 23 characters.';
+        }
+    }
 
     // Burial Assistance validation (death within 30 working days)
     $dateOfDeath = null;
@@ -126,15 +176,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if ($applicationType === 'burial') {
         $dateOfDeath = isset($_POST['dateOfDeath']) ? trim(strip_tags($_POST['dateOfDeath'])) : '';
         $relationshipToDeceased = isset($_POST['relationshipToDeceased']) ? trim(strip_tags($_POST['relationshipToDeceased'])) : '';
+        if (!in_array($relationshipToDeceased, getDeceasedRelationshipOptions(), true)) {
+            $errorMessage = 'Please select a valid relationship to the deceased.';
+        }
         if (empty($dateOfDeath)) {
-            $errorMessage = "Localized Compliance Check Failed: Date of Death is required for burial assistance.";
+            $errorMessage = "Date of passing is required for burial assistance.";
         } else {
             $workingDays = filingWorkingDays($dateOfDeath, date('Y-m-d'));
             if ($workingDays === null) {
                 $errorMessage = 'Date of Death must be valid and cannot be after the submission date.';
             } elseif ($workingDays > 30) {
-                $errorMessage = "Localized Compliance Check Failed: Application must be filed within 30 working days from passing (elapsed: $workingDays working days).";
+                $errorMessage = "Application must be filed within 30 working days from the date of passing (elapsed: $workingDays working days).";
             }
+        }
+        if (empty($errorMessage) && (($oscaData['senior_id_no'] ?? '') === '' || ($oscaData['landbank_card_no'] ?? '') === '' ||
+            ($oscaData['applicant_name'] ?? '') === '' || ($oscaData['claimant_contact'] ?? '') === '' || ($oscaData['id_type_presented'] ?? '') === '')) {
+            $errorMessage = 'Complete the deceased ID/card, claimant name/contact, and proof-of-relationship fields.';
         }
     }
 
@@ -170,12 +227,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 'proofOfAddress' => 'Proof of Address',
                 'idImage' => 'ID / Identification Photo',
                 'oscaIdPhoto' => 'OSCA ID Photo',
+                'pensionPhoto' => 'Latest Senior Citizen ID Photo',
                 'lbIdPhoto' => 'Land Bank ID Photo',
                 'doc_death_certificate' => 'Death Certificate',
                 'doc_relationship_proof' => 'Proof of Relationship',
                 'doc_barangay_cert' => 'Barangay Certificate',
                 'doc_claimant_id' => 'Claimant Government ID',
-                'doc_affidavit_loss' => 'Affidavit of Loss',
+                'doc_landbank_card' => 'Deceased Landbank Cash Card',
+                'doc_affidavit_loss' => 'Original Copy of Affidavit (if applicable)',
                 'doc_birth_certificate' => 'Birth Certificate',
                 'doc_valid_id' => 'Valid Government ID',
                 'doc_indigency_cert' => 'Certificate of Indigency',
@@ -189,6 +248,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 'cancellationCert' => 'Cancellation Certificate',
                 'oscaAdditionalDoc' => 'Additional Supporting Document',
             ];
+            if ($applicationType === 'milestone_gift') {
+                $documentLabels['doc_birth_certificate'] = 'PSA Certificate of Live Birth';
+                $documentLabels['doc_barangay_cert'] = 'Senior Citizen OSCA ID (Front and Back)';
+                $documentLabels['doc_valid_id'] = 'Latest A4-Size Whole-Body Picture';
+            }
             $submittedDocuments = [];
             foreach ($documentLabels as $field => $label) {
                 if (!isset($_FILES[$field]) || $_FILES[$field]['error'] === UPLOAD_ERR_NO_FILE) continue;
@@ -241,6 +305,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $uploadedIdImageKey = 'idImage';
                 } elseif (isset($_FILES['oscaIdPhoto']) && $_FILES['oscaIdPhoto']['error'] !== UPLOAD_ERR_NO_FILE) {
                     $uploadedIdImageKey = 'oscaIdPhoto';
+                } elseif (isset($_FILES['pensionPhoto']) && $_FILES['pensionPhoto']['error'] !== UPLOAD_ERR_NO_FILE) {
+                    $uploadedIdImageKey = 'pensionPhoto';
                 } elseif (isset($_FILES['lbIdPhoto']) && $_FILES['lbIdPhoto']['error'] !== UPLOAD_ERR_NO_FILE) {
                     $uploadedIdImageKey = 'lbIdPhoto';
                 } elseif (isset($_FILES['doc_valid_id']) && $_FILES['doc_valid_id']['error'] !== UPLOAD_ERR_NO_FILE) {
@@ -327,20 +393,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 if ($saved) {
                     if ($submittedDocuments) {
-                        $driver = $conn->getAttribute(PDO::ATTR_DRIVER_NAME);
-                        $documentSql = $driver === 'pgsql'
-                            ? 'INSERT INTO application_documents (application_id, document_key, document_label, mime_type, document_data) VALUES (?, ?, ?, ?, ?)
-                               ON CONFLICT (application_id, document_key) DO UPDATE SET document_label = EXCLUDED.document_label, mime_type = EXCLUDED.mime_type, document_data = EXCLUDED.document_data, updated_at = CURRENT_TIMESTAMP'
-                            : 'INSERT INTO application_documents (application_id, document_key, document_label, mime_type, document_data) VALUES (?, ?, ?, ?, ?)
-                               ON DUPLICATE KEY UPDATE document_label = VALUES(document_label), mime_type = VALUES(mime_type), document_data = VALUES(document_data), updated_at = CURRENT_TIMESTAMP';
-                        $documentStmt = $conn->prepare($documentSql);
                         foreach ($submittedDocuments as $document) {
-                            $documentStmt->bindValue(1, $idNumber, PDO::PARAM_STR);
-                            $documentStmt->bindValue(2, $document['key'], PDO::PARAM_STR);
-                            $documentStmt->bindValue(3, $document['label'], PDO::PARAM_STR);
-                            $documentStmt->bindValue(4, $document['mime'], PDO::PARAM_STR);
-                            $documentStmt->bindValue(5, $document['data'], PDO::PARAM_LOB);
-                            $documentStmt->execute();
+                            saveDocumentVersion($conn, [
+                                'application_id' => $idNumber, 'document_key' => $document['key'],
+                                'document_label' => $document['label'], 'mime_type' => $document['mime'],
+                                'document_data' => $document['data'], 'uploaded_by' => $_SESSION['username'] ?? 'barangay_staff',
+                                'uploader_id' => $_SESSION['user_id'] ?? null, 'source' => 'application',
+                            ]);
                         }
                     }
                     // Log a state transition only for a newly created record.
@@ -350,6 +409,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         $stmtHist = $conn->prepare("INSERT INTO application_history (application_id, previous_state, new_state, changed_by, comments) VALUES (?, ?, ?, ?, ?)");
                         $userName = $_SESSION['username'] ?? 'barangay_staff';
                         $stmtHist->execute([$idNumber, 'None', 'Received', $userName, 'Application created and received at the counter.']);
+                    }
+
+                    if ($duplicateMatches && $duplicateOverride) {
+                        $matchedIds = implode(', ', array_column($duplicateMatches, 'id_number'));
+                        logAudit($conn, 'OVERRIDE_DUPLICATE_BENEFICIARY', "Created {$idNumber} after reviewing possible matches [{$matchedIds}]. Reason: {$duplicateOverrideReason}");
                     }
 
                     $conn->commit();
@@ -386,6 +450,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <title>CPRAS - New Application</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=4">
+    <link rel="stylesheet" href="../assets/css/duplicate-review.css?v=1">
     <style>
         .compliance-badge {
             display: inline-flex;
@@ -1352,6 +1417,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             max-width: 680px;
             width: 100%;
             margin: 0;
+            height: min(760px, 90vh);
             max-height: 90vh;
             border-radius: 18px;
             padding: 0;
@@ -1413,6 +1479,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             padding: 20px 24px 24px;
             max-height: none;
             flex: 1;
+            min-height: 0;
             overflow-y: auto;
             background: #ffffff !important;
         }
@@ -1605,6 +1672,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     </style>
     <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
+    <link rel="stylesheet" href="../assets/css/benefit-information-modal.css?v=1">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
@@ -1719,6 +1787,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <input type="hidden" name="proxyToken" id="proxyToken" value="<?php echo htmlspecialchars($loadedProxyData['transactionId'] ?? ''); ?>">
                     <input type="hidden" name="proxyContactNumber" id="proxyContactNumber" value="<?php echo htmlspecialchars($loadedProxyData['proxyContactNumber'] ?? ''); ?>">
                     <input type="hidden" id="applicationType" name="applicationType" value="" required>
+                    <input type="hidden" name="duplicate_override" id="duplicateOverride" value="0">
+                    <input type="hidden" name="duplicate_override_reason" id="duplicateOverrideReason" value="">
+
+                    <div class="guided-mobile-progress" id="staffFormProgress" data-step="2" role="status" aria-live="polite">
+                        <span class="guided-mobile-progress__label">Step 2 of 3 · Complete form</span>
+                        <span class="guided-mobile-progress__track" aria-hidden="true"><span></span><span></span><span></span></span>
+                    </div>
 
                     <!-- ================================================================
                          OSCA OFFICIAL FORM PREVIEW — Senior Citizens ID Application
@@ -1771,19 +1846,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <div style="display:grid;grid-template-columns:2fr 0.6fr 2fr 1.2fr;gap:10px;margin-bottom:10px;">
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Last Name</label>
-                                            <input type="text" id="burialDeceasedLastName" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;transition:border-color 0.2s;" oninput="syncField(this,'lastName')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="Dela Cruz">
+                                            <input type="text" id="burialDeceasedLastName" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;transition:border-color 0.2s;" oninput="syncField(this,'lastName');syncField(this,'deceasedLastName')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="Dela Cruz">
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Ext</label>
-                                            <input type="text" id="burialDeceasedExt" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;transition:border-color 0.2s;" oninput="syncField(this,'suffix')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="Jr.">
+                                            <input type="text" id="burialDeceasedExt" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;transition:border-color 0.2s;" oninput="syncField(this,'suffix');syncField(this,'deceasedSuffix')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="Jr.">
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">First Name</label>
-                                            <input type="text" id="burialDeceasedFirstName" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;transition:border-color 0.2s;" oninput="syncField(this,'firstName')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="Juan">
+                                            <input type="text" id="burialDeceasedFirstName" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;transition:border-color 0.2s;" oninput="syncField(this,'firstName');syncField(this,'deceasedFirstName')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="Juan">
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Middle Name</label>
-                                            <input type="text" id="burialDeceasedMiddleName" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;transition:border-color 0.2s;" oninput="syncField(this,'middleName')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="Santos">
+                                            <input type="text" id="burialDeceasedMiddleName" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;transition:border-color 0.2s;" oninput="syncField(this,'middleName');syncField(this,'deceasedMiddleName')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="Santos">
                                         </div>
                                     </div>
                                     <!-- Senior ID / Birth Date / Death Date / Landbank -->
@@ -1794,7 +1869,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Birth Date of Deceased</label>
-                                            <input type="date" id="burialDeceasedBirthDate" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'birthDate')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';">
+                                            <input type="date" id="burialDeceasedBirthDate" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'birthDate');syncField(this,'deceasedBirthDate')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';">
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Date of Death</label>
@@ -1802,7 +1877,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Landbank Cash Card No.</label>
-                                            <input type="text" id="burialLandbankCard" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="XXXX-XXXX-XXXX">
+                                            <input type="text" id="burialLandbankCard" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'landbankCardNo')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="XXXX-XXXX-XXXX">
                                         </div>
                                     </div>
                                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -1812,7 +1887,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Contact No.</label>
-                                            <input type="text" id="burialContactNo" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'contactNumber')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="09XX-XXX-XXXX">
+                                            <input type="text" id="burialContactNo" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'contactNumber');syncField(this,'claimantContact')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="09XX-XXX-XXXX">
                                         </div>
                                     </div>
                                 </div>
@@ -1825,11 +1900,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <div style="display:grid;grid-template-columns:2fr 1.5fr;gap:10px;margin-bottom:10px;">
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Name of Applicant</label>
-                                            <input type="text" id="burialClaimantName" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="Last Name, First Name, M.I.">
+                                            <input type="text" id="burialClaimantName" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'applicantName');syncField(this,'claimantName')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="Last Name, First Name, M.I.">
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Relationship</label>
-                                            <input type="text" id="burialRelationshipCard" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'relationshipToDeceased')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="e.g. Spouse, Son, Daughter">
+                                            <select id="burialRelationshipCard" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" onchange="syncField(this,'relationshipToDeceased')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';">
+                                                <option value="">Select relationship</option>
+                                                <?php foreach (getDeceasedRelationshipOptions() as $relationship): ?>
+                                                    <option value="<?= htmlspecialchars($relationship) ?>"><?= htmlspecialchars($relationship) ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
                                         </div>
                                     </div>
                                     <!-- Full Address -->
@@ -1871,18 +1951,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         <li>Surrender the Original and Two (2) photocopies of Senior Citizen ID and Landbank Cash Card (Blue ATM) of deceased (front &amp; back);</li>
                                         <li>Original and Two (2) photocopies of proof of the relationship of deceased and claimant:
                                             <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:4px;">
-                                                <label style="display:flex;align-items:center;gap:5px;font-size:0.76rem;"><input type="checkbox" style="accent-color:#1e3a5f;"> Marriage contract</label>
-                                                <label style="display:flex;align-items:center;gap:5px;font-size:0.76rem;"><input type="checkbox" style="accent-color:#1e3a5f;"> Birth certificate of</label>
-                                                <label style="display:flex;align-items:center;gap:5px;font-size:0.76rem;"><input type="checkbox" style="accent-color:#1e3a5f;"> Others: <input type="text" style="border:none;border-bottom:1px solid #64748b;outline:none;font-size:0.76rem;width:80px;"></label>
+                                                <label style="display:flex;align-items:center;gap:5px;font-size:0.76rem;"><input type="radio" name="burialRelationshipProof" value="Marriage Contract" onchange="syncField(this,'idTypePresented')" style="accent-color:#1e3a5f;"> Marriage contract</label>
+                                                <label style="display:flex;align-items:center;gap:5px;font-size:0.76rem;"><input type="radio" name="burialRelationshipProof" value="Birth Certificate" onchange="syncField(this,'idTypePresented')" style="accent-color:#1e3a5f;"> Birth certificate</label>
+                                                <label style="display:flex;align-items:center;gap:5px;font-size:0.76rem;"><input type="radio" name="burialRelationshipProof" value="Other" onchange="syncField(this,'idTypePresented')" style="accent-color:#1e3a5f;"> Other accepted proof</label>
                                             </div>
                                         </li>
                                         <li>Original and One (1) photocopy of Affidavit (if applicable):
                                             <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px;">
-                                                <label style="display:flex;align-items:center;gap:5px;font-size:0.76rem;"><input type="checkbox" style="accent-color:#1e3a5f;"> Kinship</label>
-                                                <label style="display:flex;align-items:center;gap:5px;font-size:0.76rem;"><input type="checkbox" style="accent-color:#1e3a5f;"> Discrepancy</label>
-                                                <label style="display:flex;align-items:center;gap:5px;font-size:0.76rem;"><input type="checkbox" style="accent-color:#1e3a5f;"> Died single without a child</label>
-                                                <label style="display:flex;align-items:center;gap:5px;font-size:0.76rem;"><input type="checkbox" style="accent-color:#1e3a5f;"> Cohabitation</label>
-                                                <label style="display:flex;align-items:center;gap:5px;font-size:0.76rem;"><input type="checkbox" style="accent-color:#1e3a5f;"> Others: <input type="text" style="border:none;border-bottom:1px solid #64748b;outline:none;font-size:0.76rem;width:80px;"></label>
+                                                <?php foreach (['Kinship','Discrepancy','Died single without a child','Cohabitation','Other'] as $affidavitType): ?>
+                                                <label style="display:flex;align-items:center;gap:5px;font-size:0.76rem;"><input type="radio" name="burialAffidavitType" value="<?php echo htmlspecialchars($affidavitType); ?>" onchange="syncField(this,'controlNo');document.getElementById('burialDoc5').required=true" style="accent-color:#1e3a5f;"> <?php echo htmlspecialchars($affidavitType); ?></label>
+                                                <?php endforeach; ?>
                                             </div>
                                         </li>
                                     </ol>
@@ -1895,7 +1973,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     </p>
                                     <div style="margin-bottom:8px;">
                                         <label style="font-size:0.68rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Remarks/Notes:</label>
-                                        <textarea id="burialRemarks" rows="2" style="width:100%;padding:6px 10px;border:1.5px solid #fde68a;border-radius:7px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;resize:vertical;" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#fde68a';"></textarea>
+                                        <textarea id="burialRemarks" rows="2" style="width:100%;padding:6px 10px;border:1.5px solid #fde68a;border-radius:7px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;resize:vertical;" oninput="syncField(this,'visitSummary')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#fde68a';"></textarea>
                                     </div>
                                     <p style="font-size:0.74rem;color:#78350f;line-height:1.6;margin:0;">
                                         <i class="fas fa-gavel" style="color:#92400e;margin-right:5px;"></i>
@@ -1971,9 +2049,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
                                         <div>
                                             <label for="burialDoc3" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
-                                                <i class="fas fa-home" style="margin-right:4px;color:#16a34a;"></i> Barangay Residency Certificate <span style="color:#e74c3c;">*</span>
+                                                <i class="fas fa-id-card" style="margin-right:4px;color:#16a34a;"></i> Deceased Senior Citizen ID (front &amp; back) <span style="color:#e74c3c;">*</span>
                                             </label>
-                                            <input type="file" id="burialDoc3" name="doc_barangay_cert" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)" style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <input type="file" id="burialDoc3" name="doc_osca_id" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)" style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
                                             <div id="burialDoc3SizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;"><i class="fas fa-exclamation-triangle"></i> File exceeds 8MB.</div>
                                         </div>
                                         <div>
@@ -1984,11 +2062,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                             <div id="burialDoc4SizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;"><i class="fas fa-exclamation-triangle"></i> File exceeds 8MB.</div>
                                         </div>
                                     </div>
-                                    <!-- Row 3 – Optional -->
-                                    <div style="display:grid;grid-template-columns:1fr;gap:12px;">
+                                    <!-- Row 3 -->
+                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                        <div>
+                                            <label for="burialDoc6" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
+                                                <i class="fas fa-credit-card" style="margin-right:4px;color:#16a34a;"></i> Deceased Landbank Cash Card (front &amp; back) <span style="color:#e74c3c;">*</span>
+                                            </label>
+                                            <input type="file" id="burialDoc6" name="doc_landbank_card" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)" style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <div id="burialDoc6SizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;"><i class="fas fa-exclamation-triangle"></i> File exceeds 8MB.</div>
+                                        </div>
                                         <div style="background:#fffbeb;border:1px dashed #fde68a;border-radius:8px;padding:10px 12px;">
                                             <label for="burialDoc5" style="font-size:0.68rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
-                                                <i class="fas fa-file-signature" style="margin-right:4px;color:#d97706;"></i> Affidavit of Loss <span style="font-size:0.65rem;font-weight:500;color:#92400e;background:#fef3c7;border-radius:12px;padding:1px 7px;margin-left:4px;">Optional — Lost ID Only</span>
+                                                <i class="fas fa-file-signature" style="margin-right:4px;color:#d97706;"></i> Original Copy of Affidavit <span style="font-size:0.65rem;font-weight:500;color:#92400e;background:#fef3c7;border-radius:12px;padding:1px 7px;margin-left:4px;">If applicable</span>
                                             </label>
                                             <input type="file" id="burialDoc5" name="doc_affidavit_loss" accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)" style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #fde68a;border-radius:7px;background:#fff;color:#92400e;cursor:pointer;">
                                             <div id="burialDoc5SizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;"><i class="fas fa-exclamation-triangle"></i> File exceeds 8MB.</div>
@@ -2327,16 +2412,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 </div>
                             </div>
 
-                            <!-- Milestone Age Selector -->
+                            <!-- Milestone age is derived from the applicant's birth date. -->
                             <div style="background:#fdf2f8;border-bottom:1px solid #fbcfe8;padding:12px 24px;">
-                                <div style="font-size:0.68rem;font-weight:700;color:#9d174d;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;">Milestone Age:</div>
-                                <div style="display:flex;flex-wrap:wrap;gap:10px;">
-                                    <?php foreach([80,85,90,95,100] as $ma): ?>
-                                    <label style="display:flex;align-items:center;gap:5px;cursor:pointer;padding:6px 16px;border-radius:8px;border:1.5px solid #fbcfe8;background:#fff;font-size:0.88rem;font-weight:700;color:#9d174d;" onmouseover="this.style.background='#fce7f3';" onmouseout="this.style.background='#fff';">
-                                        <input type="radio" name="milestoneAge" value="<?php echo $ma; ?>" style="accent-color:#be185d;"> <?php echo $ma; ?>
-                                    </label>
+                                <div style="font-size:0.68rem;font-weight:700;color:#9d174d;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;">Milestone Age (Automatic):</div>
+                                <select name="milestoneAge" id="milestoneAge" required style="width:100%;padding:8px 12px;border-radius:8px;border:1.5px solid #fbcfe8;background:#fff;font-size:0.88rem;font-weight:700;color:#9d174d;">
+                                    <option value="">Calculated from birth date</option>
+                                    <?php foreach (getApplicationAgeRule('milestone_gift')['milestone_ages'] as $ma): ?>
+                                        <option value="<?= $ma ?>"><?= $ma === 100 ? '100+ years old' : $ma . ' years old' ?></option>
                                     <?php endforeach; ?>
-                                </div>
+                                </select>
                             </div>
 
                             <!-- Form Body -->
@@ -2375,7 +2459,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     </div>
                                     <div>
                                         <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Place of Birth</label>
-                                        <input type="text" id="msPlaceOfBirth" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#be185d';" onblur="this.style.borderColor='#d0dae8';" placeholder="Pasig City, MM">
+                                        <input type="text" id="msPlaceOfBirth" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'placeOfBirth')" onfocus="this.style.borderColor='#be185d';" onblur="this.style.borderColor='#d0dae8';" placeholder="Pasig City, MM">
                                     </div>
                                     <div>
                                         <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Age</label>
@@ -2384,13 +2468,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <div>
                                         <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">Gender</label>
                                         <div style="display:flex;gap:10px;padding-top:4px;">
-                                            <label style="display:flex;align-items:center;gap:4px;font-size:0.82rem;font-weight:600;color:#0f172a;cursor:pointer;"><input type="radio" name="msGender" value="Male" style="accent-color:#be185d;"> Male</label>
-                                            <label style="display:flex;align-items:center;gap:4px;font-size:0.82rem;font-weight:600;color:#0f172a;cursor:pointer;"><input type="radio" name="msGender" value="Female" style="accent-color:#be185d;"> Female</label>
+                                            <label style="display:flex;align-items:center;gap:4px;font-size:0.82rem;font-weight:600;color:#0f172a;cursor:pointer;"><input type="radio" name="msGender" value="Male" onchange="syncField(this,'gender')" style="accent-color:#be185d;"> Male</label>
+                                            <label style="display:flex;align-items:center;gap:4px;font-size:0.82rem;font-weight:600;color:#0f172a;cursor:pointer;"><input type="radio" name="msGender" value="Female" onchange="syncField(this,'gender')" style="accent-color:#be185d;"> Female</label>
                                         </div>
                                     </div>
                                     <div>
                                         <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Civil Status</label>
-                                        <select id="msCivilStatus" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#be185d';" onblur="this.style.borderColor='#d0dae8';">
+                                        <select id="msCivilStatus" onchange="syncField(this,'civilStatus')" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#be185d';" onblur="this.style.borderColor='#d0dae8';">
                                             <option value="">Select</option>
                                             <option>Single</option><option>Married</option><option>Widow/er</option><option>Separated</option>
                                         </select>
@@ -2494,15 +2578,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                                                     <div>
                                                         <label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">Name:</label>
-                                                        <input type="text" style="width:100%;padding:5px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#be185d';" onblur="this.style.borderColor='#d0dae8';">
+                                                        <input type="text" oninput="syncField(this,'claimantName')" style="width:100%;padding:5px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#be185d';" onblur="this.style.borderColor='#d0dae8';">
                                                     </div>
                                                     <div>
                                                         <label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">Relationship:</label>
-                                                        <input type="text" style="width:100%;padding:5px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#be185d';" onblur="this.style.borderColor='#d0dae8';">
+                                                        <input type="text" oninput="syncField(this,'claimantRelationship')" style="width:100%;padding:5px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#be185d';" onblur="this.style.borderColor='#d0dae8';">
                                                     </div>
                                                     <div style="grid-column:span 2;">
                                                         <label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">Contact No.:</label>
-                                                        <input type="text" style="width:100%;padding:5px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#be185d';" onblur="this.style.borderColor='#d0dae8';">
+                                                        <input type="text" maxlength="11" inputmode="numeric" oninput="syncField(this,'claimantContact')" style="width:100%;padding:5px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#be185d';" onblur="this.style.borderColor='#d0dae8';">
                                                     </div>
                                                 </div>
                                             </div>
@@ -2577,7 +2661,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         </div>
                                         <div>
                                             <label for="msDoc2" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
-                                                <i class="fas fa-home" style="margin-right:4px;color:#16a34a;"></i> Barangay Residency Certificate <span style="color:#e74c3c;">*</span>
+                                                <i class="fas fa-id-card" style="margin-right:4px;color:#16a34a;"></i> Senior Citizen OSCA ID (Front and Back) <span style="color:#e74c3c;">*</span>
                                             </label>
                                             <input type="file" id="msDoc2" name="doc_barangay_cert" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)" style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
                                             <div id="msDoc2SizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;"><i class="fas fa-exclamation-triangle"></i> File exceeds 8MB.</div>
@@ -2587,9 +2671,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <div style="display:grid;grid-template-columns:1fr;gap:12px;">
                                         <div>
                                             <label for="msDoc3" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
-                                                <i class="fas fa-id-card" style="margin-right:4px;color:#16a34a;"></i> Valid ID / Senior Citizen ID <span style="color:#e74c3c;">*</span>
+                                                <i class="fas fa-image" style="margin-right:4px;color:#16a34a;"></i> Latest A4-Size Whole-Body Picture <span style="color:#e74c3c;">*</span>
                                             </label>
-                                            <input type="file" id="msDoc3" name="doc_valid_id" required accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)" style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
+                                            <input type="file" id="msDoc3" name="doc_valid_id" required accept="image/jpeg,image/png,image/gif" onchange="checkFileSize(this)" style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
                                             <div id="msDoc3SizeWarn" style="display:none;color:#e74c3c;font-size:0.72rem;margin-top:3px;"><i class="fas fa-exclamation-triangle"></i> File exceeds 8MB.</div>
                                         </div>
                                     </div>
@@ -2636,7 +2720,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 </div>
                                 <div style="text-align:right;">
                                     <div style="color:rgba(255,255,255,0.5);font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">Control No.</div>
-                                    <div style="color:#fcd34d;font-size:0.78rem;margin-top:2px;font-weight:700;" id="pensionControlNoDisplay"><?php echo date('Y') . '-' . rand(1000,9999); ?></div>
+                                    <input type="text" aria-label="Control number" placeholder="Control No." oninput="syncField(this,'controlNo')" style="margin-top:4px;width:150px;padding:4px 7px;border:1px solid rgba(255,255,255,.45);border-radius:5px;background:rgba(255,255,255,.12);color:#fff;font-weight:700;">
                                     <div style="color:rgba(255,255,255,0.5);font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-top:5px;">Date:</div>
                                     <div style="color:#fcd34d;font-size:0.78rem;margin-top:1px;font-weight:600;"><?php echo date('m/d/Y'); ?></div>
                                 </div>
@@ -2696,12 +2780,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">ATM No. or Temporary Cash Card Stub No.</label>
-                                            <input type="text" id="penAtmNo" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#b45309';" onblur="this.style.borderColor='#d0dae8';" placeholder="ATM / Temp Card No.">
+                                            <input type="text" id="penAtmNo" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'atmCardNo')" onfocus="this.style.borderColor='#b45309';" onblur="this.style.borderColor='#d0dae8';" placeholder="ATM / Temp Card No.">
                                         </div>
                                     </div>
-                                    <div>
-                                        <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Mother's Maiden Name</label>
-                                        <input type="text" id="penMother" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#b45309';" onblur="this.style.borderColor='#d0dae8';" placeholder="Santos, Maria A.">
+                                    <div style="display:grid;grid-template-columns:1fr 260px;gap:10px;align-items:end;">
+                                        <div>
+                                            <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Mother's Maiden Name</label>
+                                            <input type="text" id="penMother" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'mothersMaidenName')" onfocus="this.style.borderColor='#b45309';" onblur="this.style.borderColor='#d0dae8';" placeholder="Santos, Maria A.">
+                                        </div>
+                                        <div>
+                                            <label for="pensionPhoto" style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Latest ID Photo <span style="color:#dc2626;">*</span></label>
+                                            <input type="file" id="pensionPhoto" name="pensionPhoto" accept="image/jpeg,image/png" required onchange="checkFileSize(this)" style="width:100%;padding:5px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.76rem;background:#fff;">
+                                            <div id="pensionPhotoSizeWarn" style="display:none;color:#dc2626;font-size:0.68rem;margin-top:3px;">File must not exceed 8MB.</div>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -2710,42 +2801,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <label style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#475569;margin-bottom:8px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;display:flex;align-items:center;gap:5px;">
                                         <i class="fas fa-map-marker-alt" style="color:#b45309;"></i> Address
                                     </label>
-                                    <div style="display:grid;grid-template-columns:0.7fr 1fr 0.7fr 0.5fr;gap:8px;">
+                                    <div style="display:grid;grid-template-columns:0.7fr 1fr 0.7fr;gap:8px;">
                                         <div><label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">House/Blk/Lot No.</label><input type="text" id="penHouseNo" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'houseNo'); syncAddressFromActiveCard();" onfocus="this.style.borderColor='#b45309';" onblur="this.style.borderColor='#d0dae8';" placeholder="e.g. 123 Blk 4"></div>
                                         <div><label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">Street/Purok/Village</label><input type="text" id="penStreet" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'street'); syncAddressFromActiveCard();" onfocus="this.style.borderColor='#b45309';" onblur="this.style.borderColor='#d0dae8';" placeholder="e.g. Mabini St."></div>
                                         <div><label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">Barangay</label><input type="text" value="<?php echo htmlspecialchars($_SESSION['barangay'] ?? ''); ?>" readonly style="width:100%;padding:6px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:0.82rem;color:#b45309;background:#fefce8;font-weight:700;"></div>
-                                        <div><label style="font-size:0.64rem;color:#94a3b8;display:block;margin-bottom:2px;font-weight:600;">ZIP Code</label><input type="text" id="penZipCode" placeholder="1600" style="width:100%;padding:6px 8px;border:1.5px solid #d0dae8;border-radius:6px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'zipCode'); syncAddressFromActiveCard();" onfocus="this.style.borderColor='#b45309';" onblur="this.style.borderColor='#d0dae8';"></div>
-                                    </div>
-                                </div>
-
-                                <!-- Pension details (reference only; no external verification) -->
-                                <div style="background:#fff7ed;border:1.5px solid #fdba74;border-radius:12px;padding:14px 16px;margin-bottom:14px;">
-                                    <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#9a3412;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
-                                        <i class="fas fa-file-invoice-dollar" style="color:#ea580c;"></i> Pension Details <span style="font-weight:600;text-transform:none;letter-spacing:0;">(Optional)</span>
-                                    </div>
-                                    <p style="font-size:0.78rem;color:#9a3412;line-height:1.5;margin:0 0 10px;">Record the applicant's SSS information if it is available. This is not verified by the system and will not affect submission.</p>
-                                    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:end;">
-                                        <div>
-                                            <label style="font-size:0.66rem;font-weight:700;color:#9a3412;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:3px;">SSS Number</label>
-                                            <input type="text" id="penSssNumber" inputmode="numeric" autocomplete="off" style="width:100%;padding:8px 10px;border:1.5px solid #fdba74;border-radius:7px;font-size:0.88rem;color:#431407;background:#fff;outline:none;" oninput="syncField(this,'sssNumber');" placeholder="Enter SSS number">
-                                        </div>
-                                        <div>
-                                            <label style="font-size:0.66rem;font-weight:700;color:#9a3412;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:3px;">Monthly Pension Amount</label>
-                                            <input type="number" id="penPensionAmount" min="0" step="0.01" inputmode="decimal" style="width:100%;padding:8px 10px;border:1.5px solid #fdba74;border-radius:7px;font-size:0.88rem;color:#431407;background:#fff;outline:none;" oninput="syncField(this,'pensionAmount');" placeholder="e.g. 3500.00">
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Automatic Home Visit queue (Local Pension only) -->
-                                <div id="pensionHomeVisitSchedule" style="display:none;background:#eff6ff;border:1.5px solid #93c5fd;border-radius:12px;padding:14px 16px;margin-bottom:14px;">
-                                    <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#1e3a8a;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
-                                        <i class="fas fa-house-medical" style="color:#2563eb;"></i> Required Home Visit
-                                    </div>
-                                    <p style="font-size:0.82rem;color:#1e40af;line-height:1.55;margin:0 0 10px;">
-                                        After submission, this Local Pension application will be marked <strong>Pending</strong> until the required home visit is completed.
-                                    </p>
-                                    <div style="font-size:0.78rem;color:#334155;background:#fff;border-radius:8px;padding:10px 12px;line-height:1.5;">
-                                        <i class="fas fa-user-shield" style="color:#178b4b;margin-right:6px;"></i>The Department Admin privately assigns the personnel and visit date. No schedule is selected or disclosed during application submission because the visit is unannounced.
                                     </div>
                                 </div>
 
@@ -2757,36 +2816,38 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <div style="display:flex;flex-direction:column;gap:10px;">
                                         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
                                             <span style="font-size:0.82rem;font-weight:700;color:#431407;min-width:200px;">1. Pensioner?</span>
-                                            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;font-weight:600;cursor:pointer;"><input type="radio" name="penPensioner" value="Yes" style="accent-color:#b45309;"> Yes</label>
-                                            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;font-weight:600;cursor:pointer;"><input type="radio" name="penPensioner" value="No" style="accent-color:#b45309;"> No</label>
+                                            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;font-weight:600;cursor:pointer;"><input type="radio" name="penPensioner" value="1" onchange="syncField(this,'isPensioner')" style="accent-color:#b45309;"> Yes</label>
+                                            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;font-weight:600;cursor:pointer;"><input type="radio" name="penPensioner" value="0" onchange="syncField(this,'isPensioner')" style="accent-color:#b45309;"> No</label>
                                             <span style="font-size:0.78rem;color:#78350f;">If yes, what source and how much?</span>
-                                            <input type="text" style="border:none;border-bottom:1px solid #b45309;outline:none;font-size:0.8rem;flex:1;min-width:120px;background:transparent;" placeholder="e.g. SSS / P2,000">
+                                            <input type="text" oninput="syncField(this,'pensionSource')" style="border:none;border-bottom:1px solid #b45309;outline:none;font-size:0.8rem;min-width:120px;background:transparent;" placeholder="Pension source">
+                                            <input type="number" id="penPensionAmount" min="0" step="0.01" oninput="syncField(this,'pensionAmount')" style="border:none;border-bottom:1px solid #b45309;outline:none;font-size:0.8rem;width:110px;background:transparent;" placeholder="Amount">
                                         </div>
                                         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
                                             <span style="font-size:0.82rem;font-weight:700;color:#431407;min-width:200px;">2. Permanent source of income?</span>
-                                            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;font-weight:600;cursor:pointer;"><input type="radio" name="penPermIncome" value="Yes" style="accent-color:#b45309;"> Yes</label>
-                                            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;font-weight:600;cursor:pointer;"><input type="radio" name="penPermIncome" value="No" style="accent-color:#b45309;"> No</label>
+                                            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;font-weight:600;cursor:pointer;"><input type="radio" name="penPermIncome" value="1" onchange="syncField(this,'isPermanentIncome')" style="accent-color:#b45309;"> Yes</label>
+                                            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;font-weight:600;cursor:pointer;"><input type="radio" name="penPermIncome" value="0" onchange="syncField(this,'isPermanentIncome')" style="accent-color:#b45309;"> No</label>
                                             <span style="font-size:0.78rem;color:#78350f;">If yes, from what source?</span>
-                                            <input type="text" style="border:none;border-bottom:1px solid #b45309;outline:none;font-size:0.8rem;flex:1;min-width:120px;background:transparent;" placeholder="Source of income">
+                                            <input type="text" oninput="syncField(this,'incomeSource')" style="border:none;border-bottom:1px solid #b45309;outline:none;font-size:0.8rem;flex:1;min-width:120px;background:transparent;" placeholder="Source of income">
                                         </div>
                                         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
                                             <span style="font-size:0.82rem;font-weight:700;color:#431407;min-width:200px;">3. Regular support from family?</span>
-                                            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;font-weight:600;cursor:pointer;"><input type="radio" name="penFamilySupport" value="Yes" style="accent-color:#b45309;"> Yes</label>
-                                            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;font-weight:600;cursor:pointer;"><input type="radio" name="penFamilySupport" value="No" style="accent-color:#b45309;"> No</label>
+                                            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;font-weight:600;cursor:pointer;"><input type="radio" name="penFamilySupport" value="1" onchange="syncField(this,'familySupport')" style="accent-color:#b45309;"> Yes</label>
+                                            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;font-weight:600;cursor:pointer;"><input type="radio" name="penFamilySupport" value="0" onchange="syncField(this,'familySupport')" style="accent-color:#b45309;"> No</label>
                                             <span style="font-size:0.78rem;color:#78350f;">If yes, type of support:</span>
-                                            <label style="display:flex;align-items:center;gap:5px;font-size:0.8rem;cursor:pointer;"><input type="checkbox" style="accent-color:#b45309;"> Cash (How much? <input type="text" style="border:none;border-bottom:1px solid #b45309;outline:none;font-size:0.78rem;width:70px;background:transparent;">)</label>
+                                            <input type="text" oninput="syncField(this,'familySupportType')" style="border:none;border-bottom:1px solid #b45309;outline:none;font-size:0.78rem;min-width:110px;background:transparent;" placeholder="Cash, food, medicine">
+                                            <label style="font-size:0.8rem;">Cash (How much? <input type="number" min="0" step="0.01" oninput="syncField(this,'familySupportAmount')" style="border:none;border-bottom:1px solid #b45309;outline:none;font-size:0.78rem;width:90px;background:transparent;">)</label>
                                         </div>
                                         <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;">
                                             <span style="font-size:0.82rem;font-weight:700;color:#431407;min-width:200px;">4. Condition / Illness:</span>
-                                            <input type="text" style="border:none;border-bottom:1px solid #b45309;outline:none;font-size:0.8rem;flex:1;min-width:200px;background:transparent;" placeholder="Describe condition or illness">
+                                            <input type="text" oninput="syncField(this,'healthCondition')" style="border:none;border-bottom:1px solid #b45309;outline:none;font-size:0.8rem;flex:1;min-width:200px;background:transparent;" placeholder="Describe condition or illness">
                                         </div>
                                         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
                                             <span style="font-size:0.82rem;font-weight:700;color:#431407;min-width:200px;">5. Own house?</span>
-                                            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;font-weight:600;cursor:pointer;"><input type="radio" name="penOwnHouse" value="Yes" style="accent-color:#b45309;"> Yes</label>
-                                            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;font-weight:600;cursor:pointer;"><input type="radio" name="penOwnHouse" value="No" style="accent-color:#b45309;"> No</label>
+                                            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;font-weight:600;cursor:pointer;"><input type="radio" name="penOwnHouse" value="1" onchange="syncField(this,'ownsHouse')" style="accent-color:#b45309;"> Yes</label>
+                                            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;font-weight:600;cursor:pointer;"><input type="radio" name="penOwnHouse" value="0" onchange="syncField(this,'ownsHouse')" style="accent-color:#b45309;"> No</label>
                                             <span style="font-size:0.82rem;font-weight:700;color:#431407;margin-left:10px;">Renter:</span>
-                                            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;font-weight:600;cursor:pointer;"><input type="radio" name="penRenter" value="Yes" style="accent-color:#b45309;"> Yes</label>
-                                            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;font-weight:600;cursor:pointer;"><input type="radio" name="penRenter" value="No" style="accent-color:#b45309;"> No</label>
+                                            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;font-weight:600;cursor:pointer;"><input type="radio" name="penRenter" value="1" onchange="syncField(this,'isRenter')" style="accent-color:#b45309;"> Yes</label>
+                                            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;font-weight:600;cursor:pointer;"><input type="radio" name="penRenter" value="0" onchange="syncField(this,'isRenter')" style="accent-color:#b45309;"> No</label>
                                         </div>
                                     </div>
                                 </div>
@@ -2960,7 +3021,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                                 <input type="text" id="lbMiddleName" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'middleName')" onfocus="this.style.borderColor='#059669';" onblur="this.style.borderColor='#d0dae8';" placeholder="Santos">
                                             </div>
                                         </div>
-                                        <div style="display:grid;grid-template-columns:1.2fr 0.6fr 1.2fr 1fr;gap:10px;">
+                                        <div style="display:grid;grid-template-columns:1.2fr 0.6fr 1.2fr;gap:10px;">
                                             <div>
                                                 <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Date of Birth</label>
                                                 <input type="date" id="lbBirthDate" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'birthDate');updateLbAge();" onfocus="this.style.borderColor='#059669';" onblur="this.style.borderColor='#d0dae8';">
@@ -2972,10 +3033,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                             <div>
                                                 <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Place of Birth</label>
                                                 <input type="text" id="lbPlaceOfBirth" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'placeOfBirth')" onfocus="this.style.borderColor='#059669';" onblur="this.style.borderColor='#d0dae8';" placeholder="Pasig City, MM">
-                                            </div>
-                                            <div>
-                                                <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Nationality</label>
-                                                <input type="text" id="lbNationality" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'nationality')" onfocus="this.style.borderColor='#059669';" onblur="this.style.borderColor='#d0dae8';" value="Filipino">
                                             </div>
                                         </div>
                                     </div>
@@ -3016,13 +3073,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Source of Funds</label>
-                                            <input type="text" id="lbSourceOfFunds" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'sourceOfFunds')" onfocus="this.style.borderColor='#059669';" onblur="this.style.borderColor='#d0dae8';" placeholder="e.g. Senior Pension, Savings">
+                                            <select id="lbSourceOfFunds" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" onchange="syncField(this,'sourceOfFunds')" onfocus="this.style.borderColor='#059669';" onblur="this.style.borderColor='#d0dae8';"><option value="">Select source</option><option>Senior Pension</option><option>Government Assistance</option><option>Family Support</option><option>Employment / Business Income</option><option>Savings</option><option>Other</option></select>
                                         </div>
                                     </div>
                                     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
                                         <div>
-                                            <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Type of ID Presented</label>
-                                            <input type="text" id="lbIdTypePresented" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'idTypePresented')" onfocus="this.style.borderColor='#059669';" onblur="this.style.borderColor='#d0dae8';" value="OSCA">
+                                            <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">ID Presented</label>
+                                            <select id="lbIdTypePresented" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" onchange="syncField(this,'idTypePresented')" onfocus="this.style.borderColor='#059669';" onblur="this.style.borderColor='#d0dae8';"><option>OSCA / Senior Citizen ID</option><option>PhilSys ID</option><option>Passport</option><option>Driver’s License</option><option>Other Government ID</option></select>
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Senior ID No.</label>
@@ -3040,7 +3097,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#475569;margin-bottom:8px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">
                                         <i class="fas fa-home" style="color:#059669;margin-right:5px;"></i> Contact &amp; Address Information
                                     </div>
-                                    <div style="display:grid;grid-template-columns:2fr 0.8fr 1.2fr;gap:10px;">
+                                    <div style="display:grid;grid-template-columns:2fr 0.8fr 1.2fr 1fr;gap:10px;">
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Home Address</label>
                                             <input type="text" id="lbCompleteAddress" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'completeAddress')" onfocus="this.style.borderColor='#059669';" onblur="this.style.borderColor='#d0dae8';" placeholder="House No., Street Name, Barangay, City">
@@ -3052,6 +3109,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Contact Number</label>
                                             <input type="text" id="lbContactNumber" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'contactNumber')" onfocus="this.style.borderColor='#059669';" onblur="this.style.borderColor='#d0dae8';" placeholder="09XX-XXX-XXXX">
+                                        </div>
+                                        <div>
+                                            <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Nationality</label>
+                                            <select id="lbNationality" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" onchange="syncField(this,'nationality')"><option value="">Select</option><option>Filipino</option><option>Dual Citizen</option><option>Foreign National</option></select>
                                         </div>
                                     </div>
                                 </div>
@@ -3235,7 +3296,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     </div>
                                     <div>
                                         <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Place of Birth</label>
-                                        <input type="text" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="Pasig City, MM">
+                                        <input type="text" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'placeOfBirth')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="Pasig City, MM">
                                     </div>
                                 </div>
 
@@ -3298,7 +3359,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
                                     <div>
                                         <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;"><i class="fas fa-female" style="color:#ec4899;margin-right:4px;"></i>Mother's Maiden Name</label>
-                                        <input type="text" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="Santos, Maria A.">
+                                        <input type="text" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'mothersMaidenName')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#d0dae8';" placeholder="Santos, Maria A.">
                                     </div>
                                     <div>
                                         <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;"><i class="fas fa-heartbeat" style="color:#ef4444;margin-right:4px;"></i>Health Status</label>
@@ -3308,11 +3369,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                             $healthColors = ['Physically Fit'=>'#22c55e','Bedridden'=>'#f59e0b','Frail/Sickly'=>'#f97316','PWD'=>'#6366f1'];
                                             foreach($healthOpts as $hval=>$hlabel): ?>
                                             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;padding:5px 10px;border-radius:7px;border:1.5px solid #d0dae8;background:#f8fafc;font-size:0.78rem;font-weight:600;color:#334155;" onmouseover="this.style.borderColor='<?php echo $healthColors[$hval]; ?>';this.style.background='#f0fdf4';" onmouseout="this.style.borderColor='#d0dae8';this.style.background='#f8fafc';">
-                                                <input type="radio" name="oscaHealthStatus" value="<?php echo $hval; ?>" style="accent-color:<?php echo $healthColors[$hval]; ?>;">
+                                                <input type="radio" name="oscaHealthStatus" value="<?php echo $hval; ?>" onchange="document.getElementById('healthStatus').value=this.value" style="accent-color:<?php echo $healthColors[$hval]; ?>;">
                                                 <?php echo $hlabel; ?>
                                             </label>
                                             <?php endforeach; ?>
                                         </div>
+                                        <input type="text" style="width:100%;margin-top:7px;padding:6px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.82rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'healthCondition')" placeholder="Specify Frail/Sickly or PWD condition, if applicable">
                                     </div>
                                 </div>
 
@@ -3368,7 +3430,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         </div>
                                         <div>
                                             <label style="font-size:0.67rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;"><i class="fas fa-people-arrows" style="color:#1e3a5f;margin-right:4px;"></i>Relationship to Applicant</label>
-                                            <input type="text" style="width:100%;padding:6px 10px;border:1.5px solid #fde68a;border-radius:7px;font-size:0.85rem;color:#0f172a;background:#fff;outline:none;" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#fde68a';" placeholder="e.g. Son, Daughter, Spouse">
+                                            <input type="text" style="width:100%;padding:6px 10px;border:1.5px solid #fde68a;border-radius:7px;font-size:0.85rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'claimantRelationship')" onfocus="this.style.borderColor='#3b82f6';" onblur="this.style.borderColor='#fde68a';" placeholder="e.g. Son, Daughter, Spouse">
                                         </div>
                                     </div>
                                 </div>
@@ -3508,14 +3570,41 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <input type="hidden" id="province"             name="province"             value="Metro Manila">
                     <input type="hidden" id="zipCode"              name="zipCode"              value="">
                     <input type="hidden" id="landmark"             name="landmark"             value="">
+                    <input type="hidden" id="placeOfBirth"          name="placeOfBirth"          value="">
+                    <input type="hidden" id="gender"                name="gender"                value="">
+                    <input type="hidden" id="civilStatus"           name="civilStatus"           value="">
+                    <input type="hidden" id="mothersMaidenName"     name="mothersMaidenName"     value="">
+                    <input type="hidden" id="healthStatus"          name="healthStatus"          value="">
+                    <input type="hidden" id="healthCondition"       name="healthCondition"       value="">
+                    <input type="hidden" id="idPurpose"             name="idPurpose"             value="new">
+                    <input type="hidden" id="claimantRelationship"  name="claimantRelationship"  value="">
                     <input type="hidden" id="seniorIdNo"           name="seniorIdNo"           value="<?php echo htmlspecialchars($loadedProxyData['seniorIdNo'] ?? ''); ?>">
                     <input type="hidden" id="emergencyContactName" name="emergencyContactName" value="">
                     <input type="hidden" id="emergencyContact"     name="emergencyContact"     value="">
                     <!-- Pension/Burial hidden fields — synced from official form preview cards -->
                     <input type="hidden" id="sssNumber"              name="sssNumber"              value="<?php echo htmlspecialchars($loadedProxyData['sssNumber'] ?? ''); ?>">
                     <input type="hidden" id="pensionAmount"          name="pensionAmount"          value="<?php echo htmlspecialchars($loadedProxyData['pensionAmount'] ?? ''); ?>">
+                    <?php foreach (['atmCardNo','isPensioner','pensionSource','isPermanentIncome','incomeSource','familySupport','familySupportType','familySupportAmount','ownsHouse','isRenter'] as $pensionField): ?>
+                    <input type="hidden" id="<?php echo $pensionField; ?>" name="<?php echo $pensionField; ?>" value="<?php echo htmlspecialchars((string)($loadedProxyData[$pensionField] ?? '')); ?>">
+                    <?php endforeach; ?>
                     <input type="hidden" id="dateOfDeath"            name="dateOfDeath"            value="<?php echo htmlspecialchars($loadedProxyData['dateOfDeath'] ?? ''); ?>">
                     <input type="hidden" id="relationshipToDeceased" name="relationshipToDeceased" value="<?php echo htmlspecialchars($loadedProxyData['relationshipToDeceased'] ?? ''); ?>">
+                    <input type="hidden" id="deceasedLastName"       name="deceasedLastName"       value="">
+                    <input type="hidden" id="deceasedFirstName"      name="deceasedFirstName"      value="">
+                    <input type="hidden" id="deceasedMiddleName"     name="deceasedMiddleName"     value="">
+                    <input type="hidden" id="deceasedSuffix"         name="deceasedSuffix"         value="">
+                    <input type="hidden" id="deceasedBirthDate"      name="deceasedBirthDate"      value="">
+                    <input type="hidden" id="landbankCardNo"         name="landbankCardNo"         value="">
+                    <input type="hidden" id="applicantName"          name="applicantName"          value="">
+                    <input type="hidden" id="claimantName"           name="claimantName"           value="">
+                    <input type="hidden" id="claimantContact"        name="claimantContact"        value="">
+                    <input type="hidden" id="idTypePresented"        name="idTypePresented"        value="">
+                    <input type="hidden" id="nameOnCard"             name="nameOnCard"             value="">
+                    <input type="hidden" id="tin"                    name="tin"                    value="">
+                    <input type="hidden" id="nationality"            name="nationality"            value="">
+                    <input type="hidden" id="sourceOfFunds"          name="sourceOfFunds"          value="">
+                    <input type="hidden" id="controlNo"              name="controlNo"              value="">
+                    <input type="hidden" id="visitSummary"           name="visitSummary"           value="">
                     <div id="ageComplianceResult" style="display:none;"></div>
                     <div id="burialComplianceResult" style="display:none;"></div>
 
@@ -3742,7 +3831,36 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         function initializeDocumentUploadPreviews(root = document) {
-            root.querySelectorAll('input[type="file"]').forEach(createDocumentPreviewHolder);
+            root.querySelectorAll('input[type="file"]').forEach(input => {
+                if (window.matchMedia('(pointer: coarse)').matches
+                    && input.accept.toLowerCase().includes('image/')
+                    && !input.hasAttribute('capture')) {
+                    input.setAttribute('capture', /photo|portrait|idimage/i.test(input.id) ? 'user' : 'environment');
+                }
+                createDocumentPreviewHolder(input);
+            });
+        }
+
+        function updateStaffFormProgress() {
+            const form = document.getElementById('mainAppForm');
+            const progress = document.getElementById('staffFormProgress');
+            if (!form || !progress) return;
+
+            const activeRequired = Array.from(form.querySelectorAll(':required'))
+                .filter(control => !control.disabled
+                    && control.type !== 'hidden'
+                    && control.offsetParent !== null);
+            const details = activeRequired.filter(control => control.type !== 'file');
+            const files = activeRequired.filter(control => control.type === 'file');
+            const detailsComplete = details.length > 0 && details.every(control => control.checkValidity());
+            const filesComplete = files.every(control => control.files?.length > 0);
+            const step = detailsComplete && filesComplete ? 3 : 2;
+
+            progress.dataset.step = String(step);
+            const label = progress.querySelector('.guided-mobile-progress__label');
+            if (label) label.textContent = step === 3
+                ? 'Step 3 of 3 · Review and submit'
+                : 'Step 2 of 3 · Complete form';
         }
 
         document.addEventListener('change', function(event) {
@@ -3752,7 +3870,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 && !DOCUMENT_PREVIEW_SKIP_IDS.has(input.id)) {
                 renderDocumentUploadPreview(input);
             }
+            updateStaffFormProgress();
         });
+
+        document.getElementById('mainAppForm').addEventListener('input', updateStaffFormProgress);
 
         document.getElementById('mainAppForm').addEventListener('reset', function() {
             window.setTimeout(() => initializeDocumentUploadPreviews(this), 0);
@@ -4045,6 +4166,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         function selectAppType(value) {
             // Update hidden input
             document.getElementById('applicationType').value = value;
+            syncAutomaticMilestoneAge();
             ensureOfficialFormCard(value);
 
             // Highlight selected card + aria
@@ -4076,12 +4198,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             // Reveal immediately; animating a very tall form makes the page feel delayed.
             formBody.scrollIntoView({ behavior: 'auto', block: 'start' });
 
-            const visitSchedule = document.getElementById('pensionHomeVisitSchedule');
-            if (visitSchedule) {
-                const isLocalPension = value === 'pension';
-                visitSchedule.style.display = isLocalPension ? 'block' : 'none';
-            }
-
             // Update pension form title for national pension
             const penTitle = document.getElementById('pensionFormTitle');
             if (penTitle) penTitle.textContent = (value === 'national_pension') ? 'NATIONAL DSWD SOCIAL PENSION FORM' : 'LOCAL SENIOR PENSION FORM';
@@ -4095,6 +4211,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             // Trigger dependent logic
             toggleFields();
             checkAgeCompliance();
+            updateStaffFormProgress();
 
             // Update requirements guide and file inputs based on purpose if OSCA senior form is visible
             try {
@@ -4103,6 +4220,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 for (const r of purposeRadios) if (r.checked) selPurpose = r.value;
                 updateRequirementsByPurpose(selPurpose || 'new');
             } catch (e) { /* ignore if not present */ }
+            updateStaffFormProgress();
         }
 
         // Update the Requirements Reference Guide and toggle required file inputs based on OSCA purpose
@@ -4131,9 +4249,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             // reset proof and any common inputs
             if (proof) proof.required = false;
             const idimg = document.getElementById('idImage'); if (idimg) idimg.required = false;
-            const photo = document.getElementById('oscaIdPhoto'); if (photo) photo.required = false;
+            const photo = document.getElementById('oscaIdPhoto'); if (photo) photo.required = true;
 
-            if (purpose === 'new' || purpose === 'change') {
+            if (purpose === 'new') {
                 // show guide text (reuse existing new applicant block)
                 grid.innerHTML = `
                     <div>
@@ -4141,29 +4259,37 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:3px;">
                             <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#3b82f6;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>Birth Certificate (Original & Photocopy)</span></li>
                             <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#3b82f6;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>Original Barangay Residency Certificate</span></li>
-                            <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#3b82f6;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>2 valid IDs (with date of birth & Pasig City address)</span></li>
+                            <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#3b82f6;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>If no birth certificate: Negative Certification of Birth and 2 valid IDs showing date of birth and Pasig City address</span></li>
                         </ul>
                     </div>
                 `;
 
-                // Require birth certificate original + photocopy, barangay cert, two valid IDs
+                // Standard new-applicant documents shown on the official F1 form.
                 if (proof) proof.required = true;
                 show('birthOriginalWrap', true);
                 show('birthPhotocopyWrap', true);
-                show('validId1Wrap', true);
-                show('validId2Wrap', true);
+
+            } else if (purpose === 'change') {
+                grid.innerHTML = `
+                    <div><div style="font-weight:700;color:#ca8a04;margin-bottom:4px;">Change / Replacement of Senior Citizen ID</div>
+                    <ul style="margin:0;padding-left:18px;"><li>Two (2) recent 1×1 ID photos</li><li>Original Senior Citizen ID</li></ul></div>`;
+                const originalLabel = document.getElementById('labelOriginalSeniorId');
+                if (originalLabel) originalLabel.innerHTML = '<i class="fas fa-id-card" style="margin-right:4px;color:#16a34a;"></i> Original Senior Citizen ID';
+                show('originalSeniorIdWrap', true);
 
             } else if (purpose === 'lost') {
                 grid.innerHTML = `
                     <div>
                         <div style="font-weight:700;color:#ca8a04;margin-bottom:4px;display:flex;align-items:center;gap:5px;"><span style="width:20px;height:20px;background:#ca8a04;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:0.6rem;flex-shrink:0;"><i class="fas fa-sync"></i></span> Replacement / Lost</div>
                         <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:2px;">
-                            <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#ca8a04;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>Original Senior Citizen ID</span></li>
+                            <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#ca8a04;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>Photocopy of Senior ID / Landbank cash card / temporary cash-card stub (front and back)</span></li>
                             <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#ef4444;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span><em>Lost only:</em> Original Affidavit of Loss</span></li>
                         </ul>
                     </div>
                 `;
 
+                const originalLabel = document.getElementById('labelOriginalSeniorId');
+                if (originalLabel) originalLabel.innerHTML = '<i class="fas fa-copy" style="margin-right:4px;color:#16a34a;"></i> Copy of Senior ID / Landbank Card / Temporary Stub';
                 show('originalSeniorIdWrap', true);
                 show('affidavitOfLossWrap', true);
 
@@ -4173,12 +4299,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         <div style="font-weight:700;color:#16a34a;margin-bottom:4px;display:flex;align-items:center;gap:5px;"><span style="width:20px;height:20px;background:#16a34a;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:0.6rem;flex-shrink:0;"><i class="fas fa-exchange-alt"></i></span> Transfer</div>
                         <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:2px;">
                             <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#16a34a;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>Certificate of Cancellation of SC ID from previous OSCA</span></li>
+                            <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#16a34a;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>Birth Certificate</span></li>
                             <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#16a34a;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>Original Barangay Residency Certificate</span></li>
                         </ul>
                     </div>
                 `;
 
                 if (proof) proof.required = true;
+                show('birthOriginalWrap', true);
                 show('cancellationCertWrap', true);
 
             } else {
@@ -4190,6 +4318,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Listen to purpose radio changes and update requirements
         document.addEventListener('change', function(e) {
             if (e.target && e.target.name === 'idPurposeOsca') {
+                document.getElementById('idPurpose').value = e.target.value;
                 updateRequirementsByPurpose(e.target.value);
             }
         });
@@ -4259,10 +4388,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 'zipCode':           'lbZipCode',
                 'placeOfBirth':      'lbPlaceOfBirth',
                 'mothersMaidenName': 'lbMothersMaidenName',
-                'nationality':       'lbNationality',
                 'idTypePresented':   'lbIdTypePresented',
                 'tin':               'lbTin',
                 'sourceOfFunds':     'lbSourceOfFunds',
+                'nationality':       'lbNationality',
                 'seniorIdNo':        'lbSeniorIdNo',
                 'nameOnCard':        'lbNameOnCard'
             };
@@ -4380,7 +4509,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 'birthDate':     'penBirthDate',
                 'contactNumber': 'penContact',
                 'seniorIdNo':    'penScIdNo',
-                'sssNumber':     'penSssNumber',
             };
             for (const [mainId, pId] of Object.entries(map)) {
                 const mainEl = document.getElementById(mainId);
@@ -4427,8 +4555,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             const dodCard = document.getElementById('burialDateOfDeathCard');
             if (dod && dodCard && dod.value) {
                 dodCard.value = dod.value;
-                updateBurialDaysFiled(dod.value);
             }
+            if (dod?.value) updateBurialDaysFiled(dod.value);
             const rel = document.getElementById('relationshipToDeceased');
             const relCard = document.getElementById('burialRelationshipCard');
             if (rel && relCard && rel.value) relCard.value = rel.value;
@@ -4480,7 +4608,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             const mainEl = document.getElementById(mainFieldId);
             if (mainEl) mainEl.value = oscaInput.value;
             // Also call checkAgeCompliance if it's a date field
-            if (mainFieldId === 'birthDate') checkAgeCompliance();
+            if (mainFieldId === 'birthDate') {
+                checkAgeCompliance();
+                syncAutomaticMilestoneAge();
+            }
+        }
+
+        function syncAutomaticMilestoneAge() {
+            const valueInput = document.getElementById('milestoneAge');
+            const birthValue = document.getElementById('birthDate')?.value || '';
+            if (!valueInput || !birthValue) return;
+            const [year, month, day] = birthValue.split('-').map(Number);
+            const today = new Date();
+            let age = today.getFullYear() - year;
+            if (today.getMonth() + 1 < month || (today.getMonth() + 1 === month && today.getDate() < day)) age--;
+            const allowed = BENEFIT_DETAILS.milestone_gift?.milestone_ages || [];
+            const highest = Math.max(...allowed);
+            const milestone = age >= highest ? highest : (allowed.includes(age) ? age : '');
+            valueInput.value = milestone ? String(milestone) : '';
+            valueInput.setCustomValidity(milestone ? '' : `Milestone cash gifts are not available at age ${age}.`);
         }
 
         function syncAddressFromActiveCard() {
@@ -4493,8 +4639,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 burial: { houseNo: 'burialAddrHouseNo', street: 'burialAddrStreet' },
                 home_visit: { houseNo: 'hvHouseNo', street: 'hvStreet', zipCode: 'hvZipCode' },
                 milestone_gift: { houseNo: 'msHouseNo', street: 'msStreet', zipCode: 'msZipCode' },
-                pension: { houseNo: 'penHouseNo', street: 'penStreet', zipCode: 'penZipCode' },
-                national_pension: { houseNo: 'penHouseNo', street: 'penStreet', zipCode: 'penZipCode' },
+                pension: { houseNo: 'penHouseNo', street: 'penStreet' },
+                national_pension: { houseNo: 'penHouseNo', street: 'penStreet' },
                 landbank: { completeAddress: 'lbCompleteAddress', zipCode: 'lbZipCode' }
             };
             const source = sources[type] || {};
@@ -4670,17 +4816,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 age--;
             }
             
-            if ((type === 'senior' || type === 'burial') && age < 60) {
-                window.showCarelinkResult("Applicant is under 60 years old. Senior citizen benefits require age 60+.", false);
+            const minimumAge = Number(BENEFIT_DETAILS[type]?.minimum_age || 0);
+            if (minimumAge && age < minimumAge) {
+                window.showCarelinkResult(`${BENEFIT_DETAILS[type]?.label || 'This application'} requires age ${minimumAge}+.`, false);
                 e.preventDefault();
                 return;
-            } else if ((type === 'pension' || type === 'national_pension') && age < 65) {
-                window.showCarelinkResult("Social pension applications require age 65+.", false);
-                e.preventDefault();
-                return;
-            } else if (type === 'milestone_gift') {
-                if (age < 80) {
-                    window.showCarelinkResult("Octogenarian / Nonagenarian / Centenarian Cash Gift is available to applicants aged 80 and above.", false);
+            }
+            if (type === 'milestone_gift') {
+                const selectedMilestone = Number(document.getElementById('milestoneAge')?.value || 0);
+                const allowedMilestones = BENEFIT_DETAILS[type]?.milestone_ages || [];
+                const highestMilestone = Math.max(...allowedMilestones);
+                const milestoneMatches = selectedMilestone === highestMilestone ? age >= highestMilestone : age === selectedMilestone;
+                if (!allowedMilestones.includes(selectedMilestone) || !milestoneMatches) {
+                    window.showCarelinkResult(`The selected milestone must match the applicant's current age (${age}).`, false);
                     e.preventDefault();
                     return;
                 }
@@ -4701,7 +4849,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     curDate.setDate(curDate.getDate() + 1);
                 }
                 if (workingDays > 30) {
-                window.showCarelinkResult("Burial assistance claims must be submitted within 30 working days from the date of death (current: " + workingDays + " working days). Submission is blocked.", false);
+                window.showCarelinkResult("Burial assistance claims must be submitted within 30 working days from the date of passing (current: " + workingDays + " working days). Submission is blocked.", false);
                     e.preventDefault();
                     return;
                 }
@@ -4731,5 +4879,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
     </script>
     <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
+    <script src="../assets/js/duplicate-review.js?v=1"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const selector = 'input[type="tel"],input[name*="contact" i]:not([type="hidden"]),input[id*="contact" i]:not([type="hidden"]),input[name="phone" i],input[id="phone" i],input[oninput*="contactNumber"],input[oninput*="emergencyContact"]';
+    const restrictContact = input => {
+        const identity = `${input.name || ''} ${input.id || ''} ${input.getAttribute('oninput') || ''}`.toLowerCase();
+        if (identity.includes('contactname') || identity.includes('contact-name') || input.readOnly) return;
+        input.type = 'tel';
+        input.inputMode = 'numeric';
+        input.maxLength = 11;
+        input.pattern = '09[0-9]{9}';
+        input.title = 'Enter exactly 11 digits beginning with 09.';
+        input.addEventListener('input', () => {
+            input.value = input.value.replace(/\D/g, '').slice(0, 11);
+            input.setCustomValidity(input.value && !/^09\d{9}$/.test(input.value) ? 'Enter exactly 11 digits beginning with 09.' : '');
+        });
+    };
+    document.querySelectorAll(selector).forEach(restrictContact);
+});
+</script>
 </body>
 </html>

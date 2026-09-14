@@ -1,0 +1,250 @@
+/* Shared benefit information modal used by public, barangay, and SHDO forms. */
+.public-benefit-modal,
+#benefitModal {
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 20px !important;
+    box-sizing: border-box;
+    background: rgba(15, 23, 42, .72) !important;
+    backdrop-filter: blur(4px);
+}
+
+.public-benefit-dialog,
+#benefitModal .modal-content {
+    width: min(680px, 100%) !important;
+    height: min(760px, 90vh) !important;
+    max-height: 90vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    border: 1px solid #d0dae8 !important;
+    border-radius: 18px !important;
+    background: #fff !important;
+    color: #1e293b !important;
+    box-shadow: 0 28px 80px rgba(15, 23, 42, .30) !important;
+}
+
+.public-benefit-head,
+.benefit-modal-header {
+    position: relative !important;
+    flex: 0 0 auto !important;
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 16px !important;
+    padding: 20px 56px 18px 24px !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    background: linear-gradient(135deg, #f0f7ff, #f8fafc 55%, #fff) !important;
+}
+
+.public-benefit-head::before,
+.benefit-modal-header::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 5px;
+    border-radius: 18px 0 0;
+    background: var(--modal-accent, var(--benefit-accent, #3b82f6));
+}
+
+.public-benefit-icon,
+.benefit-modal-icon {
+    flex: 0 0 48px !important;
+    width: 48px !important;
+    height: 48px !important;
+    display: grid !important;
+    place-items: center !important;
+    border-radius: 12px !important;
+    color: #fff !important;
+    font-size: 1.05rem !important;
+    background: var(--modal-accent, #3b82f6);
+    box-shadow: 0 8px 18px rgba(59, 130, 246, .24) !important;
+}
+
+.public-benefit-head h3,
+.benefit-modal-header h2 {
+    margin: 0 0 5px !important;
+    padding: 0 !important;
+    color: #0f172a !important;
+    font-size: 1.08rem !important;
+    font-weight: 800 !important;
+    line-height: 1.35 !important;
+}
+
+.public-benefit-head p,
+.benefit-modal-header p {
+    margin: 0 !important;
+    color: #64748b !important;
+    font-size: .85rem !important;
+    line-height: 1.5 !important;
+}
+
+.public-benefit-close,
+#benefitModal .close {
+    position: absolute !important;
+    z-index: 3 !important;
+    top: 14px !important;
+    right: 16px !important;
+    width: 34px !important;
+    height: 34px !important;
+    display: grid !important;
+    place-items: center !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 8px !important;
+    background: transparent !important;
+    color: #64748b !important;
+    font-size: 1.2rem !important;
+    line-height: 1 !important;
+    cursor: pointer !important;
+}
+
+.public-benefit-close:hover,
+#benefitModal .close:hover {
+    color: #0f172a !important;
+    background: #e2e8f0 !important;
+}
+
+.public-benefit-body,
+.benefit-modal-body {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    padding: 20px 24px 24px !important;
+    background: #fff !important;
+    scrollbar-gutter: stable;
+}
+
+.public-benefit-block,
+.benefit-detail-block {
+    margin: 0 0 14px !important;
+    padding: 16px 18px !important;
+    border: 1px solid #d8e0ea !important;
+    border-radius: 12px !important;
+    background: #fff !important;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, .045) !important;
+}
+
+.public-benefit-block h4,
+.benefit-detail-label {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin: 0 0 12px !important;
+    color: #475569 !important;
+    font-size: .75rem !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .06em !important;
+}
+
+.public-benefit-block h4 i,
+.benefit-detail-label i {
+    width: 26px !important;
+    height: 26px !important;
+    display: inline-grid !important;
+    place-items: center !important;
+    flex: 0 0 26px !important;
+    border-radius: 8px !important;
+    background: #dbeafe !important;
+    color: #2563eb !important;
+    font-size: .72rem !important;
+}
+
+.public-benefit-block--benefits h4 i,
+.benefit-detail-block--benefits .benefit-detail-label i {
+    background: #dcfce7 !important;
+    color: #16a34a !important;
+}
+
+.public-benefit-block ul,
+.benefit-detail-list {
+    margin: 0 !important;
+    padding: 0 !important;
+    list-style: none !important;
+    color: #334155 !important;
+}
+
+.public-benefit-block li,
+.benefit-detail-list li {
+    position: relative;
+    padding: 9px 0 9px 24px !important;
+    border-bottom: 1px solid #e8eef4 !important;
+    color: #334155 !important;
+    font-size: .87rem !important;
+    line-height: 1.5 !important;
+}
+
+.public-benefit-block li:last-child,
+.benefit-detail-list li:last-child { border-bottom: 0 !important; }
+
+.public-benefit-block li::before,
+.benefit-detail-list li::before {
+    content: '' !important;
+    position: absolute !important;
+    left: 5px !important;
+    top: 16px !important;
+    width: 7px !important;
+    height: 7px !important;
+    border-radius: 50% !important;
+    background: #3b82f6 !important;
+}
+
+.public-benefit-block--benefits li::before,
+.benefit-detail-block--benefits .benefit-detail-list li::before { background: #22c55e !important; }
+
+.public-benefit-ack,
+.benefit-ack-row {
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    margin: 16px 0 0 !important;
+    padding: 14px 16px !important;
+    border: 1px solid #f0d78c !important;
+    border-radius: 12px !important;
+    background: #fffbeb !important;
+    color: #92400e !important;
+    font-size: .84rem !important;
+    line-height: 1.5 !important;
+}
+
+.public-benefit-actions,
+.benefit-modal-actions {
+    flex: 0 0 auto !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    gap: 10px !important;
+    padding: 14px 24px 18px !important;
+    border-top: 1px solid #e2e8f0 !important;
+    background: #f8fafc !important;
+}
+
+.public-benefit-actions button,
+.benefit-modal-actions button {
+    min-height: 44px !important;
+    padding: 10px 18px !important;
+    border-radius: 9px !important;
+    font-size: .86rem !important;
+    font-weight: 700 !important;
+}
+
+.public-benefit-cancel,
+.btn-benefit-cancel { border: 1px solid #cbd5e1 !important; background: #fff !important; color: #475569 !important; }
+
+.public-benefit-proceed,
+.btn-benefit-proceed { border: 0 !important; background: var(--modal-accent, var(--benefit-accent, #3b82f6)) !important; color: #fff !important; box-shadow: none !important; }
+
+.public-benefit-proceed:disabled,
+.btn-benefit-proceed:disabled { opacity: .48 !important; cursor: not-allowed !important; }
+
+@media (max-width: 600px) {
+    .public-benefit-modal, #benefitModal { padding: 10px !important; }
+    .public-benefit-dialog, #benefitModal .modal-content { height: calc(100vh - 20px) !important; border-radius: 14px !important; }
+    .public-benefit-head, .benefit-modal-header { padding: 16px 48px 15px 16px !important; gap: 12px !important; }
+    .public-benefit-icon, .benefit-modal-icon { flex-basis: 42px !important; width: 42px !important; height: 42px !important; }
+    .public-benefit-body, .benefit-modal-body { padding: 14px !important; }
+    .public-benefit-actions, .benefit-modal-actions { padding: 12px 14px !important; }
+    .public-benefit-actions button, .benefit-modal-actions button { flex: 1 1 0 !important; }
+}

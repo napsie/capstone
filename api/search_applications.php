@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../includes/db_connect.php';
+require_once '../includes/deadline_alerts.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -68,6 +69,9 @@ $sql = "SELECT a.id_number AS id, a.full_name, a.application_type, a.birth_date,
                a.contact_number, a.date_submitted, a.status, a.complete_address,
                a.house_no, a.street, a.city, a.province, a.zip_code, a.barangay,
                a.workflow_state, a.home_visit_status, a.requested_benefit, a.priority_level, a.return_reason,
+               a.date_of_death, a.death_registration_date, a.home_visit_scheduled_at,
+               COALESCE((SELECT MAX(h.changed_at) FROM application_history h
+                         WHERE h.application_id = a.id_number AND h.new_state = a.workflow_state), a.date_submitted) AS workflow_changed_at,
                (SELECT h.comments FROM application_history h
                 WHERE h.application_id = a.id_number AND (h.new_state = 'Needs Correction' OR (h.new_state = 'Received'
                   AND h.previous_state IN ('For Review', 'Verified', 'Approved')))
@@ -89,12 +93,15 @@ foreach ($applications as &$application) {
     if ($application['workflow_state'] === 'Needs Correction' && !empty($application['return_reason'])) {
         $application['return_comments'] = $application['return_reason'];
     }
+    $homeVisitRejected = in_array(($application['home_visit_status'] ?? ''), ['Rejected', 'Cancelled'], true);
     $isPendingPensionInterview = (($application['application_type'] ?? '') === 'pension'
         || ($application['requested_benefit'] ?? '') === 'Local Social Pension Assessment')
-        && ($application['home_visit_status'] ?? '') !== 'Completed';
-    $application['display_status'] = $isPendingPensionInterview && $application['workflow_state'] !== 'Needs Correction'
-        ? 'Pending'
-        : ($application['workflow_state'] ?: 'Received');
+        && !in_array(($application['home_visit_status'] ?? ''), ['Completed', 'Rejected', 'Cancelled'], true);
+    $application['display_status'] = $homeVisitRejected
+        ? 'Rejected'
+        : ($isPendingPensionInterview && $application['workflow_state'] !== 'Needs Correction'
+            ? 'Pending'
+            : ($application['workflow_state'] ?: 'Received'));
     if (trim((string)($application['complete_address'] ?? '')) === '') {
         $application['complete_address'] = implode(', ', array_filter([
             $application['house_no'] ?? '', $application['street'] ?? '',
@@ -102,6 +109,7 @@ foreach ($applications as &$application) {
             $application['province'] ?? '', $application['zip_code'] ?? '',
         ], static fn($part) => trim((string)$part) !== ''));
     }
+    $application['deadline_alerts'] = applicationDeadlineAlerts($application);
 }
 unset($application);
 

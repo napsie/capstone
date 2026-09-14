@@ -39,9 +39,10 @@ try {
     $workflowStmt = $conn->prepare("
         SELECT 
             CASE
+                WHEN COALESCE(home_visit_status, '') IN ('Rejected', 'Cancelled') THEN 'Rejected'
                 WHEN workflow_state = 'Needs Correction' THEN 'Needs Correction'
                 WHEN (application_type = 'pension' OR requested_benefit = 'Local Social Pension Assessment')
-                     AND COALESCE(home_visit_status, '') <> 'Completed' THEN 'Pending'
+                     AND COALESCE(home_visit_status, '') NOT IN ('Completed', 'Rejected', 'Cancelled') THEN 'Pending'
                 WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') IN ('Approved','Released') THEN 'Verified'
                 ELSE COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received')
             END as workflow_state,
@@ -50,9 +51,10 @@ try {
         WHERE barangay = :barangay 
           AND (is_archived = 0 OR is_archived IS NULL)
         GROUP BY CASE
+                     WHEN COALESCE(home_visit_status, '') IN ('Rejected', 'Cancelled') THEN 'Rejected'
                      WHEN workflow_state = 'Needs Correction' THEN 'Needs Correction'
                 WHEN (application_type = 'pension' OR requested_benefit = 'Local Social Pension Assessment')
-                          AND COALESCE(home_visit_status, '') <> 'Completed' THEN 'Pending'
+                          AND COALESCE(home_visit_status, '') NOT IN ('Completed', 'Rejected', 'Cancelled') THEN 'Pending'
                      WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') IN ('Approved','Released') THEN 'Verified'
                      ELSE COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received')
                  END
@@ -63,6 +65,7 @@ try {
     // 3. Compute summary counts in one scan instead of three near-identical queries.
     $summaryStmt = $conn->prepare("
         SELECT
+            COUNT(*) AS total_count,
             SUM(CASE WHEN priority_level = 'high'
                 AND COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') = 'Received'
                 THEN 1 ELSE 0 END) AS priority_count,
@@ -76,7 +79,7 @@ try {
     $summary = $summaryStmt->fetch(PDO::FETCH_ASSOC) ?: [];
     $response['data']['priority_count'] = (int)($summary['priority_count'] ?? 0);
     $response['data']['queue_count'] = (int)($summary['queue_count'] ?? 0);
-    $response['data']['total_count'] = $response['data']['queue_count'];
+    $response['data']['total_count'] = (int)($summary['total_count'] ?? 0);
 
     // 5. Get data for Monthly Applications Chart (last 12 months)
     $monthlyStmt = $conn->prepare("
@@ -104,9 +107,10 @@ try {
             application_type,
             status,
             CASE
+                WHEN COALESCE(home_visit_status, '') IN ('Rejected', 'Cancelled') THEN 'Rejected'
                 WHEN workflow_state = 'Needs Correction' THEN 'Needs Correction'
                 WHEN (application_type = 'pension' OR requested_benefit = 'Local Social Pension Assessment')
-                     AND COALESCE(home_visit_status, '') <> 'Completed' THEN 'Pending'
+                     AND COALESCE(home_visit_status, '') NOT IN ('Completed', 'Rejected', 'Cancelled') THEN 'Pending'
                 WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') IN ('Approved','Released') THEN 'Verified'
                 ELSE COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received')
             END as workflow_state,

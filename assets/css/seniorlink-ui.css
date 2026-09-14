@@ -479,6 +479,14 @@ table {
     border-radius: var(--sl-radius-md);
 }
 
+.simple-code-scanner__reader video {
+    object-fit: cover;
+    transform: none !important;
+    -webkit-transform: none !important;
+    rotate: 0deg !important;
+    scale: 1 1 !important;
+}
+
 .simple-code-scanner__status {
     margin: 10px 0 0;
     color: var(--sl-text-muted);
@@ -493,6 +501,15 @@ table {
     background: rgba(23, 105, 170, .2);
     color: var(--sl-primary-950);
 }
+
+.deadline-alerts { display:flex; flex-wrap:wrap; gap:7px; margin-top:8px; }
+.deadline-alert { display:inline-flex; align-items:center; gap:6px; max-width:100%; padding:6px 9px; border:1px solid; border-radius:8px; font-size:.72rem; font-weight:750; line-height:1.3; }
+.deadline-alert--danger { color:#991b1b; background:#fef2f2; border-color:#fca5a5; }
+.deadline-alert--warning { color:#92400e; background:#fffbeb; border-color:#fcd34d; }
+.deadline-alert--info { color:#1e40af; background:#eff6ff; border-color:#93c5fd; }
+.deadline-alerts--detail { margin:0 0 14px; padding:12px; border-radius:10px; background:#f8fafc; }
+.deadline-alerts--detail .deadline-alert { align-items:flex-start; flex-direction:column; }
+.deadline-alert small { display:block; font-weight:600; opacity:.86; }
 
 * {
     scrollbar-color: #9cafc0 transparent;
@@ -1512,6 +1529,28 @@ html, body { max-width: 100%; }
     font-weight: 750;
 }
 
+.guided-mobile-progress {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 0 0 14px;
+    padding: 10px 12px;
+    border: 1px solid #bfdbfe;
+    border-radius: 10px;
+    background: rgba(239, 246, 255, .96);
+    color: #475569;
+    font-size: .78rem;
+    font-weight: 750;
+    backdrop-filter: blur(8px);
+}
+
+.guided-mobile-progress__label { white-space: nowrap; }
+.guided-mobile-progress__track { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; flex: 1; }
+.guided-mobile-progress__track span { height: 6px; border-radius: 999px; background: #cbd5e1; }
+.guided-mobile-progress[data-step="1"] .guided-mobile-progress__track span:nth-child(1),
+.guided-mobile-progress[data-step="2"] .guided-mobile-progress__track span:nth-child(-n+2),
+.guided-mobile-progress[data-step="3"] .guided-mobile-progress__track span { background: var(--guided-accent); }
+
 @media (max-width: 760px) {
     .guided-application {
         width: 100%;
@@ -1556,8 +1595,28 @@ html, body { max-width: 100%; }
     }
 
     .guided-application .form-actions {
-        position: static;
+        position: sticky;
+        bottom: max(8px, env(safe-area-inset-bottom));
+        z-index: 30;
         padding: 12px;
+    }
+
+    .guided-mobile-progress {
+        position: sticky;
+        top: 8px;
+        z-index: 29;
+    }
+
+    .guided-benefit-form :is(input:not([type="radio"]):not([type="checkbox"]), select, textarea, button),
+    .guided-application .form-actions :is(.btn, .btn-form-back) {
+        min-height: 48px !important;
+        font-size: 16px !important;
+    }
+
+    .guided-benefit-form :is(input[type="radio"], input[type="checkbox"]) {
+        width: 22px;
+        height: 22px;
+        flex-basis: 22px;
     }
 }
 

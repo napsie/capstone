@@ -87,7 +87,7 @@ function getStatusClass($status) {
     <title>Records – Barangay <?php echo $barangayName; ?></title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=4">
-    <link rel="stylesheet" href="../assets/css/application-documents.css?v=7">
+    <link rel="stylesheet" href="../assets/css/application-documents.css?v=8">
     <style>
         /* ─── Variables ─────────────────────────────────────────────────── */
         :root {
@@ -595,7 +595,7 @@ function getStatusClass($status) {
             color: var(--gray);
         }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=17">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=18">
     <link rel="stylesheet" href="../assets/css/metric-cards.css?v=1">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
@@ -924,11 +924,11 @@ function getStatusClass($status) {
                     </div>
                     <div class="export-field">
                         <label for="exportDateFrom">Date From</label>
-                        <input type="date" name="date_from" id="exportDateFrom" required>
+                        <input type="date" name="date_from" id="exportDateFrom">
                     </div>
                     <div class="export-field">
                         <label for="exportDateTo">Date To</label>
-                        <input type="date" name="date_to" id="exportDateTo" required>
+                        <input type="date" name="date_to" id="exportDateTo">
                     </div>
                     <div class="export-field">
                         <label for="exportYear">Year (if no date range)</label>
@@ -953,12 +953,12 @@ function getStatusClass($status) {
 </div>
 
 <script src="../assets/js/sidebar-toggle.js?v=3"></script>
-<script src="../assets/js/application-documents.js?v=8"></script>
-<script src="../assets/js/application-details.js?v=13"></script>
+<script src="../assets/js/application-documents.js?v=10"></script>
+<script src="../assets/js/application-details.js?v=16"></script>
 <script src="../assets/js/application-modal-data.js?v=1"></script>
 <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 <script src="../assets/js/application-form-generator.js?v=2"></script>
-<script src="../assets/js/report-validation.js?v=2"></script>
+<script src="../assets/js/report-validation.js?v=3"></script>
 <script>
     /* ─── Greeting ──────────────────────────────────────────── */
     (function(){
@@ -1153,6 +1153,7 @@ function getStatusClass($status) {
                         { key: 'psa_birth_cert', label: 'PSA Birth Certificate' },
                         { key: 'barangay_residency', label: 'Barangay Residency' },
                         { key: 'comelec_cert', label: 'COMELEC Certificate' },
+                        { key: 'deceased_landbank_card', label: 'Deceased Landbank Cash Card' },
                         { key: 'proof_of_life', label: 'Proof of Life (In Bed)' },
                         { key: 'auth_letter', label: 'Auth Letter' },
                         { key: 'proxy_id', label: 'Representative Government ID' },

@@ -3,6 +3,7 @@ session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/request_security.php';
 require_once '../includes/audit_logger.php';
+require_once '../includes/data_normalizer.php';
 requireSameOriginMutation();
 header('Content-Type: application/json');
 
@@ -12,7 +13,7 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'] ?? '', ['departm
     exit;
 }
 $applicationId = trim((string)($_POST['applicationId'] ?? ''));
-$seniorId = strtoupper(trim((string)($_POST['seniorIdNo'] ?? '')));
+$seniorId = normalizeSeniorId($_POST['seniorIdNo'] ?? '');
 if ($applicationId === '' || !preg_match('/^[A-Z0-9][A-Z0-9 -]{2,49}$/', $seniorId)) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Enter a valid official Senior Citizen ID number.']);

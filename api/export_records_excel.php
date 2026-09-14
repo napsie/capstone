@@ -4,6 +4,10 @@ require_once '../includes/db_connect.php';
 require_once '../includes/application_types.php';
 require_once '../includes/barangays_list.php';
 
+// Reports operate on Pasig City calendar dates. Using PHP's server timezone can
+// reject the user's local "today" as a future date shortly after midnight.
+$reportTimezone = new DateTimeZone('Asia/Manila');
+
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'] ?? '', ['barangay_staff', 'department_admin', 'super_admin'], true)) {
     http_response_code(401);
     exit('Unauthorized.');
@@ -64,19 +68,19 @@ if ($type !== 'all' && !in_array($type, $allowedTypes, true)) { http_response_co
 if ($status !== 'all' && $status !== 'Verified') { http_response_code(400); exit('Invalid report status.'); }
 if (mb_strlen($search) > 100) { http_response_code(400); exit('Search text is too long.'); }
 
-$parseReportDate = static function (string $value): ?DateTimeImmutable {
+$parseReportDate = static function (string $value) use ($reportTimezone): ?DateTimeImmutable {
     if ($value === '') return null;
-    $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+    $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value, $reportTimezone);
     return $date && $date->format('Y-m-d') === $value ? $date : null;
 };
 $fromDate = $parseReportDate($dateFrom);
 $toDate = $parseReportDate($dateTo);
 if (($dateFrom !== '' && !$fromDate) || ($dateTo !== '' && !$toDate)) { http_response_code(400); exit('Use valid report dates in YYYY-MM-DD format.'); }
-if (!$fromDate || !$toDate) { http_response_code(400); exit('Select both the start and end dates for the report period.'); }
+if ((bool)$fromDate !== (bool)$toDate) { http_response_code(400); exit('Select both report dates, or leave both blank to include all dates.'); }
 if ($fromDate && $toDate && $fromDate > $toDate) { http_response_code(400); exit('The report end date cannot be earlier than the start date.'); }
-$today = new DateTimeImmutable('today');
+$today = new DateTimeImmutable('today', $reportTimezone);
 if (($fromDate && $fromDate > $today) || ($toDate && $toDate > $today)) { http_response_code(400); exit('Report dates cannot be in the future.'); }
-if ($year !== 'all' && (!ctype_digit($year) || (int)$year < 2020 || (int)$year > (int)date('Y'))) { http_response_code(400); exit('Invalid report year.'); }
+if ($year !== 'all' && (!ctype_digit($year) || (int)$year < 2020 || (int)$year > (int)$today->format('Y'))) { http_response_code(400); exit('Invalid report year.'); }
 if ($scope === 'department' && $barangay !== 'all' && !in_array($barangay, $barangays_list, true)) { http_response_code(400); exit('Invalid barangay selection.'); }
 
 $where = [];
@@ -131,10 +135,6 @@ $sql = "SELECT id_number, full_name, application_type, barangay, date_submitted,
 $stmt = $conn->prepare($sql);
 $stmt->execute($params);
 $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
-if (!$records) {
-    http_response_code(422);
-    exit('No records match the selected report filters. Adjust the filters and try again.');
-}
 
 if ($format === 'pdf') {
     $pdfEscape = static function ($value): string {
@@ -158,14 +158,16 @@ if ($format === 'pdf') {
     $pageHeight = 595;
     $left = 36;
     $rowsPerPage = 24;
-    $recordChunks = array_chunk($records, $rowsPerPage);
+    // A valid filter with no matches still produces a usable, empty report
+    // instead of replacing the application with a plain-text error page.
+    $recordChunks = $records ? array_chunk($records, $rowsPerPage) : [[]];
     $streams = [];
     foreach ($recordChunks as $pageIndex => $chunk) {
         $commands = ['0.12 0.22 0.35 rg'];
         $commands[] = 'BT /F1 16 Tf ' . $left . ' 555 Td (' . $pdfEscape($reportTitle) . ') Tj ET';
         $commands[] = '0.25 0.32 0.42 rg BT /F1 9 Tf ' . $left . ' 537 Td (' . $pdfEscape($coverageLabel) . ') Tj ET';
         $commands[] = 'BT /F1 8 Tf ' . $left . ' 522 Td (' . $pdfEscape($fit($filterLabel, 150)) . ') Tj ET';
-        $commands[] = 'BT /F1 8 Tf 650 555 Td (Generated: ' . $pdfEscape(date('Y-m-d H:i')) . ') Tj ET';
+        $commands[] = 'BT /F1 8 Tf 650 555 Td (Generated: ' . $pdfEscape((new DateTimeImmutable('now', $reportTimezone))->format('Y-m-d H:i')) . ') Tj ET';
         $y = 496;
         $commands[] = '0.08 0.28 0.50 rg ' . $left . ' ' . ($y - 4) . ' 770 20 re f';
         $x = $left;
@@ -217,7 +219,7 @@ if ($format === 'pdf') {
     $pdf .= "xref\n0 " . ($maxObject + 1) . "\n0000000000 65535 f \n";
     for ($i = 1; $i <= $maxObject; $i++) $pdf .= sprintf('%010d 00000 n ', $offsets[$i]) . "\n";
     $pdf .= "trailer\n<< /Size " . ($maxObject + 1) . " /Root 1 0 R >>\nstartxref\n" . $xref . "\n%%EOF";
-    $filename = ($scope === 'department' ? 'department' : 'barangay') . '_application_report_' . date('Ymd') . '.pdf';
+    $filename = ($scope === 'department' ? 'department' : 'barangay') . '_application_report_' . (new DateTimeImmutable('now', $reportTimezone))->format('Ymd') . '.pdf';
     header('Content-Type: application/pdf');
     header('Content-Disposition: attachment; filename="' . $filename . '"');
     header('Content-Length: ' . strlen($pdf));
@@ -238,7 +240,7 @@ $lastDataRow = $headerRow + count($records);
 $rowsXml = [];
 $rowsXml[] = '<row r="1" ht="30" customHeight="1">' . excelInlineCell('A1', $reportTitle, 1) . '</row>';
 $rowsXml[] = '<row r="2" ht="20" customHeight="1">' . excelInlineCell('A2', $coverageLabel, 2) . '</row>';
-$rowsXml[] = '<row r="3" ht="20" customHeight="1">' . excelInlineCell('A3', 'Generated: ' . date('F j, Y g:i A'), 2) . '</row>';
+$rowsXml[] = '<row r="3" ht="20" customHeight="1">' . excelInlineCell('A3', 'Generated: ' . (new DateTimeImmutable('now', $reportTimezone))->format('F j, Y g:i A'), 2) . '</row>';
 $rowsXml[] = '<row r="4" ht="28" customHeight="1">' . excelInlineCell('A4', $filterLabel, 3) . '</row>';
 $rowsXml[] = '<row r="5" ht="22" customHeight="1">' . excelInlineCell('A5', 'Total Records', 4) . excelNumberCell('B5', count($records), 5) . '</row>';
 
@@ -315,7 +317,7 @@ if ($tempFile === false || $zip->open($tempFile, ZipArchive::CREATE | ZipArchive
 foreach ($files as $path => $content) $zip->addFromString($path, $content);
 $zip->close();
 
-$filename = ($scope === 'department' ? 'department' : 'barangay') . '_application_report_' . date('Ymd') . '.xlsx';
+$filename = ($scope === 'department' ? 'department' : 'barangay') . '_application_report_' . (new DateTimeImmutable('now', $reportTimezone))->format('Ymd') . '.xlsx';
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 header('Content-Disposition: attachment; filename="' . $filename . '"');
 header('Content-Length: ' . filesize($tempFile));

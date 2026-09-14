@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/data_normalizer.php';
 
 function normalizeImportHeader(string $value): string {
     $value = strtolower(trim(preg_replace('/^\xEF\xBB\xBF/', '', $value) ?? $value));
@@ -93,4 +94,26 @@ function generateImportToken(PDO $conn): string {
         $stmt->execute([$token]);
     } while ($stmt->fetchColumn());
     return $token;
+}
+
+function createImportJob(PDO $conn, string $filename, string $checksum, array $rows, array $actor): string {
+    $token = sprintf('%08x-%04x-%04x-%04x-%012x', random_int(0, 0xffffffff), random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffffffffffff));
+    $valid = count(array_filter($rows, static fn($row) => empty($row['errors'])));
+    $duplicates = count(array_filter($rows, static fn($row) => count(array_filter($row['errors'] ?? [], static fn($error) => stripos($error, 'duplicate') !== false || stripos($error, 'exists') !== false)) > 0));
+    $stmt = $conn->prepare('INSERT INTO import_jobs (job_token,original_filename,file_checksum,status,total_rows,valid_rows,error_rows,duplicate_rows,created_by,created_by_username) VALUES (?,?,?,\'ready\',?,?,?,?,?,?)');
+    $stmt->execute([$token, $filename, $checksum, count($rows), $valid, count($rows) - $valid, $duplicates, $actor['id'] ?? null, $actor['username'] ?? 'Department Admin']);
+    $jobId = (int)$conn->lastInsertId();
+    $rowStmt = $conn->prepare('INSERT INTO import_job_rows (import_job_id,row_number,normalized_payload,validation_errors,duplicate_matches,status) VALUES (?,?,?,?,?,?)');
+    foreach ($rows as $row) {
+        $errors = $row['errors'] ?? [];
+        $duplicateErrors = array_values(array_filter($errors, static fn($error) => stripos($error, 'duplicate') !== false || stripos($error, 'exists') !== false));
+        $rowStmt->execute([$jobId, $row['row'], json_encode($row, JSON_UNESCAPED_UNICODE), $errors ? json_encode($errors) : null, $duplicateErrors ? json_encode($duplicateErrors) : null, $errors ? 'invalid' : 'pending']);
+    }
+    return $token;
+}
+
+function loadImportJobRows(PDO $conn, string $token): array {
+    $stmt = $conn->prepare('SELECT r.normalized_payload FROM import_job_rows r INNER JOIN import_jobs j ON j.id=r.import_job_id WHERE j.job_token=? ORDER BY r.row_number');
+    $stmt->execute([$token]);
+    return array_values(array_filter(array_map(static fn($json) => json_decode($json, true), $stmt->fetchAll(PDO::FETCH_COLUMN))));
 }

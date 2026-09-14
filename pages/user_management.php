@@ -2,6 +2,8 @@
 session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/password_validation.php'; // Include the password validation function
+require_once '../includes/master_password.php';
+require_once '../includes/data_normalizer.php';
 
 // Check if the user is logged in and has the correct role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'department_admin') {
@@ -36,23 +38,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addUser'])) {
     if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
         $error = 'CSRF token validation failed.';
     } else {
-        $masterPassword = $_POST['masterPassword'];
-        $correctMasterPassword = 'CarelinkMaster2025!';
+        $masterPassword = (string)($_POST['masterPassword'] ?? '');
 
-        if ($masterPassword !== $correctMasterPassword) {
+        if (!verifyMasterPassword($masterPassword)) {
             $error = 'Invalid Master Password. User creation failed.';
         } else {
             $firstName = $_POST['firstName'];
             $lastName = $_POST['lastName'];
             $email = $_POST['email'];
+            $phone = normalizePhoneNumber($_POST['phone'] ?? '');
             $username = $_POST['username'];
             $role = $_POST['role'];
             $barangay = isset($_POST['barangay']) ? $_POST['barangay'] : null;
             $password = $_POST['password'];
             $profilePicture = 'default.jpg'; // Default profile picture
 
-            if (empty($firstName) || empty($lastName) || empty($email) || empty($username) || empty($role) || empty($password)) {
+            if (empty($firstName) || empty($lastName) || empty($email) || empty($phone) || empty($username) || empty($role) || empty($password)) {
                 $error = 'Please fill in all required fields.';
+            } elseif (!isValidPhilippineMobileNumber($phone)) {
+                $error = 'Enter a valid 11-digit Philippine mobile number beginning with 09.';
             } else {
                 // Validate role
                 $allowedRoles = ['department_admin', 'barangay_staff'];
@@ -133,12 +137,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addUser'])) {
                                 if ($stmt->fetchColumn() > 0) {
                                     $error = 'Email already exists. Please use a different one.';
                                 } else {
-                                    try {
-                                        $stmt = $conn->prepare("INSERT INTO users (first_name, last_name, email, username, role, barangay, password, profile_picture) VALUES (:first_name, :last_name, :email, :username, :role, :barangay, :password, :profile_picture)");
+                                    $stmt = $conn->prepare("SELECT COUNT(*) FROM users WHERE phone = :phone");
+                                    $stmt->execute(['phone' => $phone]);
+                                    if ($stmt->fetchColumn() > 0) {
+                                        $error = 'Mobile number already exists. Please use a different one.';
+                                    } else try {
+                                        $stmt = $conn->prepare("INSERT INTO users (first_name, last_name, email, phone, username, role, barangay, password, profile_picture) VALUES (:first_name, :last_name, :email, :phone, :username, :role, :barangay, :password, :profile_picture)");
                                         $stmt->execute([
                                             'first_name' => $firstName,
                                             'last_name' => $lastName,
                                             'email' => $email,
+                                            'phone' => $phone,
                                             'username' => $username,
                                             'role' => $role,
                                             'barangay' => $barangay,
@@ -166,10 +175,10 @@ try {
     $barangayFilter = isset($_GET['barangay']) ? $_GET['barangay'] : 'all';
     
     if ($barangayFilter === 'all') {
-        $stmt = $conn->prepare("SELECT id, first_name, last_name, email, role, barangay, profile_picture FROM users WHERE (is_archived = 0 OR is_archived IS NULL)");
+        $stmt = $conn->prepare("SELECT id, first_name, last_name, email, phone, role, barangay, profile_picture FROM users WHERE (is_archived = 0 OR is_archived IS NULL)");
         $stmt->execute();
     } else {
-        $stmt = $conn->prepare("SELECT id, first_name, last_name, email, role, barangay, profile_picture FROM users WHERE barangay = :barangay AND (is_archived = 0 OR is_archived IS NULL)");
+        $stmt = $conn->prepare("SELECT id, first_name, last_name, email, phone, role, barangay, profile_picture FROM users WHERE barangay = :barangay AND (is_archived = 0 OR is_archived IS NULL)");
         $stmt->execute(['barangay' => $barangayFilter]);
     }
     
@@ -187,7 +196,7 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SENIORLINK — User Management</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=4">
+    <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=5">
     <style>
         /* Existing styles remain unchanged */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -363,8 +372,13 @@ try {
                             <span id="emailError" class="error-message-inline"></span>
                         </div>
                         <div class="form-group">
+                            <label for="phone">Mobile Number</label>
+                            <input type="tel" id="phone" name="phone" maxlength="11" pattern="09[0-9]{9}" inputmode="numeric" placeholder="09XXXXXXXXX" autocomplete="tel" required>
+                            <span id="phoneError" class="error-message-inline"></span>
+                        </div>
+                        <div class="form-group">
                             <label for="username">Username</label>
-                            <input type="text" id="username" name="username" placeholder="Enter username" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')" required>
+                            <input type="text" id="username" name="username" placeholder="Enter username" required>
                             <span id="usernameError" class="error-message-inline"></span>
                         </div>
                     </div>
@@ -461,7 +475,8 @@ try {
                                         <form action="delete_user.php" method="POST" style="display:inline;" onsubmit="return confirmCarelinkSubmit(this, 'Are you sure you want to archive this user account? You can restore it anytime from the Archive page.');">
                                              <input type="hidden" name="id" value="<?php echo $user['id']; ?>">
                                              <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-                                             <button type="submit" name="archiveUser" class="btn btn-small btn-warning" style="background:#f59e0b;color:#fff;"><i class="fas fa-archive"></i> Archive</button>
+                                             <input type="hidden" name="archiveUser" value="1">
+                                             <button type="submit" class="btn btn-small btn-warning" style="background:#f59e0b;color:#fff;"><i class="fas fa-archive"></i> Archive</button>
                                          </form>
                                     </td>
                                 </tr>
@@ -490,9 +505,14 @@ try {
                             <div class="form-group"><label for="editFirstName">First Name</label><input type="text" id="editFirstName" name="firstName" autocomplete="given-name" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')" required></div>
                             <div class="form-group"><label for="editLastName">Last Name</label><input type="text" id="editLastName" name="lastName" autocomplete="family-name" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')" required></div>
                         </div>
+                        <div class="form-group">
+                            <label for="editPhone">Mobile Number</label>
+                            <input type="tel" id="editPhone" name="phone" maxlength="11" pattern="09[0-9]{9}" inputmode="numeric" placeholder="09XXXXXXXXX" autocomplete="tel" required>
+                            <span id="editPhoneError" class="error-message-inline"></span>
+                        </div>
                         <div class="form-row">
                             <div class="form-group"><label for="editEmail">Email</label><input type="email" id="editEmail" name="email" autocomplete="email" required></div>
-                            <div class="form-group"><label for="editUsername">Username</label><input type="text" id="editUsername" name="username" autocomplete="username" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')" required></div>
+                            <div class="form-group"><label for="editUsername">Username</label><input type="text" id="editUsername" name="username" autocomplete="username" required></div>
                         </div>
                         <div class="form-row">
                             <div class="form-group"><label for="editRole">Role</label><select id="editRole" name="role" required><option value="department_admin">Administrator</option><option value="barangay_staff">SHDO</option></select></div>
@@ -571,9 +591,11 @@ try {
 
             const usernameField = document.getElementById('username');
             const emailField = document.getElementById('email');
+            const phoneField = document.getElementById('phone');
             const barangayField = document.getElementById('barangay');
             const usernameError = document.getElementById('usernameError');
             const emailError = document.getElementById('emailError');
+            const phoneError = document.getElementById('phoneError');
             const barangayError = document.getElementById('barangayError');
             
             function validatePassword() {
@@ -651,6 +673,11 @@ try {
 
             usernameField.addEventListener('input', debounce(e => checkAvailability('username', e.target.value, usernameError)));
             emailField.addEventListener('input', debounce(e => checkAvailability('email', e.target.value, emailError)));
+            phoneField.addEventListener('input', debounce(e => {
+                e.target.value = e.target.value.replace(/\D/g, '').slice(0, 11);
+                if (/^09\d{9}$/.test(e.target.value)) checkAvailability('phone', e.target.value, phoneError);
+                else phoneError.style.display = 'none';
+            }));
             barangayField.addEventListener('change', e => {
                 if (roleSelect.value === 'barangay_staff') {
                     checkAvailability('barangay', e.target.value, barangayError)
@@ -706,8 +733,12 @@ try {
         }
 
         const editRoleSelect = document.getElementById('editRole');
+        const editPhoneField = document.getElementById('editPhone');
         const editBarangayGroup = document.getElementById('editBarangayFormGroup');
         editRoleSelect.addEventListener('change', () => toggleBarangayField(editRoleSelect, editBarangayGroup));
+        editPhoneField.addEventListener('input', () => {
+            editPhoneField.value = editPhoneField.value.replace(/\D/g, '').slice(0, 11);
+        });
 
         if (usersTableBody) {
             usersTableBody.addEventListener('click', function(event) {
@@ -732,6 +763,7 @@ try {
                                 document.getElementById('editUserId').value = user.id;
                                 document.getElementById('editFirstName').value = user.first_name;
                                 document.getElementById('editLastName').value = user.last_name;
+                                document.getElementById('editPhone').value = user.phone || '';
                                 document.getElementById('editEmail').value = user.email;
                                 document.getElementById('editUsername').value = user.username;
                                 document.getElementById('editRole').value = user.role;

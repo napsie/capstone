@@ -2,6 +2,7 @@
 session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/request_security.php';
+require_once '../includes/document_repository.php';
 requireSameOriginMutation();
 
 header('Content-Type: application/json');
@@ -47,7 +48,8 @@ try {
         $legacyLabels = [
             'proof_of_address' => 'Proof of Address', 'id_image' => 'ID / Identification Photo',
             'psa_birth_cert' => 'PSA Birth Certificate', 'barangay_residency' => 'Barangay Residency Certificate',
-            'comelec_cert' => 'COMELEC Certificate', 'proof_of_life' => 'Current Senior Photo / Proof of Life',
+            'comelec_cert' => 'COMELEC Certificate', 'deceased_landbank_card' => 'Deceased Landbank Cash Card',
+            'proof_of_life' => 'Current Senior Photo / Proof of Life',
             'auth_letter' => 'Authorization Letter', 'proxy_id' => 'Representative Government ID',
             'proxy_birth_cert' => 'Representative Birth Certificate', 'home_visitation_form' => 'Home Visitation Form',
             'landbank_enrollment_form' => 'Land Bank Enrollment Form',
@@ -69,9 +71,12 @@ try {
             exit;
         }
         $payload = file_get_contents($file['tmp_name']);
-        $save = $conn->prepare('INSERT INTO application_documents (application_id, document_key, document_label, mime_type, document_data)
-            VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE document_data = VALUES(document_data), mime_type = VALUES(mime_type), updated_at = CURRENT_TIMESTAMP');
-        $save->execute([$appId, $key, $documentLabel, $mime, $payload]);
+        saveDocumentVersion($conn, [
+            'application_id' => $appId, 'document_key' => $key, 'document_label' => $documentLabel,
+            'mime_type' => $mime, 'document_data' => $payload,
+            'uploaded_by' => $_SESSION['username'] ?? 'Staff', 'uploader_id' => $_SESSION['user_id'] ?? null,
+            'original_filename' => $file['name'] ?? null, 'source' => 'correction',
+        ]);
         $history = $conn->prepare('INSERT INTO application_history (application_id, previous_state, new_state, changed_by, comments) VALUES (?, ?, ?, ?, ?)');
         $history->execute([$appId, $application['workflow_state'], $application['workflow_state'], $_SESSION['username'] ?? 'Staff', 'Saved correction document: ' . $documentLabel]);
         $conn->commit();
@@ -97,19 +102,21 @@ try {
             echo json_encode(['success' => false, 'message' => 'Only JPEG, PNG, GIF, and PDF documents are accepted.']);
             exit;
         }
-        $documentCheck = $conn->prepare('SELECT id FROM application_documents WHERE id = ? AND application_id = ?');
+        $documentCheck = $conn->prepare('SELECT id, document_key, document_label FROM application_documents WHERE id = ? AND application_id = ?');
         $documentCheck->execute([$documentId, $appId]);
-        if (!$documentCheck->fetchColumn()) {
+        $existingDocument = $documentCheck->fetch(PDO::FETCH_ASSOC);
+        if (!$existingDocument) {
             echo json_encode(['success' => false, 'message' => 'The selected document does not belong to this application.']);
             exit;
         }
         $replacement = file_get_contents($file['tmp_name']);
-        $replace = $conn->prepare('UPDATE application_documents SET document_data = ?, mime_type = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND application_id = ?');
-        $replace->bindValue(1, $replacement, PDO::PARAM_LOB);
-        $replace->bindValue(2, $mime, PDO::PARAM_STR);
-        $replace->bindValue(3, $documentId, PDO::PARAM_INT);
-        $replace->bindValue(4, $appId, PDO::PARAM_STR);
-        $replace->execute();
+        saveDocumentVersion($conn, [
+            'application_id' => $appId, 'document_key' => $existingDocument['document_key'],
+            'document_label' => $existingDocument['document_label'], 'mime_type' => $mime,
+            'document_data' => $replacement, 'uploaded_by' => $_SESSION['username'] ?? 'Staff',
+            'uploader_id' => $_SESSION['user_id'] ?? null, 'original_filename' => $file['name'] ?? null,
+            'source' => 'correction',
+        ]);
         $history = $conn->prepare('INSERT INTO application_history (application_id, previous_state, new_state, changed_by, comments) VALUES (?, ?, ?, ?, ?)');
         $history->execute([$appId, $application['workflow_state'], $application['workflow_state'], $_SESSION['username'] ?? 'Staff', 'Replaced submitted document #' . $documentId]);
         $conn->commit();

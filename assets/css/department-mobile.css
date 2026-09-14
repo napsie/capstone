@@ -1,0 +1,56 @@
+/* Final responsive overrides for all Department workspace pages. */
+@media (max-width: 768px) {
+    html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
+    body { min-width: 0; }
+    .container { width: 100%; min-width: 0; flex-direction: column !important; }
+    .sidebar { position: sticky !important; top: 0; z-index: 1200; width: 100% !important; height: auto; padding: 8px 10px !important; overflow: hidden; }
+    .sidebar .logo, .sidebar-toggle-control { display: none; }
+    .sidebar-menu { width: 100%; overflow-x: auto; scrollbar-width: none; }
+    .sidebar-menu::-webkit-scrollbar { display: none; }
+    .sidebar-menu ul { display: flex; width: max-content; flex-direction: row; gap: 4px; padding: 0; }
+    .sidebar-menu li { flex: 0 0 auto; margin-bottom: 0; white-space: nowrap; }
+    .sidebar-menu a { min-width: 44px; padding: 10px 12px; justify-content: center; }
+    .sidebar .link-text { display: none; }
+    .main-content, .main-content.collapsed { width: 100% !important; max-width: 100%; margin-left: 0 !important; padding: 16px !important; min-width: 0; }
+    .header, .page-header, .header-content, .records-card-header, .table-header {
+        width: 100%; min-width: 0; align-items: flex-start !important;
+        flex-direction: column !important; flex-wrap: wrap; gap: 12px;
+    }
+    .header h1, .page-header h1, .page-header-left h1 { font-size: clamp(1.35rem, 6vw, 1.8rem) !important; overflow-wrap: anywhere; }
+    .header-actions, .header-user, .user-info { width: 100%; max-width: 100%; min-width: 0; }
+    .header-user, .user-info { align-self: stretch; }
+    .header-user-info, .user-details { min-width: 0; }
+    .header-user-info h3, .header-user-info p, .user-details h2, .user-details p { overflow-wrap: anywhere; }
+    .card, .panel, .queue-card, .chart-card { max-width: 100%; min-width: 0; padding: 16px !important; }
+    .stats-strip, .stats-container, .report-grid, .dashboard-panels, .settings-grid { grid-template-columns: minmax(0, 1fr) !important; }
+    .dashboard-command-bar, .dashboard-quick-actions { align-items: stretch !important; flex-direction: column !important; }
+    .quick-action { width: 100%; }
+    .filter-bar { display: flex !important; grid-template-columns: 1fr !important; align-items: stretch; flex-direction: column !important; }
+    .filter-group, .filter-bar .btn, .filter-bar a, .filter-bar input, .filter-bar select,
+    .search-wrap, .search-input, .select-input { width: 100% !important; min-width: 0 !important; max-width: none !important; }
+    .filter-auto-hint { white-space: normal !important; }
+    .tab-nav { max-width: 100%; overflow-x: auto; padding-bottom: 2px; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+    .tab-btn { flex: 0 0 auto; padding: 11px 14px !important; white-space: nowrap; }
+    .table-wrap, .table-container, .wrap { width: 100%; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .records-tbl, .table-wrap table, .table-container table, .wrap table { min-width: 700px; }
+    .form-row, .form-grid { grid-template-columns: minmax(0, 1fr) !important; }
+    .actions, .page-actions, .modal-actions { flex-wrap: wrap; }
+    .actions > .btn, .actions > button, .actions > a { flex: 1 1 150px; text-align: center; justify-content: center; }
+    input, select, textarea, button { max-width: 100%; }
+    .modal-overlay { padding: 8px !important; }
+    .modal-box { width: 100% !important; max-width: 100% !important; margin: 0 !important; border-radius: 12px !important; }
+    .modal-scroller { max-height: calc(100dvh - 16px) !important; padding: 16px !important; }
+    .modal-grid, .form-row { grid-template-columns: 1fr !important; }
+    .workflow-buttons { flex-wrap: wrap; }
+    .workflow-buttons .btn { flex: 1 1 100%; justify-content: center; }
+}
+
+@media (max-width: 480px) {
+    .main-content, .main-content.collapsed { padding: 12px !important; }
+    .card, .panel, .queue-card, .chart-card { padding: 14px !important; border-radius: 12px !important; }
+    .header-user, .user-info { border-radius: 14px; }
+    .actions > .btn, .actions > button, .actions > a { flex-basis: 100%; width: 100%; }
+    .pagination { max-width: 100%; flex-wrap: wrap; }
+    .modal-head { padding: 16px !important; }
+    .modal-head h2 { white-space: normal !important; }
+}

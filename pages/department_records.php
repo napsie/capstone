@@ -73,6 +73,7 @@ $applicantGroups = array_slice(array_values($groupedApplicants), $offset, $recor
 function getStatusBadge($status) {
     switch (strtolower($status)) {
         case 'released': return ['badge-released', 'fa-box-archive'];
+        case 'verified':
         case 'approved': return ['badge-approved', 'fa-circle-check'];
         default:         return ['badge-default',  'fa-circle'];
     }
@@ -85,8 +86,8 @@ function getStatusBadge($status) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Department Records – SENIORLINK</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=4">
-    <link rel="stylesheet" href="../assets/css/application-documents.css?v=7">
+    <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=5">
+    <link rel="stylesheet" href="../assets/css/application-documents.css?v=8">
     <style>
         /* ─── Variables ─────────────────────────────────────────────────── */
         :root {
@@ -477,7 +478,7 @@ function getStatusBadge($status) {
         /* Footer */
         .page-footer { text-align:center; padding:24px; font-size:0.78rem; color:var(--gray); }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=17">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=18">
     <link rel="stylesheet" href="../assets/css/metric-cards.css?v=1">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
@@ -647,7 +648,7 @@ function getStatusBadge($status) {
                             <td><?php echo htmlspecialchars($person['barangay']); ?></td>
                             <td><?php echo date('M d, Y', strtotime($person['latest_date'])); ?><br><small style="color:#64748b;">Most recent</small></td>
                             <td>
-                                <span class="badge badge-default"><i class="fas fa-circle-check"></i> Verified</span>
+                                <span class="badge badge-approved"><i class="fas fa-circle-check"></i> Verified</span>
                             </td>
                             <td>
                                 <button type="button" class="btn-view group-toggle" aria-expanded="false" aria-controls="<?php echo $detailsId; ?>">
@@ -848,11 +849,11 @@ function getStatusBadge($status) {
                     </div>
                     <div class="export-field">
                         <label for="exportDateFrom">Date From</label>
-                        <input type="date" name="date_from" id="exportDateFrom" required>
+                        <input type="date" name="date_from" id="exportDateFrom">
                     </div>
                     <div class="export-field">
                         <label for="exportDateTo">Date To</label>
-                        <input type="date" name="date_to" id="exportDateTo" required>
+                        <input type="date" name="date_to" id="exportDateTo">
                     </div>
                     <div class="export-field">
                         <label for="exportYear">Year (if no date range)</label>
@@ -897,9 +898,9 @@ function getStatusBadge($status) {
 </div>
 
 <script src="../assets/js/sidebar-toggle.js?v=3"></script>
-<script src="../assets/js/application-documents.js?v=8"></script>
-<script src="../assets/js/report-validation.js?v=2"></script>
-<script src="../assets/js/application-details.js?v=13"></script>
+<script src="../assets/js/application-documents.js?v=10"></script>
+<script src="../assets/js/report-validation.js?v=3"></script>
+<script src="../assets/js/application-details.js?v=16"></script>
 <script src="../assets/js/application-modal-data.js?v=1"></script>
 <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 <script src="../assets/js/application-form-generator.js?v=2"></script>
@@ -1157,7 +1158,8 @@ function getStatusBadge($status) {
 
         const additionalDocs = [
             ['psa_birth_cert', 'PSA Birth Certificate'], ['barangay_residency', 'Barangay Residency'],
-            ['comelec_cert', 'COMELEC Certificate'], ['proof_of_life', 'Proof of Life (In Bed)'],
+            ['comelec_cert', 'COMELEC Certificate'], ['deceased_landbank_card', 'Deceased Landbank Cash Card'],
+            ['proof_of_life', 'Proof of Life (In Bed)'],
             ['auth_letter', 'Authorization Letter'], ['proxy_id', 'Representative Government ID'],
             ['proxy_birth_cert', 'Representative Birth Certificate'], ['home_visitation_form', 'Home Visitation Form'],
             ['landbank_enrollment_form', 'Land Bank Enrollment Form']
