@@ -7,6 +7,7 @@ if (PHP_SAPI !== 'cli') {
 }
 
 require_once dirname(__DIR__) . '/includes/db_connect.php';
+require_once dirname(__DIR__) . '/includes/sql_script_runner.php';
 
 if ($conn->getAttribute(PDO::ATTR_DRIVER_NAME) !== 'mysql') {
     fwrite(STDERR, "Migrations currently support MariaDB/MySQL only.\n");
@@ -37,7 +38,7 @@ function applyMigrationSql(PDO $conn, string $sql, bool $isMariaDb): void {
     if ($isMariaDb || stripos($sql, 'ADD COLUMN IF NOT EXISTS') === false
         && stripos($sql, 'ADD INDEX IF NOT EXISTS') === false
         && stripos($sql, 'ADD UNIQUE INDEX IF NOT EXISTS') === false) {
-        $conn->exec($sql);
+        executeSqlScript($conn, $sql);
         return;
     }
     preg_match_all('/^ALTER TABLE\s+(`?[A-Za-z0-9_]+`?)\s+([^;]+);/mi', $sql, $matches, PREG_OFFSET_CAPTURE);
@@ -45,7 +46,7 @@ function applyMigrationSql(PDO $conn, string $sql, bool $isMariaDb): void {
     foreach ($matches[0] as $i => [$statement, $start]) {
         if (stripos($statement, 'IF NOT EXISTS') === false) continue;
         $prefix = substr($sql, $cursor, $start - $cursor);
-        if (trim($prefix) !== '') $conn->exec($prefix);
+        if (trim($prefix) !== '') executeSqlScript($conn, $prefix);
         $table = trim($matches[1][$i][0], '`');
         $clauses = splitAlterClauses($matches[2][$i][0]);
         foreach ($clauses as $clause) {
@@ -67,7 +68,7 @@ function applyMigrationSql(PDO $conn, string $sql, bool $isMariaDb): void {
         $cursor = $start + strlen($statement);
     }
     $suffix = substr($sql, $cursor);
-    if (trim($suffix) !== '') $conn->exec($suffix);
+    if (trim($suffix) !== '') executeSqlScript($conn, $suffix);
 }
 
 function splitAlterClauses(string $source): array {
