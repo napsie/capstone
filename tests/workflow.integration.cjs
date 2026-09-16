@@ -9,6 +9,9 @@ const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
 const php = process.env.PHP_BINARY || 'D:/xampp1/php/php.exe';
+const testMasterPassword = 'TestOnlyMaster!2026';
+const masterHashResult = spawnSync(php, ['-r', `echo password_hash('${testMasterPassword}', PASSWORD_DEFAULT);`], { encoding: 'utf8', windowsHide: true });
+if (masterHashResult.status !== 0) throw Error(masterHashResult.stderr || 'Unable to create test master password hash');
 const database = 'seniorlink_test_' + randomBytes(6).toString('hex');
 const base = 'http://127.0.0.1:8765';
 const sessions = fs.mkdtempSync(path.join(os.tmpdir(), 'seniorlink-test-'));
@@ -31,15 +34,17 @@ async function request(url, cookie = '', body, raw = false) {
     return { status: response.status, headers: response.headers, data };
 }
 async function login(name, department = false, barangay = 'Bagong Ilog') {
-    const result = await request('/index.php', '', new URLSearchParams({ login_role: department ? 'department_admin' : 'barangay_staff', username: name, password: 'TestOnly!2026', barangay }), true);
+    const result = await request('/index.php', '', new URLSearchParams({ login_role: department ? 'department_admin' : 'barangay_staff', username: name, password: 'TestOnly!2026', barangay, ...(department ? { remember: 'on' } : {}) }), true);
     check(result.status === 302, 'Login ' + name);
+    check(result.headers.get('location') === (department ? 'pages/department_dashboard.php' : 'pages/barangay_dash.php'), 'Login redirects to existing dashboard');
+    if (department) check(result.headers.getSetCookie().some(cookie => cookie.startsWith('remember_me=')), 'Remembered login token is stored');
     return result.headers.getSetCookie().map(cookie => cookie.split(';')[0]).join('; ');
 }
 const action = (cookie, id, action, fields = {}) => request('/api/update_workflow_status.php', cookie, new URLSearchParams({ applicationId: id, action, ...fields }));
 async function main() {
     fixture('setup');
     server = spawn(php, ['-d', 'session.save_path=' + sessions, '-d', 'upload_tmp_dir=' + sessions, '-S', '127.0.0.1:8765', '-t', root], {
-        cwd: root, env: { ...process.env, DATABASE_URL: `mysql://root@localhost/${database}`, SENIORLINK_PRIVATE_STORAGE: privateStorage }, windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'],
+        cwd: root, env: { ...process.env, DATABASE_URL: `mysql://root@localhost/${database}`, SENIORLINK_PRIVATE_STORAGE: privateStorage, MASTER_PASSWORD_HASH: masterHashResult.stdout.trim() }, windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'],
     });
     let serverErrors = '';
     server.stderr.on('data', data => { serverErrors += data; });
@@ -50,6 +55,14 @@ async function main() {
     const admin = await login('test-admin', true);
     const staff = await login('test-staff');
     const other = await login('test-other', false, 'Ugong');
+    const signup = await request('/pages/signup.php', '', new URLSearchParams({ firstName: 'New', lastName: 'Staff', email: 'new-staff@example.invalid', phone: '09170001111', username: 'test-signup', password: 'TestOnly!2026', confirmPassword: 'TestOnly!2026', role: 'barangay_staff', barangay: 'Bambang', masterPassword: testMasterPassword }), true);
+    check(signup.status === 200 && signup.data.includes('User registered successfully'), 'Staff account can be created');
+    const createdStaff = await login('test-signup', false, 'Bambang');
+    check((await request('/pages/barangay_dash.php', createdStaff, undefined, true)).status === 200, 'Created staff account opens its dashboard');
+    const adminSignup = await request('/pages/signup.php', '', new URLSearchParams({ firstName: 'New', lastName: 'Admin', email: 'new-admin@example.invalid', phone: '09170002222', username: 'test-new-admin', password: 'TestOnly!2026', confirmPassword: 'TestOnly!2026', role: 'department_admin', masterPassword: testMasterPassword }), true);
+    check(adminSignup.status === 200 && adminSignup.data.includes('User registered successfully'), 'Administrator account can be created');
+    const createdAdmin = await login('test-new-admin', true);
+    check((await request('/pages/department_dashboard.php', createdAdmin, undefined, true)).status === 200, 'Created administrator opens its dashboard');
     fs.writeFileSync(path.join(privateStorage, 'uploads', 'synthetic-private-proof.pdf'), '%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\n%%EOF');
     fixture('private-upload');
     const deniedPrivateFile = await request('/api/get_document.php?id=VALID&doc_type=proof_of_life', '', undefined, true);

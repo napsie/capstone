@@ -465,7 +465,7 @@ try {
                                             $userProfilePic = optimizedImageName($profileDirectory, $userProfilePic, 'thumb');
                                             $userProfilePicPath = $profileDirectory . $userProfilePic;
                                             if ($userProfilePic === 'default.jpg' || !file_exists($userProfilePicPath) || is_dir($userProfilePicPath)) {
-                                                $userProfilePicPath = '../images/LOGO.jpg';
+                                                $userProfilePicPath = '../images/logo.jpg';
                                             }
                                         ?>
                                         <img src="<?php echo $userProfilePicPath; ?>" alt="Profile Picture" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;">
@@ -525,7 +525,7 @@ try {
                         <div class="form-group">
                             <label for="editProfilePicture">Profile Picture <span class="field-help" style="display:inline;">(optional)</span></label>
                             <div class="profile-upload">
-                                <img id="editProfilePicturePreview" class="profile-picture-preview" src="../images/LOGO.jpg" alt="Current profile picture">
+                                <img id="editProfilePicturePreview" class="profile-picture-preview" src="../images/logo.jpg" alt="Current profile picture">
                                 <div>
                                     <input type="file" id="editProfilePicture" name="profile_picture" accept="image/png,image/jpeg,image/gif">
                                     <span class="field-help">JPG, PNG, or GIF. Choose a file to replace the current photo.</span>
@@ -772,7 +772,7 @@ try {
                                 document.getElementById('editUsername').value = user.username;
                                 document.getElementById('editRole').value = user.role;
                                 document.getElementById('editBarangay').value = user.barangay || '';
-                                document.getElementById('editProfilePicturePreview').src = user.profile_picture_path || '../images/LOGO.jpg';
+                                document.getElementById('editProfilePicturePreview').src = user.profile_picture_path || '../images/logo.jpg';
                                 document.getElementById('editNewPassword').value = '';
                                 document.getElementById('editConfirmPassword').value = '';
                                 toggleBarangayField(editRoleSelect, editBarangayGroup);

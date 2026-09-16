@@ -416,7 +416,7 @@ $auditHasFilters = $search !== '' || $barangayFilter !== 'all' || $auditEventFil
                                         <tr>
                                             <td>
                                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                                    <img src="../images/LOGO.jpg" alt="User" style="width:32px;height:32px;border-radius:50%;">
+                                                    <img src="../images/logo.jpg" alt="User" style="width:32px;height:32px;border-radius:50%;">
                                                     <strong><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></strong>
                                                 </div>
                                             </td>

@@ -352,7 +352,7 @@ CREATE TABLE `home_visit_personnel` (
 CREATE TABLE `remember_tokens` (
   `id`             int(11)     NOT NULL AUTO_INCREMENT,
   `user_id`        int(11)     NOT NULL,
-  `selector`       varchar(12) NOT NULL,
+  `selector`       varchar(32) NOT NULL,
   `validator_hash` varchar(64) NOT NULL,
   `expires`        datetime    NOT NULL,
   PRIMARY KEY (`id`),

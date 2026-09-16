@@ -83,9 +83,9 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
                 }
 
                 if ($user['role'] === 'barangay_staff') {
-                    header("Location: pages/Barangay_Dash.php");
+                    header("Location: pages/barangay_dash.php");
                 } else {
-                    header("Location: pages/Department_Dashboard.php");
+                    header("Location: pages/department_dashboard.php");
                 }
                 exit;
             }
@@ -144,7 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_role'])) {
             if (logAudit($conn, 'LOGIN', "Logged in as {$roleLabel}{$location}.")) {
                 $_SESSION['login_audit_recorded'] = true;
             }
-            header('Location: ' . ($role === 'barangay_staff' ? 'pages/Barangay_Dash.php' : 'pages/Department_Dashboard.php'));
+            header('Location: ' . ($role === 'barangay_staff' ? 'pages/barangay_dash.php' : 'pages/department_dashboard.php'));
             exit;
         }
 
@@ -164,7 +164,7 @@ header('Pragma: no-cache');
 header('Expires: 0');
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en"<?php echo $loginView !== '' ? ' class="login-view-open"' : ''; ?>>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -175,7 +175,7 @@ header('Expires: 0');
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/seniorlink-public.css?v=1">
-    <link rel="stylesheet" href="assets/css/landing.css?v=34">
+    <link rel="stylesheet" href="assets/css/landing.css?v=35">
     <link rel="stylesheet" href="assets/css/seniorlink-ui.css?v=20">
     <script src="assets/js/modal-hci.js?v=2" defer></script>
 </head>
@@ -547,6 +547,7 @@ header('Expires: 0');
 
             const showLogin = view => {
                 document.documentElement.classList.toggle('signup-view-open', view === 'signup');
+                document.documentElement.classList.toggle('login-view-open', view === 'staff' || view === 'admin');
                 choices?.classList.add('is-hidden');
                 panels.forEach(panel => panel.classList.toggle('is-active', panel.dataset.loginPanel === view));
                 if (heading) heading.textContent = view === 'staff' ? 'SHDO sign in' : (view === 'admin' ? 'Administrator sign in' : 'Create staff account');
@@ -557,6 +558,7 @@ header('Expires: 0');
 
             const showChoices = () => {
                 document.documentElement.classList.remove('signup-view-open');
+                document.documentElement.classList.remove('login-view-open');
                 panels.forEach(panel => {
                     closePasswordReset(panel);
                     panel.classList.remove('is-active');
@@ -573,6 +575,30 @@ header('Expires: 0');
             });
             document.querySelectorAll('[data-signup-view]').forEach(button => button.addEventListener('click', () => showLogin('signup')));
             document.querySelectorAll('[data-login-back]').forEach(button => button.addEventListener('click', showChoices));
+            const keepLoginFieldVisible = () => {
+                if (!document.documentElement.classList.contains('login-view-open') || window.innerWidth > 600) {
+                    document.body.style.paddingBottom = '';
+                    return;
+                }
+                const field = document.activeElement;
+                if (!field?.closest('.portal-login-view.is-active') || !field.matches('input, select')) {
+                    document.body.style.paddingBottom = '';
+                    return;
+                }
+                const viewport = window.visualViewport;
+                const keyboardSpace = viewport ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop) : 0;
+                document.body.style.paddingBottom = keyboardSpace > 100 ? `${Math.ceil(keyboardSpace)}px` : '';
+                const visibleBottom = viewport ? viewport.offsetTop + viewport.height : window.innerHeight;
+                const fieldBottom = field.getBoundingClientRect().bottom;
+                if (fieldBottom > visibleBottom - 16) window.scrollBy(0, fieldBottom - visibleBottom + 16);
+            };
+            document.addEventListener('focusin', event => {
+                if (event.target.matches('.portal-login-view input, .portal-login-view select')) {
+                    setTimeout(keepLoginFieldVisible, 250);
+                }
+            });
+            document.addEventListener('focusout', () => setTimeout(keepLoginFieldVisible, 100));
+            window.visualViewport?.addEventListener('resize', keepLoginFieldVisible);
             document.querySelectorAll('[data-password-target]').forEach(button => {
                 button.addEventListener('click', () => {
                     const input = document.getElementById(button.dataset.passwordTarget);

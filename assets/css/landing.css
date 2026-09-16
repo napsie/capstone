@@ -1012,6 +1012,13 @@ button.portal-card {
     .site-footer { padding: 10px 0 20px; font-size: 0.65rem; }
 }
 
+@media (max-width: 600px) {
+    html.login-view-open .hero-content { display: none; }
+    html.login-view-open .landing-main { align-content: start; gap: 0; padding-top: 16px; }
+    html.login-view-open .portal-panel { justify-self: stretch; }
+    .portal-login-form .form-control { font-size: 16px; }
+}
+
 @media (max-width: 390px) {
     .site-header-inner { width: min(100% - 20px, 1180px); }
     .brand-text { display: none; }

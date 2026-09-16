@@ -150,6 +150,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($status === 'Completed' && trim((string)($_POST['living_arrangement'] ?? '')) === '') operationsRedirect('Select the senior\'s living arrangement.', false);
             if ($status === 'Completed' && ($_POST['is_pensioner'] ?? '') === '') operationsRedirect('Indicate whether the senior receives a pension.', false);
             if ($status === 'Completed' && ($_POST['family_support'] ?? '') === '') operationsRedirect('Indicate whether the senior receives regular family support.', false);
+            if ($status === 'Completed' && ($_POST['is_pensioner'] ?? '') === '1' && trim((string)($_POST['pension_source'] ?? '')) === '') operationsRedirect('Enter the pension source.', false);
+            if ($status === 'Completed' && ($_POST['is_pensioner'] ?? '') === '1' && ($_POST['pension_amount'] ?? '') === '') operationsRedirect('Enter the pension amount.', false);
+            if ($status === 'Completed' && ($_POST['family_support'] ?? '') === '1' && ($_POST['family_support_amount'] ?? '') === '') operationsRedirect('Enter the family support amount.', false);
+            if ($status === 'Completed' && ($_POST['personal_income'] ?? '') === '1' && ($_POST['personal_income_amount'] ?? '') === '') operationsRedirect('Enter the personal income amount.', false);
             if ($status === 'Rejected') {
                 $previousState = $app['workflow_state'] ?: 'Received';
                 $rejectionReason = $notes ?: 'Required home visit was rejected.';
@@ -180,6 +184,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $familySupportAmount = ($_POST['family_support_amount'] ?? '') === '' ? null : max(0, (float)$_POST['family_support_amount']);
                 $personalIncome = ($_POST['personal_income'] ?? '') === '' ? null : (int)$_POST['personal_income'];
                 $personalIncomeAmount = ($_POST['personal_income_amount'] ?? '') === '' ? null : max(0, (float)$_POST['personal_income_amount']);
+                if ($isPensioner !== 1) {
+                    $pensionSource = '';
+                    $pensionAmount = null;
+                }
+                if ($familySupport !== 1) $familySupportAmount = null;
+                if ($personalIncome !== 1) $personalIncomeAmount = null;
                 $healthCondition = trim(strip_tags((string)($_POST['health_condition'] ?? '')));
                 $withMaintenance = ($_POST['with_maintenance'] ?? '') === '' ? null : (int)$_POST['with_maintenance'];
                 $maintenanceSpec = trim(strip_tags((string)($_POST['maintenance_spec'] ?? '')));
@@ -278,6 +288,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
         .field label { display:block; font-size:.72rem; color:#475569; font-weight:800; text-transform:uppercase; margin-bottom:4px; }
         .field input,.field select,.field textarea { width:100%; min-height:40px; padding:8px 10px; border:1px solid #cbd5e1; border-radius:8px; background:#fff; font:inherit; }
         .field textarea { min-height:74px; resize:vertical; }
+        .field input:disabled { background:#f1f5f9; color:#94a3b8; cursor:not-allowed; }
         .full { grid-column:1/-1; }
         .btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; border:0; border-radius:8px; padding:9px 13px; font-weight:700; cursor:pointer; text-decoration:none; }
         .btn-primary { background:#2563eb; color:#fff; }
@@ -532,6 +543,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
             const field = form.elements.namedItem(name);
             if (field) field.value = value === null || value === undefined ? '' : String(value);
         });
+        updateEvaluationDependencies();
         const message = document.getElementById('evaluationMessage');
         message.hidden = true;
         message.className = 'evaluation-message full';
@@ -544,6 +556,27 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
 
     const evaluationModal = document.getElementById('evaluationModal');
     const evaluationForm = document.getElementById('visitStatusForm');
+    const dependentFields = {
+        is_pensioner: ['pension_source', 'pension_amount'],
+        family_support: ['family_support_amount'],
+        personal_income: ['personal_income_amount']
+    };
+    function updateEvaluationDependencies() {
+        if (!evaluationForm) return;
+        const completed = evaluationForm.elements.namedItem('visit_status').value === 'Completed';
+        for (const [answerName, fieldNames] of Object.entries(dependentFields)) {
+            const answer = evaluationForm.elements.namedItem(answerName).value;
+            for (const fieldName of fieldNames) {
+                const field = evaluationForm.elements.namedItem(fieldName);
+                if (answer === '0') field.value = '';
+                field.disabled = answer !== '1';
+                field.required = completed && answer === '1';
+            }
+        }
+    }
+    evaluationForm?.addEventListener('change', (event) => {
+        if (event.target.name === 'visit_status' || Object.hasOwn(dependentFields, event.target.name)) updateEvaluationDependencies();
+    });
     const closeEvaluation = () => {
         if (!evaluationModal) return;
         evaluationModal.classList.remove('open');
@@ -560,6 +593,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
         const requiredWhenComplete = ['living_arrangement', 'is_pensioner', 'family_support', 'eligibility', 'notes'];
         requiredWhenComplete.forEach((name) => evaluationForm.elements.namedItem(name)?.removeAttribute('required'));
         if (status === 'Completed') requiredWhenComplete.forEach((name) => evaluationForm.elements.namedItem(name)?.setAttribute('required', 'required'));
+        updateEvaluationDependencies();
         if (!evaluationForm.reportValidity()) return;
 
         const saveButton = document.getElementById('saveEvaluation');

@@ -643,7 +643,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <div class="form-group">
                     <label for="profile_picture" class="optional">Profile Photo <span class="form-hint" style="display:inline;">(optional)</span></label>
                     <div class="profile-upload">
-                        <img id="profilePicturePreview" class="profile-preview" src="../images/LOGO.jpg" alt="Profile photo preview">
+                        <img id="profilePicturePreview" class="profile-preview" src="../images/logo.jpg" alt="Profile photo preview">
                         <div style="min-width:0;flex:1;">
                             <input type="file" id="profile_picture" name="profile_picture" class="form-control" accept="image/jpeg,image/png,image/gif,image/webp" aria-describedby="profilePictureHint">
                             <span id="profilePictureHint" class="form-hint">JPG, PNG, GIF, or WebP up to 5 MB.</span>
@@ -794,12 +794,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         profilePictureInput.addEventListener('change', function () {
             const file = this.files[0];
             if (!file) {
-                profilePicturePreview.src = '../images/LOGO.jpg';
+                profilePicturePreview.src = '../images/logo.jpg';
                 return;
             }
             if (file.size > 5 * 1024 * 1024) {
                 this.value = '';
-                profilePicturePreview.src = '../images/LOGO.jpg';
+                profilePicturePreview.src = '../images/logo.jpg';
                 window.alert('Profile photo must be 5 MB or smaller.');
                 return;
             }
