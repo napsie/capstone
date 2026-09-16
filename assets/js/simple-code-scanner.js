@@ -6,10 +6,7 @@
 
     if (!tokenField || !modal) return;
 
-    const callbackName = document.body.dataset.scannerCallback
-        || (location.pathname.toLowerCase().includes('new_application.php')
-            ? 'loadProxyQrData'
-            : 'searchByQrToken');
+    const callbackName = document.body.dataset.scannerCallback || 'searchByQrToken';
 
     const scannerId = 'simpleCodeScannerReader';
     const scannerPanel = document.createElement('div');

@@ -187,13 +187,6 @@ This document provides a technical overview of the CARELINK system.
 *   `MAIL_FROM_ADDRESS`
 *   `MAIL_FROM_NAME` (optional; defaults to `SeniorLink`)
 
-### `pages/new_application.php`
-
-*   **Functionality:** This page allows barangay staff to submit a new application.
-*   **Features:**
-    *   A form to enter all the applicant's information.
-    *   File uploads for required documents.
-
 ### `pages/submit_application.php`
 
 *   **Functionality:** This page allows barangay staff to view and manage applications.

@@ -139,7 +139,7 @@ async function main() {
     check(!(await action(admin, 'BURIAL31', 'next')).data.success, '31-weekday burial filing rejected');
     check(!(await action(admin, 'BURIALBAD', 'next')).data.success, 'Death date after filing rejected');
     check(!(await action(admin, 'BURIALMISSING', 'next')).data.success, 'Missing burial date rejected');
-    for (const [page, cookie] of [['department_dashboard.php', admin], ['barangay_dash.php', staff], ['verify_document.php?application=UI-CORRECTION', admin], ['submit_application.php?application=UI-CORRECTION', staff], ['new_application.php', staff], ['proxy_registration.php', ''], ['field_operations.php', admin], ['field_operations.php', staff], ['import_records.php', admin]]) {
+    for (const [page, cookie] of [['department_dashboard.php', admin], ['barangay_dash.php', staff], ['verify_document.php?application=UI-CORRECTION', admin], ['submit_application.php?application=UI-CORRECTION', staff], ['proxy_registration.php', ''], ['field_operations.php', admin], ['field_operations.php', staff], ['import_records.php', admin]]) {
         const html = (await request('/pages/' + page, cookie, undefined, true)).data;
         check(!/<b>(?:Fatal error|Warning)<\/b>/.test(html), 'PHP renders ' + page);
         for (const match of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {

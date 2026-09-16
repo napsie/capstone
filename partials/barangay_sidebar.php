@@ -17,7 +17,6 @@ require_once __DIR__ . '/../includes/system_branding.php';
     </button>
     <ul class="nav-links">
         <li class="<?php echo ($current_page == 'barangay_dash.php') ? 'active' : ''; ?>"><a href="barangay_dash.php" data-tooltip="Dashboard" aria-label="Dashboard"><i class="fas fa-tachometer-alt"></i> <span class="link-text">Dashboard</span></a></li>
-        <li class="<?php echo ($current_page == 'new_application.php') ? 'active' : ''; ?>"><a href="new_application.php" data-tooltip="Application" aria-label="Application"><i class="fas fa-user-plus"></i> <span class="link-text">Application</span></a></li>
         <li class="<?php echo ($current_page == 'submit_application.php') ? 'active' : ''; ?>"><a href="submit_application.php" data-tooltip="Queue" aria-label="Queue"><i class="fas fa-clipboard-list"></i> <span class="link-text">Queue</span></a></li>
         <li class="<?php echo ($current_page == 'barangay_records.php') ? 'active' : ''; ?>"><a href="barangay_records.php" data-tooltip="Records" aria-label="Records"><i class="fas fa-database"></i> <span class="link-text">Records</span></a></li>
         <li class="<?php echo ($current_page == 'digital_ids.php' || $current_page == 'digital_id.php') ? 'active' : ''; ?>"><a href="digital_ids.php" data-tooltip="Digital IDs" aria-label="Digital IDs"><i class="fas fa-id-card"></i> <span class="link-text">Digital IDs</span></a></li>

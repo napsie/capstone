@@ -248,3 +248,34 @@
     #departmentSummaryCards { grid-template-columns: 1fr; gap: 9px; }
     #departmentSummaryCards .stat-card { min-height: 80px; padding: 11px 13px; }
 }
+
+/* Keep all five Barangay dashboard metrics on one row at desktop widths. */
+@media (min-width: 1200px) {
+    .barangay-dashboard #statsStrip {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .barangay-dashboard #statsStrip .stat-card {
+        min-height: 108px;
+        gap: 10px;
+        padding: 14px 12px;
+    }
+
+    .barangay-dashboard #statsStrip .stat-icon {
+        width: 42px;
+        height: 42px;
+        flex-basis: 42px;
+        border-radius: 11px;
+        font-size: 1.1rem;
+    }
+
+    .barangay-dashboard #statsStrip .stat-label {
+        font-size: .65rem;
+        letter-spacing: .035em;
+    }
+
+    .barangay-dashboard #statsStrip .stat-info small {
+        font-size: .64rem;
+    }
+}

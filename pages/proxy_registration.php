@@ -350,7 +350,7 @@ $resetUrl = 'proxy_registration.php';
             document.getElementById('cardSelectorSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
-        /* ── Age Compliance Check (mirrors new_application.php) ────────── */
+        /* ── Age Compliance Check ────────── */
         function checkProxyAgeCompliance() {
             const birthDate = document.getElementById('birthDate')?.value;
             const appType   = document.getElementById('applicationType')?.value;

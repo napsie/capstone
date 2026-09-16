@@ -536,7 +536,7 @@ $sidebarCss = ($role === 'barangay_staff') ? '../assets/css/barangay-sidebar.css
                         <tr><td>Other Gov't Pension</td><td>Allowed</td><td><span class="badge-no">Disqualifying</span></td></tr>
                         <tr><td>Social Worker Visit</td><td>Not required</td><td><span class="badge-ok">Required</span> (Home Visitation Form)</td></tr>
                         <tr><td>Benefit</td><td>20% discount, VAT exemption, medical</td><td>+₱1,000/month cash pension</td></tr>
-                        <tr><td>Processing Portal</td><td>Standard Application (new_application.php)</td><td>Benefit Portal — Option B</td></tr>
+                        <tr><td>Processing Portal</td><td>Senior Application Portal</td><td>Benefit Portal — Option B</td></tr>
                     </tbody>
                 </table>
             </div>

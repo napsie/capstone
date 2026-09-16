@@ -1,0 +1,12 @@
+.git
+.agents
+.codex
+database_backups
+database/backups
+uploads/*
+!uploads/.gitkeep
+!uploads/.htaccess
+tmp/sessions/*
+!tmp/sessions/.gitkeep
+!tmp/sessions/.htaccess
+*.log

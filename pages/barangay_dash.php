@@ -128,8 +128,8 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
     <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
-    <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=5">
-    <link rel="stylesheet" href="../assets/css/metric-cards.css?v=1">
+    <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=6">
+    <link rel="stylesheet" href="../assets/css/metric-cards.css?v=2">
     <link rel="stylesheet" href="../assets/css/dashboard-calendar.css?v=8">
 <script src="../assets/js/dashboard-chart-fallback.js?v=1"></script>
 <script src="../assets/js/dashboard-calendar.js?v=1" defer></script>
@@ -162,11 +162,10 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                 <div class="command-copy">
                     <span class="command-eyebrow"><i class="fas fa-location-dot" aria-hidden="true"></i> Barangay operations</span>
                     <h2 id="barangayOverviewTitle">Today’s service overview</h2>
-                    <p>Review the local queue, register applicants, and monitor recent activity.</p>
+                    <p>Review the local queue and monitor recent activity.</p>
                 </div>
                 <nav class="dashboard-quick-actions" aria-label="Barangay quick actions">
-                    <a class="quick-action primary" href="new_application.php"><i class="fas fa-user-plus" aria-hidden="true"></i><span><strong>New application</strong><small>Register an applicant</small></span></a>
-                    <a class="quick-action" href="submit_application.php"><i class="fas fa-clipboard-list" aria-hidden="true"></i><span><strong>Open queue</strong><small>Continue processing</small></span></a>
+                    <a class="quick-action primary" href="submit_application.php"><i class="fas fa-clipboard-list" aria-hidden="true"></i><span><strong>Open queue</strong><small>Continue processing</small></span></a>
                 </nav>
             </section>
 
