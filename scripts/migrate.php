@@ -30,6 +30,72 @@ try {
 $applied = array_fill_keys($migrationRows, true);
 $files = glob(dirname(__DIR__) . '/database/migrations/*.sql') ?: [];
 sort($files, SORT_STRING);
+$isMariaDb = stripos((string)$conn->query('SELECT VERSION()')->fetchColumn(), 'mariadb') !== false;
+
+/** MySQL lacks MariaDB's ADD ... IF NOT EXISTS syntax. */
+function applyMigrationSql(PDO $conn, string $sql, bool $isMariaDb): void {
+    if ($isMariaDb || stripos($sql, 'ADD COLUMN IF NOT EXISTS') === false
+        && stripos($sql, 'ADD INDEX IF NOT EXISTS') === false
+        && stripos($sql, 'ADD UNIQUE INDEX IF NOT EXISTS') === false) {
+        $conn->exec($sql);
+        return;
+    }
+    preg_match_all('/^ALTER TABLE\s+(`?[A-Za-z0-9_]+`?)\s+([^;]+);/mi', $sql, $matches, PREG_OFFSET_CAPTURE);
+    $cursor = 0;
+    foreach ($matches[0] as $i => [$statement, $start]) {
+        if (stripos($statement, 'IF NOT EXISTS') === false) continue;
+        $prefix = substr($sql, $cursor, $start - $cursor);
+        if (trim($prefix) !== '') $conn->exec($prefix);
+        $table = trim($matches[1][$i][0], '`');
+        $clauses = splitAlterClauses($matches[2][$i][0]);
+        foreach ($clauses as $clause) {
+            $clause = trim($clause);
+            if (!preg_match('/^ADD\s+(?:(COLUMN)|(UNIQUE\s+INDEX|INDEX))\s+IF NOT EXISTS\s+`?([A-Za-z0-9_]+)`?/i', $clause, $parts)) {
+                throw new RuntimeException("Unsupported conditional ALTER TABLE clause in {$table}: {$clause}");
+            }
+            $column = $parts[1] !== '';
+            $name = $parts[3];
+            $catalog = $column ? 'information_schema.COLUMNS' : 'information_schema.STATISTICS';
+            $nameField = $column ? 'COLUMN_NAME' : 'INDEX_NAME';
+            $check = $conn->prepare("SELECT 1 FROM {$catalog} WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND {$nameField} = ? LIMIT 1");
+            $check->execute([$table, $name]);
+            if ($check->fetchColumn()) continue;
+            $clause = preg_replace('/\bIF NOT EXISTS\s+/i', '', $clause, 1);
+            $clause = preg_replace('/\bPERSISTENT\b/i', 'STORED', (string)$clause);
+            $conn->exec("ALTER TABLE `{$table}` {$clause}");
+        }
+        $cursor = $start + strlen($statement);
+    }
+    $suffix = substr($sql, $cursor);
+    if (trim($suffix) !== '') $conn->exec($suffix);
+}
+
+function splitAlterClauses(string $source): array {
+    $clauses = [];
+    $start = 0;
+    $depth = 0;
+    $quote = '';
+    $length = strlen($source);
+    for ($i = 0; $i < $length; $i++) {
+        $char = $source[$i];
+        if ($quote !== '') {
+            if ($char === $quote) {
+                if ($i + 1 < $length && $source[$i + 1] === $quote) { $i++; continue; }
+                $quote = '';
+            } elseif ($char === '\\') { $i++; }
+            continue;
+        }
+        if ($char === "'" || $char === '"' || $char === '`') { $quote = $char; continue; }
+        if ($char === '(') { $depth++; continue; }
+        if ($char === ')') { $depth--; continue; }
+        if ($char === ',' && $depth === 0) {
+            $clauses[] = substr($source, $start, $i - $start);
+            $start = $i + 1;
+        }
+    }
+    $clauses[] = substr($source, $start);
+    return $clauses;
+}
 
 foreach ($files as $file) {
     $name = basename($file);
@@ -41,9 +107,12 @@ foreach ($files as $file) {
     if ($sql === false) {
         throw new RuntimeException("Unable to read migration {$name}");
     }
+    // Older migrations name the local XAMPP database explicitly. Always apply
+    // them to the database chosen by the connection string instead.
+    $sql = preg_replace('/^\s*USE `capstone1`;\s*$/mi', '', $sql);
     fwrite(STDOUT, "APPLY {$name}\n");
     try {
-        $conn->exec($sql);
+        applyMigrationSql($conn, (string)$sql, $isMariaDb);
         $record = $conn->prepare('INSERT INTO app_schema_migrations (migration) VALUES (?)');
         $record->execute([$name]);
     } catch (Throwable $e) {

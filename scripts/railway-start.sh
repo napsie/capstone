@@ -11,6 +11,11 @@ sed -i "s/<VirtualHost \*:80>/<VirtualHost *:${port}>/" /etc/apache2/sites-avail
 
 private_root="${SENIORLINK_PRIVATE_STORAGE:-/data/private}"
 mkdir -p "${private_root}/uploads"
-chown -R www-data:www-data "${private_root}"
+mkdir -p /data/profile_pictures /data/system_logos
+cp -an /usr/local/share/seniorlink/images/profile_pictures/. /data/profile_pictures/
+cp -an /usr/local/share/seniorlink/images/system_logos/. /data/system_logos/
+chown -R www-data:www-data "${private_root}" /data/profile_pictures /data/system_logos
+
+php /var/www/html/scripts/railway-bootstrap.php
 
 exec apache2-foreground
