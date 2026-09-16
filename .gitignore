@@ -12,3 +12,11 @@ Thumbs.db
 # Local database backups contain private application data
 database_backups/*.sql
 database_backups/*.zip
+
+# Runtime applicant records and PHP sessions must never enter source control.
+uploads/*
+!uploads/.gitkeep
+!uploads/.htaccess
+tmp/sessions/*
+!tmp/sessions/.gitkeep
+!tmp/sessions/.htaccess

@@ -1,12 +1,13 @@
 <?php
 $current_page = basename($_SERVER['PHP_SELF']);
+require_once __DIR__ . '/../includes/system_branding.php';
 ?>
 <!-- Loaded here so mobile-only overrides follow each page's inline styles. -->
 <link rel="stylesheet" href="../assets/css/department-mobile.css?v=1">
 <div class="sidebar system-sidebar">
     <div class="sidebar-header">
         <div class="logo">
-            <img src="../images/LOGO.jpg" alt="Logo" class="logo-image">
+            <img src="<?php echo htmlspecialchars(systemLogoUrl($conn)); ?>" alt="SENIORLINK system logo" class="logo-image">
             <h1 class="logo-text"><span style="color: #00B050;">SENIOR</span><span>LINK</span></h1>
         </div>
     </div>

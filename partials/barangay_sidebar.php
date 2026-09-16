@@ -2,11 +2,12 @@
 $current_page = basename($_SERVER['PHP_SELF']);
 $barangayName = $barangayName ?? ($_SESSION['barangay'] ?? '');
 $barangayLogoLabel = $barangayName !== '' ? 'Barangay ' . $barangayName . ' Logo' : 'SENIORLINK Logo';
+require_once __DIR__ . '/../includes/system_branding.php';
 ?>
 <div class="sidebar system-sidebar">
     <div class="logo">
         <div class="logo-image">
-            <img src="../images/LOGO.jpg" alt="<?php echo htmlspecialchars($barangayLogoLabel, ENT_QUOTES, 'UTF-8'); ?>" class="logo-image">
+            <img src="<?php echo htmlspecialchars(systemLogoUrl($conn)); ?>" alt="<?php echo htmlspecialchars($barangayLogoLabel, ENT_QUOTES, 'UTF-8'); ?>" class="logo-image">
         </div>
         <h1 class="logo-text"><span style="color: #00B050;">SENIOR</span><span>LINK</span></h1>
     </div>

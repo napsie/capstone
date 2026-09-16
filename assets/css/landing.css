@@ -686,14 +686,25 @@ button.portal-card {
 .portal-tracker-controls button:hover { background:#116b3b; }
 .portal-tracker-controls button:focus-visible { outline:none; box-shadow:var(--focus-ring); }
 
-.track-content { max-width: 540px; }
+.track-content { width:min(92vw, 650px); max-width:650px; overflow:auto; overscroll-behavior:contain; }
 .track-content .about-header { margin-bottom: 12px; }
 .track-content .portal-eyebrow { margin-bottom: 5px; }
-.track-intro { margin: 0 0 20px; color: var(--text-body); font-size: .88rem; line-height: 1.6; }
-.track-modal-form { margin: 0; padding: 18px; }
-.track-modal-form > label { display: block; margin-bottom: 8px; color: var(--text-dark); font-size: .76rem; font-weight: 750; }
+.track-intro { margin:0 0 18px; max-width:58ch; color:var(--text-body); font-size:.9rem; line-height:1.55; }
+.track-modal-form { margin:0; padding:20px; border:1px solid #d8e4ec; border-radius:16px; background:#f5f9fc; }
+.track-modal-form > label { display:block; margin-bottom:8px; color:var(--text-dark); font-size:.78rem; font-weight:800; }
 .track-help { display: flex; align-items: center; gap: 7px; margin-top: 11px; color: var(--text-light); font-size: .68rem; line-height: 1.4; }
 .track-help i { color: #18864a; }
+.tracking-qr-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:12px; }
+.tracking-qr-actions button { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:10px 14px; border:1px solid #b9cce0; border-radius:10px; background:#fff; color:#164e83; font:inherit; font-size:.76rem; font-weight:800; line-height:1.2; cursor:pointer; box-shadow:0 1px 2px rgba(15,23,42,.04); }
+.tracking-qr-actions button:hover { border-color:#6ea1cf; background:#eaf4fd; color:#103f6b; }
+.tracking-qr-actions button:focus-visible { outline:3px solid rgba(37,99,235,.35); outline-offset:2px; }
+.tracking-qr-actions button i { color:#1976bd; font-size:.9rem; }
+.tracking-qr-actions #landingStopQr { grid-column:1 / -1; border-color:#fecaca; color:#991b1b; background:#fff7f7; }
+.landing-qr-reader { margin-top:14px; overflow:hidden; border:1px solid #cbd5e1; border-radius:12px; background:#f8fafc; }
+.landing-qr-reader video { display:block; width:100%!important; max-height:300px; object-fit:cover; }
+.landing-qr-status { display:block; min-height:1.2em; margin-top:9px; color:#64748b; font-size:.7rem; line-height:1.45; }
+.landing-qr-status[data-type="error"] { color:#b91c1c; }
+.landing-qr-status[data-type="success"] { color:#15803d; }
 
 .portal-card-body h4 {
     margin-bottom: 4px;
@@ -988,9 +999,16 @@ button.portal-card {
     .portal-card-number { display: none; }
     .portal-tracker-controls { grid-template-columns: 1fr; }
     .portal-tracker-controls button { padding-block: 11px; }
-    .track-content { width: 100%; max-height: calc(100dvh - 28px); padding: 20px 16px; border-radius: 18px; }
-    .track-modal-form { padding: 14px; }
+    .track-content { width:100%; max-height:calc(100dvh - 24px); padding:20px 16px; border-radius:18px; scrollbar-width:thin; }
+    .track-content .about-header { align-items:flex-start; }
+    .track-content .about-header h3 { font-size:1.22rem; line-height:1.25; }
+    .track-intro { margin-bottom:14px; font-size:.84rem; }
+    .track-modal-form { padding:14px; border-radius:14px; }
     .track-modal-form .portal-tracker-controls input { font-size: 16px; }
+    .track-modal-form .portal-tracker-controls button { min-height:48px; }
+    .tracking-qr-actions button { min-height:48px; padding:11px 10px; }
+    .landing-qr-reader video { max-height:38dvh; }
+    .track-help { align-items:flex-start; font-size:.7rem; }
     .site-footer { padding: 10px 0 20px; font-size: 0.65rem; }
 }
 
@@ -1002,6 +1020,16 @@ button.portal-card {
     .portal-card-icon { width: 44px; height: 44px; }
     .portal-card-arrow { display: none; }
     .portal-login-options { align-items: flex-start; flex-direction: column; gap: 2px; }
+    .tracking-qr-actions { grid-template-columns:1fr; }
+    .tracking-qr-actions #landingStopQr { grid-column:auto; }
+}
+
+@media (max-height: 620px) {
+    #trackModal { align-items:flex-start; overflow-y:auto; padding:10px; }
+    #trackModal .track-content { margin:auto; max-height:calc(100dvh - 20px); }
+    #trackModal .about-header { margin-bottom:8px; }
+    #trackModal .track-intro { margin-bottom:10px; }
+    #trackModal .track-modal-form { padding:12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

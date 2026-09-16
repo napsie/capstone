@@ -12,6 +12,8 @@ const php = process.env.PHP_BINARY || 'D:/xampp1/php/php.exe';
 const database = 'seniorlink_test_' + randomBytes(6).toString('hex');
 const base = 'http://127.0.0.1:8765';
 const sessions = fs.mkdtempSync(path.join(os.tmpdir(), 'seniorlink-test-'));
+const privateStorage = fs.mkdtempSync(path.join(os.tmpdir(), 'seniorlink-private-test-'));
+fs.mkdirSync(path.join(privateStorage, 'uploads'));
 let server, passed = 0;
 const fixture = mode => {
     const result = spawnSync(php, [path.join(__dirname, 'workflow_fixture.php'), mode, database], { cwd: root, encoding: 'utf8', windowsHide: true });
@@ -37,7 +39,7 @@ const action = (cookie, id, action, fields = {}) => request('/api/update_workflo
 async function main() {
     fixture('setup');
     server = spawn(php, ['-d', 'session.save_path=' + sessions, '-d', 'upload_tmp_dir=' + sessions, '-S', '127.0.0.1:8765', '-t', root], {
-        cwd: root, env: { ...process.env, DATABASE_URL: `mysql://root@localhost/${database}` }, windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'],
+        cwd: root, env: { ...process.env, DATABASE_URL: `mysql://root@localhost/${database}`, SENIORLINK_PRIVATE_STORAGE: privateStorage }, windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'],
     });
     let serverErrors = '';
     server.stderr.on('data', data => { serverErrors += data; });
@@ -48,6 +50,36 @@ async function main() {
     const admin = await login('test-admin', true);
     const staff = await login('test-staff');
     const other = await login('test-other', false, 'Ugong');
+    fs.writeFileSync(path.join(privateStorage, 'uploads', 'synthetic-private-proof.pdf'), '%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\n%%EOF');
+    fixture('private-upload');
+    const deniedPrivateFile = await request('/api/get_document.php?id=VALID&doc_type=proof_of_life', '', undefined, true);
+    check(deniedPrivateFile.status === 401, 'Anonymous private document access denied');
+    const allowedPrivateFile = await request('/api/get_document.php?id=VALID&doc_type=proof_of_life', staff, undefined, true);
+    check(allowedPrivateFile.status === 200 && allowedPrivateFile.data.startsWith('%PDF-1.4'), 'Authorized staff can view private document');
+    const wrongBarangayFile = await request('/api/get_document.php?id=VALID&doc_type=proof_of_life', other, undefined, true);
+    check(wrongBarangayFile.status === 404, 'Other barangay cannot view private document');
+    const retiredPhotoRoute = await request('/api/digital_id_photo.php?token=PRX-BENE', '', undefined, true);
+    check(retiredPhotoRoute.status === 410, 'Public token-only photo route is closed');
+    const seniorIdPortal = await request('/pages/proxy_registration.php', '', undefined, true);
+    check(seniorIdPortal.data.includes('<option value="new"') && seniorIdPortal.data.includes('<option value="transfer"')
+        && !seniorIdPortal.data.includes('<option value="change"') && !seniorIdPortal.data.includes('<option value="lost"'),
+        'Senior ID portal offers only New and Transfer purposes');
+    const benefitsPortal = await request('/pages/senior_benefits.php', '', new URLSearchParams({
+        verify_benefit_access: '1', seniorCitizenId: 'OSCA-TEST-BENEFITS', permanentToken: 'PRX-BENE'
+    }), true);
+    check(benefitsPortal.data.includes('Update or Replace Senior ID') && benefitsPortal.data.includes('<option value="change"')
+        && benefitsPortal.data.includes('<option value="lost"') && !benefitsPortal.data.includes('<option value="new"'),
+        'Benefits portal offers Change and Lost ID purposes');
+    check(benefitsPortal.data.includes('value="Test Contact"') && benefitsPortal.data.includes('value="09171234567"')
+        && benefitsPortal.data.includes('<option value="Physically Fit" selected'),
+        'Benefits portal prefills existing health and emergency-contact answers');
+    check(benefitsPortal.data.includes('How to change your information')
+        && benefitsPortal.data.includes('Go to editable information')
+        && benefitsPortal.data.includes('aria-live="polite"'),
+        'Information Change provides accessible step-by-step guidance');
+    check(benefitsPortal.data.includes('Pension or Income Supporting Record (Optional)')
+        && benefitsPortal.data.includes('"optional":true'),
+        'Local Pension SSS or pension supporting record is optional');
     check((await request('/api/verify_senior_integrity.php?id=OSCA-TEST-VALID')).status === 401, 'Anonymous senior lookup denied');
     let result = await request('/api/verify_senior_integrity.php?id=OSCA-TEST-VALID', staff);
     check(result.data.success && !('complete_address' in result.data.senior), 'Authorized lookup returns limited profile data');
@@ -91,6 +123,17 @@ async function main() {
     check((await action(admin, 'CORRECT', 'next')).data.current_status === 'Verified', 'Department verifies resubmitted application');
     check(!(await action(admin, 'CORRECT', 'return', { comments: 'Reason', correctionDocuments: 'PSA' })).data.success, 'Completed application cannot be returned');
     check(!(await action(admin, 'ARCHIVED', 'next')).data.success, 'Archived application cannot advance');
+    check(!(await action(admin, 'UNDERAGE-PENSION', 'next')).data.success, 'Local Pension applicant under 65 cannot advance');
+    check((await action(admin, 'PEN-LBANK', 'next')).data.current_status === 'Verified', 'Land Bank enrollment verifies for forwarding');
+    const landbankTracker = await request('/pages/benefit_tracker.php?token=PRX-BENE&service=landbank', '', undefined, true);
+    check(landbankTracker.data.includes('being forwarded to <strong>LANDBANK</strong>'), 'Verified Land Bank tracker shows forwarding notice');
+    const legacyPenTracker = await request('/pages/benefit_tracker.php?token=PEN-LBANK', '', undefined, true);
+    check(legacyPenTracker.data.includes('Enter a valid permanent PRX Token ID'), 'Public tracker rejects legacy PEN codes');
+    check((await action(admin, 'CHANGE-REQUEST', 'next')).data.current_status === 'Verified', 'Information Change request verifies');
+    const updatedSenior = await request('/api/get_application_details.php?id=PRX-BENE', admin);
+    check(updatedSenior.data.contact_number === '09179999999' && updatedSenior.data.emergency_contact_name === 'Updated Contact'
+        && updatedSenior.data.health_condition === 'Arthritis / Joint condition',
+        'Verified Information Change updates the linked Senior ID profile');
     check((await request('/api/get_application_details.php?id=BURIAL30', admin)).data.burial_filing_days === 30, 'Exact 30-weekday filing boundary');
     check((await action(admin, 'BURIAL30', 'next')).data.success, 'Timely burial accepted even when reviewed months later');
     check(!(await action(admin, 'BURIAL31', 'next')).data.success, '31-weekday burial filing rejected');
@@ -122,4 +165,7 @@ main().catch(error => { console.error(error); process.exitCode = 1; }).finally(a
     assert.equal(path.dirname(path.resolve(sessions)), path.resolve(os.tmpdir()));
     assert.ok(path.basename(sessions).startsWith('seniorlink-test-'));
     fs.rmSync(sessions, { recursive: true, force: true });
+    assert.equal(path.dirname(path.resolve(privateStorage)), path.resolve(os.tmpdir()));
+    assert.ok(path.basename(privateStorage).startsWith('seniorlink-private-test-'));
+    fs.rmSync(privateStorage, { recursive: true, force: true });
 });

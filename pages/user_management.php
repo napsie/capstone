@@ -4,6 +4,7 @@ require_once '../includes/db_connect.php';
 require_once '../includes/password_validation.php'; // Include the password validation function
 require_once '../includes/master_password.php';
 require_once '../includes/data_normalizer.php';
+require_once '../includes/image_optimizer.php';
 
 // Check if the user is logged in and has the correct role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'department_admin') {
@@ -112,6 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addUser'])) {
                                 $dest_path = $uploadFileDir . $newFileName;
 
                                 if(move_uploaded_file($fileTmpPath, $dest_path)) {
+                                    createImageDerivatives($dest_path);
                                     $profilePicture = $newFileName;
                                 } else {
                                     $error = "There was an error moving the uploaded profile picture file.";
@@ -311,7 +313,7 @@ try {
             #editUserModal .modal-actions .btn { flex: 1 1 0; min-width: 0; }
         }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
     <script src="../assets/js/table-pagination.js?v=1" defer></script>
@@ -459,7 +461,9 @@ try {
                                     <td>
                                         <?php
                                             $userProfilePic = !empty($user['profile_picture']) ? $user['profile_picture'] : 'default.jpg';
-                                            $userProfilePicPath = '../images/profile_pictures/' . $userProfilePic;
+                                            $profileDirectory = '../images/profile_pictures/';
+                                            $userProfilePic = optimizedImageName($profileDirectory, $userProfilePic, 'thumb');
+                                            $userProfilePicPath = $profileDirectory . $userProfilePic;
                                             if ($userProfilePic === 'default.jpg' || !file_exists($userProfilePicPath) || is_dir($userProfilePicPath)) {
                                                 $userProfilePicPath = '../images/LOGO.jpg';
                                             }

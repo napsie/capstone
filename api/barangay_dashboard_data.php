@@ -2,6 +2,7 @@
 session_start();
 header('Content-Type: application/json');
 require_once '../includes/db_connect.php';
+require_once '../includes/dashboard_response_cache.php';
 
 // Authenticate and authorize
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'barangay_staff' || !isset($_SESSION['barangay'])) {
@@ -10,6 +11,12 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'barangay_staff' || !i
 }
 
 $barangay = $_SESSION['barangay'];
+$dashboardCacheKey = 'barangay-dashboard|' . $barangay;
+if ($cachedResponse = readDashboardResponseCache($dashboardCacheKey)) {
+    header('X-Seniorlink-Cache: HIT');
+    echo json_encode($cachedResponse);
+    exit;
+}
 $response = [
     'success' => true,
     'data'    => [
@@ -71,6 +78,8 @@ try {
                 THEN 1 ELSE 0 END) AS priority_count,
             SUM(CASE WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received')
                 IN ('Received', 'Submitted', 'For Review', 'Needs Correction') THEN 1 ELSE 0 END) AS queue_count
+            ,SUM(CASE WHEN application_type = 'senior' AND COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') NOT IN ('Verified','Approved','Released','Rejected') THEN 1 ELSE 0 END) AS pending_senior_id
+            ,SUM(CASE WHEN application_type = 'landbank' AND COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') NOT IN ('Verified','Approved','Released','Rejected') THEN 1 ELSE 0 END) AS pending_landbank
         FROM applications 
         WHERE barangay = :barangay 
           AND (is_archived = 0 OR is_archived IS NULL)
@@ -80,6 +89,8 @@ try {
     $response['data']['priority_count'] = (int)($summary['priority_count'] ?? 0);
     $response['data']['queue_count'] = (int)($summary['queue_count'] ?? 0);
     $response['data']['total_count'] = (int)($summary['total_count'] ?? 0);
+    $response['data']['pending_senior_id'] = (int)($summary['pending_senior_id'] ?? 0);
+    $response['data']['pending_landbank'] = (int)($summary['pending_landbank'] ?? 0);
 
     // 5. Get data for Monthly Applications Chart (last 12 months)
     $monthlyStmt = $conn->prepare("
@@ -131,5 +142,7 @@ try {
     error_log("API Error in barangay_dashboard_data.php: " . $e->getMessage());
 }
 
+if ($response['success']) writeDashboardResponseCache($dashboardCacheKey, $response);
+header('X-Seniorlink-Cache: MISS');
 echo json_encode($response);
 ?>

@@ -134,7 +134,7 @@ try {
     $auditTotalPages = max(1, (int)ceil($auditTotal / $auditPerPage));
     $auditPage = min($auditPage, $auditTotalPages);
     $auditOffset = ($auditPage - 1) * $auditPerPage;
-    $auditSql = 'SELECT * FROM audit_trail' . $auditWhereSql
+    $auditSql = 'SELECT username, role, barangay, action, description, ip_address, created_at FROM audit_trail' . $auditWhereSql
         . " ORDER BY created_at DESC LIMIT {$auditPerPage} OFFSET {$auditOffset}";
     $auditStmt = $conn->prepare($auditSql);
     $auditStmt->execute($auditParams);
@@ -166,7 +166,7 @@ $auditHasFilters = $search !== '' || $barangayFilter !== 'all' || $auditEventFil
     <title>SENIORLINK — Department Master Archive</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=5">
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=17">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', 'Segoe UI', sans-serif; }

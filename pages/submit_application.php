@@ -185,6 +185,13 @@ unset($_SESSION['application_submission_notice']);
         .name-cell .name-link { font-weight: 700; color: var(--accent); text-decoration: none; }
         .name-cell .name-link:hover { text-decoration: underline; }
         .name-cell .app-id    { font-size: 0.73rem; color: var(--gray); margin-top: 2px; font-family: monospace; }
+        .application-type-cell { display:flex; align-items:flex-start; flex-direction:column; gap:5px; min-width:165px; }
+        .application-type-name { color:#0f172a; font-weight:650; line-height:1.35; }
+        .id-purpose-badge { display:inline-flex; align-items:center; gap:5px; width:max-content; max-width:100%; padding:3px 8px; border:1px solid #bfdbfe; border-radius:999px; color:#1d4ed8; background:#eff6ff; font-size:.68rem; font-weight:800; line-height:1.3; }
+        .id-purpose-badge--change { color:#92400e; background:#fffbeb; border-color:#fde68a; }
+        .id-purpose-badge--transfer { color:#6b21a8; background:#faf5ff; border-color:#e9d5ff; }
+        .id-purpose-badge--lost { color:#b91c1c; background:#fef2f2; border-color:#fecaca; }
+        .id-purpose-badge--unspecified { color:#475569; background:#f8fafc; border-color:#cbd5e1; }
 
         .alert-blurry {
             color: var(--danger);
@@ -357,7 +364,7 @@ unset($_SESSION['application_submission_notice']);
         /* Footer */
         .page-footer { text-align:center; padding:24px; font-size:0.78rem; color:var(--gray); }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=18">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
     <script src="../assets/js/table-pagination.js?v=1" defer></script>
@@ -885,6 +892,9 @@ unset($_SESSION['application_submission_notice']);
                     }
 
                     const typeLabel = TYPE_LABELS[app.application_type] || app.application_type;
+                    const purposeBadge = app.application_type === 'senior'
+                        ? `<span class="id-purpose-badge id-purpose-badge--${getSeniorIdPurposeKey(app.id_purpose)}"><i class="fas fa-tag" aria-hidden="true"></i>${escapeQueueText(getSeniorIdPurposeLabel(app.id_purpose))}</span>`
+                        : '';
 
                     tableBody.innerHTML += `
                         <tr class="applicant-row" data-id="${app.id}" tabindex="0" role="button" aria-label="View applicant details">
@@ -895,7 +905,7 @@ unset($_SESSION['application_submission_notice']);
                                     ${renderQueueDeadlineAlerts(app.deadline_alerts)}
                                 </div>
                             </td>
-                            <td>${typeLabel}</td>
+                            <td><div class="application-type-cell"><span class="application-type-name">${escapeQueueText(typeLabel)}</span>${purposeBadge}</div></td>
                             <td>${app.birth_date}</td>
                             <td>${app.contact_number}</td>
                             <td>${new Date(app.date_submitted).toLocaleDateString()}</td>
@@ -992,7 +1002,7 @@ unset($_SESSION['application_submission_notice']);
         window.loadApplicationModalData(appId)
             .then(app => {
                 if (!app) return;
-                document.getElementById('modalAppTitle').textContent = `Edit application: ${app.full_name}`;
+                document.getElementById('modalAppTitle').textContent = `Edit application: ${app.full_name} - ${getApplicationRecordTypeLabel(app.application_type, app.id_purpose)}`;
                 document.getElementById('applicationId').value       = app.id_number;
                 document.getElementById('applicationType').value     = app.application_type;
                 document.getElementById('lastName').value            = app.lastName || '';
@@ -1056,7 +1066,7 @@ unset($_SESSION['application_submission_notice']);
                     proxySec.style.display = 'block';
                     proxyList.innerHTML    = '';
                     const docs = [
-                        { key: 'psa_birth_cert', label: 'PSA Birth Certificate' },
+                        { key: 'psa_birth_cert', label: 'Birth Cert / Negative of Birth' },
                         { key: 'barangay_residency', label: 'Barangay Residency' },
                         { key: 'comelec_cert', label: 'COMELEC Certificate' },
                         { key: 'deceased_landbank_card', label: 'Deceased Landbank Cash Card' },
@@ -1215,7 +1225,7 @@ unset($_SESSION['application_submission_notice']);
         const documents = [
             ['proof_of_address', 'Proof of Address', app.has_proof_of_address],
             ['id_image', 'ID / Identification Photo', app.has_id_image],
-            ['psa_birth_cert', 'PSA Birth Certificate', app.psa_birth_cert],
+            ['psa_birth_cert', 'Birth Cert / Negative of Birth', app.psa_birth_cert],
             ['barangay_residency', 'Barangay Residency', app.barangay_residency],
             ['comelec_cert', 'COMELEC Certificate', app.comelec_cert],
             ['deceased_landbank_card', 'Deceased Landbank Cash Card', app.deceased_landbank_card],

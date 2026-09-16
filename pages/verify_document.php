@@ -62,7 +62,7 @@ $queueTotalPages = max(1, (int)ceil($filteredQueueCount / $queuePerPage));
 $queuePage = min($queuePage, $queueTotalPages);
 $queueOffset = ($queuePage - 1) * $queuePerPage;
 
-$queueSql = "SELECT id_number as id, full_name, application_type, requested_benefit, barangay, date_submitted,
+$queueSql = "SELECT id_number as id, full_name, application_type, requested_benefit, id_purpose, barangay, date_submitted,
                     status, workflow_state, home_visit_status, home_visit_scheduled_at, date_of_death, death_registration_date,
                     COALESCE((SELECT MAX(h.changed_at) FROM application_history h
                               WHERE h.application_id = applications.id_number AND h.new_state = applications.workflow_state), date_submitted) AS workflow_changed_at,
@@ -232,6 +232,13 @@ $hasQueueFilters = $queueFilters['search'] !== ''
 
         .name-cell .full-name { font-weight: 700; }
         .name-cell .app-id    { font-size: 0.73rem; color: var(--gray); margin-top: 2px; font-family: monospace; }
+        .application-type-cell { display:flex; align-items:flex-start; flex-direction:column; gap:5px; min-width:165px; }
+        .application-type-name { color:#0f172a; font-weight:650; line-height:1.35; }
+        .id-purpose-badge { display:inline-flex; align-items:center; gap:5px; width:max-content; max-width:100%; padding:3px 8px; border:1px solid #bfdbfe; border-radius:999px; color:#1d4ed8; background:#eff6ff; font-size:.68rem; font-weight:800; line-height:1.3; }
+        .id-purpose-badge--change { color:#92400e; background:#fffbeb; border-color:#fde68a; }
+        .id-purpose-badge--transfer { color:#6b21a8; background:#faf5ff; border-color:#e9d5ff; }
+        .id-purpose-badge--lost { color:#b91c1c; background:#fef2f2; border-color:#fecaca; }
+        .id-purpose-badge--unspecified { color:#475569; background:#f8fafc; border-color:#cbd5e1; }
 
         /* Stepper states */
         .badge {
@@ -441,7 +448,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
         /* Footer */
         .page-footer { text-align:center; padding:24px; font-size:0.78rem; color:var(--gray); }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=18">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <link rel="stylesheet" href="../assets/css/metric-cards.css?v=1">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
@@ -566,6 +573,8 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                                 if ($displayState === 'Needs Correction') $stateBadgeClass = 'badge-correction';
 
                                 $typeLabel = applicationTypeLabel($row['application_type']);
+                                $purposeKey = strtolower(trim((string)($row['id_purpose'] ?? '')));
+                                if (!in_array($purposeKey, ['new', 'change', 'transfer', 'lost'], true)) $purposeKey = 'unspecified';
                                 $deadlineAlerts = applicationDeadlineAlerts($row);
                             ?>
                             <tr class="applicant-row" data-id="<?php echo htmlspecialchars($row['id']); ?>" tabindex="0" role="button" aria-label="Open applicant review">
@@ -578,7 +587,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                                         </div><?php endif; ?>
                                     </div>
                                 </td>
-                                <td><?php echo htmlspecialchars($typeLabel); ?></td>
+                                <td><div class="application-type-cell"><span class="application-type-name"><?php echo htmlspecialchars($typeLabel); ?></span><?php if ($row['application_type'] === 'senior'): ?><span class="id-purpose-badge id-purpose-badge--<?php echo $purposeKey; ?>"><i class="fas fa-tag" aria-hidden="true"></i><?php echo htmlspecialchars(seniorIdPurposeLabel($row['id_purpose'] ?? null)); ?></span><?php endif; ?></div></td>
                                 <td><?php echo htmlspecialchars($row['barangay']); ?></td>
                                 <td><?php echo date('M d, Y', strtotime($row['date_submitted'])); ?></td>
                                 <td><span class="badge <?php echo $stateBadgeClass; ?>"><?php echo htmlspecialchars($displayState); ?></span></td>
@@ -988,7 +997,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                 if (!app) return;
                 currentWorkflowStatus = app.workflow_state || 'Received';
                 window.currentVerificationApplicationType = app.application_type || '';
-                document.getElementById('modalAppTitle').textContent = `Verifying: ${app.full_name} - ${getOfficialApplicationFormLabel(app.application_type)}`;
+                document.getElementById('modalAppTitle').textContent = `Verifying: ${app.full_name} - ${getApplicationRecordTypeLabel(app.application_type, app.id_purpose)}`;
                 const officialFormButton = document.getElementById('btnOfficialForm');
                 officialFormButton.disabled = false;
                 officialFormButton.onclick = () => openOfficialApplicationForm(app.id_number);
@@ -1087,7 +1096,9 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                     instruction.innerHTML = "<strong>Status Action:</strong> Forward this application to the department desk for detailed evaluation.";
                     btnNext.textContent = "Forward to Review Desk";
                 } else if (currentWorkflowStatus === 'For Review') {
-                    instruction.innerHTML = "<strong>Status Action:</strong> Mark document audits as Verified and lock the compliance records.";
+                    instruction.innerHTML = app.application_type === 'landbank'
+                        ? "<strong>LANDBANK handoff:</strong> Verifying this application will queue it for forwarding to LANDBANK. The verification date and forwarding notice will appear in Track Application."
+                        : "<strong>Status Action:</strong> Mark document audits as Verified and lock the compliance records.";
                     btnNext.textContent = "Verify Application";
                     if (approvalBlocked) {
                         btnNext.disabled = true;
@@ -1102,7 +1113,9 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                         btnNext.style.opacity = '';
                     }
                 } else if (currentWorkflowStatus === 'Verified') {
-                    instruction.innerHTML = "<strong>Status:</strong> Verification is complete and the compliance record is locked.";
+                    instruction.innerHTML = app.application_type === 'landbank'
+                        ? "<strong>LANDBANK handoff:</strong> Verification is complete. This application is being forwarded to LANDBANK for cash card processing."
+                        : "<strong>Status:</strong> Verification is complete and the compliance record is locked.";
                     btnNext.style.display = 'none';
                     btnReturn.style.display = 'none';
                     btnReject.style.display = 'none';
@@ -1212,7 +1225,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
         html += blobDocBox('ID / Identification Photo', app.has_id_image, 'id_image');
 
         const additionalDocs = [
-            ['psa_birth_cert', 'PSA Birth Certificate'], ['barangay_residency', 'Barangay Residency'],
+            ['psa_birth_cert', 'Birth Cert / Negative of Birth'], ['barangay_residency', 'Barangay Residency'],
             ['comelec_cert', 'COMELEC Certificate'], ['deceased_landbank_card', 'Deceased Landbank Cash Card'],
             ['proof_of_life', 'Current Senior Photo / Proof of Life'],
             ['auth_letter', 'Authorization Letter'], ['proxy_id', 'Representative Government ID'],

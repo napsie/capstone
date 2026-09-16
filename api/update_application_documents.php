@@ -47,7 +47,7 @@ try {
     if ($documentKey !== '' || $documentLabel !== '') {
         $legacyLabels = [
             'proof_of_address' => 'Proof of Address', 'id_image' => 'ID / Identification Photo',
-            'psa_birth_cert' => 'PSA Birth Certificate', 'barangay_residency' => 'Barangay Residency Certificate',
+            'psa_birth_cert' => 'Birth Cert / Negative of Birth', 'barangay_residency' => 'Barangay Residency Certificate',
             'comelec_cert' => 'COMELEC Certificate', 'deceased_landbank_card' => 'Deceased Landbank Cash Card',
             'proof_of_life' => 'Current Senior Photo / Proof of Life',
             'auth_letter' => 'Authorization Letter', 'proxy_id' => 'Representative Government ID',

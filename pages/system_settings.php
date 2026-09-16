@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../includes/db_connect.php';
+require_once '../includes/system_branding.php';
 
 // Check if the user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -11,6 +12,38 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = $_SESSION['user_id'];
 $message = '';
 $error = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['updateSystemLogo'])) {
+    if (!in_array($_SESSION['role'] ?? '', ['department_admin', 'super_admin'], true)) {
+        $error = 'Only a Department Administrator can change the system logo.';
+    } elseif (!isset($_FILES['systemLogo']) || $_FILES['systemLogo']['error'] !== UPLOAD_ERR_OK) {
+        $error = 'Choose a PNG or JPEG logo to upload.';
+    } else {
+        $upload = $_FILES['systemLogo'];
+        $mime = (new finfo(FILEINFO_MIME_TYPE))->file($upload['tmp_name']);
+        $extensions = ['image/jpeg' => 'jpg', 'image/png' => 'png'];
+        if (!isset($extensions[$mime]) || (int)$upload['size'] > 5 * 1024 * 1024) {
+            $error = 'The logo must be a PNG or JPEG image no larger than 5 MB.';
+        } else {
+            $dimensions = @getimagesize($upload['tmp_name']);
+            if (!$dimensions || $dimensions[0] < 100 || $dimensions[1] < 100) {
+                $error = 'The logo image must be at least 100 by 100 pixels.';
+            } else {
+                $directory = dirname(__DIR__) . '/images/system_logos';
+                if (!is_dir($directory)) mkdir($directory, 0775, true);
+                $filename = 'system-logo-' . date('YmdHis') . '-' . bin2hex(random_bytes(4)) . '.' . $extensions[$mime];
+                if (!move_uploaded_file($upload['tmp_name'], $directory . '/' . $filename)) {
+                    $error = 'The logo could not be saved. Please try again.';
+                } else {
+                    $stmt = $conn->prepare("INSERT INTO system_settings (id, system_logo_filename, system_logo_mime) VALUES (1, ?, ?)
+                        ON DUPLICATE KEY UPDATE system_logo_filename = VALUES(system_logo_filename), system_logo_mime = VALUES(system_logo_mime)");
+                    $stmt->execute([$filename, $mime]);
+                    $message = 'System logo updated. Future reports will use the new logo automatically.';
+                }
+            }
+        }
+    }
+}
 
 // Fetch user data
 try {
@@ -66,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateSystemSettings']
 
 // Fetch system settings
 try {
-    $stmt = $conn->prepare("SELECT * FROM system_settings WHERE id = 1");
+    $stmt = $conn->prepare("SELECT session_timeout, max_login_attempts, backup_frequency, auto_backup FROM system_settings WHERE id = 1");
     $stmt->execute();
     $system_settings = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$system_settings) {
@@ -461,7 +494,7 @@ try {
             }
         }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
@@ -520,6 +553,16 @@ try {
 
         <!-- Settings Grid -->
         <div class="settings-grid">
+            <div class="card">
+                <h3><i class="fas fa-image"></i> System and Report Logo</h3>
+                <form action="" method="POST" enctype="multipart/form-data">
+                    <div class="form-group" style="display:flex;align-items:center;gap:16px;">
+                        <img src="<?php echo htmlspecialchars(systemLogoUrl($conn)); ?>?v=<?php echo urlencode(systemLogoFilename($conn)); ?>" alt="Current system logo" style="width:76px;height:76px;object-fit:contain;border:1px solid #dbe4ef;border-radius:12px;background:#fff;">
+                        <div style="flex:1;"><label for="systemLogo">Current System Logo</label><input type="file" id="systemLogo" name="systemLogo" accept="image/png,image/jpeg" required><small>PNG or JPEG, up to 5 MB. This logo is also used on generated PDF reports.</small></div>
+                    </div>
+                    <div class="actions"><button type="submit" name="updateSystemLogo" class="btn btn-success btn-small"><i class="fas fa-upload"></i> Upload New Logo</button></div>
+                </form>
+            </div>
             <!-- Security Settings -->
             <div class="card">
                 <h3><i class="fas fa-shield-alt"></i> Security Settings</h3>

@@ -228,7 +228,7 @@ $resetUrl = 'proxy_registration.php';
             margin: 0; font-size: 0.9rem; color: #475569;
         }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <link rel="stylesheet" href="../assets/css/benefit-information-modal.css?v=1">
 </head>
 <body>
@@ -282,13 +282,11 @@ $resetUrl = 'proxy_registration.php';
             burialFields.hidden  = true;
 
             // Reset required flags
-            document.getElementById('sssNumber')?.removeAttribute('required');
             document.getElementById('dateOfDeath')?.removeAttribute('required');
             document.getElementById('relationshipToDeceased')?.removeAttribute('required');
 
             if (type === 'pension') {
                 pensionFields.hidden = false;
-                document.getElementById('sssNumber')?.setAttribute('required', 'required');
             } else if (type === 'burial') {
                 burialFields.hidden = false;
                 document.getElementById('dateOfDeath')?.setAttribute('required', 'required');
@@ -416,6 +414,7 @@ $resetUrl = 'proxy_registration.php';
         <?php endif; ?>
     </script>
     <script src="../assets/js/form-drafts.js?v=1"></script>
+    <script src="../assets/js/resilient-form-submit.js?v=1"></script>
     <script>
         SeniorlinkFormDrafts.initialize({ clearOnSuccess: <?php echo $proxySuccess ? 'true' : 'false'; ?> });
     </script>

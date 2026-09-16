@@ -65,7 +65,7 @@ $totalPages = max(1, (int)ceil($total / $perPage));
 $page = min($page, $totalPages);
 $offset = ($page - 1) * $perPage;
 
-$sql = "SELECT a.id_number AS id, a.full_name, a.application_type, a.birth_date,
+$sql = "SELECT a.id_number AS id, a.full_name, a.application_type, a.id_purpose, a.birth_date,
                a.contact_number, a.date_submitted, a.status, a.complete_address,
                a.house_no, a.street, a.city, a.province, a.zip_code, a.barangay,
                a.workflow_state, a.home_visit_status, a.requested_benefit, a.priority_level, a.return_reason,

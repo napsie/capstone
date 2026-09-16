@@ -2,6 +2,7 @@
 session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/application_types.php';
+require_once '../includes/application_record_pagination.php';
 
 // Redirect if not logged in or not barangay staff
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'barangay_staff') {
@@ -40,34 +41,19 @@ if ($yearFilter !== 'all' && preg_match('/^20\d{2}$/', (string)$yearFilter)) {
     $yearFilter = 'all';
 }
 
-$recordsQuery = "SELECT id_number as id, full_name, birth_date, application_type, requested_benefit, date_submitted, CASE WHEN COALESCE(workflow_state, status) IN ('Approved','Released') THEN 'Verified' ELSE COALESCE(workflow_state, status) END as status " . $baseQuery . " ORDER BY date_submitted DESC, id_number DESC";
-$recordsStmt  = $conn->prepare($recordsQuery);
-foreach ($params as $key => $value) $recordsStmt->bindValue($key, $value, PDO::PARAM_STR);
-$recordsStmt->execute();
-$allApplications = $recordsStmt->fetchAll(PDO::FETCH_ASSOC);
-$totalRecords = count($allApplications);
-$groupedApplicants = [];
-foreach ($allApplications as $application) {
-    $normalizedName = mb_strtolower(preg_replace('/\s+/', ' ', trim((string)$application['full_name'])));
-    $groupKey = hash('sha256', $normalizedName . '|' . (string)$application['birth_date']);
-    if (!isset($groupedApplicants[$groupKey])) {
-        $groupedApplicants[$groupKey] = [
-            'key' => substr($groupKey, 0, 12),
-            'full_name' => $application['full_name'],
-            'birth_date' => $application['birth_date'],
-            'latest_date' => $application['date_submitted'],
-            'applications' => [],
-            'benefit_count' => 0,
-        ];
-    }
-    $groupedApplicants[$groupKey]['applications'][] = $application;
-    if ($application['application_type'] !== 'senior') $groupedApplicants[$groupKey]['benefit_count']++;
-}
-$totalApplicants = count($groupedApplicants);
-$recordsTotalPages = max(1, (int)ceil($totalApplicants / $recordsPerPage));
-$recordsPage = min($recordsPage, $recordsTotalPages);
-$recordsOffset = ($recordsPage - 1) * $recordsPerPage;
-$applicantGroups = array_slice(array_values($groupedApplicants), $recordsOffset, $recordsPerPage);
+$recordPage = fetchApplicationRecordPage(
+    $conn,
+    $baseQuery,
+    $params,
+    "id_number as id, full_name, birth_date, application_type, requested_benefit, id_purpose, date_submitted, CASE WHEN COALESCE(workflow_state, status) IN ('Approved','Released') THEN 'Verified' ELSE COALESCE(workflow_state, status) END as status",
+    $recordsPage,
+    $recordsPerPage
+);
+$totalRecords = $recordPage['totalRecords'];
+$totalApplicants = $recordPage['totalApplicants'];
+$recordsTotalPages = $recordPage['totalPages'];
+$recordsPage = $recordPage['page'];
+$applicantGroups = $recordPage['groups'];
 
 function getStatusClass($status) {
     switch (strtolower($status)) {
@@ -352,7 +338,7 @@ function getStatusClass($status) {
         .application-summary strong { color:#0f172a; font-size:.86rem; }
         .application-summary small { color:#64748b; font-size:.73rem; }
         .type-chips { display:flex; flex-wrap:wrap; gap:5px; margin-top:3px; }
-        .type-chip { display:inline-flex; max-width:210px; padding:2px 7px; overflow:hidden; color:#334155; background:#eef2f7; border-radius:999px; font-size:.68rem; font-weight:650; text-overflow:ellipsis; white-space:nowrap; }
+        .type-chip { display:inline-flex; max-width:100%; padding:3px 8px; color:#334155; background:#eef2f7; border-radius:999px; font-size:.68rem; font-weight:650; line-height:1.35; white-space:normal; }
         .group-toggle { min-height:36px; }
         .group-toggle .toggle-icon { transition:transform .2s ease; }
         .group-toggle[aria-expanded="true"] .toggle-icon { transform:rotate(180deg); }
@@ -595,7 +581,7 @@ function getStatusClass($status) {
             color: var(--gray);
         }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=18">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <link rel="stylesheet" href="../assets/css/metric-cards.css?v=1">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
@@ -731,7 +717,7 @@ function getStatusClass($status) {
                             $applicationCount = count($personApplications);
                             $typeLabels = [];
                             foreach ($personApplications as $application) {
-                                $typeLabel = applicationTypeLabel($application['application_type']);
+                                $typeLabel = applicationRecordTypeLabel($application['application_type'], $application['id_purpose'] ?? null);
                                 if (!in_array($typeLabel, $typeLabels, true)) $typeLabels[] = $typeLabel;
                             }
                             $detailsId = 'person-applications-' . $person['key'];
@@ -743,7 +729,7 @@ function getStatusClass($status) {
                                     <span class="person-birth-date">Born <?php echo date('M d, Y', strtotime($person['birth_date'])); ?></span>
                                 </div>
                             </td>
-                            <td><div class="application-summary"><strong><?php echo $person['benefit_count']; ?> benefit <?php echo $person['benefit_count'] === 1 ? 'application' : 'applications'; ?></strong><small><?php echo $applicationCount; ?> total verified <?php echo $applicationCount === 1 ? 'record' : 'records'; ?></small><div class="type-chips" aria-label="Application types"><?php foreach (array_slice($typeLabels, 0, 3) as $typeLabel): ?><span class="type-chip" title="<?php echo htmlspecialchars($typeLabel); ?>"><?php echo htmlspecialchars($typeLabel); ?></span><?php endforeach; ?><?php if (count($typeLabels) > 3): ?><span class="type-chip">+<?php echo count($typeLabels) - 3; ?> more</span><?php endif; ?></div></div></td>
+                            <td><div class="application-summary"><strong><?php echo $person['benefit_count']; ?> benefit <?php echo $person['benefit_count'] === 1 ? 'application' : 'applications'; ?></strong><small><?php echo $applicationCount; ?> total verified <?php echo $applicationCount === 1 ? 'record' : 'records'; ?></small><div class="type-chips" aria-label="Application types and Senior ID purposes"><?php foreach (array_slice($typeLabels, 0, 3) as $typeLabel): ?><span class="type-chip" title="<?php echo htmlspecialchars($typeLabel); ?>"><?php echo htmlspecialchars($typeLabel); ?></span><?php endforeach; ?><?php if (count($typeLabels) > 3): ?><span class="type-chip">+<?php echo count($typeLabels) - 3; ?> more</span><?php endif; ?></div></div></td>
                             <td><?php echo date('M d, Y', strtotime($person['latest_date'])); ?><br><small style="color:#64748b;">Most recent</small></td>
                             <td><span class="badge badge-approved"><i class="fas fa-circle-check"></i>Verified</span></td>
                             <td>
@@ -751,7 +737,7 @@ function getStatusClass($status) {
                             </td>
                         </tr>
                         <tr class="application-detail-row" id="<?php echo $detailsId; ?>" hidden><td colspan="5"><div class="application-list" role="region" aria-label="Applications for <?php echo htmlspecialchars($person['full_name']); ?>">
-                            <?php foreach ($personApplications as $app): ?><div class="application-list-item"><div><div class="application-list-label">Application</div><strong><?php echo htmlspecialchars(applicationTypeLabel($app['application_type'])); ?></strong><small><?php echo htmlspecialchars($app['id']); ?></small></div><div><div class="application-list-label">Submitted</div><strong><?php echo date('M d, Y', strtotime($app['date_submitted'])); ?></strong></div><button type="button" class="btn-view view-application-btn" data-id="<?php echo htmlspecialchars($app['id']); ?>"><i class="fas fa-eye"></i> View record</button></div><?php endforeach; ?>
+                            <?php foreach ($personApplications as $app): ?><div class="application-list-item"><div><div class="application-list-label">Application</div><strong><?php echo htmlspecialchars(applicationRecordTypeLabel($app['application_type'], $app['id_purpose'] ?? null)); ?></strong><small><?php echo htmlspecialchars($app['id']); ?></small></div><div><div class="application-list-label">Submitted</div><strong><?php echo date('M d, Y', strtotime($app['date_submitted'])); ?></strong></div><button type="button" class="btn-view view-application-btn" data-id="<?php echo htmlspecialchars($app['id']); ?>"><i class="fas fa-eye"></i> View record</button></div><?php endforeach; ?>
                         </div></td></tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -1150,7 +1136,7 @@ function getStatusClass($status) {
                     proxySec.style.display = 'block';
                     proxyList.innerHTML    = '';
                     const docs = [
-                        { key: 'psa_birth_cert', label: 'PSA Birth Certificate' },
+                        { key: 'psa_birth_cert', label: 'Birth Cert / Negative of Birth' },
                         { key: 'barangay_residency', label: 'Barangay Residency' },
                         { key: 'comelec_cert', label: 'COMELEC Certificate' },
                         { key: 'deceased_landbank_card', label: 'Deceased Landbank Cash Card' },

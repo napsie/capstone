@@ -3,6 +3,7 @@ session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/barangays_list.php';
 require_once '../includes/application_types.php';
+require_once '../includes/application_record_pagination.php';
 
 // Auth check
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'] ?? '', ['department_admin', 'super_admin'], true)) {
@@ -41,34 +42,20 @@ $whereSql = " WHERE " . implode(' AND ', $whereClauses);
 
 // Group verified applications by person. Pagination is based on seniors, not
 // individual benefit records, so one person's history never splits over pages.
-$recordsStmt = $conn->prepare("SELECT id_number as id, full_name, birth_date, application_type, requested_benefit, barangay, date_submitted, CASE WHEN COALESCE(workflow_state, status) IN ('Approved','Released') THEN 'Verified' ELSE COALESCE(workflow_state, status) END as status " . $baseQuery . $whereSql . " ORDER BY date_submitted DESC, id_number DESC");
-foreach ($params as $k => &$v) $recordsStmt->bindParam($k, $v);
-$recordsStmt->execute();
-$allApplications = $recordsStmt->fetchAll(PDO::FETCH_ASSOC);
-$totalRecords = count($allApplications);
-$groupedApplicants = [];
-foreach ($allApplications as $application) {
-    $normalizedName = mb_strtolower(preg_replace('/\s+/', ' ', trim((string)$application['full_name'])));
-    $groupKey = hash('sha256', $normalizedName . '|' . (string)$application['birth_date']);
-    if (!isset($groupedApplicants[$groupKey])) {
-        $groupedApplicants[$groupKey] = [
-            'key' => substr($groupKey, 0, 12),
-            'full_name' => $application['full_name'],
-            'birth_date' => $application['birth_date'],
-            'barangay' => $application['barangay'],
-            'latest_date' => $application['date_submitted'],
-            'applications' => [],
-            'benefit_count' => 0,
-        ];
-    }
-    $groupedApplicants[$groupKey]['applications'][] = $application;
-    if ($application['application_type'] !== 'senior') $groupedApplicants[$groupKey]['benefit_count']++;
-}
-$totalApplicants = count($groupedApplicants);
-$totalPages = max(1, (int)ceil($totalApplicants / $recordsPerPage));
-$page = min(max(1, $page), $totalPages);
-$offset = ($page - 1) * $recordsPerPage;
-$applicantGroups = array_slice(array_values($groupedApplicants), $offset, $recordsPerPage);
+$recordPage = fetchApplicationRecordPage(
+    $conn,
+    $baseQuery . $whereSql,
+    $params,
+    "id_number as id, full_name, birth_date, application_type, requested_benefit, id_purpose, barangay, date_submitted, CASE WHEN COALESCE(workflow_state, status) IN ('Approved','Released') THEN 'Verified' ELSE COALESCE(workflow_state, status) END as status",
+    $page,
+    $recordsPerPage,
+    true
+);
+$totalRecords = $recordPage['totalRecords'];
+$totalApplicants = $recordPage['totalApplicants'];
+$totalPages = $recordPage['totalPages'];
+$page = $recordPage['page'];
+$applicantGroups = $recordPage['groups'];
 
 function getStatusBadge($status) {
     switch (strtolower($status)) {
@@ -304,7 +291,7 @@ function getStatusBadge($status) {
         .application-summary strong { color:#0f172a; font-size:.86rem; }
         .application-summary small { color:#64748b; font-size:.73rem; }
         .type-chips { display:flex; flex-wrap:wrap; gap:5px; margin-top:3px; }
-        .type-chip { display:inline-flex; max-width:210px; padding:2px 7px; overflow:hidden; color:#334155; background:#eef2f7; border-radius:999px; font-size:.68rem; font-weight:650; text-overflow:ellipsis; white-space:nowrap; }
+        .type-chip { display:inline-flex; max-width:100%; padding:3px 8px; color:#334155; background:#eef2f7; border-radius:999px; font-size:.68rem; font-weight:650; line-height:1.35; white-space:normal; }
         .group-toggle { min-height:36px; }
         .group-toggle .toggle-icon { transition:transform .2s ease; }
         .group-toggle[aria-expanded="true"] .toggle-icon { transform:rotate(180deg); }
@@ -478,7 +465,7 @@ function getStatusBadge($status) {
         /* Footer */
         .page-footer { text-align:center; padding:24px; font-size:0.78rem; color:var(--gray); }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=18">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <link rel="stylesheet" href="../assets/css/metric-cards.css?v=1">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
@@ -623,7 +610,7 @@ function getStatusBadge($status) {
                             $applicationCount = count($personApplications);
                             $typeLabels = [];
                             foreach ($personApplications as $application) {
-                                $typeLabel = applicationTypeLabel($application['application_type']);
+                                $typeLabel = applicationRecordTypeLabel($application['application_type'], $application['id_purpose'] ?? null);
                                 if (!in_array($typeLabel, $typeLabels, true)) $typeLabels[] = $typeLabel;
                             }
                             $detailsId = 'person-applications-' . $person['key'];
@@ -639,7 +626,7 @@ function getStatusBadge($status) {
                                 <div class="application-summary">
                                     <strong><?php echo $person['benefit_count']; ?> benefit <?php echo $person['benefit_count'] === 1 ? 'application' : 'applications'; ?></strong>
                                     <small><?php echo $applicationCount; ?> total verified <?php echo $applicationCount === 1 ? 'record' : 'records'; ?></small>
-                                    <div class="type-chips" aria-label="Application types">
+                                    <div class="type-chips" aria-label="Application types and Senior ID purposes">
                                         <?php foreach (array_slice($typeLabels, 0, 3) as $typeLabel): ?><span class="type-chip" title="<?php echo htmlspecialchars($typeLabel); ?>"><?php echo htmlspecialchars($typeLabel); ?></span><?php endforeach; ?>
                                         <?php if (count($typeLabels) > 3): ?><span class="type-chip">+<?php echo count($typeLabels) - 3; ?> more</span><?php endif; ?>
                                     </div>
@@ -661,7 +648,7 @@ function getStatusBadge($status) {
                                 <div class="application-list" role="region" aria-label="Applications for <?php echo htmlspecialchars($person['full_name']); ?>">
                                     <?php foreach ($personApplications as $app): ?>
                                     <div class="application-list-item">
-                                        <div><div class="application-list-label">Application</div><strong><?php echo htmlspecialchars(applicationTypeLabel($app['application_type'])); ?></strong><small><?php echo htmlspecialchars($app['id']); ?></small></div>
+                                        <div><div class="application-list-label">Application</div><strong><?php echo htmlspecialchars(applicationRecordTypeLabel($app['application_type'], $app['id_purpose'] ?? null)); ?></strong><small><?php echo htmlspecialchars($app['id']); ?></small></div>
                                         <div><div class="application-list-label">Barangay</div><strong><?php echo htmlspecialchars($app['barangay']); ?></strong></div>
                                         <div><div class="application-list-label">Submitted</div><strong><?php echo date('M d, Y', strtotime($app['date_submitted'])); ?></strong></div>
                                         <button type="button" class="btn-view view-details-btn" data-id="<?php echo htmlspecialchars($app['id']); ?>"><i class="fas fa-eye"></i> View record</button>
@@ -1157,7 +1144,7 @@ function getStatusBadge($status) {
         html += blobDocBox('ID / Identification Photo', app.has_id_image, 'id_image');
 
         const additionalDocs = [
-            ['psa_birth_cert', 'PSA Birth Certificate'], ['barangay_residency', 'Barangay Residency'],
+            ['psa_birth_cert', 'Birth Cert / Negative of Birth'], ['barangay_residency', 'Barangay Residency'],
             ['comelec_cert', 'COMELEC Certificate'], ['deceased_landbank_card', 'Deceased Landbank Cash Card'],
             ['proof_of_life', 'Proof of Life (In Bed)'],
             ['auth_letter', 'Authorization Letter'], ['proxy_id', 'Representative Government ID'],

@@ -49,8 +49,8 @@ if (empty($_SESSION['login_audit_recorded'])) {
             background-color: var(--bg);
             color: var(--text);
             line-height: 1.6;
-            height: 100vh;
-            overflow: auto;
+            min-height: 100vh;
+            overflow-x: hidden;
         }
         
         /* Sidebar styles are handled by department-sidebar.css */
@@ -568,12 +568,12 @@ if (empty($_SESSION['login_audit_recorded'])) {
             }
         }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
     <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=5">
-    <link rel="stylesheet" href="../assets/css/metric-cards.css?v=1">
-    <link rel="stylesheet" href="../assets/css/dashboard-calendar.css?v=1">
+    <link rel="stylesheet" href="../assets/css/metric-cards.css?v=2">
+    <link rel="stylesheet" href="../assets/css/dashboard-calendar.css?v=8">
 <script src="../assets/js/dashboard-chart-fallback.js?v=1"></script>
 <script src="../assets/js/dashboard-calendar.js?v=1" defer></script>
 </head>
@@ -621,7 +621,7 @@ if (empty($_SESSION['login_audit_recorded'])) {
             </section>
             
             <!-- Stats Cards -->
-            <div class="stats-container">
+            <div class="stats-container" id="departmentSummaryCards">
                 <a class="stat-card stat-card-link stat-blue" href="department_records.php" aria-label="Open verified application records">
                     <div class="stat-icon bg-primary">
                         <i class="fas fa-check-circle"></i>
@@ -654,6 +654,11 @@ if (empty($_SESSION['login_audit_recorded'])) {
                     </div>
                     <i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i>
                 </a>
+                <a class="stat-card stat-card-link stat-amber" href="verify_document.php?type=senior" aria-label="Open pending Senior ID applications"><div class="stat-icon"><i class="fas fa-id-card"></i></div><div class="stat-info"><h3 class="dashboard-loading" id="pendingSeniorId">0</h3><p>Pending Senior ID</p><small>Awaiting completion</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>
+                <a class="stat-card stat-card-link stat-blue" href="verify_document.php?type=landbank" aria-label="Open pending Landbank applications"><div class="stat-icon"><i class="fas fa-building-columns"></i></div><div class="stat-info"><h3 class="dashboard-loading" id="pendingLandbank">0</h3><p>Pending Landbank</p><small>Awaiting completion</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>
+                <a class="stat-card stat-card-link stat-green" href="verify_document.php?type=pension" aria-label="Open pending Local Senior Pension applications"><div class="stat-icon"><i class="fas fa-wallet"></i></div><div class="stat-info"><h3 class="dashboard-loading" id="pendingLocalPension">0</h3><p>Local Senior Pension</p><small>Pending Local Senior Pension</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>
+                <a class="stat-card stat-card-link stat-violet" href="verify_document.php?type=milestone_gift" aria-label="Open pending Octogenarian Benefit applications"><div class="stat-icon"><i class="fas fa-gift"></i></div><div class="stat-info"><h3 class="dashboard-loading" id="pendingOctogenarian">0</h3><p>Octogenarian Benefits</p><small>Pending Octogenarian Benefit</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>
+                <a class="stat-card stat-card-link stat-amber" href="verify_document.php?type=burial" aria-label="Open pending Burial Assistance applications"><div class="stat-icon"><i class="fas fa-ribbon"></i></div><div class="stat-info"><h3 class="dashboard-loading" id="pendingBurial">0</h3><p>Burial Assistance</p><small>Pending Burial Assistance</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>
             </div>
             
             <div class="dashboard-section-heading"><div><span>Citywide performance</span><h2>Application insights</h2><p>Compare barangay activity and track long-term record trends.</p></div></div>
@@ -773,17 +778,57 @@ if (empty($_SESSION['login_audit_recorded'])) {
                     <div class="footer">                <p>Centralized Profiling and Record Authentication System | Department Admin &copy; <?php echo date('Y'); ?></p>
             </div>
         </div>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="../assets/js/sidebar-toggle.js?v=3"></script>
     <script>
+        let dashboardChartData = null;
+        let chartLibraryPromise = null;
+        let chartsInitialized = false;
+
         document.addEventListener('DOMContentLoaded', function() {
             initializeWelcomeMessage();
             initializeCalendar();
             updateTime();
             setInterval(updateTime, 1000);
 
+            observeDashboardCharts();
             loadDashboardData();
         });
+
+        function loadChartLibrary() {
+            if (window.Chart) return Promise.resolve();
+            if (chartLibraryPromise) return chartLibraryPromise;
+            chartLibraryPromise = new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+                script.async = true;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+            return chartLibraryPromise;
+        }
+
+        function renderVisibleCharts() {
+            if (!dashboardChartData || chartsInitialized) return;
+            chartsInitialized = true;
+            loadChartLibrary()
+                .then(() => initializeDepartmentCharts(dashboardChartData))
+                .catch(() => { chartsInitialized = false; showUnavailableCharts(); });
+        }
+
+        function observeDashboardCharts() {
+            const chartArea = document.querySelector('.charts-container');
+            if (!chartArea || !('IntersectionObserver' in window)) {
+                renderVisibleCharts();
+                return;
+            }
+            const observer = new IntersectionObserver(entries => {
+                if (!entries.some(entry => entry.isIntersecting)) return;
+                observer.disconnect();
+                renderVisibleCharts();
+            }, { rootMargin: '160px 0px' });
+            observer.observe(chartArea);
+        }
 
         function loadDashboardData() {
             const list = document.getElementById('realtime-notifications-list');
@@ -797,8 +842,8 @@ if (empty($_SESSION['login_audit_recorded'])) {
                 .then(result => {
                     if (result.status === 'success') {
                         renderNotifications(result.data.notifications);
-                        if (typeof Chart !== 'undefined') initializeDepartmentCharts(result.data);
-                        else showUnavailableCharts();
+                        dashboardChartData = result.data;
+                        if (document.querySelector('.charts-container')?.getBoundingClientRect().top < window.innerHeight + 160) renderVisibleCharts();
                         updateStatCards(result.data); // Call new function to update stat cards
                     } else {
                         throw new Error(result.message || 'Dashboard data is unavailable');
@@ -822,6 +867,11 @@ if (empty($_SESSION['login_audit_recorded'])) {
             document.querySelector('.stat-card:nth-child(1) h3').textContent = data.verified_applications ?? 0;
             document.querySelector('.stat-card:nth-child(2) h3').textContent = data.senior_citizen_records ?? 0;
             document.querySelector('.stat-card:nth-child(3) h3').textContent = data.total_processed ?? 0;
+            document.getElementById('pendingSeniorId').textContent = data.pending_senior_id ?? 0;
+            document.getElementById('pendingLandbank').textContent = data.pending_landbank ?? 0;
+            document.getElementById('pendingLocalPension').textContent = data.pending_local_pension ?? 0;
+            document.getElementById('pendingOctogenarian').textContent = data.pending_octogenarian ?? 0;
+            document.getElementById('pendingBurial').textContent = data.pending_burial ?? 0;
             document.querySelectorAll('.dashboard-loading').forEach(node => { node.classList.remove('dashboard-loading'); node.removeAttribute('aria-label'); });
         }
 

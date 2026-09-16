@@ -3,7 +3,7 @@
     const documentDefinitions = [
         ['proof_of_address', 'Proof of Address', app => app.has_proof_of_address],
         ['id_image', 'ID / Identification Photo', app => app.has_id_image],
-        ['psa_birth_cert', 'PSA Birth Certificate', app => app.psa_birth_cert],
+        ['psa_birth_cert', 'Birth Cert / Negative of Birth', app => app.psa_birth_cert],
         ['barangay_residency', 'Barangay Residency Certificate', app => app.barangay_residency],
         ['comelec_cert', 'COMELEC Certificate', app => app.comelec_cert],
         ['deceased_landbank_card', 'Deceased Landbank Cash Card', app => app.deceased_landbank_card],

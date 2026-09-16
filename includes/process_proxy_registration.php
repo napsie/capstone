@@ -5,9 +5,11 @@ require_once __DIR__ . '/application_types.php';
 require_once __DIR__ . '/data_normalizer.php';
 require_once __DIR__ . '/barangays_list.php';
 require_once __DIR__ . '/document_repository.php';
+require_once __DIR__ . '/image_optimizer.php';
+require_once __DIR__ . '/private_storage.php';
 
 /**
- * Helper function to save uploaded files to the uploads/ directory
+ * Save applicant files outside the public web directory.
  */
 function saveUploadedProxyFile(string $fileKey, string $prefix, string $fieldName, bool $imageOnly = false): ?string
 {
@@ -44,14 +46,11 @@ function saveUploadedProxyFile(string $fileKey, string $prefix, string $fieldNam
     $ext = $allowedMimes[$mimeType];
     
     $newFilename = $prefix . '_' . $fieldName . '.' . strtolower($ext);
-    $dest = __DIR__ . '/../uploads/' . $newFilename;
-    
-    // Ensure uploads directory exists just in case
-    if (!is_dir(__DIR__ . '/../uploads/')) {
-        mkdir(__DIR__ . '/../uploads/', 0777, true);
-    }
+    $dest = privateUploadPath($newFilename);
+    if ($dest === null) return null;
 
     if (move_uploaded_file($tmpName, $dest)) {
+        if ($imageOnly) createImageDerivatives($dest);
         return $newFilename;
     }
     
@@ -60,8 +59,35 @@ function saveUploadedProxyFile(string $fileKey, string $prefix, string $fieldNam
 
 function persistProxyDocument(PDO $conn, string $applicationId, string $key, string $label, ?string $storedPath): void {
     if (!$storedPath) return;
-    $path = dirname(__DIR__) . '/uploads/' . basename($storedPath);
+    $path = privateUploadPath($storedPath);
+    if ($path === null) return;
     if (!is_file($path)) return;
+    $fileSize = filesize($path);
+
+    // The applications table already stores the uploaded file path. The
+    // document-version table is a secondary copy. On installations with a
+    // small MySQL max_allowed_packet (commonly 1 MB), inserting a phone photo
+    // as a BLOB disconnects MySQL and prevents the whole form from submitting.
+    // Keep the canonical upload and omit only the oversized secondary copy.
+    static $maximumDocumentPayload = null;
+    if ($maximumDocumentPayload === null) {
+        try {
+            $packetLimit = (int)$conn->query('SELECT @@max_allowed_packet')->fetchColumn();
+            $maximumDocumentPayload = max(0, $packetLimit - 131072);
+        } catch (Throwable $e) {
+            $maximumDocumentPayload = 786432;
+        }
+    }
+    if ($fileSize === false || $fileSize > $maximumDocumentPayload) {
+        error_log(sprintf(
+            'Skipped oversized document-history copy for %s/%s (%s bytes); canonical upload retained.',
+            $applicationId,
+            $key,
+            $fileSize === false ? 'unknown' : (string)$fileSize
+        ));
+        return;
+    }
+
     saveDocumentVersion($conn, [
         'application_id'=>$applicationId, 'document_key'=>$key, 'document_label'=>$label,
         'mime_type'=>(new finfo(FILEINFO_MIME_TYPE))->file($path), 'document_data'=>file_get_contents($path),
@@ -146,7 +172,7 @@ function processProxyRegistration(): array
                 $result['message'] = 'Benefit access expired or the ID credentials do not match. Verify the Senior ID and permanent token again.';
                 return $result;
             }
-            $verifyStmt = $conn->prepare("SELECT * FROM applications
+            $verifyStmt = $conn->prepare("SELECT id_number, full_name, lastName, firstName, middleName, suffix, birth_date, contact_number, complete_address, barangay, senior_id_no, proxy_token, id_image, email_address, place_of_birth, gender, civil_status, mothers_maiden_name, house_no, street, zip_code, landmark, health_status, health_condition, emergency_contact_name, emergency_contact, claimant_relationship, id_purpose, date_submitted FROM applications
                 WHERE application_type = 'senior'
                   AND senior_id_no = ?
                   AND (id_number = ? OR proxy_token = ?)
@@ -240,6 +266,15 @@ function processProxyRegistration(): array
         // Benefit applications inherit identity data from the verified Senior ID
         // record. Posted copies are never trusted as the identity source.
         if ($verifiedSenior) {
+            $isInformationChange = $requestedBenefit === 'Senior Citizen ID Registration' && $idPurpose === 'change';
+            if ($isInformationChange) {
+                // A change request stores the corrected values in a separate application.
+                // Keep the verified barangay fixed; transfers use their own application purpose.
+                $barangay = (string)($verifiedSenior['barangay'] ?? '');
+                $completeAddress = trim(implode(', ', array_filter([
+                    $houseNo, $street, $barangay !== '' ? 'Barangay ' . $barangay : '', 'Pasig City', $zipCode,
+                ])));
+            } else {
             $lastName = (string)($verifiedSenior['lastName'] ?? '');
             $firstName = (string)($verifiedSenior['firstName'] ?? '');
             $middleName = (string)($verifiedSenior['middleName'] ?? '');
@@ -258,15 +293,26 @@ function processProxyRegistration(): array
             $landmark = (string)($verifiedSenior['landmark'] ?? '');
             $seniorEmail = (string)($verifiedSenior['email_address'] ?? '');
             $completeAddress = (string)($verifiedSenior['complete_address'] ?? '');
+            $healthStatus = (string)($verifiedSenior['health_status'] ?? '');
+            $healthCondition = (string)($verifiedSenior['health_condition'] ?? '');
+            $emergencyContactName = (string)($verifiedSenior['emergency_contact_name'] ?? '');
+            $emergencyContact = (string)($verifiedSenior['emergency_contact'] ?? '');
+            $emergencyContactRelationship = (string)($verifiedSenior['claimant_relationship'] ?? '');
+            }
         }
 
         if ($portalOption === 'new_senior' && $requestedBenefit !== 'Senior Citizen ID Registration') {
             $result['message'] = 'The first application must be for a Senior Citizen ID.';
             return $result;
         }
-        if ($portalOption === 'verified_benefits' && $requestedBenefit === 'Senior Citizen ID Registration') {
-            $result['message'] = 'Select an available senior benefit.';
-            return $result;
+        if ($requestedBenefit === 'Senior Citizen ID Registration') {
+            $allowedIdPurposes = $portalOption === 'verified_benefits' ? ['change', 'lost'] : ['new', 'transfer'];
+            if (!in_array($idPurpose, $allowedIdPurposes, true)) {
+                $result['message'] = $portalOption === 'verified_benefits'
+                    ? 'Select Information Change or Lost ID Replacement.'
+                    : 'Select New registration or Transfer.';
+                return $result;
+            }
         }
 
         $requiredFields = [
@@ -306,7 +352,66 @@ function processProxyRegistration(): array
         }
         $applicationType = $benefitDefinition['type'];
 
-        if ($verifiedSenior && $requestedBenefit !== 'Senior Citizen ID Registration') {
+        if ($verifiedSenior) {
+            // Enforce residency on the server as well as in the interface so
+            // a disabled card cannot be bypassed with a crafted request.
+            if (strtolower(trim((string)($verifiedSenior['id_purpose'] ?? ''))) === 'transfer'
+                && $requestedBenefit !== 'Senior Citizen ID Registration') {
+                $residencyTimezone = new DateTimeZone('Asia/Manila');
+                $residencyStartValue = substr(trim((string)($verifiedSenior['date_submitted'] ?? '')), 0, 10);
+                $residencyStart = DateTimeImmutable::createFromFormat('!Y-m-d', $residencyStartValue, $residencyTimezone) ?: null;
+                if (!$residencyStart) {
+                    $result['message'] = 'The transfer residency start date is missing or invalid. Please contact OSCA before applying for benefits.';
+                    return $result;
+                }
+                $eligibleDate = $residencyStart->modify('+2 years');
+                if ($eligibleDate > new DateTimeImmutable('today', $residencyTimezone)) {
+                    $result['message'] = 'Benefits Not Yet Available. As a transferred senior citizen, you must complete the required 2-year residency period. You may apply starting ' . $eligibleDate->format('F j, Y') . '.';
+                    return $result;
+                }
+            }
+
+            // A lost-ID replacement must reproduce the approved record even
+            // when the applicant cannot present the old physical card.
+            if ($requestedBenefit === 'Senior Citizen ID Registration' && $idPurpose === 'lost') {
+                $lastName = (string)$verifiedSenior['lastName'];
+                $firstName = (string)$verifiedSenior['firstName'];
+                $middleName = (string)($verifiedSenior['middleName'] ?? '');
+                $suffix = (string)($verifiedSenior['suffix'] ?? '');
+                $fullName = (string)$verifiedSenior['full_name'];
+                $birthDate = (string)$verifiedSenior['birth_date'];
+                $contactNumber = (string)$verifiedSenior['contact_number'];
+                $completeAddress = (string)$verifiedSenior['complete_address'];
+                $barangay = (string)$verifiedSenior['barangay'];
+                $seniorEmail = (string)($verifiedSenior['email_address'] ?? '');
+                $placeOfBirth = (string)($verifiedSenior['place_of_birth'] ?? '');
+                $gender = (string)($verifiedSenior['gender'] ?? '');
+                $civilStatus = (string)($verifiedSenior['civil_status'] ?? '');
+                $mothersMaidenName = (string)($verifiedSenior['mothers_maiden_name'] ?? '');
+                $houseNo = (string)($verifiedSenior['house_no'] ?? '');
+                $street = (string)($verifiedSenior['street'] ?? '');
+                $zipCode = (string)($verifiedSenior['zip_code'] ?? '');
+                $landmark = (string)($verifiedSenior['landmark'] ?? '');
+                $healthStatus = (string)($verifiedSenior['health_status'] ?? '');
+                $healthCondition = (string)($verifiedSenior['health_condition'] ?? '');
+                $emergencyContactName = (string)($verifiedSenior['emergency_contact_name'] ?? '');
+                $emergencyContact = (string)($verifiedSenior['emergency_contact'] ?? '');
+                $emergencyContactRelationship = (string)($verifiedSenior['claimant_relationship'] ?? '');
+            }
+
+            if (in_array($requestedBenefit, ['Local Social Pension Assessment', 'Burial Assistance'], true)) {
+                $cashCardStmt = $conn->prepare("SELECT COUNT(*) FROM applications
+                    WHERE (parent_senior_id = ? OR senior_id_no = ? OR id_number = ?)
+                      AND (application_type = 'landbank' OR COALESCE(landbank_card_no, '') <> '')
+                      AND COALESCE(workflow_state, '') IN ('Verified','Approved','Released')
+                      AND COALESCE(is_archived, 0) = 0");
+                $cashCardStmt->execute([$verifiedSenior['id_number'], $verifiedSenior['senior_id_no'] ?? '', $verifiedSenior['id_number']]);
+                if ((int)$cashCardStmt->fetchColumn() === 0) {
+                    $result['message'] = 'A verified Landbank Cash Card is required for Local Pension and Burial Assistance. Cash Gift or Handog Pasasalamat may be selected instead.';
+                    return $result;
+                }
+            }
+
             $duplicateBenefitStmt = $conn->prepare("SELECT id_number, workflow_state, status
                 FROM applications
                 WHERE id_number <> ?
@@ -380,7 +485,7 @@ function processProxyRegistration(): array
                 }
                 break;
             case 'Land Bank Cash Card Enrollment':
-                if ($nameOnCard === '' || $tin === '' || $seniorIdTypePresented === '' || $nationality === '' || $sourceOfFunds === '' || $mothersMaidenName === '') {
+                if ($nameOnCard === '' || $seniorIdTypePresented === '' || $nationality === '' || $sourceOfFunds === '' || $mothersMaidenName === '') {
                     $result['message'] = 'Please complete all required Land Bank enrollment information.';
                     return $result;
                 }
@@ -518,8 +623,40 @@ function processProxyRegistration(): array
         }
 
         $requiredUploads = [];
-        foreach ($benefitDefinition['form_documents'] ?? [] as $document) {
-            $requiredUploads[$document['field']] = $document['label'];
+        if ($requestedBenefit === 'Senior Citizen ID Registration') {
+            // Senior ID document requirements depend on the application
+            // purpose. Do not require hidden documents from another purpose
+            // (notably COMELEC certification for new applications).
+            $requiredUploads = match ($idPurpose) {
+                'change' => [
+                    'psa_birth_cert_file' => 'Original Senior Citizen ID',
+                    'id_photo_file' => 'Recent 1×1 ID Photo',
+                ],
+                'lost' => [
+                    'psa_birth_cert_file' => 'Original Affidavit of Loss',
+                    'barangay_residency_file' => 'Copy of Senior ID / Landbank Card / Temporary Stub',
+                    'id_photo_file' => 'Recent 1×1 ID Photo',
+                ],
+                'transfer' => [
+                    'psa_birth_cert_file' => 'Certificate of Cancellation from Previous OSCA',
+                    'barangay_residency_file' => 'Birth Cert / Negative of Birth',
+                    'comelec_cert_file' => 'Original Barangay Residency Certificate',
+                    'id_photo_file' => 'Recent 1×1 ID Photo',
+                ],
+                default => [
+                    'psa_birth_cert_file' => 'Birth Cert / Negative of Birth',
+                    'barangay_residency_file' => 'Original Barangay Residency Certificate',
+                    'id_photo_file' => 'Recent 1×1 ID Photo',
+                ],
+            };
+            $requiredUploads['valid_id_file'] = 'Valid Government ID';
+        } else {
+            foreach ($benefitDefinition['form_documents'] ?? [] as $document) {
+                if (!empty($document['optional'])) {
+                    continue;
+                }
+                $requiredUploads[$document['field']] = $document['label'];
+            }
         }
         foreach ($requiredUploads as $key => $label) {
             if (!isset($_FILES[$key]) || $_FILES[$key]['error'] !== UPLOAD_ERR_OK) {
@@ -541,6 +678,7 @@ function processProxyRegistration(): array
             $requestedBenefit === 'Milestone Cash Gift'
         );
         $idImage = saveUploadedProxyFile('id_photo_file', $transactionId, 'id_photo', true);
+        $validGovernmentId = saveUploadedProxyFile('valid_id_file', $transactionId, 'valid_government_id');
         $deceasedLandbankCard = null;
         $proofOfLife = null;
         $authLetter = $proxyId = $proxyBirthCert = null;
@@ -601,7 +739,9 @@ function processProxyRegistration(): array
                 $transactionId, $fullName, $lastName, $firstName, $middleName, $suffix,
                 $birthDate, $contactNumber, $emergencyContact, $emergencyContactName ?: null, $completeAddress, $barangay,
                 'pending', 'For Review', $requestedBenefit, 0, null,
-                $proxyRelationship ?: null, $proxyContactNumber ?: null, $transactionId, $priorityLevel, $applicationType,
+                $proxyRelationship ?: null, $proxyContactNumber ?: null,
+                $verifiedSenior ? (trim((string)($verifiedSenior['proxy_token'] ?? '')) ?: (string)$verifiedSenior['id_number']) : $transactionId,
+                $priorityLevel, $applicationType,
                 $sssNumber, $pensionAmount, !empty($dateOfDeath) ? $dateOfDeath : null, !empty($deathRegistrationDate) ? $deathRegistrationDate : null, !empty($relationshipToDeceased) ? $relationshipToDeceased : null,
                 $psaBirthCert, $barangayResidency, $comelecCert, $deceasedLandbankCard, $proofOfLife,
                 $authLetter, $proxyId, $proxyBirthCert,
@@ -626,8 +766,8 @@ function processProxyRegistration(): array
             $seniorDocumentLabels = match ($idPurpose) {
                 'change' => ['Original Senior Citizen ID', '', ''],
                 'lost' => ['Original Affidavit of Loss', 'Copy of Senior ID / Landbank Card / Temporary Stub', ''],
-                'transfer' => ['Certificate of Cancellation from Previous OSCA', 'Birth Certificate', 'Original Barangay Residency Certificate'],
-                default => ['PSA Birth Certificate', 'Original Barangay Residency Certificate', ''],
+                'transfer' => ['Certificate of Cancellation from Previous OSCA', 'Birth Cert / Negative of Birth', 'Original Barangay Residency Certificate'],
+                default => ['Birth Cert / Negative of Birth', 'Original Barangay Residency Certificate', ''],
             };
             $benefitDocumentLabels = array_map(
                 static fn(array $document): string => (string)($document['label'] ?? ''),
@@ -639,6 +779,7 @@ function processProxyRegistration(): array
                 ['comelec_cert',$requestedBenefit === 'Senior Citizen ID Registration' ? $seniorDocumentLabels[2] : ($benefitDocumentLabels[2] ?? 'COMELEC Certificate'),$comelecCert],
                 ['deceased_landbank_card',$benefitDocumentLabels[3] ?? 'Deceased Landbank Cash Card',$deceasedLandbankCard],
                 ['id_image','ID / Identification Photo',$idImage],
+                ['valid_government_id','Valid Government ID',$validGovernmentId],
                 ['proof_of_life','Proof of Relationship',$proofOfLife],
                 ['auth_letter','Original Copy of Affidavit (if applicable)',$authLetter],
             ] as [$key,$label,$path]) {
@@ -664,26 +805,33 @@ function processProxyRegistration(): array
             // Keep QR content short so ordinary webcams can read it from a
             // phone screen or printed photo. The reference contains no PII;
             // personal details are resolved only inside an authenticated page.
-            $scanUrl = $portalOption === 'verified_benefits'
-                ? $protocol . $host . $scriptDir . '/benefit_tracker.php?token=' . urlencode($transactionId)
-                : $protocol . $host . $scriptDir . '/scan_proxy_qr_redirect.php?token=' . urlencode($transactionId);
+            $trackingToken = $verifiedSenior
+                ? (trim((string)($verifiedSenior['proxy_token'] ?? '')) ?: (string)$verifiedSenior['id_number'])
+                : $transactionId;
+            $scanUrl = $protocol . $host . $scriptDir . '/benefit_tracker.php?token=' . urlencode($trackingToken)
+                . ($portalOption === 'verified_benefits' ? '&service=' . urlencode($applicationType) : '');
 
             $result['success'] = true;
-            $result['transactionId'] = $transactionId;
+            $result['transactionId'] = $trackingToken;
+            $result['applicationId'] = $transactionId;
             $result['qrCodeUrl'] = 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&ecc=M&qzone=4&data=' . urlencode($scanUrl);
             $result['option'] = $portalOption;
             $result['applicationType'] = $applicationType;
 
-        } catch (Exception $e) {
-            if ($conn->inTransaction()) {
-                $conn->rollBack();
+        } catch (Throwable $e) {
+            try {
+                if ($conn->inTransaction()) {
+                    $conn->rollBack();
+                }
+            } catch (Throwable $rollbackError) {
+                error_log('Public application rollback could not complete: ' . $rollbackError->getMessage());
             }
             // The uploaded files are named with this transaction token and do
             // not belong in storage when the database record was not created.
             foreach ([$psaBirthCert, $barangayResidency, $comelecCert, $proofOfLife, $idImage] as $uploadedFile) {
                 if (!$uploadedFile) continue;
-                $uploadedPath = __DIR__ . '/../uploads/' . basename($uploadedFile);
-                if (is_file($uploadedPath)) @unlink($uploadedPath);
+                $uploadedPath = privateUploadPath($uploadedFile);
+                if ($uploadedPath !== null) deleteImageWithDerivatives($uploadedPath);
             }
             error_log(sprintf(
                 'Public %s application save failed for token %s: %s',
@@ -711,7 +859,9 @@ function processProxyRegistration(): array
         try {
             // The benefit request must reference the official Senior Citizen ID;
             // PRX/PEN application tokens are only for status tracking.
-            $stmtVerify = $conn->prepare("SELECT * FROM applications
+            $stmtVerify = $conn->prepare("SELECT id_number, full_name, lastName, firstName, middleName, suffix,
+                                                 birth_date, contact_number, complete_address, barangay,
+                                                 senior_id_no, id_image FROM applications
                                           WHERE application_type = 'senior'
                                             AND senior_id_no = ?
                                             AND workflow_state IN ('Verified', 'Approved', 'Released')

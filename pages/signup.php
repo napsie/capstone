@@ -89,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $profilePicture = 'default.jpg';
                     try {
                         // Check if username or email already exists
-                        $stmt = $conn->prepare("SELECT * FROM users WHERE username = :username OR email = :email OR phone = :phone");
+                        $stmt = $conn->prepare("SELECT id FROM users WHERE username = :username OR email = :email OR phone = :phone LIMIT 1");
                         $stmt->execute(['username' => $username, 'email' => $email, 'phone' => $phone]);
                         if ($stmt->fetch()) {
                             $error = 'Username, email, or mobile number already exists.';
@@ -551,7 +551,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
         .signup-embedded .form-fields { padding-right: 0; }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
 </head>
 <body class="<?php echo $isEmbedded ? 'signup-embedded' : ''; ?>">
     <!-- Back Button -->

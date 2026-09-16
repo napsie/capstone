@@ -27,7 +27,6 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
     <title>CPRAS Dashboard - Barangay <?php echo $barangayName; ?></title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=4">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* Page-specific styles for dashboard */
         .welcome-message {
@@ -126,12 +125,12 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
 
 
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
     <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=5">
     <link rel="stylesheet" href="../assets/css/metric-cards.css?v=1">
-    <link rel="stylesheet" href="../assets/css/dashboard-calendar.css?v=1">
+    <link rel="stylesheet" href="../assets/css/dashboard-calendar.css?v=8">
 <script src="../assets/js/dashboard-chart-fallback.js?v=1"></script>
 <script src="../assets/js/dashboard-calendar.js?v=1" defer></script>
 </head>
@@ -176,6 +175,8 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                 <a class="stat-card stat-card-link stat-blue" href="submit_application.php" aria-label="Open applications"><div class="stat-icon"><i class="fas fa-file-lines" aria-hidden="true"></i></div><div class="stat-info"><div class="stat-label">Total applications</div><div class="stat-value dashboard-loading" id="statTotal" aria-live="polite" aria-label="Loading total applications">0</div><small>All local applications</small></div><i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i></a>
                 <a class="stat-card stat-card-link stat-amber" href="submit_application.php" aria-label="Open applications waiting for action"><div class="stat-icon"><i class="fas fa-inbox" aria-hidden="true"></i></div><div class="stat-info"><div class="stat-label">Waiting for action</div><div class="stat-value dashboard-loading" id="statReceived" aria-live="polite" aria-label="Loading applications waiting for action">0</div><small>Items requiring attention</small></div><i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i></a>
                 <a class="stat-card stat-card-link stat-green" href="barangay_records.php" aria-label="Open verified application records"><div class="stat-icon"><i class="fas fa-circle-check" aria-hidden="true"></i></div><div class="stat-info"><div class="stat-label">Verified records</div><div class="stat-value dashboard-loading" id="statApproved" aria-live="polite" aria-label="Loading verified records">0</div><small>Browse completed records</small></div><i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i></a>
+                <a class="stat-card stat-card-link stat-amber" href="submit_application.php?type=senior"><div class="stat-icon"><i class="fas fa-id-card"></i></div><div class="stat-info"><div class="stat-label">Pending Senior ID</div><div class="stat-value dashboard-loading" id="statPendingSenior">0</div><small>Awaiting completion</small></div></a>
+                <a class="stat-card stat-card-link stat-blue" href="submit_application.php?type=landbank"><div class="stat-icon"><i class="fas fa-building-columns"></i></div><div class="stat-info"><div class="stat-label">Pending Landbank</div><div class="stat-value dashboard-loading" id="statPendingLandbank">0</div><small>Awaiting completion</small></div></a>
             </div>
 
             <div class="dashboard-section-heading"><div><span>Performance and activity</span><h2>Application insights</h2><p>Use these summaries to identify workload patterns and recent changes.</p></div></div>
@@ -334,14 +335,55 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
 
     <script src="../assets/js/sidebar-toggle.js?v=3"></script>
     <script>
+    let dashboardChartData = null;
+    let chartLibraryPromise = null;
+    let chartsInitialized = false;
+
     document.addEventListener('DOMContentLoaded', function() {
         initializeWelcomeMessage();
         initializeCalendar();
         updateTime();
         setInterval(updateTime, 1000);
 
+        observeDashboardCharts();
         loadDashboardData();
     });
+
+    function loadChartLibrary() {
+        if (window.Chart) return Promise.resolve();
+        if (chartLibraryPromise) return chartLibraryPromise;
+        chartLibraryPromise = new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+            script.async = true;
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+        return chartLibraryPromise;
+    }
+
+    function renderVisibleCharts() {
+        if (!dashboardChartData || chartsInitialized) return;
+        chartsInitialized = true;
+        loadChartLibrary()
+            .then(() => initializeCharts(dashboardChartData))
+            .catch(() => { chartsInitialized = false; showUnavailableCharts(); });
+    }
+
+    function observeDashboardCharts() {
+        const chartArea = document.querySelector('.charts-container');
+        if (!chartArea || !('IntersectionObserver' in window)) {
+            renderVisibleCharts();
+            return;
+        }
+        const observer = new IntersectionObserver(entries => {
+            if (!entries.some(entry => entry.isIntersecting)) return;
+            observer.disconnect();
+            renderVisibleCharts();
+        }, { rootMargin: '160px 0px' });
+        observer.observe(chartArea);
+    }
 
     function loadDashboardData() {
         const list = document.getElementById('realtime-notifications-list');
@@ -355,8 +397,8 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
             })
             .then(result => {
                 if (result.success) {
-                    if (typeof Chart !== 'undefined') initializeCharts(result.data);
-                    else showUnavailableCharts();
+                    dashboardChartData = result.data;
+                    if (document.querySelector('.charts-container')?.getBoundingClientRect().top < window.innerHeight + 160) renderVisibleCharts();
                     renderNotifications(result.data.notifications);
                     renderStatsStrip(result.data);
                 } else {
@@ -482,6 +524,8 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
         // The Submit Application page contains all active states, not only
         // applications that are still at the first Received step.
         if (el('statReceived'))  el('statReceived').textContent  = data.queue_count ?? 0;
+        if (el('statPendingSenior')) el('statPendingSenior').textContent = data.pending_senior_id ?? 0;
+        if (el('statPendingLandbank')) el('statPendingLandbank').textContent = data.pending_landbank ?? 0;
         if (el('statApproved'))  el('statApproved').textContent  = workflowMap['Verified'] ?? 0;
         document.querySelectorAll('.dashboard-loading').forEach(node => { node.classList.remove('dashboard-loading'); node.removeAttribute('aria-label'); });
 

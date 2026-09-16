@@ -4,6 +4,7 @@ require_once '../includes/db_connect.php';
 require_once '../includes/audit_logger.php';
 require_once '../includes/filing_deadline.php';
 require_once '../includes/request_security.php';
+require_once '../includes/application_types.php';
 requireSameOriginMutation();
 
 header('Content-Type: application/json');
@@ -50,10 +51,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     try {
         // Fetch current application state (and enforce barangay segregation for staff)
         if ($isStaff) {
-            $stmt = $conn->prepare("SELECT * FROM applications WHERE id_number = ? AND barangay = ?");
+            $stmt = $conn->prepare("SELECT id_number, full_name, lastName, firstName, birth_date, date_submitted,
+                                            application_type, barangay, workflow_state, is_archived, parent_senior_id, id_purpose,
+                                            middleName, suffix, contact_number, complete_address, email_address,
+                                            place_of_birth, gender, civil_status, mothers_maiden_name, house_no, street, zip_code, landmark,
+                                            health_status, health_condition, emergency_contact_name, emergency_contact, claimant_relationship,
+                                            home_visit_status, home_visit_eligibility, pension_amount,
+                                            date_of_death, deceased_birth_date, deceased_first_name, deceased_last_name
+                                     FROM applications WHERE id_number = ? AND barangay = ?");
             $stmt->execute([$appId, $_SESSION['barangay']]);
         } else {
-            $stmt = $conn->prepare("SELECT * FROM applications WHERE id_number = ?");
+            $stmt = $conn->prepare("SELECT id_number, full_name, lastName, firstName, birth_date, date_submitted,
+                                            application_type, barangay, workflow_state, is_archived, parent_senior_id, id_purpose,
+                                            middleName, suffix, contact_number, complete_address, email_address,
+                                            place_of_birth, gender, civil_status, mothers_maiden_name, house_no, street, zip_code, landmark,
+                                            health_status, health_condition, emergency_contact_name, emergency_contact, claimant_relationship,
+                                            home_visit_status, home_visit_eligibility, pension_amount,
+                                            date_of_death, deceased_birth_date, deceased_first_name, deceased_last_name
+                                     FROM applications WHERE id_number = ?");
             $stmt->execute([$appId]);
         }
         $app = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -73,6 +88,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         // Direct, rule-based status handling.
         if ($action === 'next') {
+            try {
+                $birthDate = new DateTimeImmutable((string)($app['birth_date'] ?? ''));
+                $today = new DateTimeImmutable('today');
+                $applicantAge = $birthDate <= $today ? $today->diff($birthDate)->y : -1;
+            } catch (Throwable $e) {
+                $applicantAge = -1;
+            }
+            $ageRule = getApplicationAgeRule($applicationType);
+            if ($applicantAge < $ageRule['minimum_age']) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => $applicationType === 'pension'
+                        ? 'APPLICATION BLOCKED: Local Senior Pension is available only to applicants aged 65 or older.'
+                        : "APPLICATION BLOCKED: The applicant does not meet the minimum age of {$ageRule['minimum_age']}."
+                ]);
+                exit();
+            }
+
             // Staff can only move from initial states.
             if ($isStaff && !in_array($currentStatus, ['Received', 'Submitted', 'Needs Correction'], true)) {
                 echo json_encode(['success' => false, 'message' => 'SHDO can only submit newly received applications for department review.']);
@@ -219,6 +252,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         $finalComment = !empty($comments) ? $comments : $defaultComment;
+        if ($applicationType === 'landbank' && $nextStatus === 'Verified') {
+            $handoffComment = 'LANDBANK HANDOFF: Application verified and queued for forwarding to LANDBANK for cash card processing.';
+            $finalComment = !empty($comments) ? $comments . ' ' . $handoffComment : $handoffComment;
+        }
         $operator = $_SESSION['username'] ?? 'System';
 
         // Begin Transaction
@@ -250,6 +287,44 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         } else {
             $stmtUpdate = $conn->prepare("UPDATE applications SET workflow_state = ?, return_reason = ? WHERE id_number = ?");
             $stmtUpdate->execute([$nextStatus, $nextStatus === 'Needs Correction' ? $finalComment : null, $appId]);
+        }
+
+        // Apply approved Information Change requests to the linked, verified
+        // Senior ID profile. The original record is untouched until this final step.
+        if ($applicationType === 'senior' && ($app['id_purpose'] ?? '') === 'change'
+            && $nextStatus === 'Verified' && !empty($app['parent_senior_id'])) {
+            $profileUpdate = $conn->prepare("UPDATE applications SET
+                full_name = ?, lastName = ?, firstName = ?, middleName = ?, suffix = ?, birth_date = ?,
+                contact_number = ?, complete_address = ?, email_address = ?, place_of_birth = ?, gender = ?,
+                civil_status = ?, mothers_maiden_name = ?, house_no = ?, street = ?, zip_code = ?, landmark = ?,
+                health_status = ?, health_condition = ?, emergency_contact_name = ?, emergency_contact = ?, claimant_relationship = ?
+                WHERE id_number = ? AND application_type = 'senior' AND COALESCE(is_archived, 0) = 0");
+            $profileUpdate->execute([
+                $app['full_name'], $app['lastName'], $app['firstName'], $app['middleName'], $app['suffix'], $app['birth_date'],
+                $app['contact_number'], $app['complete_address'], $app['email_address'], $app['place_of_birth'], $app['gender'],
+                $app['civil_status'], $app['mothers_maiden_name'], $app['house_no'], $app['street'], $app['zip_code'], $app['landmark'],
+                $app['health_status'], $app['health_condition'], $app['emergency_contact_name'], $app['emergency_contact'], $app['claimant_relationship'],
+                $app['parent_senior_id'],
+            ]);
+            // Keep every linked service queue (including Local Pension in
+            // Verify Documents) aligned with the senior's approved identity.
+            // Other Senior ID requests are excluded so their submitted change
+            // details remain available for independent review.
+            $linkedProfileUpdate = $conn->prepare("UPDATE applications SET
+                full_name = ?, lastName = ?, firstName = ?, middleName = ?, suffix = ?, birth_date = ?,
+                contact_number = ?, complete_address = ?, email_address = ?, place_of_birth = ?, gender = ?,
+                civil_status = ?, mothers_maiden_name = ?, house_no = ?, street = ?, zip_code = ?, landmark = ?,
+                health_status = ?, health_condition = ?, emergency_contact_name = ?, emergency_contact = ?, claimant_relationship = ?
+                WHERE parent_senior_id = ? AND application_type <> 'senior' AND COALESCE(is_archived, 0) = 0");
+            $linkedProfileUpdate->execute([
+                $app['full_name'], $app['lastName'], $app['firstName'], $app['middleName'], $app['suffix'], $app['birth_date'],
+                $app['contact_number'], $app['complete_address'], $app['email_address'], $app['place_of_birth'], $app['gender'],
+                $app['civil_status'], $app['mothers_maiden_name'], $app['house_no'], $app['street'], $app['zip_code'], $app['landmark'],
+                $app['health_status'], $app['health_condition'], $app['emergency_contact_name'], $app['emergency_contact'], $app['claimant_relationship'],
+                $app['parent_senior_id'],
+            ]);
+            $parentHistory = $conn->prepare("INSERT INTO application_history (application_id, previous_state, new_state, changed_by, comments) VALUES (?, 'Verified', 'Verified', ?, ?)");
+            $parentHistory->execute([$app['parent_senior_id'], $operator, "Profile information updated through approved change request {$appId}."]);
         }
 
         // ──────────────────────────────────────────────────────────────────────

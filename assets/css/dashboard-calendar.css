@@ -171,3 +171,193 @@
     .calendar-card .calendar-clock { font-size: .7rem; }
     .calendar-card .calendar-day { width: 30px; height: 30px; }
 }
+
+/* Compact, fully visible phone calendar. */
+@media (max-width: 768px) {
+    .dashboard-panels .calendar-card {
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        border-radius: 14px !important;
+    }
+
+    .dashboard-panels .calendar-card > h3 {
+        min-height: 62px;
+        margin: 0 !important;
+        padding: 13px 16px !important;
+        border-radius: 0 !important;
+    }
+
+    .dashboard-panels .calendar-card .calendar-body {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-inline: auto !important;
+        padding: 10px 12px 12px !important;
+        box-sizing: border-box !important;
+    }
+
+    .dashboard-panels .calendar-card .calendar-header {
+        grid-template-columns: 44px minmax(0, 1fr) 44px;
+        gap: 8px;
+        margin: 0 0 6px !important;
+    }
+
+    .dashboard-panels .calendar-card .calendar-nav {
+        width: 44px !important;
+        height: 44px !important;
+        min-width: 44px !important;
+        min-height: 44px !important;
+        padding: 0 !important;
+    }
+
+    .dashboard-panels .calendar-card .month-year {
+        min-width: 0;
+        font-size: .9rem;
+        white-space: nowrap;
+    }
+
+    .dashboard-panels .calendar-card .calendar-toolbar {
+        min-height: 42px;
+        margin-bottom: 5px !important;
+        padding-bottom: 5px !important;
+    }
+
+    .dashboard-panels .calendar-card .calendar-today-button {
+        min-height: 38px !important;
+        padding: 6px 11px !important;
+    }
+
+    .dashboard-panels .calendar-card .calendar-table {
+        display: table !important;
+        width: min(100%, 440px) !important;
+        max-width: 440px !important;
+        min-width: 0 !important;
+        margin: 0 auto !important;
+        border: 0 !important;
+        border-collapse: separate !important;
+        border-spacing: 0 2px !important;
+        table-layout: fixed !important;
+        box-shadow: none !important;
+    }
+
+    .dashboard-panels .calendar-card .calendar-table :where(th, td) {
+        width: 14.285714% !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        text-align: center !important;
+    }
+
+    .dashboard-panels .calendar-card .calendar-table :where(thead, tbody, tr) {
+        width: 100% !important;
+    }
+
+    .dashboard-panels .calendar-card .calendar-table thead th {
+        position: static !important;
+        height: 28px;
+        padding: 3px 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+        font-size: .62rem !important;
+    }
+
+    .dashboard-panels .calendar-card .calendar-table td {
+        height: 38px !important;
+        padding: 0 !important;
+        border: 0 !important;
+    }
+
+    .dashboard-panels .calendar-card .calendar-day {
+        width: 36px !important;
+        height: 36px !important;
+        min-width: 36px !important;
+        min-height: 36px !important;
+        padding: 0 !important;
+        font-size: .75rem !important;
+    }
+
+    .dashboard-panels .calendar-card .calendar-selection {
+        margin-top: 6px !important;
+        padding: 7px 9px !important;
+        font-size: .72rem !important;
+    }
+
+    .dashboard-panels .calendar-card .calendar-selection:empty {
+        display: none;
+    }
+}
+
+@media (max-width: 380px) {
+    .dashboard-panels .calendar-card .calendar-body { padding-inline: 8px !important; }
+    .dashboard-panels .calendar-card .calendar-day {
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
+        min-height: 32px !important;
+    }
+    .dashboard-panels .calendar-card .calendar-table td { height: 34px !important; }
+}
+
+/* Department dashboard pairs each insight card into aligned grid rows. */
+@media (min-width: 992px) {
+    .department-dashboard .dashboard-panels {
+        grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+        grid-template-rows: 360px 360px;
+        align-items: stretch;
+        gap: 14px;
+        margin-bottom: 16px;
+    }
+
+    .department-dashboard .dashboard-panels > .left-panel,
+    .department-dashboard .dashboard-panels > .right-panel,
+    .department-dashboard .dashboard-panels .charts-container {
+        display: contents;
+    }
+
+    .department-dashboard .charts-container .chart-card:first-child { grid-column: 1; grid-row: 1; }
+    .department-dashboard .right-panel .recent-apps-card { grid-column: 2; grid-row: 1; }
+    .department-dashboard .charts-container .chart-card:nth-child(2) { grid-column: 1; grid-row: 2; }
+    .department-dashboard .right-panel .calendar-card { grid-column: 2; grid-row: 2; }
+
+    .department-dashboard .chart-card,
+    .department-dashboard .calendar-card,
+    .department-dashboard .recent-apps-card {
+        box-sizing: border-box;
+        height: 100%;
+        min-height: 0;
+        margin: 0;
+        overflow: hidden;
+    }
+
+    .department-dashboard .recent-apps-card {
+        max-height: 360px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .department-dashboard .recent-apps-card .notifications-list {
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: none;
+        overflow-y: auto;
+    }
+
+    .department-dashboard .chart-card { padding: 0; }
+    .department-dashboard .chart-card h3 { margin: 0; }
+    .department-dashboard .chart-wrapper { height: 292px; max-height: 292px; }
+
+    .department-dashboard .calendar-card { padding: 0; }
+    .department-dashboard .calendar-card h3 { margin: 0; }
+    .department-dashboard .calendar-card .calendar-body { padding: 6px 14px 7px; }
+    .department-dashboard .calendar-card .calendar-header { margin: 2px 0 3px; }
+    .department-dashboard .calendar-card .calendar-nav { width: 32px; height: 32px; border-radius: 8px; }
+    .department-dashboard .calendar-card .calendar-toolbar { margin-bottom: 4px; padding-bottom: 4px; }
+    .department-dashboard .calendar-card .calendar-table { border-spacing: 1px 1px; }
+    .department-dashboard .calendar-card .calendar-table td { height: 27px; }
+    .department-dashboard .calendar-card .calendar-day { width: 26px; height: 26px; font-size: .74rem; }
+    .department-dashboard .calendar-card .calendar-selection { margin-top: 5px; padding: 5px 8px; font-size: .7rem; }
+    .department-dashboard .calendar-card .calendar-selection:empty { display: none; }
+}

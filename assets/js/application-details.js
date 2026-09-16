@@ -12,6 +12,28 @@
         pwd: 'PWD Support Application'
     };
 
+    const seniorIdPurposeLabels = {
+        new: 'New',
+        change: 'Change',
+        transfer: 'Transfer',
+        lost: 'Lost'
+    };
+
+    window.getSeniorIdPurposeKey = function (idPurpose) {
+        const key = String(idPurpose || '').trim().toLowerCase();
+        return Object.prototype.hasOwnProperty.call(seniorIdPurposeLabels, key) ? key : 'unspecified';
+    };
+
+    window.getSeniorIdPurposeLabel = function (idPurpose) {
+        return seniorIdPurposeLabels[window.getSeniorIdPurposeKey(idPurpose)] || 'Not specified';
+    };
+
+    window.getApplicationRecordTypeLabel = function (type, idPurpose) {
+        const typeLabel = typeLabels[type] || type;
+        if (type !== 'senior') return typeLabel;
+        return `${typeLabel} — ${window.getSeniorIdPurposeLabel(idPurpose)}`;
+    };
+
     const escapeHtml = value => String(value ?? '')
         .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
@@ -106,7 +128,7 @@
     function applicationIdentity(app, title) {
         return section('fa-clipboard-list', title, [
             field('Application ID', app.id_number),
-            field('Application Type', typeLabels[app.application_type] || app.application_type),
+            field('Application Type', window.getApplicationRecordTypeLabel(app.application_type, app.id_purpose)),
             field('Requested Benefit / Service', app.requested_benefit),
             field('Senior Citizen ID No.', seniorId(app), { raw: true }),
             field('Processing Status', processingStatus(app)),
@@ -126,7 +148,7 @@
 
         if (type === 'senior') {
             sections.push(section('fa-id-card', app.requested_benefit === 'Senior Citizen ID Registration' ? 'Senior ID Registration' : 'Senior Pre-registration Profile', [
-                field('Application Purpose', app.id_purpose), field('Control Number', app.control_no),
+                field('Application Purpose', window.getSeniorIdPurposeLabel(app.id_purpose)), field('Control Number', app.control_no),
                 field('Health Status', app.health_status), field('Emergency Contact', app.emergency_contact_name),
                 field('Emergency Contact Number', app.emergency_contact)
             ]));
@@ -155,7 +177,7 @@
         if (type === 'landbank') {
             sections.push(section('fa-building-columns', 'Land Bank Enrollment', [
                 field('Name on Card', app.name_on_card), field('Cash Card Number', app.landbank_card_no),
-                field('ATM / Temporary Stub Number', app.atm_card_no), field('TIN', app.tin),
+                field('ATM / Temporary Stub Number', app.atm_card_no),
                 field('ID Presented', app.id_type_presented), field("Mother's Maiden Name", app.mothers_maiden_name),
                 field('Nationality', app.nationality),
                 field('Source of Funds', app.source_of_funds)
@@ -233,7 +255,7 @@
         }
         if (benefit === 'Land Bank Cash Card Enrollment') {
             return section('fa-building-columns', 'Requested Land Bank Enrollment', [
-                field('Name on Card', app.name_on_card), field('TIN', app.tin),
+                field('Name on Card', app.name_on_card),
                 field('ID Presented', app.id_type_presented),
                 field('Nationality', app.nationality),
                 field('Source of Funds', app.source_of_funds, { wide: true })

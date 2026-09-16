@@ -3,6 +3,7 @@ session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/password_validation.php'; // Include the password validation function
 require_once '../includes/data_normalizer.php';
+require_once '../includes/image_optimizer.php';
 
 // Check if the user is logged in and has the correct role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'department_admin') {
@@ -35,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_GET['id'])) {
     $response = ['success' => false, 'message' => '']; // Initialize response array for modal
 
     try {
-        $stmt = $conn->prepare("SELECT * FROM users WHERE id = :id");
+        $stmt = $conn->prepare("SELECT id, first_name, last_name, email, phone, username, role, barangay, profile_picture FROM users WHERE id = :id");
         $stmt->execute(['id' => $id]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -98,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
 
             // Fetch user data for the update operation
             try {
-                $stmt = $conn->prepare("SELECT * FROM users WHERE id = :id");
+                $stmt = $conn->prepare("SELECT id, first_name, last_name, email, phone, username, role, barangay, profile_picture FROM users WHERE id = :id");
                 $stmt->execute(['id' => $id]);
                 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -198,6 +199,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
                             $dest_path = $uploadFileDir . $newFileName;
 
                             if(move_uploaded_file($fileTmpPath, $dest_path)) {
+                                createImageDerivatives($dest_path);
                                 $profilePicture = $newFileName;
                             } else {
                                 $response['message'] = "There was an error moving the uploaded profile picture file."; // Changed from $response['error']
@@ -237,7 +239,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
                             $response['success'] = true;
                             $response['message'] = 'User updated successfully!';
                             // Re-fetch user data to display updated info immediately
-                            $stmt = $conn->prepare('SELECT * FROM users WHERE id = :id');
+                            $stmt = $conn->prepare('SELECT id, first_name, last_name, email, phone, username, role, barangay, profile_picture FROM users WHERE id = :id');
                             $stmt->execute(['id' => $id]);
                             $user = $stmt->fetch(PDO::FETCH_ASSOC);
                             // Regenerate CSRF token after successful submission
@@ -281,7 +283,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
             if (isset($_POST['id'])) {
                 $id = filter_var($_POST['id'], FILTER_SANITIZE_NUMBER_INT);
                 try {
-                    $stmt = $conn->prepare("SELECT * FROM users WHERE id = :id");
+                    $stmt = $conn->prepare("SELECT id, first_name, last_name, email, phone, username, role, barangay, profile_picture FROM users WHERE id = :id");
                     $stmt->execute(['id' => $id]);
                     $user = $stmt->fetch(PDO::FETCH_ASSOC);
                     if ($user) {
@@ -543,7 +545,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
             border: 2px solid #ddd;
         }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
 </head>

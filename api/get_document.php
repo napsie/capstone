@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../includes/db_connect.php';
+require_once '../includes/private_storage.php';
 
 header('Content-Type: application/json');
 
@@ -130,14 +131,14 @@ try {
 
     $docValue = $result[$docType];
 
-    // Check if the value points to a file on disk in uploads/
-    $uploadDir = __DIR__ . '/../uploads/';
-    $filePath = $uploadDir . $docValue;
-    if (is_string($docValue) && strlen($docValue) < 255 && file_exists($filePath) && is_file($filePath)) {
+    // Only resolve a safe filename inside private applicant storage.
+    $filePath = is_string($docValue) && strlen($docValue) < 255 ? privateExistingUploadPath($docValue) : null;
+    if ($filePath !== null) {
         $finfo = new finfo(FILEINFO_MIME_TYPE);
         $contentType = $finfo->file($filePath);
         header('Content-Type: ' . $contentType);
-        header('Cache-Control: private, max-age=3600');
+        header('Cache-Control: private, no-store');
+        header('X-Content-Type-Options: nosniff');
         readfile($filePath);
         exit();
     }
@@ -173,10 +174,11 @@ try {
     }
 
     header('Content-Type: ' . $mimeType);
-    header('Cache-Control: private, max-age=3600');
+    header('Cache-Control: private, no-store');
+    header('X-Content-Type-Options: nosniff');
     echo $docValue;
 
-} catch (PDOException $e) {
+} catch (Throwable $e) {
     http_response_code(500);
     error_log('get_document.php error: ' . $e->getMessage());
     header('Content-Type: text/plain');

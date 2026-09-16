@@ -3,10 +3,18 @@ header('Content-Type: application/json');
 session_start();
 
 require_once '../includes/db_connect.php';
+require_once '../includes/dashboard_response_cache.php';
 
 // Auth check — department admins or super admins only
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['department_admin', 'super_admin'])) {
     echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+    exit;
+}
+
+$dashboardCacheKey = 'department-dashboard|' . ($_SESSION['role'] ?? '') . '|' . ($_SESSION['user_id'] ?? '');
+if ($cachedResponse = readDashboardResponseCache($dashboardCacheKey)) {
+    header('X-Seniorlink-Cache: HIT');
+    echo json_encode($cachedResponse);
     exit;
 }
 
@@ -59,6 +67,11 @@ try {
         SELECT
             SUM(CASE WHEN workflow_state IN ('Verified','Approved','Released') THEN 1 ELSE 0 END) AS verified_applications,
             SUM(CASE WHEN application_type = 'senior' THEN 1 ELSE 0 END) AS senior_citizen_records,
+            SUM(CASE WHEN application_type = 'senior' AND COALESCE(workflow_state, status, 'Received') NOT IN ('Verified','Approved','Released','Rejected') THEN 1 ELSE 0 END) AS pending_senior_id,
+            SUM(CASE WHEN application_type = 'landbank' AND COALESCE(workflow_state, status, 'Received') NOT IN ('Verified','Approved','Released','Rejected') THEN 1 ELSE 0 END) AS pending_landbank,
+            SUM(CASE WHEN application_type = 'pension' AND COALESCE(workflow_state, status, 'Received') NOT IN ('Verified','Approved','Released','Rejected') THEN 1 ELSE 0 END) AS pending_local_pension,
+            SUM(CASE WHEN application_type = 'milestone_gift' AND COALESCE(workflow_state, status, 'Received') NOT IN ('Verified','Approved','Released','Rejected') THEN 1 ELSE 0 END) AS pending_octogenarian,
+            SUM(CASE WHEN application_type = 'burial' AND COALESCE(workflow_state, status, 'Received') NOT IN ('Verified','Approved','Released','Rejected') THEN 1 ELSE 0 END) AS pending_burial,
             COUNT(*) AS total_processed
         FROM applications
         WHERE (is_archived = 0 OR is_archived IS NULL)
@@ -67,6 +80,11 @@ try {
     $summary = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
     $response['data']['verified_applications'] = (int)($summary['verified_applications'] ?? 0);
     $response['data']['senior_citizen_records'] = (int)($summary['senior_citizen_records'] ?? 0);
+    $response['data']['pending_senior_id'] = (int)($summary['pending_senior_id'] ?? 0);
+    $response['data']['pending_landbank'] = (int)($summary['pending_landbank'] ?? 0);
+    $response['data']['pending_local_pension'] = (int)($summary['pending_local_pension'] ?? 0);
+    $response['data']['pending_octogenarian'] = (int)($summary['pending_octogenarian'] ?? 0);
+    $response['data']['pending_burial'] = (int)($summary['pending_burial'] ?? 0);
     $response['data']['total_processed'] = (int)($summary['total_processed'] ?? 0);
 
     // Workflow status distribution (for extended stat cards)
@@ -104,5 +122,7 @@ try {
     error_log('Database error in get_realtime_data.php: ' . $e->getMessage());
 }
 
+if ($response['status'] === 'success') writeDashboardResponseCache($dashboardCacheKey, $response);
+header('X-Seniorlink-Cache: MISS');
 echo json_encode($response);
 ?>

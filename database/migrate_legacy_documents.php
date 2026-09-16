@@ -1,11 +1,12 @@
 <?php
 require_once __DIR__ . '/../includes/db_connect.php';
 require_once __DIR__ . '/../includes/document_repository.php';
+require_once __DIR__ . '/../includes/private_storage.php';
 
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 $definitions = [
     'proof_of_address'=>['Proof of Address','proof_of_address_type',true], 'id_image'=>['ID / Identification Photo','id_image_type',true],
-    'psa_birth_cert'=>['PSA Birth Certificate',null,false], 'barangay_residency'=>['Barangay Residency Certificate',null,false],
+    'psa_birth_cert'=>['Birth Cert / Negative of Birth',null,false], 'barangay_residency'=>['Barangay Residency Certificate',null,false],
     'comelec_cert'=>['COMELEC Certificate',null,false], 'proof_of_life'=>['Current Senior Photo / Proof of Life',null,false],
     'auth_letter'=>['Authorization Letter',null,false], 'proxy_id'=>['Representative Government ID',null,false],
     'proxy_birth_cert'=>['Representative Birth Certificate',null,false], 'home_visitation_form'=>['Home Visitation Form',null,false],
@@ -20,8 +21,8 @@ foreach ($rows as $row) {
         if ($exists->fetchColumn()) { $skipped++; continue; }
         $data=$value; $filename=null; $mime=$mimeColumn ? ($row[$mimeColumn]??'') : '';
         if (!$isBlob) {
-            $filename=basename((string)$value); $path=__DIR__.'/../uploads/'.$filename;
-            if (!is_file($path)) { $skipped++; continue; }
+            $filename=basename((string)$value); $path=privateExistingUploadPath((string)$value);
+            if ($path===null) { $skipped++; continue; }
             $data=file_get_contents($path); $mime=(new finfo(FILEINFO_MIME_TYPE))->file($path);
         }
         if (!$mime) $mime='application/octet-stream';

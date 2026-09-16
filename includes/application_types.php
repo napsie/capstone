@@ -19,6 +19,42 @@ function applicationTypeLabel(string $type): string {
     return $definitions[$type]['label'] ?? ucwords(str_replace('_', ' ', $type));
 }
 
+function seniorIdPurposeLabel(?string $purpose): string {
+    $labels = [
+        'new' => 'New',
+        'change' => 'Change',
+        'transfer' => 'Transfer',
+        'lost' => 'Lost',
+    ];
+    $normalized = strtolower(trim((string)$purpose));
+    return $labels[$normalized] ?? 'Not specified';
+}
+
+/** A records-page label that keeps the Senior ID purpose beside its application type. */
+function applicationRecordTypeLabel(string $type, ?string $idPurpose = null): string {
+    $label = applicationTypeLabel($type);
+    return $type === 'senior' ? $label . ' — ' . seniorIdPurposeLabel($idPurpose) : $label;
+}
+
+function getHealthConditionOptions(): array {
+    return [
+        'None / No known illness',
+        'Hypertension / High blood pressure',
+        'Diabetes',
+        'Arthritis / Joint condition',
+        'Heart condition',
+        'Respiratory / Lung condition',
+        'Stroke-related condition',
+        'Kidney condition',
+        'Cancer',
+        'Vision impairment',
+        'Hearing impairment',
+        'Mobility impairment',
+        'Dementia / Memory condition',
+        'Other medical condition',
+    ];
+}
+
 function getDeceasedRelationshipOptions(): array {
     return ['Spouse', 'Child', 'Parent', 'Sibling', 'Grandchild', 'Other Relative', 'Legal Representative'];
 }
@@ -59,11 +95,11 @@ function getApplicationBenefitDetails(): array {
             ],
             'documents' => [
                 'Two recent 1×1 ID photos with white background',
-                'Birth certificate and original barangay residency certificate for new applicants',
+                'Birth certificate or Negative of Birth, plus an original barangay residency certificate for new applicants',
                 'Original ID, affidavit, or transfer certificates according to application purpose',
             ],
             'form_documents' => [
-                ['field' => 'psa_birth_cert_file', 'label' => 'PSA Birth Certificate', 'description' => "Clear copy of the senior citizen's PSA birth certificate or accepted proof of age."],
+                ['field' => 'psa_birth_cert_file', 'label' => 'Birth Cert / Negative of Birth', 'description' => "Clear copy of the senior citizen's birth certificate or, when unavailable, a Negative of Birth certification."],
                 ['field' => 'barangay_residency_file', 'label' => 'Barangay Residency Certificate', 'description' => 'Current barangay certificate confirming Pasig residency.'],
                 ['field' => 'comelec_cert_file', 'label' => '2-Year COMELEC Certification', 'description' => 'Official voter residency certification of the senior citizen applicant.'],
                 ['field' => 'id_photo_file', 'label' => 'Two Recent 1×1 ID Photos', 'description' => 'Upload a clear recent 1×1 portrait with a white background; bring two printed copies for verification.', 'extra' => true, 'image_only' => true],
@@ -75,7 +111,7 @@ function getApplicationBenefitDetails(): array {
             'minimum_age'  => 60,
             'icon'         => 'fas fa-credit-card',
             'accent'       => '#34d399',
-            'required_fields' => ['nameOnCard', 'tin', 'seniorIdTypePresented', 'nationality', 'sourceOfFunds', 'mothersMaidenName'],
+            'required_fields' => ['nameOnCard', 'seniorIdTypePresented', 'nationality', 'sourceOfFunds', 'mothersMaidenName'],
             'support_assessment' => false,
             'summary'      => 'Enrollment for Land Bank cash card disbursement of senior citizen benefits.',
             'benefits'     => [
@@ -85,20 +121,16 @@ function getApplicationBenefitDetails(): array {
             ],
             'requirements' => [
                 'Must be a registered senior citizen (60+)',
-                'Active senior ID or pending senior ID application',
                 'Complete personal and address information',
-                'TIN and valid ID type for bank KYC compliance',
+                'Valid ID type for bank identity verification',
+                'Source of Funds declaration',
             ],
             'documents' => [
-                'Senior Citizens ID or proof of senior registration',
-                'Valid government-issued ID presented for verification',
-                'Proof of address',
-                'Completed Land Bank enrollment details (name on card, TIN, etc.)',
+                'Valid government-issued ID only for over-the-counter or manual claiming',
+                'Completed Land Bank enrollment details, including the name to appear on the card and Source of Funds',
             ],
             'form_documents' => [
-                ['field' => 'psa_birth_cert_file', 'label' => 'Senior Citizen ID or Proof of Registration', 'description' => 'Senior Citizen ID or proof of an active senior registration.'],
-                ['field' => 'barangay_residency_file', 'label' => 'Valid Government-Issued ID', 'description' => 'Government ID presented for Land Bank identity verification.'],
-                ['field' => 'comelec_cert_file', 'label' => 'Proof of Address', 'description' => 'Current barangay certificate, utility bill, or equivalent address document.'],
+                ['field' => 'psa_birth_cert_file', 'label' => 'Valid Government ID', 'description' => 'Clear front-and-back copy of one valid government-issued ID.'],
             ],
         ],
         'pension' => [
@@ -125,12 +157,11 @@ function getApplicationBenefitDetails(): array {
                 'Latest senior citizen ID photo',
                 'Senior Citizens ID or valid government ID',
                 'Proof of address',
-                'Pension or income supporting record, when applicable',
             ],
             'form_documents' => [
                 ['field' => 'psa_birth_cert_file', 'label' => 'Senior Citizen ID or Valid Government ID', 'description' => 'Identification document of the senior citizen.'],
                 ['field' => 'barangay_residency_file', 'label' => 'Barangay Certificate of Indigency', 'description' => 'Current indigency and residency certification issued by the barangay.'],
-                ['field' => 'comelec_cert_file', 'label' => 'SSS / GSIS Pension Record or Certification', 'description' => 'Document showing the pension source and monthly amount, or proof that no pension is received.'],
+                ['field' => 'comelec_cert_file', 'label' => 'Pension or Income Supporting Record (Optional)', 'description' => 'Optional pension or income record; an SSS document is not required.', 'optional' => true],
                 ['field' => 'id_photo_file', 'label' => 'Latest Senior Citizen ID Photo', 'description' => 'Upload a clear, recent portrait for the photo box on the Local Senior Pension Form.', 'extra' => true, 'image_only' => true],
             ],
         ],

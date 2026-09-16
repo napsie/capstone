@@ -36,6 +36,15 @@ if (isset($_GET['token'])) {
     }
 }
 
+// Render only the selected official form template. The selector page remains
+// lightweight, and choosing a type reloads this page with that one form.
+$renderableApplicationTypes = getApplicationTypeOptions();
+unset($renderableApplicationTypes['home_visit'], $renderableApplicationTypes['national_pension']);
+$selectedApplicationType = trim((string)($_POST['applicationType'] ?? $_GET['type'] ?? ($loadedProxyData['applicationType'] ?? '')));
+if (!array_key_exists($selectedApplicationType, $renderableApplicationTypes)) {
+    $selectedApplicationType = '';
+}
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $_POST = normalizeApplicationInput($_POST);
     // Sanitize and validate input
@@ -159,7 +168,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 
     if ($applicationType === 'landbank') {
-        foreach (['name_on_card', 'tin', 'id_type_presented', 'nationality', 'source_of_funds', 'mothers_maiden_name'] as $field) {
+        foreach (['name_on_card', 'id_type_presented', 'nationality', 'source_of_funds', 'mothers_maiden_name'] as $field) {
             if (($oscaData[$field] ?? '') === '') {
                 $errorMessage = 'Complete all required fields on the Land Bank Cash Card Enrollment Form.';
                 break;
@@ -241,8 +250,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 'doc_osca_id' => 'OSCA Senior Citizen ID',
                 'validId1' => 'Valid ID (Front)',
                 'validId2' => 'Valid ID (Back)',
-                'birthOriginal' => 'Birth Certificate (Original)',
-                'birthPhotocopy' => 'Birth Certificate (Photocopy)',
+                'birthOriginal' => 'Birth Cert / Negative of Birth (Original)',
+                'birthPhotocopy' => 'Birth Cert / Negative of Birth (Photocopy)',
                 'originalSeniorId' => 'Original Senior Citizen ID',
                 'affidavitOfLoss' => 'Affidavit of Loss',
                 'cancellationCert' => 'Cancellation Certificate',
@@ -717,6 +726,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             .app-type-grid { grid-template-columns: 1fr; }
         }
         @media (max-width: 768px) {
+            #mainAppForm { padding-bottom:max(28px, env(safe-area-inset-bottom)); }
+            #mainAppForm :is(input, select, textarea) { font-size:16px !important; min-height:48px; scroll-margin-top:88px; scroll-margin-bottom:32vh; }
+            #mainAppForm textarea { min-height:104px; }
+            body.mobile-keyboard-open .guided-mobile-progress,
+            body.mobile-keyboard-open .mobile-form-progress { position:static !important; }
+            body.mobile-keyboard-open .main-content { padding-bottom:34vh; }
             .selected-type-banner {
                 align-items: flex-start;
                 flex-wrap: wrap;
@@ -1671,7 +1686,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <link rel="stylesheet" href="../assets/css/benefit-information-modal.css?v=1">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
@@ -1781,12 +1796,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         </div>
                     </div>
 
-                <form method="POST" action="new_application.php" enctype="multipart/form-data" id="mainAppForm">
+                <form method="POST" action="new_application.php" enctype="multipart/form-data" id="mainAppForm" novalidate>
                     <!-- Hidden Proxy Fields -->
                     <input type="hidden" name="isProxy" id="isProxy" value="<?php echo $loadedProxyData ? 1 : 0; ?>">
                     <input type="hidden" name="proxyToken" id="proxyToken" value="<?php echo htmlspecialchars($loadedProxyData['transactionId'] ?? ''); ?>">
                     <input type="hidden" name="proxyContactNumber" id="proxyContactNumber" value="<?php echo htmlspecialchars($loadedProxyData['proxyContactNumber'] ?? ''); ?>">
-                    <input type="hidden" id="applicationType" name="applicationType" value="" required>
+                    <input type="hidden" id="applicationType" name="applicationType" value="<?php echo htmlspecialchars($selectedApplicationType); ?>" required>
                     <input type="hidden" name="duplicate_override" id="duplicateOverride" value="0">
                     <input type="hidden" name="duplicate_override_reason" id="duplicateOverrideReason" value="">
 
@@ -1803,6 +1818,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                          OSCA OFFICIAL FORM — Burial Assistance
                          Visible only when 'burial' application type is selected
                          ================================================================ -->
+                    <?php if ($selectedApplicationType === 'burial'): ?>
                     <template id="burialOfficialFormCardTemplate">
                     <div id="burialOfficialFormCard" class="guided-benefit-form" style="display:none; margin-bottom:28px;">
                         <div style="
@@ -2089,11 +2105,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         </div>
                     </div><!-- /#burialOfficialFormCard -->
                     </template>
+                    <?php endif; ?>
 
                     <!-- ================================================================
                          OSCA OFFICIAL FORM — Home Visitation / Confirmation
                          Visible only when 'home_visit' application type is selected
                          ================================================================ -->
+                    <?php if ($selectedApplicationType === 'home_visit'): ?>
                     <template id="homeVisitOfficialFormCardTemplate">
                     <div id="homeVisitOfficialFormCard" class="guided-benefit-form" style="display:none; margin-bottom:28px;">
                         <div style="
@@ -2375,11 +2393,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         </div>
                     </div><!-- /#homeVisitOfficialFormCard -->
                     </template>
+                    <?php endif; ?>
 
                     <!-- ================================================================
                          OSCA OFFICIAL FORM — Octogenarian / Nonagenarian / Centenarian
                          Visible only when 'milestone_gift' application type is selected
                          ================================================================ -->
+                    <?php if ($selectedApplicationType === 'milestone_gift'): ?>
                     <template id="milestoneOfficialFormCardTemplate">
                     <div id="milestoneOfficialFormCard" class="guided-benefit-form" style="display:none; margin-bottom:28px;">
                         <div style="
@@ -2687,11 +2707,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         </div>
                     </div><!-- /#milestoneOfficialFormCard -->
                     </template>
+                    <?php endif; ?>
 
                     <!-- ================================================================
                          OSCA OFFICIAL FORM — Local Senior Pension
                          Visible for 'pension' and 'national_pension' types
                          ================================================================ -->
+                    <?php if ($selectedApplicationType === 'pension' || $selectedApplicationType === 'national_pension'): ?>
                     <template id="pensionOfficialFormCardTemplate">
                     <div id="pensionOfficialFormCard" class="guided-benefit-form" style="display:none; margin-bottom:28px;">
                         <div style="
@@ -2839,7 +2861,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         </div>
                                         <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;">
                                             <span style="font-size:0.82rem;font-weight:700;color:#431407;min-width:200px;">4. Condition / Illness:</span>
-                                            <input type="text" oninput="syncField(this,'healthCondition')" style="border:none;border-bottom:1px solid #b45309;outline:none;font-size:0.8rem;flex:1;min-width:200px;background:transparent;" placeholder="Describe condition or illness">
+                                            <select onchange="syncField(this,'healthCondition')" style="border:1px solid #d6b46d;border-radius:7px;outline:none;font-size:0.8rem;flex:1;min-width:220px;padding:7px 9px;background:#fff;color:#431407;">
+                                                <option value="">Select condition</option>
+                                                <?php foreach (getHealthConditionOptions() as $condition): ?><option value="<?php echo htmlspecialchars($condition); ?>"><?php echo htmlspecialchars($condition); ?></option><?php endforeach; ?>
+                                            </select>
                                         </div>
                                         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
                                             <span style="font-size:0.82rem;font-weight:700;color:#431407;min-width:200px;">5. Own house?</span>
@@ -2955,11 +2980,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         </div>
                     </div><!-- /#pensionOfficialFormCard -->
                     </template>
+                    <?php endif; ?>
 
                     <!-- ================================================================
                          OSCA OFFICIAL FORM — Land Bank Cash Card Enrollment
                          Visible only when 'landbank' application type is selected
                          ================================================================ -->
+                    <?php if ($selectedApplicationType === 'landbank'): ?>
                     <template id="landbankOfficialFormCardTemplate">
                     <div id="landbankOfficialFormCard" class="guided-benefit-form" style="display:none; margin-bottom:28px;">
                         <div style="
@@ -3062,14 +3089,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#475569;margin-bottom:8px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">
                                         <i class="fas fa-credit-card" style="color:#059669;margin-right:5px;"></i> Land Bank Cash Card Details
                                     </div>
-                                    <div style="display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:10px;margin-bottom:10px;">
+                                    <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:10px;margin-bottom:10px;">
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Name to Appear on Card (max 23 characters)</label>
                                             <input type="text" id="lbNameOnCard" maxlength="23" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'nameOnCard')" onfocus="this.style.borderColor='#059669';" onblur="this.style.borderColor='#d0dae8';" placeholder="JUAN S. DELA CRUZ">
-                                        </div>
-                                        <div>
-                                            <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">TIN</label>
-                                            <input type="text" id="lbTin" style="width:100%;padding:7px 10px;border:1.5px solid #d0dae8;border-radius:7px;font-size:0.88rem;color:#0f172a;background:#fff;outline:none;" oninput="syncField(this,'tin')" onfocus="this.style.borderColor='#059669';" onblur="this.style.borderColor='#d0dae8';" placeholder="XXX-XXX-XXX-000">
                                         </div>
                                         <div>
                                             <label style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:3px;">Source of Funds</label>
@@ -3176,7 +3199,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         </div>
                     </div><!-- /#landbankOfficialFormCard -->
                     </template>
+                    <?php endif; ?>
 
+                    <?php if ($selectedApplicationType === 'senior'): ?>
                     <template id="oscaOfficialFormCardTemplate">
                     <div id="oscaOfficialFormCard" class="guided-benefit-form" style="display:none; margin-bottom:28px;">
                         <div style="
@@ -3388,7 +3413,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                             <div style="font-weight:700;color:#1d4ed8;margin-bottom:5px;display:flex;align-items:center;gap:5px;"><span style="width:20px;height:20px;background:#2563eb;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:0.6rem;flex-shrink:0;"><i class="fas fa-id-card"></i></span> New Applicant (Filipino Citizen)</div>
                                             <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:3px;">
                                                 <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#3b82f6;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>2 pcs 1×1 ID Photo (latest, white background)</span></li>
-                                                <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#3b82f6;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>Birth Certificate (Original & Photocopy)</span></li>
+                                                <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#3b82f6;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>Birth Cert / Negative of Birth (Original & Photocopy)</span></li>
                                                 <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#3b82f6;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>Original Barangay Residency Certificate</span></li>
                                                 <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#3b82f6;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>2 valid IDs (with date of birth & Pasig City address)</span></li>
                                             </ul>
@@ -3480,7 +3505,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                                         <div id="birthOriginalWrap" style="display:none;">
                                             <label for="birthOriginal" id="labelBirthOriginal" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
-                                                <i class="fas fa-file-alt" style="margin-right:4px;color:#16a34a;"></i> Birth Certificate (Original)
+                                                <i class="fas fa-file-alt" style="margin-right:4px;color:#16a34a;"></i> Birth Cert / Negative of Birth (Original)
                                             </label>
                                             <input type="file" id="birthOriginal" name="birthOriginal" accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)"
                                                 style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
@@ -3491,7 +3516,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                                         <div id="birthPhotocopyWrap" style="display:none;">
                                             <label for="birthPhotocopy" id="labelBirthPhotocopy" style="font-size:0.68rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px;">
-                                                <i class="fas fa-copy" style="margin-right:4px;color:#16a34a;"></i> Birth Certificate (Photocopy)
+                                                <i class="fas fa-copy" style="margin-right:4px;color:#16a34a;"></i> Birth Cert / Negative of Birth (Photocopy)
                                             </label>
                                             <input type="file" id="birthPhotocopy" name="birthPhotocopy" accept="image/jpeg,image/png,image/gif,application/pdf" onchange="checkFileSize(this)"
                                                 style="width:100%;font-size:0.78rem;padding:6px 8px;border:1.5px solid #bbf7d0;border-radius:7px;background:#fff;color:#166534;cursor:pointer;">
@@ -3554,6 +3579,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         </div>
                     </div><!-- /#oscaOfficialFormCard -->
                     </template>
+                    <?php endif; ?>
 
                     <!-- Hidden backing fields — values are synced from the official form preview cards above via syncField() -->
                     <input type="hidden" id="idNumber" name="idNumber" value="<?php echo htmlspecialchars($loadedProxyData['transactionId'] ?? uniqid('APP-')); ?>">
@@ -3600,7 +3626,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <input type="hidden" id="claimantContact"        name="claimantContact"        value="">
                     <input type="hidden" id="idTypePresented"        name="idTypePresented"        value="">
                     <input type="hidden" id="nameOnCard"             name="nameOnCard"             value="">
-                    <input type="hidden" id="tin"                    name="tin"                    value="">
                     <input type="hidden" id="nationality"            name="nationality"            value="">
                     <input type="hidden" id="sourceOfFunds"          name="sourceOfFunds"          value="">
                     <input type="hidden" id="controlNo"              name="controlNo"              value="">
@@ -3992,8 +4017,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         function proceedWithApplication() {
             if (!pendingBenefitType || !document.getElementById('benefitAckCheckbox').checked) return;
             const type = pendingBenefitType;
-            closeBenefitModal();
-            selectAppType(type);
+            window.location.assign('new_application.php?type=' + encodeURIComponent(type));
         }
 
         let proxyScannerAssetsPromise = null;
@@ -4109,6 +4133,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 if (result.success) {
                     const data = result.data;
+                    const loadedType = data.applicationType || 'senior';
+                    const requiredTemplate = OFFICIAL_FORM_CARDS[loadedType] + 'Template';
+                    if (!document.getElementById(requiredTemplate)) {
+                        window.location.assign(
+                            'new_application.php?type=' + encodeURIComponent(loadedType) +
+                            '&token=' + encodeURIComponent(token)
+                        );
+                        return;
+                    }
                     
                     // Populate basic details
                     document.getElementById('lastName').value = data.lastName || '';
@@ -4122,7 +4155,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     document.getElementById('seniorIdNo').value = data.seniorIdNo || '';
                     
                     // Application type
-                    const loadedType = data.applicationType || 'senior';
                     selectAppType(loadedType);
 
                     // Proxy fields
@@ -4164,6 +4196,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         function selectAppType(value) {
+            const knownBirthDate = document.getElementById('birthDate')?.value || '';
+            if (value === 'pension' && knownBirthDate) {
+                const birthDate = new Date(`${knownBirthDate}T00:00:00`);
+                const today = new Date();
+                let knownAge = today.getFullYear() - birthDate.getFullYear();
+                const monthDifference = today.getMonth() - birthDate.getMonth();
+                if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) knownAge--;
+                if (!Number.isNaN(knownAge) && knownAge < 65) {
+                    window.showCarelinkResult(`Local Senior Pension is available only to applicants aged 65 or older. The applicant is ${knownAge}.`, false);
+                    return;
+                }
+            }
             // Update hidden input
             document.getElementById('applicationType').value = value;
             syncAutomaticMilestoneAge();
@@ -4257,7 +4301,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <div>
                         <div style="font-weight:700;color:#1d4ed8;margin-bottom:5px;display:flex;align-items:center;gap:5px;"><span style="width:20px;height:20px;background:#2563eb;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:0.6rem;flex-shrink:0;"><i class="fas fa-id-card"></i></span> New Applicant (Filipino Citizen)</div>
                         <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:3px;">
-                            <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#3b82f6;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>Birth Certificate (Original & Photocopy)</span></li>
+                            <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#3b82f6;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>Birth Cert / Negative of Birth (Original & Photocopy)</span></li>
                             <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#3b82f6;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>Original Barangay Residency Certificate</span></li>
                             <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#3b82f6;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>If no birth certificate: Negative Certification of Birth and 2 valid IDs showing date of birth and Pasig City address</span></li>
                         </ul>
@@ -4299,7 +4343,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         <div style="font-weight:700;color:#16a34a;margin-bottom:4px;display:flex;align-items:center;gap:5px;"><span style="width:20px;height:20px;background:#16a34a;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:0.6rem;flex-shrink:0;"><i class="fas fa-exchange-alt"></i></span> Transfer</div>
                         <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:2px;">
                             <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#16a34a;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>Certificate of Cancellation of SC ID from previous OSCA</span></li>
-                            <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#16a34a;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>Birth Certificate</span></li>
+                            <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#16a34a;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>Birth Cert / Negative of Birth</span></li>
                             <li style="display:flex;gap:5px;align-items:flex-start;"><i class="fas fa-circle" style="color:#16a34a;font-size:0.4rem;margin-top:5px;flex-shrink:0;"></i><span>Original Barangay Residency Certificate</span></li>
                         </ul>
                     </div>
@@ -4389,7 +4433,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 'placeOfBirth':      'lbPlaceOfBirth',
                 'mothersMaidenName': 'lbMothersMaidenName',
                 'idTypePresented':   'lbIdTypePresented',
-                'tin':               'lbTin',
                 'sourceOfFunds':     'lbSourceOfFunds',
                 'nationality':       'lbNationality',
                 'seniorIdNo':        'lbSeniorIdNo',
@@ -4804,6 +4847,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Intercept Form Submit to block invalid compliance cases
         document.getElementById('mainAppForm').addEventListener('submit', function(e) {
             syncAddressFromActiveCard();
+            const visibleInvalid = Array.from(this.querySelectorAll(':invalid')).filter(control =>
+                !control.disabled && control.type !== 'hidden' && control.offsetParent !== null && !control.closest('[hidden]'));
+            if (visibleInvalid.length) {
+                e.preventDefault();
+                const firstInvalid = visibleInvalid[0];
+                const label = this.querySelector(`label[for="${CSS.escape(firstInvalid.id)}"]`);
+                window.showCarelinkResult(`Please complete ${String(label?.textContent || firstInvalid.name || 'the highlighted field').replace('*', '').trim()}.`, false);
+                firstInvalid.setAttribute('aria-invalid', 'true');
+                firstInvalid.closest('.form-group, .form-field, .field, .upload-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                window.setTimeout(() => firstInvalid.focus({ preventScroll: true }), 320);
+                return;
+            }
             const type = document.getElementById('applicationType').value;
             
             // Age compliance block
@@ -4857,6 +4912,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         });
 
+        const staffVisualViewport = window.visualViewport;
+        const syncStaffKeyboard = () => {
+            if (!staffVisualViewport) return;
+            document.body.classList.toggle('mobile-keyboard-open', window.innerHeight - staffVisualViewport.height > 140);
+        };
+        staffVisualViewport?.addEventListener('resize', syncStaffKeyboard);
+        document.getElementById('mainAppForm').querySelectorAll('input, select, textarea').forEach(control => {
+            control.addEventListener('input', () => control.removeAttribute('aria-invalid'));
+            control.addEventListener('focus', () => window.setTimeout(() => {
+                if (window.matchMedia('(max-width: 768px)').matches) control.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 280));
+        });
+
         // Restore a preset application without instantiating every other form.
         (function() {
             const presetType = document.getElementById('applicationType').value;
@@ -4879,6 +4947,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
     </script>
     <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
+    <script src="../assets/js/resilient-form-submit.js?v=1"></script>
     <script src="../assets/js/duplicate-review.js?v=1"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {

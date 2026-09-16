@@ -199,3 +199,52 @@
         font-size: 1.3rem;
     }
 }
+
+/* Centralized dashboard: eight equal compact cards in two desktop rows. */
+#departmentSummaryCards {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+#departmentSummaryCards .stat-card {
+    min-height: 92px;
+    gap: 11px;
+    padding: 14px 15px;
+    border-radius: 12px;
+}
+
+#departmentSummaryCards .stat-card::before { height: 3px; }
+
+#departmentSummaryCards .stat-icon,
+#departmentSummaryCards .stat-card :is(.bg-primary, .bg-success, .bg-danger) {
+    width: 42px;
+    height: 42px;
+    flex-basis: 42px;
+    border-radius: 11px;
+    font-size: 1rem;
+}
+
+#departmentSummaryCards :is(.stat-label, .stat-info p) {
+    margin-bottom: 3px;
+    font-size: .66rem;
+    letter-spacing: .045em;
+}
+
+#departmentSummaryCards :is(.stat-value, .stat-info h3) {
+    font-size: 1.35rem !important;
+}
+
+#departmentSummaryCards :is(.stat-meta, .stat-info small) {
+    margin-top: 4px;
+    font-size: .64rem;
+}
+
+@media (max-width: 760px) {
+    #departmentSummaryCards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 440px) {
+    #departmentSummaryCards { grid-template-columns: 1fr; gap: 9px; }
+    #departmentSummaryCards .stat-card { min-height: 80px; padding: 11px 13px; }
+}

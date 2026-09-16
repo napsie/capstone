@@ -122,7 +122,7 @@ $oscaInputMap = [
     'family_support_amount' => 'familySupportAmount', 'personal_income' => 'personalIncome',
     'personal_income_amount' => 'personalIncomeAmount', 'health_condition' => 'healthCondition',
     'with_maintenance' => 'withMaintenance', 'maintenance_spec' => 'maintenanceSpec',
-    'visit_summary' => 'visitSummary', 'name_on_card' => 'nameOnCard', 'tin' => 'tin',
+    'visit_summary' => 'visitSummary', 'name_on_card' => 'nameOnCard',
     'id_type_presented' => 'idTypePresented', 'nationality' => 'nationality',
     'source_of_funds' => 'sourceOfFunds', 'atm_card_no' => 'atmCardNo',
     'control_no' => 'controlNo', 'is_permanent_income' => 'isPermanentIncome',

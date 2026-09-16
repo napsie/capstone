@@ -4,6 +4,7 @@ header('Content-Type: application/json');
 require_once '../includes/db_connect.php';
 require_once '../includes/audit_logger.php';
 require_once '../includes/request_security.php';
+require_once '../includes/private_storage.php';
 requireSameOriginMutation();
 
 // Authentication check (ensure only authorized roles can delete/archive)
@@ -70,8 +71,7 @@ if (isset($_POST['id'])) {
             
             if ($stmt->execute($params)) {
                 if ($stmt->rowCount() > 0) {
-                    $uploadDir = realpath(dirname(__DIR__) . DIRECTORY_SEPARATOR . 'uploads');
-                    if ($uploadDir !== false) {
+                    if (is_dir(privateUploadDirectory())) {
                         $uploadedFiles = [
                             $app['psa_birth_cert'] ?? '',
                             $app['barangay_residency'] ?? '',
@@ -90,8 +90,8 @@ if (isset($_POST['id'])) {
                             if ($safeName !== $storedName) {
                                 continue;
                             }
-                            $filePath = $uploadDir . DIRECTORY_SEPARATOR . $safeName;
-                            if (is_file($filePath) && !unlink($filePath)) {
+                            $filePath = privateExistingUploadPath($safeName);
+                            if ($filePath !== null && !unlink($filePath)) {
                                 error_log('Unable to remove application upload: ' . $filePath);
                             }
                         }

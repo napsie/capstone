@@ -30,7 +30,20 @@ if ($benefitPortalMode && !empty($benefitPrefill['birthDate'])) {
 $activePortalOption = $benefitPortalMode ? 'verified_benefits' : 'new_senior';
 $publicBenefitDefinitions = getPublicBenefitDefinitions();
 if ($benefitPortalMode) {
-    unset($publicBenefitDefinitions['Senior Citizen ID Registration']);
+    if (isset($publicBenefitDefinitions['Senior Citizen ID Registration'])) {
+        $publicBenefitDefinitions['Senior Citizen ID Registration']['label'] = 'Update or Replace Senior ID';
+        $publicBenefitDefinitions['Senior Citizen ID Registration']['summary'] = 'Request an information change or replacement for a lost approved Senior Citizen ID.';
+        $publicBenefitDefinitions['Senior Citizen ID Registration']['benefits'] = [
+            'Update incorrect or outdated information on an approved Senior Citizen ID',
+            'Request a replacement for a lost Senior Citizen ID',
+            'Keep the request connected to the senior citizen’s verified OSCA record',
+        ];
+        $publicBenefitDefinitions['Senior Citizen ID Registration']['requirements'] = [
+            'An approved Senior Citizen ID and permanent token are required',
+            'Select Information Change or Lost ID Replacement',
+            'Submit the purpose-specific supporting documents for verification',
+        ];
+    }
 } else {
     $publicBenefitDefinitions = array_intersect_key($publicBenefitDefinitions, ['Senior Citizen ID Registration' => true]);
 }
@@ -560,12 +573,20 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
     .public-selected-benefit span { color:#64748b; font-size:.8rem; }
     .public-selected-benefit button { margin-left:auto; padding:8px 11px; border:1px solid #93c5fd; border-radius:8px; background:#fff; color:#1d4ed8; font-weight:700; cursor:pointer; }
     @media (max-width: 600px) {
-        .public-benefit-modal { padding:10px; }
-        .public-benefit-dialog { height:min(820px,calc(100vh - 20px)); border-radius:14px; }
+        .public-benefit-modal { align-items:flex-end; padding:0; }
+        .public-benefit-dialog { width:100%; height:min(88dvh,820px); border-width:1px 0 0; border-radius:18px 18px 0 0; padding-bottom:env(safe-area-inset-bottom); }
         .public-benefit-head { padding:18px 50px 16px 18px; }
         .public-benefit-body { padding:14px; }
         .public-benefit-actions { padding:12px 14px; }
         .public-benefit-actions button { flex:1 1 0; }
+        .benefit-choice-grid { grid-template-columns:1fr; gap:10px; }
+        .benefit-choice-card { display:grid; grid-template-columns:48px minmax(0,1fr) 22px; grid-template-rows:auto auto auto; column-gap:13px; min-height:0; padding:16px; }
+        .benefit-choice-icon { grid-column:1; grid-row:1 / span 3; width:46px; height:46px; margin:0; align-self:start; font-size:1.05rem; }
+        .benefit-choice-title { grid-column:2; grid-row:1; max-width:none; padding-right:0; font-size:.98rem; }
+        .benefit-choice-desc { grid-column:2; grid-row:2; margin-top:5px; font-size:.79rem; line-height:1.4; }
+        .benefit-choice-ineligible { grid-column:2 / span 2; grid-row:3; margin-top:7px; }
+        .benefit-choice-arrow { grid-column:3; grid-row:1 / span 3; position:static; align-self:center; transform:none; }
+        .benefit-choice-check { top:10px; right:10px; }
         .benefit-access-grid { grid-template-columns: 1fr; }
         .form-row-names {
             grid-template-columns: 1fr;
@@ -575,7 +596,22 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
         .proxy-form .upload-slot { padding: 14px; }
         .proxy-form .upload-slot input[type="file"] { width: 100%; min-height: 52px; padding: 9px; }
         .mobile-form-progress { position: sticky; top: 8px; z-index: 20; }
-        #btnSubmitNew { position: sticky; bottom: max(8px, env(safe-area-inset-bottom)); z-index: 20; box-shadow: 0 10px 28px rgba(15,23,42,.25); }
+        #btnSubmitNew { position:static; width:100%; touch-action:manipulation; box-shadow:0 10px 28px rgba(15,23,42,.25); }
+        .proxy-form { padding-bottom: max(28px, env(safe-area-inset-bottom)); }
+        .proxy-form .form-group { scroll-margin-top: 92px; scroll-margin-bottom: 28vh; }
+        .proxy-form :is(input, select, textarea) { scroll-margin-top: 92px; scroll-margin-bottom: 32vh; }
+        body.mobile-keyboard-open .mobile-form-progress { position: static; }
+        body.mobile-keyboard-open .site-header { position: static; }
+        body.mobile-keyboard-open .proxy-panel-body { padding-bottom: 34vh; }
+    }
+
+    @media (max-width: 380px) {
+        .benefit-choice-card { grid-template-columns:42px minmax(0,1fr) 18px; gap:10px; padding:14px 12px; }
+        .benefit-choice-icon { width:40px; height:40px; }
+        .public-benefit-actions { flex-direction:column-reverse; }
+        .public-benefit-actions button { width:100%; flex-basis:auto; min-height:48px; }
+        .mobile-form-progress { align-items:flex-start; flex-direction:column; }
+        .mobile-form-progress__track { width:100%; }
     }
 
     .mobile-form-progress { display:flex; align-items:center; gap:8px; margin:0 0 18px; padding:10px 12px; border:1px solid #bfdbfe; border-radius:10px; background:rgba(239,246,255,.96); color:#475569; font-size:.76rem; font-weight:700; backdrop-filter:blur(8px); }
@@ -649,7 +685,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
 
     <!-- ── FORM A: NEW SENIOR PRE-REGISTRATION ── -->
     <div id="newSeniorFormSection" class="form-switch-section" style="display:block;">
-        <form method="POST" action="<?php echo htmlspecialchars($formAction); ?>" enctype="multipart/form-data" class="proxy-form" id="newSeniorForm">
+        <form method="POST" action="<?php echo htmlspecialchars($formAction); ?>" enctype="multipart/form-data" class="proxy-form" id="newSeniorForm" novalidate>
             <input type="hidden" name="proxy_submit" value="1">
             <input type="hidden" name="portal_option" value="<?php echo $benefitPortalMode ? 'verified_benefits' : 'new_senior'; ?>">
             <?php if ($benefitPortalMode): ?>
@@ -664,12 +700,16 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             <select id="requestedBenefit" name="requestedBenefit" hidden aria-hidden="true">
                 <option value="">— Select Benefit or Service —</option>
                 <?php foreach (array_keys($publicBenefitDefinitions) as $value): ?>
-                    <option value="<?php echo htmlspecialchars($value); ?>" <?php echo $old('requestedBenefit', $defaultPublicBenefit) === $value ? 'selected' : ''; ?>><?php echo htmlspecialchars($value); ?></option>
+                    <option value="<?php echo htmlspecialchars($value); ?>" <?php echo ($old('requestedBenefit', $defaultPublicBenefit) === $value && (empty($transferBenefitsLocked) || $value === 'Senior Citizen ID Registration')) ? 'selected' : ''; ?>><?php echo htmlspecialchars($value); ?></option>
                 <?php endforeach; ?>
             </select>
 
             <?php
-            $hasSelectedPublicBenefit = $old('requestedBenefit', $defaultPublicBenefit) !== '';
+            $selectedPublicBenefit = $old('requestedBenefit', $defaultPublicBenefit);
+            if (!empty($transferBenefitsLocked) && $selectedPublicBenefit !== 'Senior Citizen ID Registration') {
+                $selectedPublicBenefit = '';
+            }
+            $hasSelectedPublicBenefit = $selectedPublicBenefit !== '';
             ?>
             <div class="public-benefit-selector<?php echo $hasSelectedPublicBenefit ? ' hidden' : ''; ?>" id="publicBenefitSelector">
                 <p class="benefit-choice-hint"><i class="fas fa-hand-pointer" aria-hidden="true"></i> Click a benefit below to view details and requirements before applying.</p>
@@ -677,16 +717,21 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                     <?php foreach ($publicBenefitDefinitions as $value => $definition):
                         $icon = $definition['icon']; $color = $definition['accent'];
                         $title = $definition['label']; $description = $definition['summary'];
+                        $minimumBenefitAge = (int)($definition['minimum_age'] ?? 60);
+                        $ageBlocked = $benefitPortalMode && ($verifiedBenefitAge === null || $verifiedBenefitAge < $minimumBenefitAge);
                         $milestoneBlocked = $benefitPortalMode && $value === 'Milestone Cash Gift' && $verifiedMilestoneAge === null;
                         $alreadyApplied = $benefitPortalMode && array_key_exists($value, $unavailableBenefitRequests);
-                        $benefitBlocked = $milestoneBlocked || $alreadyApplied;
+                        $residencyBlocked = $benefitPortalMode && !empty($transferBenefitsLocked) && $value !== 'Senior Citizen ID Registration';
+                        $benefitBlocked = $ageBlocked || $milestoneBlocked || $alreadyApplied || $residencyBlocked;
                         ?>
-                        <button type="button" class="benefit-choice-card" style="--benefit-color:<?php echo $color; ?>" data-benefit-value="<?php echo htmlspecialchars($value); ?>" aria-pressed="false" <?php echo $benefitBlocked ? 'disabled aria-disabled="true"' : ''; ?> onclick="openPublicBenefitModal(<?php echo htmlspecialchars(json_encode($value), ENT_QUOTES, 'UTF-8'); ?>, this)">
+                        <button type="button" class="benefit-choice-card<?php echo $residencyBlocked ? ' residency-locked' : ''; ?>" style="--benefit-color:<?php echo $color; ?>" data-benefit-value="<?php echo htmlspecialchars($value); ?>" data-residency-locked="<?php echo $residencyBlocked ? 'true' : 'false'; ?>" aria-pressed="false" <?php echo $benefitBlocked ? 'disabled aria-disabled="true"' : ''; ?> onclick="openPublicBenefitModal(<?php echo htmlspecialchars(json_encode($value), ENT_QUOTES, 'UTF-8'); ?>, this)">
                             <span class="benefit-choice-check"><i class="fas fa-check" aria-hidden="true"></i></span>
                             <span class="benefit-choice-icon"><i class="<?php echo $icon; ?>" aria-hidden="true"></i></span>
                             <span class="benefit-choice-title"><?php echo htmlspecialchars($title); ?></span>
                             <span class="benefit-choice-desc"><?php echo htmlspecialchars($description); ?></span>
-                            <?php if ($alreadyApplied): ?><span class="benefit-choice-ineligible">Already applied — <?php echo htmlspecialchars($unavailableBenefitRequests[$value]); ?>.</span>
+                            <?php if ($residencyBlocked): ?><span class="benefit-choice-ineligible"><i class="fas fa-lock" aria-hidden="true"></i> Available <?php echo htmlspecialchars($transferBenefitEligibleAt->format('F j, Y')); ?> after the 2-year residency period.</span>
+                            <?php elseif ($alreadyApplied): ?><span class="benefit-choice-ineligible">Already applied — <?php echo htmlspecialchars($unavailableBenefitRequests[$value]); ?>.</span>
+                            <?php elseif ($ageBlocked): ?><span class="benefit-choice-ineligible">Not eligible at current age<?php echo $verifiedBenefitAge !== null ? ' (' . (int)$verifiedBenefitAge . ')' : ''; ?>. Required: <?php echo $minimumBenefitAge; ?> or older.</span>
                             <?php elseif ($milestoneBlocked): ?><span class="benefit-choice-ineligible">Not eligible at current age<?php echo $verifiedBenefitAge !== null ? ' (' . (int)$verifiedBenefitAge . ')' : ''; ?>. Required: 80, 85, 90, 95, or 100+.</span><?php endif; ?>
                             <span class="benefit-choice-arrow"><i class="fas fa-chevron-right" aria-hidden="true"></i></span>
                         </button>
@@ -697,7 +742,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             <div class="public-application-body<?php echo $hasSelectedPublicBenefit ? ' visible' : ''; ?>" id="publicApplicationBody">
             <div class="public-selected-benefit">
                 <i class="fas fa-circle-check" aria-hidden="true"></i>
-                <div><span>Selected Application Form</span><strong id="publicSelectedBenefitLabel"><?php echo $old('requestedBenefit', $defaultPublicBenefit); ?></strong></div>
+                <div><span>Selected Application Form</span><strong id="publicSelectedBenefitLabel"><?php echo htmlspecialchars($selectedPublicBenefit); ?></strong></div>
                 <?php if ($benefitPortalMode): ?><button type="button" onclick="changePublicBenefit()">Change Benefit</button><?php endif; ?>
             </div>
 
@@ -854,18 +899,36 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 </div>
 
                 <div class="benefit-specific-panel" data-benefits="Senior Citizen ID Registration" hidden>
-                    <h4 class="benefit-panel-title">Senior Citizen ID Registration</h4>
-                    <p class="benefit-panel-copy">Complete the additional fields shown on the official Senior Citizens ID Application.</p>
+                    <h4 class="benefit-panel-title"><?php echo $benefitPortalMode ? 'Update or Replace Senior ID' : 'Senior Citizen ID Registration'; ?></h4>
+                    <p class="benefit-panel-copy"><?php echo $benefitPortalMode ? 'Choose whether to change the approved ID information or replace a lost ID.' : 'Complete the additional fields shown on the official Senior Citizens ID Application.'; ?></p>
                     <div class="form-group">
                         <label for="idPurpose">ID Application Purpose <span style="color:#b91c1c;">*</span></label>
                         <select id="idPurpose" name="idPurpose" class="form-control" data-benefit-required onchange="updateSeniorIdDocuments(); updateNewSeniorProgress();">
                             <option value="">— Select Purpose —</option>
-                            <option value="new" <?php echo $old('idPurpose') === 'new' ? 'selected' : ''; ?>>New / First-time registration</option>
-                            <option value="lost" <?php echo $old('idPurpose') === 'lost' ? 'selected' : ''; ?>>Lost ID replacement</option>
-                            <option value="change" <?php echo $old('idPurpose') === 'change' ? 'selected' : ''; ?>>Information change</option>
-                            <option value="transfer" <?php echo $old('idPurpose') === 'transfer' ? 'selected' : ''; ?>>Transfer</option>
+                            <?php if ($benefitPortalMode): ?>
+                                <option value="change" <?php echo $old('idPurpose') === 'change' ? 'selected' : ''; ?>>Information change</option>
+                                <option value="lost" <?php echo $old('idPurpose') === 'lost' ? 'selected' : ''; ?>>Lost ID replacement</option>
+                            <?php else: ?>
+                                <option value="new" <?php echo $old('idPurpose') === 'new' ? 'selected' : ''; ?>>New / First-time registration</option>
+                                <option value="transfer" <?php echo $old('idPurpose') === 'transfer' ? 'selected' : ''; ?>>Transfer</option>
+                            <?php endif; ?>
                         </select>
                     </div>
+                    <?php if ($benefitPortalMode): ?>
+                    <div id="informationChangeNotice" class="information-change-guide" role="status" aria-live="polite" hidden>
+                        <span class="information-change-guide__icon" aria-hidden="true"><i class="fas fa-pen-to-square"></i></span>
+                        <div>
+                            <strong>How to change your information</strong>
+                            <ol>
+                                <li>Select and edit the blue-highlighted personal information fields above.</li>
+                                <li>Change only the details that need correction.</li>
+                                <li>Upload a clear copy of the current Senior Citizen ID as supporting proof.</li>
+                                <li>Review and submit the request. Your approved profile will be updated only after OSCA verifies the change.</li>
+                            </ol>
+                            <button type="button" class="information-change-guide__button" onclick="focusInformationChangeFields()"><i class="fas fa-arrow-up" aria-hidden="true"></i> Go to editable information</button>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                     <div class="form-row">
                         <div class="form-group">
                             <label for="healthStatus">Health Status <span style="color:#b91c1c;">*</span></label>
@@ -966,7 +1029,15 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                             <label for="incomeSource">Permanent Income Source (if yes)</label>
                             <input type="text" id="incomeSource" name="incomeSource" class="form-control" value="<?php echo $old('incomeSource'); ?>" placeholder="Specify the source of income">
                         </div>
-                        <div class="form-group"><label for="pensionHealthCondition">Condition / Illness <span style="color:#b91c1c;">*</span></label><input type="text" id="pensionHealthCondition" name="healthCondition" class="form-control" value="<?php echo $old('healthCondition'); ?>" data-benefit-required></div>
+                        <div class="form-group">
+                            <label for="pensionHealthCondition">Condition / Illness <span style="color:#b91c1c;">*</span></label>
+                            <select id="pensionHealthCondition" name="healthCondition" class="form-control" data-benefit-required>
+                                <option value="">— Select condition —</option>
+                                <?php foreach (getHealthConditionOptions() as $condition): ?>
+                                    <option value="<?php echo htmlspecialchars($condition); ?>" <?php echo $old('healthCondition') === $condition ? 'selected' : ''; ?>><?php echo htmlspecialchars($condition); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
@@ -991,10 +1062,6 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                         <div class="form-group">
                             <label for="nameOnCard">Name to Appear on Card <span style="color:#b91c1c;">*</span></label>
                             <input type="text" id="nameOnCard" name="nameOnCard" class="form-control" maxlength="23" value="<?php echo $old('nameOnCard'); ?>" data-benefit-required>
-                        </div>
-                        <div class="form-group">
-                            <label for="tin">TIN <span style="color:#b91c1c;">*</span></label>
-                            <input type="text" id="tin" name="tin" class="form-control" value="<?php echo $old('tin'); ?>" data-benefit-required>
                         </div>
                     </div>
                     <div class="form-row">
@@ -1109,8 +1176,8 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 <h5 style="margin-top:0; color:#475569; font-size:0.88rem; text-transform:uppercase; letter-spacing:0.5px;">Senior's Credentials</h5>
                 
                 <div class="upload-slot" data-document-slot="primary">
-                    <label for="psa_birth_cert_file"><span data-document-label="primary">PSA Birth Certificate</span> <span class="req">*</span></label>
-                    <p class="slot-desc" data-document-description="primary">Upload a clear scanned copy or photo of the senior citizen's PSA birth certificate.</p>
+                    <label for="psa_birth_cert_file"><span data-document-label="primary">Birth Cert / Negative of Birth</span> <span class="req">*</span></label>
+                    <p class="slot-desc" data-document-description="primary">Upload a birth certificate or, if unavailable, a Negative of Birth certification.</p>
                     <input type="file" id="psa_birth_cert_file" name="psa_birth_cert_file" accept="image/jpeg,application/pdf" capture="environment" required>
                 </div>
                 
@@ -1128,10 +1195,15 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
 
                 <h5 id="identityDocumentsHeading" style="margin-top:20px; color:#475569; font-size:0.88rem; text-transform:uppercase; letter-spacing:0.5px;">Additional Required Documents</h5>
 
-                <div class="upload-slot" data-extra-document-benefits="<?php echo htmlspecialchars(getApplicationBenefitDetails()['senior']['public_request']); ?>|Local Social Pension Assessment">
+                <div class="upload-slot" id="idPhotoUploadSlot" data-extra-document-benefits="<?php echo htmlspecialchars(getApplicationBenefitDetails()['senior']['public_request']); ?>|Local Social Pension Assessment">
                     <label for="id_photo_file">Recent 1×1 ID Photo <span class="req">*</span></label>
                     <p class="slot-desc">Upload a clear, recent 1×1 portrait with a white background. Bring two printed 1×1 copies during counter verification. JPEG or PNG only.</p>
                     <input type="file" id="id_photo_file" name="id_photo_file" accept="image/jpeg,image/png" capture="user">
+                </div>
+                <div class="upload-slot" id="validIdUploadSlot" data-extra-document-benefits="<?php echo htmlspecialchars(getApplicationBenefitDetails()['senior']['public_request']); ?>">
+                    <label for="valid_id_file">Valid Government ID <span class="req">*</span></label>
+                    <p class="slot-desc">Upload a clear front-and-back copy of one valid government-issued ID.</p>
+                    <input type="file" id="valid_id_file" name="valid_id_file" accept="image/jpeg,image/png,application/pdf">
                 </div>
 
                 <div class="upload-slot" data-extra-document-benefits="Burial Assistance">
@@ -1172,8 +1244,9 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             </div>
 
             <!-- Submit Button -->
-            <button type="submit" class="btn btn-accent btn-block" id="btnSubmitNew" style="margin-top: 25px; padding: 14px; font-size: 1rem; background: #10b981; border-color: #10b981;" disabled>
-                <i class="fas fa-qrcode"></i> Submit Pre-Registration
+            <div id="newSeniorValidationSummary" class="alert-banner alert-banner-error" role="alert" aria-live="assertive" hidden style="margin-top:25px;"></div>
+            <button type="submit" class="btn btn-accent btn-block" id="btnSubmitNew" style="margin-top: 25px; padding: 14px; font-size: 1rem; background: #10b981; border-color: #10b981;">
+                <i class="fas fa-qrcode"></i> <?php echo $benefitPortalMode ? 'Submit Application' : 'Submit Pre-Registration'; ?>
             </button>
             </div><!-- /#publicApplicationBody -->
         </form>
@@ -1306,12 +1379,11 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             const birthDateInput = document.getElementById('birthDate');
             const ageCheckStatus = document.getElementById('ageCheckStatus');
             const uploadSlotsContainer = document.getElementById('uploadSlotsContainer');
-            const submitBtn = document.getElementById('btnSubmitNew');
             
             if (!birthDateInput.value) {
                 ageCheckStatus.innerHTML = '';
                 uploadSlotsContainer.classList.add('disabled');
-                submitBtn.disabled = true;
+                birthDateInput.setCustomValidity('');
                 syncMilestoneEligibility(null);
                 return;
             }
@@ -1322,17 +1394,24 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             const minimumAge = Number(PUBLIC_BENEFIT_CONFIG[selectedBenefit]?.minimum_age || 60);
             const benefitEligible = age !== null && age >= minimumAge &&
                 (selectedBenefit !== 'Milestone Cash Gift' || milestoneEligible);
+            birthDateInput.setCustomValidity(benefitEligible
+                ? ''
+                : (age === null
+                    ? 'Enter a valid birth date that is not in the future.'
+                    : `The applicant must be at least ${minimumAge} years old for this service.`));
 
             if (benefitEligible) {
                 // Pass Rule
                 ageCheckStatus.innerHTML = `<span style="color: #059669; font-weight: 600;"><i class="fas fa-check-circle"></i> Eligible for the selected service (Current age: ${age} years old)</span>`;
                 uploadSlotsContainer.classList.remove('disabled');
                 
-                // Remove disabled state from file inputs
+                // Enable only visible document inputs. Hidden purpose-specific
+                // inputs must remain disabled or browser validation can block
+                // submission without showing the user which field is missing.
                 uploadSlotsContainer.querySelectorAll('input[type="file"]').forEach(input => {
-                    input.removeAttribute('disabled');
+                    const slot = input.closest('.upload-slot');
+                    input.disabled = Boolean(slot?.hidden);
                 });
-                submitBtn.disabled = false;
             } else {
                 // Fail Rule
                 let reason = 'Enter a valid birth date that is not in the future.';
@@ -1345,7 +1424,6 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 uploadSlotsContainer.querySelectorAll('input[type="file"]').forEach(input => {
                     input.setAttribute('disabled', 'true');
                 });
-                submitBtn.disabled = true;
             }
         }
 
@@ -1461,7 +1539,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
 
         function selectRequestedBenefit(value, selectedCard) {
             const select = document.getElementById('requestedBenefit');
-            if (!select) return;
+            if (!select || selectedCard?.disabled || selectedCard?.dataset.residencyLocked === 'true') return;
             select.value = value;
             const config = PUBLIC_BENEFIT_CONFIG[value];
             document.querySelectorAll('.benefit-choice-card').forEach(card => {
@@ -1493,7 +1571,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
         function updateRequiredDocuments(selectedBenefit) {
             const documentRequirements = Object.fromEntries(Object.entries(PUBLIC_BENEFIT_CONFIG).map(([request, definition]) => [
                 request,
-                (definition.form_documents || []).filter(document => !document.extra).map(document => [document.label, document.description])
+                (definition.form_documents || []).filter(document => !document.extra).map(document => [document.label, document.description, Boolean(document.optional)])
             ]));
             const fallback = [
                 ['Required identity document', 'Select a benefit or service to see the exact identity document required.'],
@@ -1504,9 +1582,20 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             ['primary', 'secondary', 'supporting'].forEach((role, index) => {
                 const label = document.querySelector(`[data-document-label="${role}"]`);
                 const description = document.querySelector(`[data-document-description="${role}"]`);
-                const requirement = requirements[index] || fallback[index];
+                const slot = document.querySelector(`[data-document-slot="${role}"]`);
+                const requiredMark = slot?.querySelector('.req');
+                const input = slot?.querySelector('input[type="file"]');
+                const requirement = requirements[index];
+                if (slot) slot.hidden = !requirement;
+                if (!requirement) {
+                    if (input) { input.required = false; input.disabled = true; }
+                    return;
+                }
                 if (label) label.textContent = requirement[0];
                 if (description) description.textContent = requirement[1];
+                const isOptional = Boolean(requirement[2]);
+                if (requiredMark) requiredMark.hidden = isOptional;
+                if (input) input.required = !isOptional;
             });
             const supportingInput = document.getElementById('comelec_cert_file');
             if (supportingInput) {
@@ -1545,7 +1634,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             const purpose = document.getElementById('idPurpose')?.value || 'new';
             const configurations = {
                 new: [
-                    ['PSA Birth Certificate', 'Upload the original or a clear copy of the birth certificate.'],
+                    ['Birth Cert / Negative of Birth', 'Upload a birth certificate or, if unavailable, a Negative of Birth certification.'],
                     ['Original Barangay Residency Certificate', 'Upload the current original barangay residency certificate.']
                 ],
                 change: [
@@ -1557,7 +1646,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 ],
                 transfer: [
                     ['Certificate of Cancellation from Previous OSCA', 'Required when transferring from another city or municipality.'],
-                    ['Birth Certificate', 'Upload the senior citizen’s birth certificate.'],
+                    ['Birth Cert / Negative of Birth', 'Upload a birth certificate or, if unavailable, a Negative of Birth certification.'],
                     ['Original Barangay Residency Certificate', 'Upload the current Pasig barangay residency certificate.']
                 ]
             };
@@ -1576,10 +1665,28 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 if (slot) slot.hidden = !enabled;
                 if (input) { input.disabled = !enabled; input.required = enabled; }
             });
+
+            // An ID photo is a server-side requirement for every Senior Citizen
+            // ID application, so keep it visible and required regardless of the
+            // selected application purpose.
+            const idPhotoSlot = document.getElementById('idPhotoUploadSlot');
+            const idPhotoInput = document.getElementById('id_photo_file');
+            if (idPhotoSlot) idPhotoSlot.hidden = false;
+            if (idPhotoInput) {
+                idPhotoInput.disabled = false;
+                idPhotoInput.required = true;
+            }
+            const identityHeading = document.getElementById('identityDocumentsHeading');
+            if (identityHeading) identityHeading.hidden = false;
+            const validIdSlot = document.getElementById('validIdUploadSlot');
+            const validIdInput = document.getElementById('valid_id_file');
+            if (validIdSlot) validIdSlot.hidden = false;
+            if (validIdInput) { validIdInput.disabled = false; validIdInput.required = true; }
         }
 
         document.getElementById('newSeniorForm')?.addEventListener('submit', event => {
             syncCompleteAddress();
+            const validationSummary = document.getElementById('newSeniorValidationSummary');
             if (!document.getElementById('requestedBenefit')?.value) {
                 event.preventDefault();
                 const grid = document.getElementById('benefitChoiceGrid');
@@ -1590,8 +1697,24 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             }
             if (!event.currentTarget.checkValidity()) {
                 event.preventDefault();
-                event.currentTarget.reportValidity();
+                const visibleInvalidControls = Array.from(event.currentTarget.querySelectorAll(':invalid'))
+                    .filter(control => !control.disabled && !control.closest('[hidden]') && control.offsetParent !== null);
+                const firstInvalid = visibleInvalidControls[0];
+                const invalidFields = visibleInvalidControls
+                    .map(control => {
+                        const label = event.currentTarget.querySelector(`label[for="${CSS.escape(control.id)}"]`);
+                        return (label?.textContent || control.name || 'Required field').replace('*', '').trim();
+                    });
+                if (validationSummary) {
+                    validationSummary.hidden = false;
+                    validationSummary.innerHTML = `<i class="fas fa-exclamation-circle" aria-hidden="true"></i><div><strong>Please complete the following:</strong> ${invalidFields.join(', ')}</div>`;
+                }
+                firstInvalid?.closest('.form-group, .upload-slot, .checkbox-row')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                firstInvalid?.focus({ preventScroll: true });
+                window.showCarelinkResult?.('Please complete the highlighted required field before submitting.', false);
+                return;
             }
+            if (validationSummary) validationSummary.hidden = true;
         });
 
         function updateSelectedFileLink(input) {
@@ -1649,6 +1772,28 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
         updateNewSeniorProgress();
 
         if (document.getElementById('birthDate')?.value) calculateProxyAge2026();
+
+        // Mobile keyboards resize the visual viewport without always updating
+        // the layout viewport. Keep the active field visible and remove sticky
+        // elements while the keyboard occupies the lower part of the screen.
+        const mobileViewport = window.visualViewport;
+        const updateKeyboardState = () => {
+            if (!mobileViewport) return;
+            const keyboardOpen = window.innerHeight - mobileViewport.height > 140;
+            document.body.classList.toggle('mobile-keyboard-open', keyboardOpen);
+        };
+        mobileViewport?.addEventListener('resize', updateKeyboardState);
+        mobileViewport?.addEventListener('scroll', updateKeyboardState);
+        document.getElementById('newSeniorForm')?.querySelectorAll('input, select, textarea').forEach(control => {
+            if (control instanceof HTMLInputElement && !control.enterKeyHint) {
+                control.enterKeyHint = control.type === 'email' ? 'next' : 'next';
+            }
+            control.addEventListener('focus', () => window.setTimeout(() => {
+                if (window.matchMedia('(max-width: 600px)').matches) {
+                    control.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 280));
+        });
 
     </script>
 
@@ -1792,7 +1937,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             <div class="qr-image-wrapper" style="border-color:#bfdbfe; background:#f0f7ff;">
                 <img src="<?php echo htmlspecialchars($proxyQrUrl); ?>" alt="Benefit Tracking Receipt">
                 <div>
-                    <span class="qr-token-label" style="background:#dbeafe; color:#1e40af;">CLAIM ID: <?php echo htmlspecialchars($proxyTransactionId); ?></span>
+                    <span class="qr-token-label" style="background:#dbeafe; color:#1e40af;">PERMANENT TOKEN ID: <?php echo htmlspecialchars($proxyTransactionId); ?></span>
                 </div>
             </div>
 
@@ -1800,7 +1945,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 <i class="fas fa-info-circle" style="color:#16a34a;"></i>
                 <div>
                     <h5 style="color:#14532d;">Tracking Access Activated</h5>
-                    <p style="color:#15803d;">You can now track this claim's review and disbursement status at any time by entering this Claim ID on the public tracking portal.</p>
+                    <p style="color:#15803d;">Use this senior citizen's permanent Token ID to track this service and every future application from the service selector.</p>
                 </div>
             </div>
 

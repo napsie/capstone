@@ -3,6 +3,7 @@ session_start();
 require_once 'includes/db_connect.php';
 require_once 'includes/audit_logger.php';
 require_once 'includes/barangays_list.php';
+require_once 'includes/system_branding.php';
 
 $loginView = in_array($_GET['view'] ?? '', ['staff', 'admin'], true) ? $_GET['view'] : '';
 $loginError = '';
@@ -41,14 +42,14 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
     $selector = $rememberParts[0] ?? '';
     $validator = $rememberParts[1] ?? '';
 
-    $stmt = $conn->prepare("SELECT * FROM remember_tokens WHERE selector = :selector AND expires > NOW()");
+    $stmt = $conn->prepare("SELECT id, user_id, validator_hash FROM remember_tokens WHERE selector = :selector AND expires > NOW() LIMIT 1");
     $stmt->execute(['selector' => $selector]);
     $token = $stmt->fetch();
 
     if ($token && $validator !== '') {
         if (hash_equals($token['validator_hash'], hash('sha256', $validator))) {
             // Token is valid, log in the user
-            $stmt = $conn->prepare("SELECT * FROM users WHERE id = :id AND (is_archived = 0 OR is_archived IS NULL)");
+            $stmt = $conn->prepare("SELECT id, username, first_name, last_name, role, barangay, profile_picture FROM users WHERE id = :id AND (is_archived = 0 OR is_archived IS NULL)");
             $stmt->execute(['id' => $token['user_id']]);
             $user = $stmt->fetch();
 
@@ -94,37 +95,6 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
     setcookie('remember_me', '', time() - 3600, "/");
 }
 
-// Original remember_user cookie handling (to be removed or updated if still needed for old cookies)
-// This block should be removed if only the new remember_me cookie is used.
-// For now, I'm keeping it commented out to show the old logic.
-/*
-if (isset($_COOKIE['remember_user'])) {
-    $cookie_value = base64_decode($_COOKIE['remember_user']);
-    list($user_id, $username) = explode('|', $cookie_value);
-
-    if (!empty($user_id) && !empty($username)) {
-        $stmt = $conn->prepare("SELECT * FROM users WHERE id = :id AND username = :username");
-        $stmt->execute(['id' => $user_id, 'username' => $username]);
-        $user = $stmt->fetch();
-
-        if ($user) {
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['username'] = $user['username'];
-            $_SESSION['first_name'] = $user['first_name'];
-            $_SESSION['last_name'] = $user['last_name'];
-            $_SESSION['role'] = $user['role'];
-
-            if ($user['role'] === 'barangay_staff') {
-                header("Location: pages/Barangay_Dash.php");
-            } else {
-                header("Location: pages/Department_Dashboard.php");
-            }
-            exit;
-        }
-    }
-}
-*/
-
 // Unified role login: authentication stays on this landing page while only
 // the portal panel content changes between role choices and login forms.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_role'])) {
@@ -138,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_role'])) {
         $loginError = 'Please fill in all required fields.';
     } else {
         $role = $loginView === 'staff' ? 'barangay_staff' : 'department_admin';
-        $sql = "SELECT * FROM users WHERE username = :username AND role = :role AND (is_archived = 0 OR is_archived IS NULL)";
+        $sql = "SELECT id, username, password, first_name, last_name, role, barangay, profile_picture FROM users WHERE username = :username AND role = :role AND (is_archived = 0 OR is_archived IS NULL)";
         $params = ['username' => $username, 'role' => $role];
         if ($role === 'barangay_staff') {
             $sql .= ' AND barangay = :barangay';
@@ -205,8 +175,8 @@ header('Expires: 0');
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/seniorlink-public.css?v=1">
-    <link rel="stylesheet" href="assets/css/landing.css?v=33">
-    <link rel="stylesheet" href="assets/css/seniorlink-ui.css?v=17">
+    <link rel="stylesheet" href="assets/css/landing.css?v=34">
+    <link rel="stylesheet" href="assets/css/seniorlink-ui.css?v=20">
     <script src="assets/js/modal-hci.js?v=2" defer></script>
 </head>
 <body>
@@ -217,7 +187,7 @@ header('Expires: 0');
     <header class="site-header">
         <div class="site-header-inner">
             <a class="brand" href="index.php" aria-label="SENIORLINK home">
-                <img class="brand-logo" src="images/LOGO.jpg" alt="SENIORLINK logo">
+                <img class="brand-logo" src="<?php echo htmlspecialchars(systemLogoUrl($conn, '.')); ?>" alt="SENIORLINK logo">
                 <div class="brand-text">
                     <h1><span>SENIOR</span><span>LINK</span></h1>
                     <p>Centralized Profiling System</p>
@@ -250,7 +220,7 @@ header('Expires: 0');
                     </span>
                     <span class="hero-track-copy">
                         <strong>Track your application</strong>
-                        <small>Check status using your PRX or PEN code</small>
+                        <small>Check status using your permanent PRX Token ID</small>
                     </span>
                     <i class="fas fa-arrow-right hero-track-arrow" aria-hidden="true"></i>
                 </a>
@@ -404,29 +374,79 @@ header('Expires: 0');
                 </div>
                 <button class="close-btn" type="button" aria-label="Close application tracker">&times;</button>
             </div>
-            <p class="track-intro">Enter the short PRX or PEN code provided after submission.</p>
+            <p class="track-intro">Enter your permanent PRX Token ID, scan your QR code, or upload a QR image to check your application status.</p>
             <form class="portal-tracker track-modal-form" action="pages/benefit_tracker.php" method="get">
-                <label for="landingTrackerToken">Application code</label>
+                <label for="landingTrackerToken">Permanent PRX Token ID</label>
                 <div class="portal-tracker-controls">
-                    <input id="landingTrackerToken" name="token" type="text" placeholder="PRX-7K2M or PEN-4X9P"
-                           maxlength="24" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
+                    <input id="landingTrackerToken" name="token" type="text" placeholder="Enter PRX Token ID (e.g., PRX-7K2M)"
+                           maxlength="16" autocomplete="off" autocapitalize="characters" spellcheck="false" pattern="PRX-[A-Za-z0-9]{4,12}" required>
                     <button type="submit"><span>Check Status</span><i class="fas fa-arrow-right" aria-hidden="true"></i></button>
                 </div>
+                <div class="tracking-qr-actions" aria-label="QR tracking options">
+                    <button type="button" id="landingScanQr"><i class="fas fa-camera" aria-hidden="true"></i> Scan QR Code</button>
+                    <button type="button" id="landingUploadQr"><i class="fas fa-image" aria-hidden="true"></i> Upload QR Image</button>
+                    <button type="button" id="landingStopQr" hidden><i class="fas fa-stop" aria-hidden="true"></i> Stop Camera</button>
+                </div>
+                <input id="landingQrFile" type="file" accept="image/*" hidden>
+                <div id="landingQrReader" class="landing-qr-reader" hidden></div>
+                <small id="landingQrStatus" class="landing-qr-status" role="status" aria-live="polite"></small>
                 <small class="track-help"><i class="fas fa-shield-halved" aria-hidden="true"></i> Your code is used only to retrieve the application status.</small>
             </form>
         </div>
     </div>
 
+    <script src="assets/js/vendor/html5-qrcode.min.js"></script>
     <script>
         (() => {
             const trigger = document.getElementById('trackLink');
             const modal = document.getElementById('trackModal');
             const closeButton = modal?.querySelector('.close-btn');
             const input = document.getElementById('landingTrackerToken');
+            const form = modal?.querySelector('.track-modal-form');
+            const scanButton = document.getElementById('landingScanQr');
+            const uploadButton = document.getElementById('landingUploadQr');
+            const stopButton = document.getElementById('landingStopQr');
+            const fileInput = document.getElementById('landingQrFile');
+            const reader = document.getElementById('landingQrReader');
+            const scannerStatus = document.getElementById('landingQrStatus');
+            let scanner = null;
+            let cameraRunning = false;
             let previousFocus = null;
 
-            const closeTracker = () => {
+            const setScannerStatus = (message, type = '') => {
+                if (!scannerStatus) return;
+                scannerStatus.textContent = message;
+                scannerStatus.dataset.type = type;
+            };
+
+            const extractPrx = decoded => String(decoded || '').toUpperCase().match(/PRX-[A-Z0-9]{4,12}/)?.[0] || '';
+
+            const stopScanner = async () => {
+                if (scanner && cameraRunning) {
+                    try { await scanner.stop(); } catch (error) {}
+                }
+                cameraRunning = false;
+                if (reader) reader.hidden = true;
+                if (stopButton) stopButton.hidden = true;
+                if (scanButton) scanButton.hidden = false;
+                try { scanner?.clear(); } catch (error) {}
+            };
+
+            const useQrResult = async decoded => {
+                const token = extractPrx(decoded);
+                if (!token) {
+                    setScannerStatus('This QR image does not contain a valid permanent PRX Token ID.', 'error');
+                    return;
+                }
+                input.value = token;
+                await stopScanner();
+                setScannerStatus('PRX Token ID detected. Retrieving tracking information…', 'success');
+                form?.requestSubmit();
+            };
+
+            const closeTracker = async () => {
                 if (!modal) return;
+                await stopScanner();
                 modal.setAttribute('aria-hidden', 'true');
                 document.body.style.overflow = '';
                 previousFocus?.focus();
@@ -443,6 +463,39 @@ header('Expires: 0');
 
             trigger?.addEventListener('click', openTracker);
             closeButton?.addEventListener('click', closeTracker);
+            scanButton?.addEventListener('click', async () => {
+                if (typeof Html5Qrcode !== 'function') {
+                    setScannerStatus('QR scanner could not load. Enter the PRX Token ID manually.', 'error');
+                    return;
+                }
+                scanner ||= new Html5Qrcode('landingQrReader');
+                reader.hidden = false;
+                setScannerStatus('Allow camera access, then center the QR code in the frame.');
+                try {
+                    await scanner.start({facingMode:'environment'}, {fps:10, qrbox:{width:220,height:220}}, useQrResult, () => {});
+                    cameraRunning = true;
+                    scanButton.hidden = true;
+                    stopButton.hidden = false;
+                } catch (error) {
+                    reader.hidden = true;
+                    setScannerStatus('Camera unavailable. Allow camera access or upload a QR image instead.', 'error');
+                }
+            });
+            stopButton?.addEventListener('click', async () => {
+                await stopScanner();
+                setScannerStatus('Camera stopped.');
+            });
+            uploadButton?.addEventListener('click', () => fileInput?.click());
+            fileInput?.addEventListener('change', async () => {
+                const file = fileInput.files?.[0];
+                if (!file || typeof Html5Qrcode !== 'function') return;
+                await stopScanner();
+                scanner ||= new Html5Qrcode('landingQrReader');
+                setScannerStatus('Reading PRX Token ID from the QR image…');
+                try { await useQrResult(await scanner.scanFile(file, true)); }
+                catch (error) { setScannerStatus('No valid PRX QR code was found in that image.', 'error'); }
+                fileInput.value = '';
+            });
             modal?.addEventListener('click', event => {
                 if (event.target === modal) closeTracker();
             });

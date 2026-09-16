@@ -16,18 +16,15 @@ $error = '';
 
 // Fetch user data and settings
 try {
-    $stmt = $conn->prepare("SELECT u.*, s.language, s.notifications FROM users u LEFT JOIN settings s ON u.id = s.user_id WHERE u.id = :id");
+    $stmt = $conn->prepare("SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.username, u.password,
+                                  u.role, u.barangay, u.profile_picture, s.language, s.notifications
+                           FROM users u LEFT JOIN settings s ON u.id = s.user_id WHERE u.id = :id");
     $stmt->execute(['id' => $user_id]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    $stmt = $conn->prepare("SELECT * FROM notifications ORDER BY created_at DESC");
-    $stmt->execute();
-    $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
     $error = "Error fetching data: " . $e->getMessage();
     $user = [];
-    $notifications = [];
 }
 
 // Handle Profile Update
@@ -43,7 +40,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateProfile'])) {
         $stmt = $conn->prepare("UPDATE users SET first_name = :first_name, last_name = :last_name, email = :email, phone = :phone WHERE id = :id");
         $stmt->execute(['first_name' => $firstName, 'last_name' => $lastName, 'email' => $email, 'phone' => $phone ?: null, 'id' => $user_id]);
         $message = "Profile updated successfully!";
-        $stmt = $conn->prepare("SELECT u.*, s.language, s.notifications FROM users u LEFT JOIN settings s ON u.id = s.user_id WHERE u.id = :id");
+        $stmt = $conn->prepare("SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.username, u.password,
+                                      u.role, u.barangay, u.profile_picture, s.language, s.notifications
+                               FROM users u LEFT JOIN settings s ON u.id = s.user_id WHERE u.id = :id");
         $stmt->execute(['id' => $user_id]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
@@ -333,7 +332,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updatePassword'])) {
             font-weight: 600;
         }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=16">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
 </head>

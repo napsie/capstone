@@ -2217,3 +2217,219 @@ html, body { max-width: 100%; }
         min-height: 48px;
     }
 }
+
+/* System-wide responsive HCI polish. */
+html { -webkit-text-size-adjust: 100%; }
+:where(input, select, textarea, button) { font-family: inherit; }
+:where(.table-wrap, .table-responsive, .elig-table-wrap, .records-table-wrap) {
+    max-width: 100%; overscroll-behavior-inline: contain; scrollbar-gutter: stable;
+    -webkit-overflow-scrolling: touch;
+}
+@media (max-width: 768px) {
+    body { min-width: 0; overflow-x: hidden; }
+    :where(.main-content, .main-content.collapsed) {
+        width: 100% !important; max-width: 100% !important; margin-left: 0 !important;
+        padding: 18px 12px max(28px, env(safe-area-inset-bottom)) !important;
+    }
+    :where(.page-shell, .shell, .content-wrapper, .dashboard-container, .settings-container) {
+        width: 100% !important; max-width: 100% !important; min-width: 0 !important;
+    }
+    :where(.page-header, .content-header, .panel-head, .card-header, .section-header) {
+        min-width: 0; gap: 12px !important;
+    }
+    :where(.page-header h1, .content-header h1) {
+        font-size: clamp(1.45rem, 7vw, 1.85rem) !important; line-height: 1.15 !important;
+        overflow-wrap: anywhere;
+    }
+    .header-user { width: 100% !important; max-width: 100% !important; min-width: 0 !important; }
+    .header-user-info { min-width: 0; }
+    .header-user-info :where(h3, p) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    :where(.panel, .content-card, .table-card, .settings-card, .form-card, .card) {
+        max-width: 100%; border-radius: 12px !important;
+    }
+    :where(.queue-filters, .audit-filters, .record-filters, .filters, .filter-bar,
+           .search-filter, .page-tools, .toolbar, .toolbar-actions, .form-actions) {
+        width: 100%; max-width: 100%; min-width: 0;
+    }
+    :where(.queue-filters, .audit-filters, .record-filters, .filters, .filter-bar, .search-filter) {
+        display: grid !important; grid-template-columns: minmax(0, 1fr) !important; gap: 10px !important;
+    }
+    :where(.queue-filters, .audit-filters, .record-filters, .filters, .filter-bar, .search-filter, .page-tools)
+        :where(.field, .form-group, label, input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+        width: 100% !important; max-width: 100% !important; min-width: 0 !important;
+    }
+    :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea) { font-size: 16px !important; }
+    :where(.table-wrap, .table-responsive, .elig-table-wrap, .records-table-wrap, .card:has(> table)) {
+        overflow-x: auto !important; border-radius: 12px;
+    }
+    :where(.table-wrap, .table-responsive, .elig-table-wrap, .records-table-wrap, .card:has(> table)) table {
+        min-width: 720px;
+    }
+    :where(.table-wrap, .table-responsive, .elig-table-wrap, .records-table-wrap, .card:has(> table)) thead th {
+        position: sticky; top: 0; z-index: 2; background: #f8fafc;
+    }
+    :where(.pagination, .server-pagination, .pagination-bar, .pagination-links) {
+        width: 100%; max-width: 100%; display: flex !important; align-items: center;
+        justify-content: center !important; flex-wrap: wrap; gap: 8px !important;
+    }
+    :where(.pagination, .server-pagination, .pagination-bar, .pagination-links) :where(a, button) {
+        min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
+    }
+    :where(.row-actions, .action-buttons, .toolbar-actions, .form-actions) {
+        flex-wrap: wrap !important; gap: 8px !important;
+    }
+    :where(.toast, .notification, .alert-message) {
+        right: 12px !important; left: 12px !important; width: auto !important; max-width: none !important;
+    }
+    :where(.floating-action, .floating-menu, .floating-help, .more-options-btn) {
+        right: max(14px, env(safe-area-inset-right)) !important;
+        bottom: max(14px, env(safe-area-inset-bottom)) !important;
+    }
+}
+@media (max-width: 480px) {
+    :where(.main-content, .main-content.collapsed) { padding-inline: 10px !important; }
+    :where(.panel, .content-card, .table-card, .settings-card, .form-card) { padding: 16px 14px !important; }
+    :where(.toolbar, .toolbar-actions, .form-actions):not(.row-actions) { align-items: stretch !important; }
+    :where(.toolbar, .toolbar-actions, .form-actions):not(.row-actions) > :where(a, button, .btn) { min-height: 46px; }
+    :where(.empty, .empty-state) { padding: 32px 16px !important; }
+}
+@media (max-height: 560px) and (orientation: landscape) {
+    :where(.modal-overlay, .modal, .cl-modal, .about-modal, .archive-detail-overlay, .id-modal, .action-modal) {
+        align-items: flex-start !important; overflow-y: auto !important;
+    }
+}
+
+/* Desktop design-system pass: consistent rhythm without changing page behavior. */
+@media (min-width: 769px) {
+    :where(.main-content, .main-content.collapsed) {
+        padding-top: 28px;
+        padding-right: clamp(24px, 2.4vw, 42px);
+        padding-bottom: 40px;
+        padding-left: clamp(24px, 2.4vw, 42px);
+    }
+
+    :where(.page-shell, .shell, .content-wrapper, .settings-container) {
+        width: 100%;
+        max-width: 1440px;
+        margin-inline: auto;
+    }
+
+    :where(.page-header, .content-header) {
+        min-height: 76px;
+        margin-bottom: 22px;
+        padding: 14px 18px;
+        border: 1px solid var(--sl-border);
+        border-radius: var(--sl-radius-lg);
+        background: var(--sl-surface);
+        box-shadow: var(--sl-shadow-sm);
+    }
+
+    :where(.page-header h1, .content-header h1) {
+        margin: 0;
+        color: var(--sl-primary-900);
+        font-size: clamp(1.55rem, 1.8vw, 2rem);
+        font-weight: 800;
+        line-height: 1.15;
+    }
+
+    :where(.page-header .greeting, .content-header .eyebrow) {
+        margin-bottom: 4px;
+        color: var(--sl-text-muted);
+        font-size: .82rem;
+        font-weight: 600;
+    }
+
+    .header-user {
+        min-width: 230px;
+        padding: 7px 12px !important;
+        border: 1px solid var(--sl-border) !important;
+        border-radius: 999px !important;
+        background: var(--sl-surface-soft) !important;
+        box-shadow: none !important;
+    }
+
+    :where(.panel, .content-card, .table-card, .settings-card, .form-card) {
+        border: 1px solid var(--sl-border);
+        border-radius: var(--sl-radius-lg);
+        background: var(--sl-surface);
+        box-shadow: var(--sl-shadow-sm);
+    }
+
+    :where(.panel-head, .card-header, .section-header) {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--sl-border);
+        background: var(--sl-surface-soft);
+    }
+
+    :where(.queue-filters, .audit-filters, .record-filters, .filters, .filter-bar, .search-filter, .page-tools) {
+        gap: 12px;
+        padding: 14px 16px;
+        border: 1px solid var(--sl-border);
+        border-radius: var(--sl-radius-md);
+        background: var(--sl-surface);
+        box-shadow: var(--sl-shadow-sm);
+    }
+
+    :where(.queue-filters, .audit-filters, .record-filters, .filters, .filter-bar, .search-filter)
+        :where(input:not([type="checkbox"]):not([type="radio"]), select) {
+        min-height: 44px;
+        background: #fff;
+    }
+
+    :where(.table-wrap, .table-responsive, .elig-table-wrap, .records-table-wrap, .card:has(> table)) {
+        overflow: auto;
+        border: 1px solid var(--sl-border);
+        border-radius: var(--sl-radius-md);
+        background: #fff;
+    }
+
+    :where(.table-wrap, .table-responsive, .elig-table-wrap, .records-table-wrap, .card:has(> table)) table {
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    :where(.table-wrap, .table-responsive, .elig-table-wrap, .records-table-wrap, .card:has(> table)) th {
+        padding: 12px 16px;
+        color: #52657a;
+        background: #f6f8fb;
+        border-bottom: 1px solid var(--sl-border);
+        font-size: .72rem;
+        font-weight: 750;
+        letter-spacing: .045em;
+    }
+
+    :where(.table-wrap, .table-responsive, .elig-table-wrap, .records-table-wrap, .card:has(> table)) td {
+        padding: 14px 16px;
+        border-bottom: 1px solid #e8edf3;
+        vertical-align: middle;
+    }
+
+    :where(.table-wrap, .table-responsive, .elig-table-wrap, .records-table-wrap, .card:has(> table)) tbody tr:last-child td {
+        border-bottom: 0;
+    }
+
+    @media (hover: hover) {
+        :where(.table-wrap, .table-responsive, .elig-table-wrap, .records-table-wrap, .card:has(> table)) tbody tr:hover {
+            background: #f4f8fc;
+        }
+    }
+
+    :where(.pagination, .server-pagination, .pagination-bar, .pagination-links) {
+        margin-top: 18px;
+        gap: 8px;
+    }
+
+    :where(.pagination, .server-pagination, .pagination-bar, .pagination-links) :where(a, button) {
+        min-width: 40px;
+        min-height: 40px;
+        border: 1px solid var(--sl-border-strong);
+        border-radius: var(--sl-radius-sm);
+        background: #fff;
+    }
+
+    :where(.row-actions, .action-buttons, .toolbar-actions, .form-actions) {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+    }
+}

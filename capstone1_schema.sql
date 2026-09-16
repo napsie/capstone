@@ -200,11 +200,21 @@ CREATE TABLE `applications` (
   `home_visitation_form`       varchar(255) DEFAULT NULL,
   `landbank_enrollment_form`   varchar(255) DEFAULT NULL,
   `parent_senior_id`           varchar(50)  DEFAULT NULL,
+  `root_prx_identity`          varchar(255) GENERATED ALWAYS AS (
+    CASE WHEN `application_type` = 'senior' AND COALESCE(`parent_senior_id`, '') = ''
+      THEN NULLIF(UPPER(TRIM(`proxy_token`)), '') ELSE NULL END
+  ) PERSISTENT,
+  `root_senior_id_identity`    varchar(50) GENERATED ALWAYS AS (
+    CASE WHEN `application_type` = 'senior' AND COALESCE(`parent_senior_id`, '') = ''
+      THEN NULLIF(UPPER(TRIM(`senior_id_no`)), '') ELSE NULL END
+  ) PERSISTENT,
   `is_archived`                tinyint(1)   NOT NULL DEFAULT 0,
   `archived_at`                datetime     DEFAULT NULL,
   `archived_by`                varchar(100) DEFAULT NULL,
 
   PRIMARY KEY (`id_number`),
+  UNIQUE KEY `uq_root_prx_identity` (`root_prx_identity`),
+  UNIQUE KEY `uq_root_senior_id_identity` (`root_senior_id_identity`),
   KEY `idx_barangay`           (`barangay`),
   KEY `idx_workflow_state`     (`workflow_state`),
   KEY `idx_priority`           (`priority_level`),

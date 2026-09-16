@@ -165,5 +165,5 @@
         });
     }
 
-    window.SeniorlinkFormDrafts = { initialize };
+    window.SeniorlinkFormDrafts = { initialize, clear: deleteDraft };
 })();

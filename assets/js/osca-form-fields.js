@@ -72,11 +72,18 @@ function getOscaFormType(applicationType, requestedBenefit = '') {
  * Populate OSCA extra fields from application API response.
  */
 function populateOscaFields(app, prefix = '') {
+    const setControlValue = (control, val) => {
+        if (!control) return;
+        if (control.tagName === 'SELECT' && !Array.from(control.options).some(option => option.value === String(val))) {
+            control.add(new Option(`Existing record: ${val}`, val));
+        }
+        control.value = val;
+    };
     const set = (name, val) => {
         if (val == null || val === '') return;
         const el = document.getElementById(prefix + name);
-        if (el) el.value = val;
-        document.querySelectorAll(`[data-populate-field="${name}"]`).forEach(field => { field.value = val; });
+        setControlValue(el, val);
+        document.querySelectorAll(`[data-populate-field="${name}"]`).forEach(field => setControlValue(field, val));
     };
     const setCheckboxes = (name, val) => {
         if (!val) return;
@@ -127,7 +134,6 @@ function populateOscaFields(app, prefix = '') {
     set('maintenanceSpec', app.maintenance_spec);
     set('visitSummary', app.visit_summary);
     set('nameOnCard', app.name_on_card);
-    set('tin', app.tin);
     set('idTypePresented', app.id_type_presented);
     set('nationality', app.nationality);
     set('sourceOfFunds', app.source_of_funds);

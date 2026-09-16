@@ -46,10 +46,7 @@ $id = static fn(string $name): string => $prefix . $name;
         <div class="form-group"><label for="<?php echo $id('idPurpose'); ?>">Application Purpose</label><select id="<?php echo $id('idPurpose'); ?>" name="idPurpose"><option value="">Select purpose</option><option value="new">New / First-time</option><option value="lost">Lost ID Replacement</option><option value="change">Information Change</option><option value="transfer">Transfer</option></select></div>
         <div class="form-group"><label for="<?php echo $id('controlNo'); ?>">Control Number</label><input type="text" id="<?php echo $id('controlNo'); ?>" name="controlNo"></div>
     </div>
-    <div class="form-row">
-        <div class="form-group"><label for="<?php echo $id('idTypePresented'); ?>">ID Presented</label><input type="text" id="<?php echo $id('idTypePresented'); ?>" name="idTypePresented"></div>
-        <div class="form-group"><label for="<?php echo $id('tin'); ?>">TIN</label><input type="text" id="<?php echo $id('tin'); ?>" name="tin"></div>
-    </div>
+    <div class="form-group"><label for="<?php echo $id('idTypePresented'); ?>">ID Presented</label><input type="text" id="<?php echo $id('idTypePresented'); ?>" name="idTypePresented"></div>
     <div class="form-group"><label for="<?php echo $id('healthStatus'); ?>">Health Status</label><textarea id="<?php echo $id('healthStatus'); ?>" name="healthStatus" rows="2"></textarea></div>
 </div>
 
@@ -60,7 +57,6 @@ $id = static fn(string $name): string => $prefix . $name;
         <div class="form-group"><label for="<?php echo $id('mothersMaidenName'); ?>-bank">Mother's Maiden Name</label><input type="text" id="<?php echo $id('mothersMaidenName'); ?>-bank" name="mothersMaidenName" data-populate-field="mothersMaidenName"></div>
     </div>
     <div class="form-row">
-        <div class="form-group"><label for="<?php echo $id('tin'); ?>-bank">TIN</label><input type="text" id="<?php echo $id('tin'); ?>-bank" name="tin" data-populate-field="tin"></div>
         <div class="form-group"><label for="<?php echo $id('idTypePresented'); ?>-bank">ID Presented</label><select id="<?php echo $id('idTypePresented'); ?>-bank" name="idTypePresented" data-populate-field="idTypePresented"><option value="">Select ID</option><option>OSCA / Senior Citizen ID</option><option>PhilSys ID</option><option>Passport</option><option>Driver’s License</option><option>Other Government ID</option></select></div>
     </div>
     <div class="form-row">
@@ -93,7 +89,7 @@ $id = static fn(string $name): string => $prefix . $name;
         <div class="form-group"><label for="<?php echo $id('familySupportType'); ?>">Type of Support</label><input type="text" id="<?php echo $id('familySupportType'); ?>" name="familySupportType"></div>
         <div class="form-group"><label for="<?php echo $id('familySupportAmount'); ?>">Cash Amount</label><input type="number" min="0" step="0.01" id="<?php echo $id('familySupportAmount'); ?>" name="familySupportAmount"></div>
     </div>
-    <div class="form-group"><label for="<?php echo $id('healthCondition'); ?>-pension">Condition / Illness</label><input type="text" id="<?php echo $id('healthCondition'); ?>-pension" name="healthCondition" data-populate-field="healthCondition"></div>
+    <div class="form-group"><label for="<?php echo $id('healthCondition'); ?>-pension">Condition / Illness</label><select id="<?php echo $id('healthCondition'); ?>-pension" name="healthCondition" data-populate-field="healthCondition"><option value="">Select condition</option><?php foreach (getHealthConditionOptions() as $condition): ?><option value="<?php echo htmlspecialchars($condition); ?>"><?php echo htmlspecialchars($condition); ?></option><?php endforeach; ?></select></div>
     <div class="form-row">
         <div class="form-group"><label for="<?php echo $id('ownsHouse'); ?>">Owns House?</label><select id="<?php echo $id('ownsHouse'); ?>" name="ownsHouse"><option value="">Select</option><option value="1">Yes</option><option value="0">No</option></select></div>
         <div class="form-group"><label for="<?php echo $id('isRenter'); ?>">Renter?</label><select id="<?php echo $id('isRenter'); ?>" name="isRenter"><option value="">Select</option><option value="1">Yes</option><option value="0">No</option></select></div>
