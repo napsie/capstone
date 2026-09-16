@@ -11,6 +11,7 @@ if (($argv[1] ?? '') === 'cleanup') {
 if (($argv[1] ?? '') === 'private-upload') {
     $conn->exec("USE `$name`");
     $conn->exec("UPDATE applications SET proof_of_life = 'synthetic-private-proof.pdf' WHERE id_number = 'VALID'");
+    $conn->exec("UPDATE applications SET id_image = 'synthetic-id-photo.png' WHERE id_number = 'PRX-BENE'");
     exit;
 }
 $schema = file_get_contents(dirname(__DIR__) . '/capstone1_schema.sql');

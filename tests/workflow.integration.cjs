@@ -64,6 +64,7 @@ async function main() {
     const createdAdmin = await login('test-new-admin', true);
     check((await request('/pages/department_dashboard.php', createdAdmin, undefined, true)).status === 200, 'Created administrator opens its dashboard');
     fs.writeFileSync(path.join(privateStorage, 'uploads', 'synthetic-private-proof.pdf'), '%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\n%%EOF');
+    fs.writeFileSync(path.join(privateStorage, 'uploads', 'synthetic-id-photo.png'), Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLytQAAAABJRU5ErkJggg==', 'base64'));
     fixture('private-upload');
     const deniedPrivateFile = await request('/api/get_document.php?id=VALID&doc_type=proof_of_life', '', undefined, true);
     check(deniedPrivateFile.status === 401, 'Anonymous private document access denied');
@@ -73,6 +74,20 @@ async function main() {
     check(wrongBarangayFile.status === 404, 'Other barangay cannot view private document');
     const retiredPhotoRoute = await request('/api/digital_id_photo.php?token=PRX-BENE', '', undefined, true);
     check(retiredPhotoRoute.status === 410, 'Public token-only photo route is closed');
+    const trackedId = await request('/pages/benefit_tracker.php?token=PRX-BENE&service=senior', '', undefined, true);
+    const trackerCookie = trackedId.headers.getSetCookie().map(cookie => cookie.split(';')[0]).join('; ');
+    const csrfMatch = trackedId.data.match(/name="photo_csrf" value="([a-f0-9]+)"/);
+    check(trackedId.status === 200 && csrfMatch && !trackedId.data.includes('tracker_id_photo.php?id='), 'Tracker hides applicant photo before verification');
+    check((await request('/api/tracker_id_photo.php?id=PRX-BENE', '', undefined, true)).status === 403, 'Applicant photo rejects anonymous requests');
+    const wrongPhone = await request('/pages/benefit_tracker.php?token=PRX-BENE&service=senior', trackerCookie, new URLSearchParams({ reveal_photo: '1', photo_csrf: csrfMatch[1], registered_phone: '09171111111' }), true);
+    check(wrongPhone.status === 200 && wrongPhone.data.includes('mobile number did not match'), 'Wrong mobile number cannot reveal photo');
+    const correctPhone = await request('/pages/benefit_tracker.php?token=PRX-BENE&service=senior', trackerCookie, new URLSearchParams({ reveal_photo: '1', photo_csrf: csrfMatch[1], registered_phone: '09170000000' }), true);
+    check(correctPhone.status === 302, 'Registered mobile number verifies photo access');
+    const verifiedTracker = await request('/pages/benefit_tracker.php?token=PRX-BENE&service=senior', trackerCookie, undefined, true);
+    check(verifiedTracker.data.includes('tracker_id_photo.php?id=PRX-BENE'), 'Verified tracker renders applicant photo');
+    const servedPhoto = await request('/api/tracker_id_photo.php?id=PRX-BENE', trackerCookie, undefined, true);
+    check(servedPhoto.status === 200 && servedPhoto.headers.get('content-type') === 'image/png', 'Verified session can load private applicant photo');
+    check((await request('/api/tracker_id_photo.php?id=VALID', trackerCookie, undefined, true)).status === 403, 'Photo access is limited to verified application');
     const seniorIdPortal = await request('/pages/proxy_registration.php', '', undefined, true);
     check(seniorIdPortal.data.includes('<option value="new"') && seniorIdPortal.data.includes('<option value="transfer"')
         && !seniorIdPortal.data.includes('<option value="change"') && !seniorIdPortal.data.includes('<option value="lost"'),

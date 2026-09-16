@@ -1,7 +1,11 @@
 <?php
+session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/application_types.php';
 require_once '../includes/system_branding.php';
+require_once '../includes/data_normalizer.php';
+
+header('Cache-Control: private, no-store');
 
 $token = strtoupper(preg_replace('/\s+/', '', trim((string)($_GET['token'] ?? ''))));
 $application = null;
@@ -20,13 +24,15 @@ $serviceNotApplied = false;
 $applicantName = '';
 $history = [];
 $error = '';
+$photoAccessError = '';
 
 if ($token !== '') {
     if (!preg_match('/^PRX-[A-Z0-9]{4,12}$/', $token)) {
         $error = 'Enter a valid permanent PRX Token ID, such as PRX-7K2M.';
     } else {
         $stmt = $conn->prepare("SELECT id_number, parent_senior_id, proxy_token, full_name, application_type, requested_benefit, workflow_state, status, home_visit_status, date_submitted, id_purpose,
-                                       senior_id_no, birth_date, complete_address, barangay
+                                       senior_id_no, birth_date, complete_address, barangay, contact_number,
+                                       ((id_image IS NOT NULL AND id_image <> '') OR EXISTS (SELECT 1 FROM application_documents d WHERE d.application_id = applications.id_number AND d.document_key = 'id_image' AND d.is_current = 1)) AS has_id_photo
                                 FROM applications
                                 WHERE (id_number = ? OR proxy_token = ?) AND COALESCE(is_archived, 0) = 0
                                 ORDER BY CASE WHEN id_number = ? THEN 0 ELSE 1 END, date_submitted ASC
@@ -45,7 +51,8 @@ if ($token !== '') {
                 : $token;
             $applicantName = trim((string)($root['full_name'] ?? $matchedApplication['full_name'] ?? ''));
             $servicesStmt = $conn->prepare("SELECT id_number, parent_senior_id, proxy_token, full_name, application_type, requested_benefit, workflow_state, status, home_visit_status, date_submitted, id_purpose,
-                                                   senior_id_no, birth_date, complete_address, barangay
+                                                   senior_id_no, birth_date, complete_address, barangay, contact_number,
+                                                   ((id_image IS NOT NULL AND id_image <> '') OR EXISTS (SELECT 1 FROM application_documents d WHERE d.application_id = applications.id_number AND d.document_key = 'id_image' AND d.is_current = 1)) AS has_id_photo
                                             FROM applications
                                             WHERE (id_number = ? OR parent_senior_id = ? OR (senior_id_no <> '' AND senior_id_no = ?))
                                               AND COALESCE(is_archived, 0) = 0
@@ -54,7 +61,13 @@ if ($token !== '') {
             $applications = $servicesStmt->fetchAll(PDO::FETCH_ASSOC);
             foreach ($applications as $candidate) {
                 $candidateType = (string)($candidate['application_type'] ?? '');
-                if (isset($serviceDefinitions[$candidateType])) $serviceApplications[$candidateType] = $candidate;
+                if (!isset($serviceDefinitions[$candidateType])) continue;
+                // A later ID change request must not replace the primary senior ID.
+                if ($candidateType === 'senior' && (string)$candidate['id_number'] === (string)$root['id_number']) {
+                    $serviceApplications[$candidateType] = $candidate;
+                } elseif (!isset($serviceApplications[$candidateType])) {
+                    $serviceApplications[$candidateType] = $candidate;
+                }
             }
             if ($selectedService === '') $selectedService = (string)($matchedApplication['application_type'] ?? 'senior');
             // Backward compatibility: old tracker links used the application ID
@@ -149,6 +162,37 @@ if ($digitalIdEligible && !empty($application['birth_date'])) {
     try { $digitalIdAge = (new DateTimeImmutable($application['birth_date']))->diff(new DateTimeImmutable('today'))->y; }
     catch (Exception $e) { $digitalIdAge = null; }
 }
+$photoApplicationId = $digitalIdEligible ? (string)$application['id_number'] : '';
+if ($digitalIdEligible && empty($_SESSION['tracker_photo_csrf'])) {
+    $_SESSION['tracker_photo_csrf'] = bin2hex(random_bytes(16));
+}
+if ($digitalIdEligible && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reveal_photo'])) {
+    $csrf = (string)($_POST['photo_csrf'] ?? '');
+    $submittedPhone = normalizePhoneNumber((string)($_POST['registered_phone'] ?? ''));
+    $registeredPhone = normalizePhoneNumber((string)($application['contact_number'] ?? ''));
+    $attempts = $_SESSION['tracker_photo_attempts'][$photoApplicationId] ?? ['count' => 0, 'until' => time() + 900];
+    if (!is_array($attempts) || (int)($attempts['until'] ?? 0) < time()) {
+        $attempts = ['count' => 0, 'until' => time() + 900];
+    }
+    if ($csrf === '' || !hash_equals((string)$_SESSION['tracker_photo_csrf'], $csrf)) {
+        $photoAccessError = 'Please reload the page and try again.';
+    } elseif ((int)$attempts['count'] >= 5) {
+        $photoAccessError = 'Too many attempts. Please try again later.';
+    } elseif (preg_match('/^09\d{9}$/', $submittedPhone) !== 1 || !hash_equals($registeredPhone, $submittedPhone)) {
+        $attempts['count'] = (int)$attempts['count'] + 1;
+        $_SESSION['tracker_photo_attempts'][$photoApplicationId] = $attempts;
+        $photoAccessError = 'The mobile number did not match this application.';
+    } else {
+        unset($_SESSION['tracker_photo_attempts'][$photoApplicationId]);
+        $_SESSION['tracker_photo_access'] = ['id' => $photoApplicationId, 'expires' => time() + 600];
+        header('Location: benefit_tracker.php?token=' . rawurlencode($permanentToken) . '&service=senior#digitalIdTitle');
+        exit;
+    }
+}
+$photoGrant = $_SESSION['tracker_photo_access'] ?? null;
+$photoVerified = $digitalIdEligible && is_array($photoGrant)
+    && hash_equals((string)($photoGrant['id'] ?? ''), $photoApplicationId)
+    && (int)($photoGrant['expires'] ?? 0) > time();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -213,10 +257,17 @@ if ($digitalIdEligible && !empty($application['birth_date'])) {
         .digital-field--address strong { padding-right:5px; font-size:.82rem; line-height:1.22; }
         .digital-photo-wrap { position:relative; display:grid; place-items:center; width:126px; height:150px; overflow:hidden; border:2px solid #334155; background:#e2e8f0; color:#94a3b8; font-size:2.5rem; }
         .digital-id-photo { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center; background:#e2e8f0; }
+        .digital-photo-access { margin:14px 0 0; padding:14px; border:1px solid #cbd5e1; border-radius:10px; background:#fff; }
+        .digital-photo-access label { display:block; margin-bottom:7px; color:#334155; font-size:.84rem; font-weight:700; }
+        .digital-photo-access-row { display:flex; gap:8px; }
+        .digital-photo-access input { flex:1; min-width:0; padding:10px; border:1px solid #94a3b8; border-radius:8px; font-size:16px; }
+        .digital-photo-access button { padding:10px 14px; border:0; border-radius:8px; background:#1d4ed8; color:#fff; font-weight:700; cursor:pointer; }
+        .digital-photo-access-error { margin:8px 0 0; color:#b91c1c; font-size:.84rem; }
         .digital-id-footer { grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr; gap:22px; text-align:center; }
         .digital-id-footer div { border-bottom:1px solid #475569; padding-bottom:3px; font-size:.8rem; font-weight:800; }
         .digital-id-footer span { display:block; border:0; margin-top:4px; color:#475569; font-size:.56rem; font-weight:900; letter-spacing:.05em; }
         .digital-id-notice { margin:12px 0 0; color:#475569; text-align:center; font-size:.74rem; font-weight:700; }
+        @media(max-width:480px){.digital-photo-access-row{flex-direction:column}}
         .timeline { border-left:2px solid #dbe3ef; padding-left:18px; }
         .event { position:relative; margin:0 0 18px; }
         .event::before { content:""; position:absolute; left:-24px; top:5px; width:10px; height:10px; border-radius:50%; background:#2563eb; }
@@ -312,6 +363,9 @@ if ($digitalIdEligible && !empty($application['birth_date'])) {
                                 </div>
                                 <div class="digital-photo-wrap">
                                     <i class="fas fa-user" aria-hidden="true"></i>
+                                    <?php if ($photoVerified && !empty($application['has_id_photo'])): ?>
+                                        <img class="digital-id-photo" src="../api/tracker_id_photo.php?id=<?php echo rawurlencode($photoApplicationId); ?>" alt="Applicant photo">
+                                    <?php endif; ?>
                                 </div>
                                 <div class="digital-id-footer">
                                     <div><?php echo htmlspecialchars(date('m/d/Y', strtotime($application['birth_date']))); ?><?php echo $digitalIdAge !== null ? ' (' . $digitalIdAge . ')' : ''; ?><span>DATE OF BIRTH / AGE</span></div>
@@ -319,6 +373,19 @@ if ($digitalIdEligible && !empty($application['birth_date'])) {
                                 </div>
                             </div>
                         </div>
+                        <?php if (empty($application['has_id_photo'])): ?>
+                            <p class="digital-id-notice">No applicant photo is stored for this application. Please contact the reviewing office to add it.</p>
+                        <?php elseif (!$photoVerified): ?>
+                            <form method="post" class="digital-photo-access" autocomplete="off">
+                                <label for="registered_phone">To show the applicant photo, enter the mobile number registered with this application.</label>
+                                <div class="digital-photo-access-row">
+                                    <input id="registered_phone" name="registered_phone" type="tel" inputmode="tel" autocomplete="off" maxlength="20" required>
+                                    <input type="hidden" name="photo_csrf" value="<?php echo htmlspecialchars((string)$_SESSION['tracker_photo_csrf']); ?>">
+                                    <button type="submit" name="reveal_photo" value="1">Show photo</button>
+                                </div>
+                                <?php if ($photoAccessError !== ''): ?><p class="digital-photo-access-error" role="alert"><?php echo htmlspecialchars($photoAccessError); ?></p><?php endif; ?>
+                            </form>
+                        <?php endif; ?>
                         <p class="digital-id-notice"><i class="fas fa-circle-info" aria-hidden="true"></i> Temporary digital credential only. Use it while waiting for the physical OSCA card.</p>
                     </section>
                 <?php endif; ?>
