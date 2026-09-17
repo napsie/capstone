@@ -4,6 +4,8 @@
         ['proof_of_address', 'Proof of Address', app => app.has_proof_of_address],
         ['id_image', 'ID / Identification Photo', app => app.has_id_image],
         ['psa_birth_cert', 'Birth Cert / Negative of Birth', app => app.psa_birth_cert],
+        ['government_id_front', 'Valid Government ID — Front of ID', app => app.government_id_front],
+        ['government_id_back', 'Valid Government ID — Back of ID', app => app.government_id_back],
         ['barangay_residency', 'Barangay Residency Certificate', app => app.barangay_residency],
         ['comelec_cert', 'COMELEC Certificate', app => app.comelec_cert],
         ['deceased_landbank_card', 'Deceased Landbank Cash Card', app => app.deceased_landbank_card],
@@ -34,7 +36,9 @@
 
     window.renderApplicationDocuments = function (app, appId, options = {}) {
         const storedDocuments = uniqueDocuments(Array.isArray(app.documents) ? app.documents : []);
-        const files = documentDefinitions.filter(([key, , exists]) => Boolean(exists(app)) && !storedDocuments.some(doc => doc.document_key === key));
+        const files = documentDefinitions.filter(([key, , exists]) => Boolean(exists(app))
+            && !(key === 'psa_birth_cert' && app.government_id_front && app.psa_birth_cert === app.government_id_front)
+            && !storedDocuments.some(doc => doc.document_key === key));
         const type = escapeHtml((app.application_type || 'application').replace(/_/g, ' '));
         if (!storedDocuments.length && !files.length) return `<section class="application-documents"><div class="application-documents__header"><div><h3 class="application-documents__title"><i class="fas fa-folder-open" aria-hidden="true"></i> Submitted Documents</h3><p class="application-documents__hint">Documents attached to this application.</p></div><span class="application-documents__count">0 files</span></div><div class="application-documents__empty"><i class="fas fa-file-circle-xmark" aria-hidden="true"></i><span>No documents were submitted for this ${type} application.</span></div></section>`;
 
@@ -45,7 +49,7 @@
                 : `data-document-key="${documentKey}"`;
             return {
                 input: `<div class="application-document__replacement">
-                <label>Replace document<input type="file" accept="image/jpeg,image/png,image/gif,application/pdf" onchange="window.previewDocumentReplacement(this)"></label>
+                <label>Replace document<input type="file" accept="${['government_id_front', 'government_id_back'].includes(documentKey) ? '.png,.jpg,.jpeg,image/png,image/jpeg' : 'image/jpeg,image/png,image/gif,application/pdf'}" onchange="window.previewDocumentReplacement(this)"></label>
                 </div>`,
                 button: `<button type="button" class="application-document__replace-button" ${attributes} data-application-id="${appId}" onclick="window.replaceSubmittedDocument(this)"><i class="fas fa-upload"></i> Save replacement</button>`
             };
@@ -56,7 +60,7 @@
                 const url = `../api/get_document.php?id=${encodeURIComponent(appId)}&document_id=${encodeURIComponent(document.id)}&v=${Date.now()}`;
                 const isPdf = document.mime_type === 'application/pdf';
                 const preview = isPdf ? '<i class="fas fa-file-pdf" aria-hidden="true"></i>' : `<img src="${url}" alt="${label}">`;
-                const replacement = replacementControls(document.id);
+                const replacement = replacementControls(document.id, document.document_key);
                 const fileType = isPdf ? 'PDF' : 'Image';
                 const versions = (app.document_versions || []).filter(item => item.document_key === document.document_key);
                 const versionMeta = `<small class="application-document__version">Version ${Number(document.version || 1)}${document.uploaded_by ? ` · ${escapeHtml(document.uploaded_by)}` : ''}${document.created_at ? ` · ${escapeHtml(new Date(String(document.created_at).replace(' ', 'T')).toLocaleString('en-PH'))}` : ''}</small>`;

@@ -693,6 +693,7 @@ button.portal-card {
 .track-modal-form { margin:0; padding:20px; border:1px solid #d8e4ec; border-radius:16px; background:#f5f9fc; }
 .track-modal-form > label { display:block; margin-bottom:8px; color:var(--text-dark); font-size:.78rem; font-weight:800; }
 .track-help { display: flex; align-items: center; gap: 7px; margin-top: 11px; color: var(--text-light); font-size: .68rem; line-height: 1.4; }
+.track-format-help { display:block; margin-top:7px; color:#475569; font-size:.72rem; line-height:1.4; }
 .track-help i { color: #18864a; }
 .tracking-qr-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:12px; }
 .tracking-qr-actions button { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:10px 14px; border:1px solid #b9cce0; border-radius:10px; background:#fff; color:#164e83; font:inherit; font-size:.76rem; font-weight:800; line-height:1.2; cursor:pointer; box-shadow:0 1px 2px rgba(15,23,42,.04); }

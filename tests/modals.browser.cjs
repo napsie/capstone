@@ -27,7 +27,7 @@ let browser;
     for (const [file, role] of routes) {
         const page = await contexts[role].newPage();
         page.on('pageerror', error => errors.push(file + ': ' + error.message));
-        await page.goto(base + '/pages/' + file);
+        await page.goto(base + '/pages/' + file + (file.includes('records') ? '?search=FORM-senior' : ''));
         const archive = file.includes('archive');
         const modalId = archive ? 'archiveApplicationModal' : 'applicationModal';
         const titleId = archive ? 'archiveApplicationModalTitle' : 'modalAppTitle';
@@ -53,7 +53,9 @@ let browser;
         } else {
             // First exercise the actual table-row event binding.
             const rowId = file.includes('records') ? 'FORM-senior' : 'UI-CORRECTION';
-            await page.locator(`${file.includes('records') ? '.record-row' : '.applicant-row'}[data-id="${rowId}"]`).dispatchEvent('click');
+            const opener = file === 'department_records.php' ? '.view-details-btn'
+                : file === 'barangay_records.php' ? '.view-application-btn' : '.applicant-row';
+            await page.locator(`${opener}[data-id="${rowId}"]`).first().dispatchEvent('click');
             await loaded(rowId === 'FORM-senior' ? 'Sample senior Applicant' : 'Sample Correction Request');
             await close();
             for (const type of ['senior', 'pension', 'national_pension', 'landbank', 'milestone_gift', 'burial', 'home_visit']) {

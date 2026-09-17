@@ -378,10 +378,11 @@ header('Expires: 0');
             <form class="portal-tracker track-modal-form" action="pages/benefit_tracker.php" method="get">
                 <label for="landingTrackerToken">Permanent PRX Token ID</label>
                 <div class="portal-tracker-controls">
-                    <input id="landingTrackerToken" name="token" type="text" placeholder="Enter PRX Token ID (e.g., PRX-7K2M)"
-                           maxlength="16" autocomplete="off" autocapitalize="characters" spellcheck="false" pattern="PRX-[A-Za-z0-9]{4,12}" required>
+                    <input id="landingTrackerToken" name="token" type="text" value="PRX-" aria-describedby="landingTokenHint"
+                           maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
                     <button type="submit"><span>Check Status</span><i class="fas fa-arrow-right" aria-hidden="true"></i></button>
                 </div>
+                <small id="landingTokenHint" class="track-format-help">PRX- is added for you. Enter the remaining 4–12 letters or numbers.</small>
                 <div class="tracking-qr-actions" aria-label="QR tracking options">
                     <button type="button" id="landingScanQr"><i class="fas fa-camera" aria-hidden="true"></i> Scan QR Code</button>
                     <button type="button" id="landingUploadQr"><i class="fas fa-image" aria-hidden="true"></i> Upload QR Image</button>
@@ -396,12 +397,14 @@ header('Expires: 0');
     </div>
 
     <script src="assets/js/vendor/html5-qrcode.min.js"></script>
+    <script src="assets/js/prx-token-input.js"></script>
     <script>
         (() => {
             const trigger = document.getElementById('trackLink');
             const modal = document.getElementById('trackModal');
             const closeButton = modal?.querySelector('.close-btn');
             const input = document.getElementById('landingTrackerToken');
+            window.initPrxTokenInput(input);
             const form = modal?.querySelector('.track-modal-form');
             const scanButton = document.getElementById('landingScanQr');
             const uploadButton = document.getElementById('landingUploadQr');
@@ -420,6 +423,19 @@ header('Expires: 0');
             };
 
             const extractPrx = decoded => String(decoded || '').toUpperCase().match(/PRX-[A-Z0-9]{4,12}/)?.[0] || '';
+            const normalizeTrackerToken = value => String(value || '').normalize('NFKC')
+                .replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, '-')
+                .replace(/\s+/g, '').toUpperCase()
+                .replace(/^PRX(?=[A-Z0-9]{4,12}$)/, 'PRX-');
+            form?.addEventListener('submit', event => {
+                input.value = normalizeTrackerToken(input.value);
+                if (!/^PRX-[A-Z0-9]{4,12}$/.test(input.value)) {
+                    event.preventDefault();
+                    setScannerStatus('Enter the full PRX Token ID, such as PRX-7K2M.', 'error');
+                    input.focus();
+                }
+            });
+            input?.addEventListener('input', () => setScannerStatus(''));
 
             const stopScanner = async () => {
                 if (scanner && cameraRunning) {

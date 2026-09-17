@@ -7,7 +7,11 @@ require_once '../includes/data_normalizer.php';
 
 header('Cache-Control: private, no-store');
 
-$token = strtoupper(preg_replace('/\s+/', '', trim((string)($_GET['token'] ?? ''))));
+$token = strtoupper(preg_replace('/\s+/u', '', str_replace(
+    ['‐', '‑', '‒', '–', '—', '―', '−', '﹘', '﹣', '－'],
+    '-', trim((string)($_GET['token'] ?? ''))
+)) ?? '');
+$token = preg_replace('/^PRX(?=[A-Z0-9]{4,12}$)/', 'PRX-', $token) ?? $token;
 $application = null;
 $applications = [];
 $permanentToken = $token;
@@ -30,7 +34,7 @@ if ($token !== '') {
     if (!preg_match('/^PRX-[A-Z0-9]{4,12}$/', $token)) {
         $error = 'Enter a valid permanent PRX Token ID, such as PRX-7K2M.';
     } else {
-        $stmt = $conn->prepare("SELECT id_number, parent_senior_id, proxy_token, full_name, application_type, requested_benefit, workflow_state, status, home_visit_status, date_submitted, id_purpose,
+        $stmt = $conn->prepare("SELECT id_number, parent_senior_id, proxy_token, full_name, application_type, requested_benefit, workflow_state, status, expected_release_date, home_visit_status, date_submitted, id_purpose,
                                        senior_id_no, birth_date, complete_address, barangay, contact_number,
                                        ((id_image IS NOT NULL AND id_image <> '') OR EXISTS (SELECT 1 FROM application_documents d WHERE d.application_id = applications.id_number AND d.document_key = 'id_image' AND d.is_current = 1)) AS has_id_photo
                                 FROM applications
@@ -50,7 +54,7 @@ if ($token !== '') {
                 ? $rootToken
                 : $token;
             $applicantName = trim((string)($root['full_name'] ?? $matchedApplication['full_name'] ?? ''));
-            $servicesStmt = $conn->prepare("SELECT id_number, parent_senior_id, proxy_token, full_name, application_type, requested_benefit, workflow_state, status, home_visit_status, date_submitted, id_purpose,
+            $servicesStmt = $conn->prepare("SELECT id_number, parent_senior_id, proxy_token, full_name, application_type, requested_benefit, workflow_state, status, expected_release_date, home_visit_status, date_submitted, id_purpose,
                                                    senior_id_no, birth_date, complete_address, barangay, contact_number,
                                                    ((id_image IS NOT NULL AND id_image <> '') OR EXISTS (SELECT 1 FROM application_documents d WHERE d.application_id = applications.id_number AND d.document_key = 'id_image' AND d.is_current = 1)) AS has_id_photo
                                             FROM applications
@@ -138,6 +142,8 @@ foreach (array_reverse($history) as $event) {
         break;
     }
 }
+$expectedReleaseDate = !$serviceNotApplied && in_array($rawStatus, ['Verified', 'Approved', 'Released'], true)
+    ? trim((string)($application['expected_release_date'] ?? '')) : '';
 $isTransferredSenior = isset($root) && strtolower(trim((string)($root['id_purpose'] ?? ''))) === 'transfer';
 $benefitEligibleAt = $isTransferredSenior
     ? date('Y-m-d', strtotime((string)$root['date_submitted'] . ' +2 years'))
@@ -217,6 +223,7 @@ $photoVerified = $digitalIdEligible && is_array($photoGrant)
         .lookup input:focus { outline:3px solid rgba(37,99,235,.2); border-color:#2563eb; }
         .lookup button { min-height:46px; border:0; border-radius:9px; padding:0 18px; background:#178b4b; color:#fff; font-weight:700; cursor:pointer; }
         .lookup button:hover { background:#116f3b; }
+        .token-format-help { grid-column:1 / -1; margin:-3px 0 0; color:#475569; font-size:.85rem; line-height:1.4; }
         .qr-tools { margin:-10px 0 22px; }
         .qr-tools summary { cursor:pointer; color:#1d4ed8; font-weight:700; }
         #trackingQrReader { margin-top:12px; max-width:480px; }
@@ -288,8 +295,9 @@ $photoVerified = $digitalIdEligible && is_array($photoGrant)
         <div class="tracker-body">
             <form method="get" class="lookup">
                 <label for="token" class="sr-only">Application token</label>
-                <input id="token" name="token" value="<?php echo htmlspecialchars($token); ?>" placeholder="Enter PRX Token ID (e.g., PRX-7K2M)" maxlength="16" pattern="PRX-[A-Za-z0-9]{4,12}" autocomplete="off" spellcheck="false" required>
+                <input id="token" name="token" value="<?php echo htmlspecialchars($token ?: 'PRX-'); ?>" aria-describedby="tokenFormatHelp" maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
                 <button type="submit"><i class="fas fa-magnifying-glass" aria-hidden="true"></i> Check Status</button>
+                <small id="tokenFormatHelp" class="token-format-help">PRX- is added for you. Enter the remaining 4–12 letters or numbers.</small>
             </form>
             <details class="qr-tools">
                 <summary><i class="fas fa-camera" aria-hidden="true"></i> Scan QR Code <span aria-hidden="true">|</span> <i class="fas fa-image" aria-hidden="true"></i> Upload QR Image</summary>
@@ -319,7 +327,8 @@ $photoVerified = $digitalIdEligible && is_array($photoGrant)
                     <div class="fact"><span>Request Type</span><?php echo htmlspecialchars($tokenType); ?></div>
                     <div class="fact"><span>Service</span><?php echo htmlspecialchars($serviceLabel); ?></div>
                     <div class="fact"><span>Date Submitted</span><?php echo $application['date_submitted'] ? htmlspecialchars(date('F j, Y g:i A', strtotime($application['date_submitted']))) : '—'; ?></div>
-                    <div class="fact"><span>Releasing Date</span><?php echo $releasedAt !== '' ? htmlspecialchars(date('F j, Y g:i A', strtotime($releasedAt))) : 'Not yet released'; ?></div>
+                    <div class="fact"><span>Expected Release Date</span><?php echo $expectedReleaseDate !== '' ? htmlspecialchars(date('F j, Y', strtotime($expectedReleaseDate))) : ($serviceNotApplied || !in_array($rawStatus, ['Verified', 'Approved', 'Released'], true) ? 'Available after verification' : 'Schedule to follow'); ?></div>
+                    <div class="fact"><span>Actual Release Date</span><?php echo $releasedAt !== '' ? htmlspecialchars(date('F j, Y g:i A', strtotime($releasedAt))) : 'Not yet released'; ?></div>
                 </div>
 
                 <?php if ($isTransferredSenior): ?>
@@ -420,8 +429,10 @@ $photoVerified = $digitalIdEligible && is_array($photoGrant)
     </section>
 </main>
 <script src="../assets/js/vendor/html5-qrcode.min.js"></script>
+<script src="../assets/js/prx-token-input.js"></script>
 <script>
 (() => {
+    window.initPrxTokenInput(document.getElementById('token'));
     const reader = document.getElementById('trackingQrReader');
     if (!reader || typeof Html5QrcodeScanner === 'undefined') return;
     const useResult = decoded => {

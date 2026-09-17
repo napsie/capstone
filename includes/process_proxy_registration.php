@@ -7,18 +7,21 @@ require_once __DIR__ . '/barangays_list.php';
 require_once __DIR__ . '/document_repository.php';
 require_once __DIR__ . '/image_optimizer.php';
 require_once __DIR__ . '/private_storage.php';
+require_once __DIR__ . '/government_id_upload.php';
 
 /**
  * Save applicant files outside the public web directory.
  */
-function saveUploadedProxyFile(string $fileKey, string $prefix, string $fieldName, bool $imageOnly = false): ?string
+function saveUploadedProxyFile(string $fileKey, string $prefix, string $fieldName, bool $imageOnly = false, ?int $fileIndex = null): ?string
 {
-    if (!isset($_FILES[$fileKey]) || $_FILES[$fileKey]['error'] !== UPLOAD_ERR_OK) {
+    if (!isset($_FILES[$fileKey])) {
         return null;
     }
-    
-    $tmpName = $_FILES[$fileKey]['tmp_name'];
-    $size = $_FILES[$fileKey]['size'];
+    $upload = $_FILES[$fileKey];
+    $error = $fileIndex === null ? ($upload['error'] ?? null) : ($upload['error'][$fileIndex] ?? null);
+    if ($error !== UPLOAD_ERR_OK) return null;
+    $tmpName = $fileIndex === null ? ($upload['tmp_name'] ?? '') : ($upload['tmp_name'][$fileIndex] ?? '');
+    $size = $fileIndex === null ? ($upload['size'] ?? 0) : ($upload['size'][$fileIndex] ?? 0);
     
     if ($size <= 0 || $size > 10 * 1024 * 1024) {
         return null;
@@ -658,18 +661,28 @@ function processProxyRegistration(): array
                 $requiredUploads[$document['field']] = $document['label'];
             }
         }
+        $governmentIdPrimary = in_array($requestedBenefit, ['Land Bank Cash Card Enrollment', 'Local Social Pension Assessment'], true);
+        $governmentIdField = $requestedBenefit === 'Senior Citizen ID Registration' ? 'valid_id_file'
+            : ($governmentIdPrimary ? 'psa_birth_cert_file' : null);
         foreach ($requiredUploads as $key => $label) {
+            if ($key === $governmentIdField) continue;
             if (!isset($_FILES[$key]) || $_FILES[$key]['error'] !== UPLOAD_ERR_OK) {
                 $result['message'] = $label . ' is required.';
                 return $result;
             }
+        }
+        if ($governmentIdField !== null && ($pairError = governmentIdPairError($governmentIdField)) !== null) {
+            $result['message'] = $pairError;
+            return $result;
         }
 
         $transactionId = generateCompactApplicationToken($conn, $portalOption === 'verified_benefits' ? 'PEN' : 'PRX');
         $priorityLevel = 'normal';
 
         // Handle File Uploads
-        $psaBirthCert = saveUploadedProxyFile('psa_birth_cert_file', $transactionId, 'psa_birth_cert');
+        $psaBirthCert = $governmentIdPrimary
+            ? saveUploadedProxyFile('psa_birth_cert_file', $transactionId, 'psa_birth_cert', true, 0)
+            : saveUploadedProxyFile('psa_birth_cert_file', $transactionId, 'psa_birth_cert');
         $barangayResidency = saveUploadedProxyFile('barangay_residency_file', $transactionId, 'barangay_residency');
         $comelecCert = saveUploadedProxyFile(
             'comelec_cert_file',
@@ -678,7 +691,12 @@ function processProxyRegistration(): array
             $requestedBenefit === 'Milestone Cash Gift'
         );
         $idImage = saveUploadedProxyFile('id_photo_file', $transactionId, 'id_photo', true);
-        $validGovernmentId = saveUploadedProxyFile('valid_id_file', $transactionId, 'valid_government_id');
+        $governmentIdFront = $governmentIdField !== null
+            ? ($governmentIdPrimary ? $psaBirthCert : saveUploadedProxyFile('valid_id_file', $transactionId, 'government_id_front', true, 0))
+            : null;
+        $governmentIdBack = $governmentIdField !== null
+            ? saveUploadedProxyFile($governmentIdField, $transactionId, 'government_id_back', true, 1)
+            : null;
         $deceasedLandbankCard = null;
         $proofOfLife = null;
         $authLetter = $proxyId = $proxyBirthCert = null;
@@ -688,24 +706,28 @@ function processProxyRegistration(): array
             $authLetter = saveUploadedProxyFile('auth_letter_file', $transactionId, 'applicable_affidavit');
         }
 
-        $requiredProcessedFiles = [$psaBirthCert, $barangayResidency, $comelecCert];
-        if ($requestedBenefit === 'Burial Assistance') {
-            $requiredProcessedFiles = [$psaBirthCert, $barangayResidency, $comelecCert, $deceasedLandbankCard, $proofOfLife];
-            if (trim($_POST['controlNo'] ?? '') !== '') $requiredProcessedFiles[] = $authLetter;
-        } elseif ($requestedBenefit === 'Senior Citizen ID Registration') {
-            $requiredProcessedFiles = match ($idPurpose) {
-                'change' => [$psaBirthCert, $idImage],
-                'new', 'lost' => [$psaBirthCert, $barangayResidency, $idImage],
-                'transfer' => [$psaBirthCert, $barangayResidency, $comelecCert, $idImage],
-                default => [null],
-            };
-        } elseif ($requestedBenefit === 'Local Social Pension Assessment') {
-            $requiredProcessedFiles = [$psaBirthCert, $barangayResidency, $comelecCert, $idImage];
-        } elseif ($requestedBenefit === 'Local Social Pension Assessment') {
-            $requiredProcessedFiles = [$psaBirthCert, $barangayResidency, $comelecCert, $idImage];
+        $processedUploads = [
+            'psa_birth_cert_file' => $psaBirthCert,
+            'barangay_residency_file' => $barangayResidency,
+            'comelec_cert_file' => $comelecCert,
+            'id_photo_file' => $idImage,
+            'deceased_landbank_card_file' => $deceasedLandbankCard,
+            'proof_of_life_file' => $proofOfLife,
+            'auth_letter_file' => $authLetter,
+        ];
+        $requiredProcessedFiles = [];
+        foreach ($requiredUploads as $key => $label) {
+            if ($key !== $governmentIdField) $requiredProcessedFiles[] = $processedUploads[$key] ?? null;
+        }
+        if ($requestedBenefit === 'Burial Assistance' && trim((string)($_POST['controlNo'] ?? '')) !== '') {
+            $requiredProcessedFiles[] = $authLetter;
         }
         if (in_array(null, $requiredProcessedFiles, true)) {
             $result['message'] = 'One or more documents could not be processed. Upload only valid JPEG, PNG, GIF, or PDF files and try again.';
+            return $result;
+        }
+        if ($governmentIdField !== null && (!$governmentIdFront || !$governmentIdBack)) {
+            $result['message'] = 'Please upload both the front and back of your valid government ID.';
             return $result;
         }
 
@@ -759,6 +781,10 @@ function processProxyRegistration(): array
                 $proxyBirthDate ?: null, $proxyEmail ?: null, $proxyAddress ?: null, $proxyIdType ?: null, $proxyIdNumber ?: null,
                 $idImage
             ]);
+            if ($governmentIdField !== null) {
+                $governmentIdStmt = $conn->prepare('UPDATE applications SET government_id_front = ?, government_id_back = ? WHERE id_number = ?');
+                $governmentIdStmt->execute([$governmentIdFront, $governmentIdBack, $transactionId]);
+            }
             if ($verifiedSenior) {
                 $linkStmt = $conn->prepare('UPDATE applications SET senior_id_no = ?, parent_senior_id = ? WHERE id_number = ?');
                 $linkStmt->execute([$verifiedSenior['senior_id_no'], $verifiedSenior['id_number'], $transactionId]);
@@ -774,12 +800,13 @@ function processProxyRegistration(): array
                 $benefitDefinition['form_documents'] ?? []
             );
             foreach ([
-                ['psa_birth_cert',$requestedBenefit === 'Senior Citizen ID Registration' ? $seniorDocumentLabels[0] : ($benefitDocumentLabels[0] ?? 'PSA Birth Certificate'),$psaBirthCert],
+                ['psa_birth_cert',$requestedBenefit === 'Senior Citizen ID Registration' ? $seniorDocumentLabels[0] : ($benefitDocumentLabels[0] ?? 'PSA Birth Certificate'),$governmentIdPrimary ? null : $psaBirthCert],
                 ['barangay_residency',$requestedBenefit === 'Senior Citizen ID Registration' ? $seniorDocumentLabels[1] : ($benefitDocumentLabels[1] ?? 'Barangay Residency Certificate'),$barangayResidency],
                 ['comelec_cert',$requestedBenefit === 'Senior Citizen ID Registration' ? $seniorDocumentLabels[2] : ($benefitDocumentLabels[2] ?? 'COMELEC Certificate'),$comelecCert],
                 ['deceased_landbank_card',$benefitDocumentLabels[3] ?? 'Deceased Landbank Cash Card',$deceasedLandbankCard],
                 ['id_image','ID / Identification Photo',$idImage],
-                ['valid_government_id','Valid Government ID',$validGovernmentId],
+                ['government_id_front','Valid Government ID — Front of ID',$governmentIdFront],
+                ['government_id_back','Valid Government ID — Back of ID',$governmentIdBack],
                 ['proof_of_life','Proof of Relationship',$proofOfLife],
                 ['auth_letter','Original Copy of Affidavit (if applicable)',$authLetter],
             ] as [$key,$label,$path]) {
@@ -828,7 +855,7 @@ function processProxyRegistration(): array
             }
             // The uploaded files are named with this transaction token and do
             // not belong in storage when the database record was not created.
-            foreach ([$psaBirthCert, $barangayResidency, $comelecCert, $proofOfLife, $idImage] as $uploadedFile) {
+            foreach (array_unique(array_filter([$psaBirthCert, $barangayResidency, $comelecCert, $proofOfLife, $idImage, $governmentIdFront, $governmentIdBack])) as $uploadedFile) {
                 if (!$uploadedFile) continue;
                 $uploadedPath = privateUploadPath($uploadedFile);
                 if ($uploadedPath !== null) deleteImageWithDerivatives($uploadedPath);

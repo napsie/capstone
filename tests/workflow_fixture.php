@@ -12,6 +12,24 @@ if (($argv[1] ?? '') === 'private-upload') {
     $conn->exec("USE `$name`");
     $conn->exec("UPDATE applications SET proof_of_life = 'synthetic-private-proof.pdf' WHERE id_number = 'VALID'");
     $conn->exec("UPDATE applications SET id_image = 'synthetic-id-photo.png' WHERE id_number = 'PRX-BENE'");
+    $conn->exec("UPDATE applications SET government_id_front = 'synthetic-id-front.png', government_id_back = 'synthetic-id-back.png' WHERE id_number = 'PRX-BENE'");
+    exit;
+}
+if (($argv[1] ?? '') === 'pension-ready') {
+    $conn->exec("USE `$name`");
+    $conn->exec("UPDATE applications SET house_no = '1', street = 'Synthetic Street', place_of_birth = 'Pasig City', gender = 'Female', civil_status = 'Single', mothers_maiden_name = 'Test Maiden' WHERE id_number = 'PRX-BENE'");
+    exit;
+}
+if (($argv[1] ?? '') === 'latest-pension-id') {
+    $conn->exec("USE `$name`");
+    echo (string)$conn->query("SELECT id_number FROM applications WHERE application_type = 'pension' AND parent_senior_id = 'PRX-BENE' ORDER BY date_submitted DESC, id_number DESC LIMIT 1")->fetchColumn();
+    exit;
+}
+if (($argv[1] ?? '') === 'reconcile-restored-rejection') {
+    $conn->exec("USE `$name`");
+    $conn->exec("UPDATE applications SET workflow_state = 'Rejected', status = 'rejected', is_archived = 0 WHERE id_number = 'OTHERQUEUE'");
+    $sql = file_get_contents(dirname(__DIR__) . '/database/migrations/20260917_reopen_restored_rejections.sql');
+    $conn->exec($sql);
     exit;
 }
 $schema = file_get_contents(dirname(__DIR__) . '/capstone1_schema.sql');

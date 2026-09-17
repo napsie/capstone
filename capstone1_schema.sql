@@ -85,6 +85,7 @@ CREATE TABLE `applications` (
 
   -- Rule-based workflow status
   `workflow_state`             varchar(50)  DEFAULT 'Received',
+  `expected_release_date`      date         DEFAULT NULL,
   `requested_benefit`          varchar(150) DEFAULT NULL,
   `return_reason`              varchar(500) DEFAULT NULL,
 
@@ -190,6 +191,8 @@ CREATE TABLE `applications` (
 
   -- Required attachments / file path references
   `psa_birth_cert`             varchar(255) DEFAULT NULL,
+  `government_id_front`        varchar(255) DEFAULT NULL,
+  `government_id_back`         varchar(255) DEFAULT NULL,
   `barangay_residency`         varchar(255) DEFAULT NULL,
   `comelec_cert`               varchar(255) DEFAULT NULL,
   `deceased_landbank_card`     varchar(255) DEFAULT NULL,
@@ -388,6 +391,8 @@ CREATE TABLE `system_settings` (
   `max_login_attempts` int(11)     NOT NULL DEFAULT 5,
   `backup_frequency`   varchar(50) NOT NULL DEFAULT 'weekly',
   `auto_backup`        tinyint(1)  NOT NULL DEFAULT 1,
+  `system_logo_filename` varchar(255) NULL,
+  `system_logo_mime`     varchar(50) NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 

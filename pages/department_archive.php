@@ -356,7 +356,7 @@ $auditHasFilters = $search !== '' || $barangayFilter !== 'all' || $auditEventFil
                                             <td><?php echo !empty($app['archived_at']) ? date('M d, Y h:i A', strtotime($app['archived_at'])) : '—'; ?></td>
                                             <td><?php echo htmlspecialchars($archiveActorNames[$app['archived_by']] ?? ($app['archived_by'] ?: 'System')); ?></td>
                                             <td>
-                                                <button type="button" class="btn btn-restore restore-app-btn" data-id="<?php echo $app['id_number']; ?>" data-name="<?php echo htmlspecialchars($app['full_name']); ?>">
+                                                <button type="button" class="btn btn-restore restore-app-btn" data-id="<?php echo htmlspecialchars($app['id_number']); ?>" data-name="<?php echo htmlspecialchars($app['full_name']); ?>" data-rejected="<?php echo $archiveStatusClass === 'archive-status--rejected' ? '1' : '0'; ?>">
                                                     <i class="fas fa-undo"></i> Restore
                                                 </button>
                                             </td>
@@ -597,7 +597,10 @@ $auditHasFilters = $search !== '' || $barangayFilter !== 'all' || $auditEventFil
                     const appId = this.dataset.id;
                     const appName = this.dataset.name;
                     
-                    window.showCarelinkConfirm(`Restore application ${appId} (${appName}) back to active status?`, function() {
+                    const restoreQuestion = this.dataset.rejected === '1'
+                        ? `Restore application ${appId} (${appName}) to For Review? Its earlier rejection will remain in the audit history.`
+                        : `Restore application ${appId} (${appName}) back to active status?`;
+                    window.showCarelinkConfirm(restoreQuestion, function() {
                         const formData = new FormData();
                         formData.append('id', appId);
 

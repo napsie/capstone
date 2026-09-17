@@ -445,6 +445,17 @@ function getStatusBadge($status) {
         .info-item span  { font-size:0.88rem; font-weight:600; color:var(--primary); }
         .info-item.wide  { grid-column: 1 / -1; }
 
+        .release-schedule { background:#f8fbff; border:1px solid #bfdbfe; border-radius:12px; padding:16px; margin:0 0 22px; }
+        .release-schedule h3 { margin:0 0 6px; color:var(--primary); font-size:1rem; }
+        .release-schedule p { margin:0 0 12px; color:#475569; font-size:.85rem; line-height:1.5; }
+        .release-schedule label { display:block; color:var(--primary); font-weight:700; font-size:.86rem; margin:12px 0 6px; }
+        .release-schedule input[type="date"] { width:100%; min-height:44px; padding:8px 12px; border:1px solid #94a3b8; border-radius:8px; color:var(--primary); background:#fff; font:inherit; }
+        .release-schedule input[type="date"]:focus-visible, .release-schedule button:focus-visible { outline:3px solid #2563eb; outline-offset:2px; }
+        .release-schedule-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+        .release-schedule-error { color:#b91c1c !important; font-weight:600; }
+        .release-schedule-status { min-height:1.3em; margin-top:10px !important; }
+        .release-schedule[hidden], .release-schedule [hidden] { display:none !important; }
+
         .doc-preview-title { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--gray); margin-bottom:8px; }
         .doc-preview-box {
             width:100%; height:180px;
@@ -785,6 +796,22 @@ function getStatusBadge($status) {
                     <div style="margin-bottom:16px;">
                         <button type="button" class="btn btn-primary" id="btnOfficialForm" disabled><i class="fas fa-file-pdf"></i> Generate Official Form</button>
                     </div>
+                    <section class="release-schedule" id="releaseScheduleSection" aria-labelledby="releaseScheduleTitle" hidden>
+                        <h3 id="releaseScheduleTitle"><i class="fas fa-calendar-days" aria-hidden="true"></i> Release schedule</h3>
+                        <p>Set an expected date after verification. The applicant will see it in Track Application. This does not mark the item as released.</p>
+                        <p><strong>Current expected date:</strong> <span id="releaseScheduleCurrent">No date set yet</span></p>
+                        <form id="releaseScheduleForm" novalidate>
+                            <label for="expectedReleaseDate">Expected release date</label>
+                            <input type="date" id="expectedReleaseDate" name="expectedReleaseDate" min="<?php echo (new DateTimeImmutable('today', new DateTimeZone('Asia/Manila')))->format('Y-m-d'); ?>" required aria-describedby="releaseDateHelp releaseDateError">
+                            <p id="releaseDateHelp">Choose today or a later date. You can change it if the schedule changes.</p>
+                            <p id="releaseDateError" class="release-schedule-error" role="alert" hidden></p>
+                            <div class="release-schedule-actions">
+                                <button type="submit" class="btn btn-primary" id="saveReleaseDate">Save expected date</button>
+                                <button type="button" class="btn btn-ghost" id="removeReleaseDate" hidden>Remove date</button>
+                            </div>
+                        </form>
+                        <p id="releaseDateStatus" class="release-schedule-status" role="status" aria-live="polite"></p>
+                    </section>
                     <div class="section-title"><i class="fas fa-clock-rotate-left"></i> Audit History</div>
                     <div class="timeline" id="timelineList">
                         <p style="color:var(--gray);font-size:0.85rem;">Loading history…</p>
@@ -958,6 +985,13 @@ function getStatusBadge($status) {
         });
 
         document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+        document.getElementById('releaseScheduleForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            saveExpectedReleaseDate(false);
+        });
+        document.getElementById('removeReleaseDate').addEventListener('click', function() {
+            window.showCarelinkConfirm('Remove the expected release date? Track Application will show that the schedule is still to follow.', () => saveExpectedReleaseDate(true));
+        });
         document.getElementById('applicationModal').addEventListener('click', function(e) {
             if (e.target === this) closeModal();
         });
@@ -973,10 +1007,66 @@ function getStatusBadge($status) {
                 ? document.getElementById('exportBarangay').value
                 : 'all';
         });
+        const requestedApplication = new URLSearchParams(window.location.search).get('application');
+        if (requestedApplication) openApplicationModal(requestedApplication);
     });
 
     function closeModal() {
-        document.getElementById('applicationModal').style.display = 'none';
+        const modal = document.getElementById('applicationModal');
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+        modal._returnFocus?.focus();
+    }
+
+    async function saveExpectedReleaseDate(remove) {
+        const section = document.getElementById('releaseScheduleSection');
+        const appId = section.dataset.applicationId;
+        const dateInput = document.getElementById('expectedReleaseDate');
+        const error = document.getElementById('releaseDateError');
+        const status = document.getElementById('releaseDateStatus');
+        const saveButton = document.getElementById('saveReleaseDate');
+        const removeButton = document.getElementById('removeReleaseDate');
+        error.hidden = true;
+        error.textContent = '';
+        status.textContent = '';
+        if (!remove && (!dateInput.value || dateInput.value < dateInput.min)) {
+            error.textContent = 'Choose today or a future date for the expected release.';
+            error.hidden = false;
+            dateInput.focus();
+            return;
+        }
+        const form = new FormData();
+        form.set('applicationId', appId);
+        form.set('action', remove ? 'clear' : 'set');
+        if (!remove) form.set('expectedReleaseDate', dateInput.value);
+        saveButton.disabled = true;
+        removeButton.disabled = true;
+        saveButton.textContent = 'Saving…';
+        try {
+            const response = await fetch('../api/set_release_date.php', { method: 'POST', body: form });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.message || 'The date could not be saved.');
+            if (section.dataset.applicationId !== appId) return;
+            dateInput.value = result.expected_release_date || '';
+            document.getElementById('releaseScheduleCurrent').textContent = result.expected_release_date
+                ? new Date(result.expected_release_date + 'T00:00:00').toLocaleDateString('en-PH', { year:'numeric', month:'long', day:'numeric' })
+                : 'No date set yet';
+            removeButton.hidden = !result.expected_release_date;
+            status.textContent = result.message;
+            window.loadApplicationModalData(appId).then(app => {
+                if (app && section.dataset.applicationId === appId) {
+                    window.renderApplicationAuditHistory(app.history, 'timelineList', { pageSize: 5 });
+                }
+            }).catch(() => {});
+        } catch (failure) {
+            error.textContent = failure.message || 'The date could not be saved. Please try again.';
+            error.hidden = false;
+            if (!remove) dateInput.focus();
+        } finally {
+            saveButton.disabled = false;
+            removeButton.disabled = false;
+            saveButton.textContent = 'Save expected date';
+        }
     }
 
     function exportDepartmentRecords() {
@@ -1017,6 +1107,9 @@ function getStatusBadge($status) {
     /* ─── Open modal and populate ───────────────────────────── */
     function openApplicationModal(appId) {
         document.getElementById('btnOfficialForm').disabled = true;
+        document.getElementById('releaseScheduleSection').hidden = true;
+        document.getElementById('releaseDateStatus').textContent = '';
+        document.getElementById('releaseDateError').hidden = true;
         // Reset placeholders
         document.getElementById('modalAppTitle').textContent  = 'Loading…';
         document.getElementById('complianceList').innerHTML   = '<p style="color:var(--gray);font-size:0.85rem;">Loading compliance checks…</p>';
@@ -1030,7 +1123,11 @@ function getStatusBadge($status) {
             if (el) el.className = 'step';
         });
 
-        document.getElementById('applicationModal').style.display = 'flex';
+        const applicationModal = document.getElementById('applicationModal');
+        applicationModal._returnFocus = document.activeElement;
+        applicationModal.style.display = 'flex';
+        applicationModal.setAttribute('aria-hidden', 'false');
+        document.getElementById('closeModalBtn').focus();
         document.querySelector('#applicationModal .modal-scroller').scrollTop = 0;
 
         window.loadApplicationModalData(appId)
@@ -1042,6 +1139,16 @@ function getStatusBadge($status) {
                 officialFormButton.onclick = () => openOfficialApplicationForm(app.id_number);
 
                 const currentState = app.workflow_state || app.status || 'Received';
+                const scheduleSection = document.getElementById('releaseScheduleSection');
+                if (['Verified', 'Approved'].includes(currentState) && !Number(app.is_archived)) {
+                    scheduleSection.hidden = false;
+                    scheduleSection.dataset.applicationId = app.id_number;
+                    document.getElementById('expectedReleaseDate').value = app.expected_release_date || '';
+                    document.getElementById('releaseScheduleCurrent').textContent = app.expected_release_date
+                        ? new Date(app.expected_release_date + 'T00:00:00').toLocaleDateString('en-PH', { year:'numeric', month:'long', day:'numeric' })
+                        : 'No date set yet';
+                    document.getElementById('removeReleaseDate').hidden = !app.expected_release_date;
+                }
 
                 /* ── Stepper ── */
                 const steps = ['Received','For Review','Verified'];
@@ -1144,13 +1251,15 @@ function getStatusBadge($status) {
         html += blobDocBox('ID / Identification Photo', app.has_id_image, 'id_image');
 
         const additionalDocs = [
-            ['psa_birth_cert', 'Birth Cert / Negative of Birth'], ['barangay_residency', 'Barangay Residency'],
+            ['psa_birth_cert', 'Birth Cert / Negative of Birth'],
+            ['government_id_front', 'Valid Government ID — Front of ID'], ['government_id_back', 'Valid Government ID — Back of ID'],
+            ['barangay_residency', 'Barangay Residency'],
             ['comelec_cert', 'COMELEC Certificate'], ['deceased_landbank_card', 'Deceased Landbank Cash Card'],
             ['proof_of_life', 'Proof of Life (In Bed)'],
             ['auth_letter', 'Authorization Letter'], ['proxy_id', 'Representative Government ID'],
             ['proxy_birth_cert', 'Representative Birth Certificate'], ['home_visitation_form', 'Home Visitation Form'],
             ['landbank_enrollment_form', 'Land Bank Enrollment Form']
-        ].filter(([key]) => app[key]);
+        ].filter(([key]) => app[key] && !(key === 'psa_birth_cert' && app.government_id_front === app.psa_birth_cert));
         if (additionalDocs.length) {
             html += `<div class="section-title" style="margin-top:24px;"><i class="fas fa-user-shield"></i> Additional Submitted Documents</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;">`;
             html += additionalDocs.map(([key, label]) => fileDocCard(label, app[key], key)).join('');

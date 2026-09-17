@@ -130,7 +130,7 @@ function getApplicationBenefitDetails(): array {
                 'Completed Land Bank enrollment details, including the name to appear on the card and Source of Funds',
             ],
             'form_documents' => [
-                ['field' => 'psa_birth_cert_file', 'label' => 'Valid Government ID', 'description' => 'Clear front-and-back copy of one valid government-issued ID.'],
+                ['field' => 'psa_birth_cert_file', 'label' => 'Valid Government ID', 'description' => 'Upload clear images of the front and back of one valid government-issued ID. PNG, JPG, or JPEG only. Maximum of 2 images.'],
             ],
         ],
         'pension' => [
@@ -159,7 +159,7 @@ function getApplicationBenefitDetails(): array {
                 'Proof of address',
             ],
             'form_documents' => [
-                ['field' => 'psa_birth_cert_file', 'label' => 'Senior Citizen ID or Valid Government ID', 'description' => 'Identification document of the senior citizen.'],
+                ['field' => 'psa_birth_cert_file', 'label' => 'Valid Government ID', 'description' => 'Upload clear images of the front and back of one valid government-issued ID. PNG, JPG, or JPEG only. Maximum of 2 images.'],
                 ['field' => 'barangay_residency_file', 'label' => 'Barangay Certificate of Indigency', 'description' => 'Current indigency and residency certification issued by the barangay.'],
                 ['field' => 'comelec_cert_file', 'label' => 'Pension or Income Supporting Record (Optional)', 'description' => 'Optional pension or income record; an SSS document is not required.', 'optional' => true],
                 ['field' => 'id_photo_file', 'label' => 'Latest Senior Citizen ID Photo', 'description' => 'Upload a clear, recent portrait for the photo box on the Local Senior Pension Form.', 'extra' => true, 'image_only' => true],

@@ -1226,6 +1226,8 @@ unset($_SESSION['application_submission_notice']);
             ['proof_of_address', 'Proof of Address', app.has_proof_of_address],
             ['id_image', 'ID / Identification Photo', app.has_id_image],
             ['psa_birth_cert', 'Birth Cert / Negative of Birth', app.psa_birth_cert],
+            ['government_id_front', 'Valid Government ID — Front of ID', app.government_id_front],
+            ['government_id_back', 'Valid Government ID — Back of ID', app.government_id_back],
             ['barangay_residency', 'Barangay Residency', app.barangay_residency],
             ['comelec_cert', 'COMELEC Certificate', app.comelec_cert],
             ['deceased_landbank_card', 'Deceased Landbank Cash Card', app.deceased_landbank_card],
@@ -1235,7 +1237,7 @@ unset($_SESSION['application_submission_notice']);
             ['proxy_birth_cert', 'Representative Birth Certificate', app.proxy_birth_cert],
             ['home_visitation_form', 'Home Visitation Form', app.home_visitation_form],
             ['landbank_enrollment_form', 'Land Bank Enrollment Form', app.landbank_enrollment_form]
-        ].filter(([, , exists]) => Boolean(exists));
+        ].filter(([key, , exists]) => Boolean(exists) && !(key === 'psa_birth_cert' && app.government_id_front === app.psa_birth_cert));
 
         if (!documents.length) {
             section.style.display = 'none';

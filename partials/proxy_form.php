@@ -263,6 +263,15 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
     }
     .selected-file-view.is-visible { display: inline-flex; }
     .selected-file-view:hover { border-color:#60a5fa; background:#dbeafe; }
+    .id-pair-preview[hidden], .id-pair-error[hidden] { display:none; }
+    .id-pair-preview { display:grid; gap:10px; margin-top:8px; }
+    .id-pair-item { display:flex; align-items:center; gap:12px; padding:10px; border:1px solid #cbd5e1; border-radius:9px; background:#f8fafc; }
+    .id-pair-item img { width:64px; height:48px; object-fit:cover; border-radius:5px; }
+    .id-pair-item strong { min-width:0; flex:1; overflow-wrap:anywhere; font-size:.8rem; }
+    .id-pair-actions { display:flex; gap:7px; flex-wrap:wrap; }
+    .id-pair-actions a, .id-pair-actions button { padding:6px 8px; border:1px solid #93c5fd; border-radius:6px; background:#fff; color:#1d4ed8; font:inherit; font-size:.76rem; font-weight:700; text-decoration:none; cursor:pointer; }
+    .id-pair-error { margin:0; color:#b91c1c; font-size:.8rem; font-weight:700; }
+    @media(max-width:600px){.id-pair-item{flex-wrap:wrap}.id-pair-actions{width:100%}}
 
     /* Success QR code layouts */
     .success-qr-card {
@@ -1166,7 +1175,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 <div class="step-number">2</div>
                 <div>
                     <h3>Required Documents</h3>
-                    <p>Upload digital copies (PDF or JPEG) below. Enabled upon senior age eligibility verification.</p>
+                    <p>Upload the file types listed for each requirement below. Enabled upon senior age eligibility verification.</p>
                 </div>
             </div>
 
@@ -1179,6 +1188,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                     <label for="psa_birth_cert_file"><span data-document-label="primary">Birth Cert / Negative of Birth</span> <span class="req">*</span></label>
                     <p class="slot-desc" data-document-description="primary">Upload a birth certificate or, if unavailable, a Negative of Birth certification.</p>
                     <input type="file" id="psa_birth_cert_file" name="psa_birth_cert_file" accept="image/jpeg,application/pdf" capture="environment" required>
+                    <div class="id-pair-preview" data-id-pair-preview hidden></div><p class="id-pair-error" data-id-pair-error role="alert" hidden></p>
                 </div>
                 
                 <div class="upload-slot" data-document-slot="secondary">
@@ -1202,8 +1212,9 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 </div>
                 <div class="upload-slot" id="validIdUploadSlot" data-extra-document-benefits="<?php echo htmlspecialchars(getApplicationBenefitDetails()['senior']['public_request']); ?>">
                     <label for="valid_id_file">Valid Government ID <span class="req">*</span></label>
-                    <p class="slot-desc">Upload a clear front-and-back copy of one valid government-issued ID.</p>
-                    <input type="file" id="valid_id_file" name="valid_id_file" accept="image/jpeg,image/png,application/pdf">
+                    <p class="slot-desc">Upload clear images of the front and back of one valid government-issued ID. PNG, JPG, or JPEG only. Maximum of 2 images.</p>
+                    <input type="file" id="valid_id_file" name="valid_id_file[]" accept=".png,.jpg,.jpeg,image/png,image/jpeg" multiple>
+                    <div class="id-pair-preview" data-id-pair-preview hidden></div><p class="id-pair-error" data-id-pair-error role="alert" hidden></p>
                 </div>
 
                 <div class="upload-slot" data-extra-document-benefits="Burial Assistance">
@@ -1568,6 +1579,89 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             selector?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
+        const governmentIdUploads = new WeakMap();
+        const idImageMessage = 'Please upload both the front and back of your valid government ID.';
+        const idImageLimitMessage = 'You can only upload 2 images: front and back of the ID.';
+        const idImageTypeMessage = 'Upload PNG, JPG, or JPEG images only for both sides of the valid government ID.';
+        const isIdImage = file => (/\.png$/i.test(file.name) && ['image/png', ''].includes(file.type))
+            || (/\.jpe?g$/i.test(file.name) && ['image/jpeg', ''].includes(file.type));
+
+        function showGovernmentIdError(input, message) {
+            const error = input.closest('.upload-slot')?.querySelector('[data-id-pair-error]');
+            if (error) { error.textContent = message; error.hidden = !message; }
+            input.setAttribute('aria-invalid', message ? 'true' : 'false');
+        }
+
+        function renderGovernmentIdFiles(input) {
+            const state = governmentIdUploads.get(input);
+            if (!state) return;
+            state.urls.forEach(url => URL.revokeObjectURL(url));
+            state.urls = [];
+            const transfer = new DataTransfer();
+            state.files.forEach(file => { if (file) transfer.items.add(file); });
+            input.files = transfer.files;
+            const preview = input.closest('.upload-slot')?.querySelector('[data-id-pair-preview]');
+            if (!preview) return;
+            preview.replaceChildren();
+            preview.hidden = !state.files.some(Boolean);
+            ['Front of ID', 'Back of ID'].forEach((side, index) => {
+                const file = state.files[index];
+                if (!file) return;
+                const url = URL.createObjectURL(file);
+                state.urls.push(url);
+                const row = document.createElement('div'); row.className = 'id-pair-item';
+                const image = document.createElement('img'); image.src = url; image.alt = `${side} preview`;
+                const title = document.createElement('strong'); title.textContent = `${side} — ${file.name}`;
+                const actions = document.createElement('div'); actions.className = 'id-pair-actions';
+                const view = document.createElement('a'); view.href = url; view.target = '_blank'; view.rel = 'noopener'; view.textContent = 'View';
+                const replace = document.createElement('button'); replace.type = 'button'; replace.textContent = 'Replace';
+                replace.addEventListener('click', () => { state.replaceIndex = index; state.replacePicker.click(); });
+                const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Remove';
+                remove.addEventListener('click', () => { state.files[index] = null; renderGovernmentIdFiles(input); showGovernmentIdError(input, idImageMessage); });
+                actions.append(view, replace, remove); row.append(image, title, actions); preview.append(row);
+            });
+        }
+
+        function setGovernmentIdPairMode(input, enabled) {
+            if (!input) return;
+            const active = input.dataset.idPairEnabled === 'true';
+            if (active === enabled) return;
+            input.dataset.idPairEnabled = enabled ? 'true' : 'false';
+            input.value = '';
+            if (input.dataset.previewUrl) { URL.revokeObjectURL(input.dataset.previewUrl); delete input.dataset.previewUrl; }
+            const oldLink = input.closest('.upload-slot')?.querySelector('.selected-file-view');
+            if (oldLink) { oldLink.classList.remove('is-visible'); oldLink.removeAttribute('href'); oldLink.replaceChildren(); }
+            input.multiple = enabled;
+            input.name = enabled ? `${input.id}[]` : input.id;
+            input.accept = enabled ? '.png,.jpg,.jpeg,image/png,image/jpeg' : 'image/jpeg,application/pdf';
+            if (enabled) input.removeAttribute('capture');
+            else if (input.id === 'psa_birth_cert_file') input.setAttribute('capture', 'environment');
+            const previous = governmentIdUploads.get(input);
+            previous?.urls.forEach(url => URL.revokeObjectURL(url));
+            if (enabled) {
+                const replacePicker = document.createElement('input');
+                replacePicker.type = 'file'; replacePicker.accept = '.png,.jpg,.jpeg,image/png,image/jpeg';
+                replacePicker.hidden = true; document.body.append(replacePicker);
+                const state = { files: [null, null], urls: [], replacePicker, replaceIndex: null };
+                replacePicker.addEventListener('change', () => {
+                    const file = replacePicker.files?.[0];
+                    if (file && isIdImage(file) && state.replaceIndex !== null) {
+                        state.files[state.replaceIndex] = file;
+                        renderGovernmentIdFiles(input);
+                        showGovernmentIdError(input, state.files.every(Boolean) ? '' : idImageMessage);
+                    } else if (file) showGovernmentIdError(input, idImageTypeMessage);
+                    state.replaceIndex = null; replacePicker.value = '';
+                });
+                governmentIdUploads.set(input, state);
+            } else {
+                previous?.replacePicker.remove();
+                governmentIdUploads.delete(input);
+            }
+            const preview = input.closest('.upload-slot')?.querySelector('[data-id-pair-preview]');
+            if (preview) { preview.replaceChildren(); preview.hidden = true; }
+            showGovernmentIdError(input, '');
+        }
+
         function updateRequiredDocuments(selectedBenefit) {
             const documentRequirements = Object.fromEntries(Object.entries(PUBLIC_BENEFIT_CONFIG).map(([request, definition]) => [
                 request,
@@ -1603,6 +1697,8 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                     ? 'image/jpeg,image/png,image/gif'
                     : 'image/jpeg,application/pdf';
             }
+            setGovernmentIdPairMode(document.getElementById('psa_birth_cert_file'),
+                ['Land Bank Cash Card Enrollment', 'Local Social Pension Assessment'].includes(selectedBenefit));
 
             let hasExtraDocuments = false;
             document.querySelectorAll('[data-extra-document-benefits]').forEach(slot => {
@@ -1618,6 +1714,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             const identityHeading = document.getElementById('identityDocumentsHeading');
             if (identityHeading) identityHeading.hidden = !hasExtraDocuments;
             if (selectedBenefit === 'Senior Citizen ID Registration') updateSeniorIdDocuments();
+            else setGovernmentIdPairMode(document.getElementById('valid_id_file'), false);
             updateBurialAffidavitRequirement();
         }
 
@@ -1681,7 +1778,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             const validIdSlot = document.getElementById('validIdUploadSlot');
             const validIdInput = document.getElementById('valid_id_file');
             if (validIdSlot) validIdSlot.hidden = false;
-            if (validIdInput) { validIdInput.disabled = false; validIdInput.required = true; }
+            if (validIdInput) { validIdInput.disabled = false; validIdInput.required = true; setGovernmentIdPairMode(validIdInput, true); }
         }
 
         document.getElementById('newSeniorForm')?.addEventListener('submit', event => {
@@ -1694,6 +1791,18 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 grid?.focus({ preventScroll: true });
                 window.showCarelinkResult?.('Please select a benefit or service card before submitting.', false);
                 return;
+            }
+            const pairInput = document.querySelector('#newSeniorForm input[data-id-pair-enabled="true"]:not(:disabled)');
+            if (pairInput) {
+                const pair = governmentIdUploads.get(pairInput);
+                const pairError = pairInput.closest('.upload-slot')?.querySelector('[data-id-pair-error]');
+                if (!pair?.files.every(Boolean) || (pairError && !pairError.hidden)) {
+                    event.preventDefault();
+                    if (!pair?.files.every(Boolean)) showGovernmentIdError(pairInput, idImageMessage);
+                    pairInput.closest('.upload-slot')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    pairInput.focus({ preventScroll: true });
+                    return;
+                }
             }
             if (!event.currentTarget.checkValidity()) {
                 event.preventDefault();
@@ -1752,7 +1861,22 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
         }
 
         document.querySelectorAll('.proxy-form input[type="file"]').forEach(input => {
-            input.addEventListener('change', () => updateSelectedFileLink(input));
+            input.addEventListener('change', () => {
+                if (input.dataset.idPairEnabled !== 'true') { updateSelectedFileLink(input); return; }
+                const state = governmentIdUploads.get(input);
+                if (!state) return;
+                const incoming = Array.from(input.files || []);
+                if (incoming.length > 2) { renderGovernmentIdFiles(input); showGovernmentIdError(input, idImageLimitMessage); return; }
+                if (incoming.some(file => !isIdImage(file))) { renderGovernmentIdFiles(input); showGovernmentIdError(input, idImageTypeMessage); return; }
+                if (incoming.length === 2) state.files = incoming;
+                else if (incoming.length === 1) {
+                    const empty = state.files.findIndex(file => !file);
+                    if (empty === -1) { renderGovernmentIdFiles(input); showGovernmentIdError(input, 'Remove an image first, or use Replace for the side you want to change.'); return; }
+                    state.files[empty] = incoming[0];
+                }
+                renderGovernmentIdFiles(input);
+                showGovernmentIdError(input, state.files.every(Boolean) ? '' : idImageMessage);
+            });
         });
 
         ['houseNo', 'street', 'barangay', 'zipCode'].forEach(id => {

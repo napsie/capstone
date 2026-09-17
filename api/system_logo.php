@@ -9,6 +9,7 @@ if (is_file($path)) {
     if (in_array($detected, ['image/jpeg', 'image/png', 'image/gif'], true)) $mime = $detected;
 }
 header('Content-Type: ' . $mime);
-header('Cache-Control: public, max-age=300, must-revalidate');
+// A newly uploaded logo must appear on every page as soon as it is saved.
+header('Cache-Control: no-cache, must-revalidate');
 header('X-Content-Type-Options: nosniff');
 readfile($path);

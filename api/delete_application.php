@@ -39,7 +39,7 @@ if (isset($_POST['id'])) {
         }
 
         // Fetch application details first for logging
-        $fetchStmt = $conn->prepare("SELECT full_name, barangay, application_type, psa_birth_cert, barangay_residency, comelec_cert, deceased_landbank_card, proof_of_life, auth_letter, proxy_id, proxy_birth_cert FROM applications WHERE $where");
+        $fetchStmt = $conn->prepare("SELECT full_name, barangay, application_type, psa_birth_cert, government_id_front, government_id_back, barangay_residency, comelec_cert, deceased_landbank_card, proof_of_life, auth_letter, proxy_id, proxy_birth_cert FROM applications WHERE $where");
         $fetchStmt->execute($params);
         $app = $fetchStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -74,6 +74,8 @@ if (isset($_POST['id'])) {
                     if (is_dir(privateUploadDirectory())) {
                         $uploadedFiles = [
                             $app['psa_birth_cert'] ?? '',
+                            $app['government_id_front'] ?? '',
+                            $app['government_id_back'] ?? '',
                             $app['barangay_residency'] ?? '',
                             $app['comelec_cert'] ?? '',
                             $app['deceased_landbank_card'] ?? '',

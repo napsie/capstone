@@ -2,6 +2,7 @@
 session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/system_branding.php';
+require_once '../includes/request_security.php';
 
 // Check if the user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -14,6 +15,7 @@ $message = '';
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['updateSystemLogo'])) {
+    requireSameOriginMutation();
     if (!in_array($_SESSION['role'] ?? '', ['department_admin', 'super_admin'], true)) {
         $error = 'Only a Department Administrator can change the system logo.';
     } elseif (!isset($_FILES['systemLogo']) || $_FILES['systemLogo']['error'] !== UPLOAD_ERR_OK) {
@@ -30,15 +32,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['updateSystemLogo'])) 
                 $error = 'The logo image must be at least 100 by 100 pixels.';
             } else {
                 $directory = dirname(__DIR__) . '/images/system_logos';
-                if (!is_dir($directory)) mkdir($directory, 0775, true);
+                if (!is_dir($directory) && !mkdir($directory, 0775, true)) {
+                    $error = 'The logo storage is unavailable. Please try again.';
+                } elseif (!is_writable($directory)) {
+                    $error = 'The logo storage is unavailable. Please try again.';
+                }
                 $filename = 'system-logo-' . date('YmdHis') . '-' . bin2hex(random_bytes(4)) . '.' . $extensions[$mime];
-                if (!move_uploaded_file($upload['tmp_name'], $directory . '/' . $filename)) {
+                if ($error === '' && !move_uploaded_file($upload['tmp_name'], $directory . '/' . $filename)) {
                     $error = 'The logo could not be saved. Please try again.';
-                } else {
-                    $stmt = $conn->prepare("INSERT INTO system_settings (id, system_logo_filename, system_logo_mime) VALUES (1, ?, ?)
-                        ON DUPLICATE KEY UPDATE system_logo_filename = VALUES(system_logo_filename), system_logo_mime = VALUES(system_logo_mime)");
-                    $stmt->execute([$filename, $mime]);
-                    $message = 'System logo updated. Future reports will use the new logo automatically.';
+                }
+                if ($error === '') {
+                    try {
+                        $stmt = $conn->prepare("INSERT INTO system_settings (id, system_logo_filename, system_logo_mime) VALUES (1, ?, ?)
+                            ON DUPLICATE KEY UPDATE system_logo_filename = VALUES(system_logo_filename), system_logo_mime = VALUES(system_logo_mime)");
+                        $stmt->execute([$filename, $mime]);
+                        $message = 'System logo updated. Future reports will use the new logo automatically.';
+                    } catch (PDOException $e) {
+                        unlink($directory . '/' . $filename);
+                        error_log('System logo update failed: ' . $e->getMessage());
+                        $error = 'The logo could not be saved. Please try again.';
+                    }
                 }
             }
         }
@@ -55,66 +68,6 @@ try {
     $user = [];
 }
 
-// Handle System Settings Update
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateSystemSettings'])) {
-    $sessionTimeout = $_POST['sessionTimeout'];
-    $maxLoginAttempts = $_POST['maxLoginAttempts'];
-    $backupFrequency = $_POST['backupFrequency'];
-    $autoBackup = isset($_POST['autoBackup']) ? 1 : 0;
-
-    try {
-        // Check if settings exist, if not, insert, else update
-        $stmt = $conn->prepare("SELECT COUNT(*) FROM system_settings");
-        $stmt->execute();
-        $settingsExist = $stmt->fetchColumn();
-
-        if ($settingsExist) {
-            $stmt = $conn->prepare("UPDATE system_settings SET 
-                                    session_timeout = :session_timeout, 
-                                    max_login_attempts = :max_login_attempts, 
-                                    backup_frequency = :backup_frequency,
-                                    auto_backup = :auto_backup
-                                    WHERE id = 1");
-            $stmt->execute([
-                'session_timeout' => $sessionTimeout,
-                'max_login_attempts' => $maxLoginAttempts,
-                'backup_frequency' => $backupFrequency,
-                'auto_backup' => $autoBackup
-            ]);
-        } else {
-            $stmt = $conn->prepare("INSERT INTO system_settings (id, session_timeout, max_login_attempts, backup_frequency, auto_backup) 
-                                    VALUES (1, :session_timeout, :max_login_attempts, :backup_frequency, :auto_backup)");
-            $stmt->execute([
-                'session_timeout' => $sessionTimeout,
-                'max_login_attempts' => $maxLoginAttempts,
-                'backup_frequency' => $backupFrequency,
-                'auto_backup' => $autoBackup
-            ]);
-        }
-        $message = "System settings updated successfully!";
-    } catch (PDOException $e) {
-        $error = "Error updating system settings: " . $e->getMessage();
-    }
-}
-
-// Fetch system settings
-try {
-    $stmt = $conn->prepare("SELECT session_timeout, max_login_attempts, backup_frequency, auto_backup FROM system_settings WHERE id = 1");
-    $stmt->execute();
-    $system_settings = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$system_settings) {
-        // Default settings if not found in DB
-        $system_settings = [
-            'session_timeout' => 30,
-            'max_login_attempts' => 5,
-            'backup_frequency' => 'weekly',
-            'auto_backup' => 1
-        ];
-    }
-} catch (PDOException $e) {
-    $error = "Error fetching system settings: " . $e->getMessage();
-    $system_settings = [];
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -293,15 +246,10 @@ try {
         /* Settings Grid */
         .settings-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: minmax(0, 1fr);
             gap: 24px;
             margin-bottom: 24px;
-        }
-
-        @media (max-width: 900px) {
-            .settings-grid {
-                grid-template-columns: 1fr;
-            }
+            max-width: 780px;
         }
 
         .card {
@@ -362,46 +310,6 @@ try {
             cursor: not-allowed;
         }
 
-        /* Switch */
-        .switch {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            cursor: pointer;
-        }
-
-        .switch input[type="checkbox"] {
-            width: 44px;
-            height: 24px;
-            appearance: none;
-            background: #cbd5e1;
-            border-radius: 24px;
-            position: relative;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        .switch input[type="checkbox"]:checked {
-            background: var(--accent);
-        }
-
-        .switch input[type="checkbox"]::before {
-            content: '';
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: white;
-            top: 2px;
-            left: 2px;
-            transition: transform 0.3s;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-        }
-
-        .switch input[type="checkbox"]:checked::before {
-            transform: translateX(20px);
-        }
-
         /* Buttons */
         .btn {
             display: inline-flex;
@@ -423,28 +331,12 @@ try {
             background: #1d4ed8;
         }
 
-        .btn-secondary {
-            background: #64748b;
-        }
-
-        .btn-secondary:hover {
-            background: #475569;
-        }
-
         .btn-success {
             background: #10b981;
         }
 
         .btn-success:hover {
             background: #059669;
-        }
-
-        .btn-warning {
-            background: #f59e0b;
-        }
-
-        .btn-warning:hover {
-            background: #d97706;
         }
 
         .btn-small {
@@ -556,57 +448,11 @@ try {
             <div class="card">
                 <h3><i class="fas fa-image"></i> System and Report Logo</h3>
                 <form action="" method="POST" enctype="multipart/form-data">
-                    <div class="form-group" style="display:flex;align-items:center;gap:16px;">
+                    <div class="form-group" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
                         <img src="<?php echo htmlspecialchars(systemLogoUrl($conn)); ?>?v=<?php echo urlencode(systemLogoFilename($conn)); ?>" alt="Current system logo" style="width:76px;height:76px;object-fit:contain;border:1px solid #dbe4ef;border-radius:12px;background:#fff;">
-                        <div style="flex:1;"><label for="systemLogo">Current System Logo</label><input type="file" id="systemLogo" name="systemLogo" accept="image/png,image/jpeg" required><small>PNG or JPEG, up to 5 MB. This logo is also used on generated PDF reports.</small></div>
+                        <div style="flex:1;min-width:220px;"><label for="systemLogo">Current System Logo</label><input type="file" id="systemLogo" name="systemLogo" accept="image/png,image/jpeg,.png,.jpg,.jpeg" required><small>PNG or JPEG, up to 5 MB. The logo appears throughout the system and on new PDF and Excel reports.</small></div>
                     </div>
                     <div class="actions"><button type="submit" name="updateSystemLogo" class="btn btn-success btn-small"><i class="fas fa-upload"></i> Upload New Logo</button></div>
-                </form>
-            </div>
-            <!-- Security Settings -->
-            <div class="card">
-                <h3><i class="fas fa-shield-alt"></i> Security Settings</h3>
-                <form action="" method="POST">
-                    <div class="form-group">
-                        <label for="sessionTimeout">Session Timeout (minutes)</label>
-                        <input type="number" id="sessionTimeout" name="sessionTimeout" value="<?php echo htmlspecialchars($system_settings['session_timeout'] ?? 30); ?>" min="5" max="120" oninput="this.value = this.value.replace(/[^0-9]/g, '')" disabled>
-                    </div>
-                    <div class="form-group">
-                        <label for="maxLoginAttempts">Max Login Attempts</label>
-                        <input type="number" id="maxLoginAttempts" name="maxLoginAttempts" value="<?php echo htmlspecialchars($system_settings['max_login_attempts'] ?? 5); ?>" min="3" max="10" oninput="this.value = this.value.replace(/[^0-9]/g, '')" disabled>
-                    </div>
-                    <div class="actions">
-                        <button type="button" class="btn btn-small" id="editSecuritySettingsBtn"><i class="fas fa-edit"></i> Edit Settings</button>
-                        <button type="submit" name="updateSystemSettings" class="btn btn-success btn-small" id="saveSecuritySettingsBtn" style="display: none;"><i class="fas fa-save"></i> Save Changes</button>
-                        <button type="button" class="btn btn-secondary btn-small" id="cancelSecuritySettingsBtn" style="display: none;"><i class="fas fa-times"></i> Cancel</button>
-                    </div>
-                </form>
-            </div>
-
-            <!-- System Maintenance -->
-            <div class="card">
-                <h3><i class="fas fa-tools"></i> System Maintenance</h3>
-                <form action="" method="POST">
-                    <div class="form-group">
-                        <label for="backupFrequency">Backup Frequency</label>
-                        <select id="backupFrequency" name="backupFrequency" disabled>
-                            <option value="daily" <?php echo (($system_settings['backup_frequency'] ?? 'weekly') == 'daily') ? 'selected' : ''; ?>>Daily</option>
-                            <option value="weekly" <?php echo (($system_settings['backup_frequency'] ?? 'weekly') == 'weekly') ? 'selected' : ''; ?>>Weekly</option>
-                            <option value="monthly" <?php echo (($system_settings['backup_frequency'] ?? 'weekly') == 'monthly') ? 'selected' : ''; ?>>Monthly</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <div class="switch">
-                            <input type="checkbox" id="autoBackup" name="autoBackup" <?php echo (($system_settings['auto_backup'] ?? 1) == 1) ? 'checked' : ''; ?> disabled>
-                            <label for="autoBackup">Automatic Backup</label>
-                        </div>
-                    </div>
-                    <div class="actions">
-                        <button type="button" class="btn btn-small" id="editMaintenanceSettingsBtn"><i class="fas fa-edit"></i> Edit Settings</button>
-                        <button type="submit" name="updateSystemSettings" class="btn btn-success btn-small" id="saveMaintenanceSettingsBtn" style="display: none;"><i class="fas fa-save"></i> Save Changes</button>
-                        <button type="button" class="btn btn-secondary btn-small" id="cancelMaintenanceSettingsBtn" style="display: none;"><i class="fas fa-times"></i> Cancel</button>
-                        <button type="button" class="btn btn-warning btn-small" onclick="runBackup()"><i class="fas fa-database"></i> Run Backup Now</button>
-                    </div>
                 </form>
             </div>
         </div>
@@ -627,99 +473,6 @@ try {
         }
     });
 
-    // Helper function to setup Edit / Save / Cancel toggles
-    function setupSettingsCard(editBtnId, saveBtnId, cancelBtnId, inputIds) {
-        const editBtn = document.getElementById(editBtnId);
-        const saveBtn = document.getElementById(saveBtnId);
-        const cancelBtn = document.getElementById(cancelBtnId);
-        const initialValues = {};
-
-        inputIds.forEach(id => {
-            const input = document.getElementById(id);
-            if (input) {
-                initialValues[id] = input.type === 'checkbox' ? input.checked : input.value;
-            }
-        });
-
-        if (editBtn) {
-            editBtn.addEventListener('click', () => {
-                inputIds.forEach(id => {
-                    const input = document.getElementById(id);
-                    if (input) input.disabled = false;
-                });
-                editBtn.style.display = 'none';
-                saveBtn.style.display = 'inline-flex';
-                cancelBtn.style.display = 'inline-flex';
-            });
-        }
-
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', () => {
-                inputIds.forEach(id => {
-                    const input = document.getElementById(id);
-                    if (input) {
-                        input.disabled = true;
-                        if (input.type === 'checkbox') {
-                            input.checked = initialValues[id];
-                        } else {
-                            input.value = initialValues[id];
-                        }
-                    }
-                });
-                editBtn.style.display = 'inline-flex';
-                saveBtn.style.display = 'none';
-                cancelBtn.style.display = 'none';
-            });
-        }
-    }
-
-    setupSettingsCard(
-        'editSecuritySettingsBtn',
-        'saveSecuritySettingsBtn',
-        'cancelSecuritySettingsBtn',
-        ['sessionTimeout', 'maxLoginAttempts']
-    );
-
-    setupSettingsCard(
-        'editMaintenanceSettingsBtn',
-        'saveMaintenanceSettingsBtn',
-        'cancelMaintenanceSettingsBtn',
-        ['backupFrequency', 'autoBackup']
-    );
-
-    function runBackup() {
-        const backupButton = document.querySelector('button[onclick="runBackup()"]');
-        if (!backupButton) return;
-        backupButton.disabled = true;
-        backupButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Backing up...';
-
-        fetch('../api/run_backup.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (typeof window.showCarelinkResult === 'function') {
-                window.showCarelinkResult(data.message, data.success);
-            } else {
-                alert(data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Fetch error:', error);
-            if (typeof window.showCarelinkResult === 'function') {
-                window.showCarelinkResult('An unexpected error occurred during backup.', false);
-            } else {
-                alert('An unexpected error occurred during backup.');
-            }
-        })
-        .finally(() => {
-            backupButton.disabled = false;
-            backupButton.innerHTML = '<i class="fas fa-database"></i> Run Backup Now';
-        });
-    }
 </script>
 <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 </body>

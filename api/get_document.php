@@ -73,6 +73,8 @@ $allowed_doc_types = [
     'proof_of_address',
     'id_image',
     'psa_birth_cert',
+    'government_id_front',
+    'government_id_back',
     'barangay_residency',
     'comelec_cert',
     'deceased_landbank_card',

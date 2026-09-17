@@ -938,7 +938,10 @@ $hasQueueFilters = $queueFilters['search'] !== ''
     });
 
     function closeModal() {
-        document.getElementById('applicationModal').style.display = 'none';
+        const modal = document.getElementById('applicationModal');
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+        modal._returnFocus?.focus();
     }
 
     function openExportModal() {
@@ -989,7 +992,11 @@ $hasQueueFilters = $queueFilters['search'] !== ''
             if (el) el.className = 'step';
         });
 
-        document.getElementById('applicationModal').style.display = 'flex';
+        const applicationModal = document.getElementById('applicationModal');
+        applicationModal._returnFocus = document.activeElement;
+        applicationModal.style.display = 'flex';
+        applicationModal.setAttribute('aria-hidden', 'false');
+        document.getElementById('closeModalBtn').focus();
         document.querySelector('#applicationModal .modal-scroller').scrollTop = 0;
 
         window.loadApplicationModalData(appId)
@@ -1124,6 +1131,11 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                     btnNext.style.display = 'none';
                     btnReturn.style.display = 'none';
                     btnReject.style.display = 'none';
+                } else if (currentWorkflowStatus === 'Rejected') {
+                    instruction.textContent = 'This application was rejected. Restore it from the Archive to reopen it for review.';
+                    btnNext.style.display = 'none';
+                    btnReturn.style.display = 'none';
+                    btnReject.style.display = 'none';
                 }
 
                 /* ── Paginated Timeline ── */
@@ -1170,9 +1182,22 @@ $hasQueueFilters = $queueFilters['search'] !== ''
             const result = await response.json();
 
             if (result.success) {
-                showCarelinkResult(result.message, true);
                 closeModal();
-                setTimeout(() => location.reload(), 900);
+                if (action === 'next' && result.current_status === 'Verified') {
+                    const verifiedId = currentAppId;
+                    window.showCarelinkConfirm('Application verified. Set an expected release date now, or do it later in Department Records.', () => {
+                        location.href = 'department_records.php?application=' + encodeURIComponent(verifiedId);
+                    });
+                    const prompt = document.getElementById('carelinkConfirmModal');
+                    prompt.querySelector('#carelinkConfirmTitle').textContent = 'Set release date?';
+                    const later = prompt.querySelector('.carelink-confirm-cancel');
+                    later.textContent = 'Later';
+                    later.addEventListener('click', () => location.reload());
+                    prompt.querySelector('.carelink-confirm-ok').textContent = 'Open Records';
+                } else {
+                    showCarelinkResult(result.message, true);
+                    setTimeout(() => location.reload(), 900);
+                }
             } else {
                 showCarelinkResult("Status update error: " + result.message, false);
             }
@@ -1225,13 +1250,15 @@ $hasQueueFilters = $queueFilters['search'] !== ''
         html += blobDocBox('ID / Identification Photo', app.has_id_image, 'id_image');
 
         const additionalDocs = [
-            ['psa_birth_cert', 'Birth Cert / Negative of Birth'], ['barangay_residency', 'Barangay Residency'],
+            ['psa_birth_cert', 'Birth Cert / Negative of Birth'],
+            ['government_id_front', 'Valid Government ID — Front of ID'], ['government_id_back', 'Valid Government ID — Back of ID'],
+            ['barangay_residency', 'Barangay Residency'],
             ['comelec_cert', 'COMELEC Certificate'], ['deceased_landbank_card', 'Deceased Landbank Cash Card'],
             ['proof_of_life', 'Current Senior Photo / Proof of Life'],
             ['auth_letter', 'Authorization Letter'], ['proxy_id', 'Representative Government ID'],
             ['proxy_birth_cert', 'Representative Birth Certificate'], ['home_visitation_form', 'Home Visitation Form'],
             ['landbank_enrollment_form', 'Land Bank Enrollment Form']
-        ].filter(([key]) => app[key]);
+        ].filter(([key]) => app[key] && !(key === 'psa_birth_cert' && app.government_id_front === app.psa_birth_cert));
         if (additionalDocs.length) {
             html += `<div class="section-title" style="margin-top:24px;"><i class="fas fa-user-shield"></i> Additional Submitted Documents</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;">`;
             html += additionalDocs.map(([key, label]) => fileDocCard(label, app[key], key)).join('');

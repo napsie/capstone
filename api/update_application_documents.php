@@ -48,6 +48,8 @@ try {
         $legacyLabels = [
             'proof_of_address' => 'Proof of Address', 'id_image' => 'ID / Identification Photo',
             'psa_birth_cert' => 'Birth Cert / Negative of Birth', 'barangay_residency' => 'Barangay Residency Certificate',
+            'government_id_front' => 'Valid Government ID — Front of ID',
+            'government_id_back' => 'Valid Government ID — Back of ID',
             'comelec_cert' => 'COMELEC Certificate', 'deceased_landbank_card' => 'Deceased Landbank Cash Card',
             'proof_of_life' => 'Current Senior Photo / Proof of Life',
             'auth_letter' => 'Authorization Letter', 'proxy_id' => 'Representative Government ID',
@@ -66,7 +68,11 @@ try {
             exit;
         }
         $mime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
-        if (!in_array($mime, $allowed, true)) {
+        $governmentSide = in_array($key, ['government_id_front', 'government_id_back'], true);
+        $extension = strtolower(pathinfo((string)($file['name'] ?? ''), PATHINFO_EXTENSION));
+        if (!in_array($mime, $governmentSide ? ['image/jpeg', 'image/png'] : $allowed, true)
+            || ($governmentSide && !(($extension === 'png' && $mime === 'image/png')
+                || (in_array($extension, ['jpg', 'jpeg'], true) && $mime === 'image/jpeg')))) {
             echo json_encode(['success' => false, 'message' => 'Only JPEG, PNG, GIF, and PDF documents are accepted.']);
             exit;
         }
@@ -107,6 +113,13 @@ try {
         $existingDocument = $documentCheck->fetch(PDO::FETCH_ASSOC);
         if (!$existingDocument) {
             echo json_encode(['success' => false, 'message' => 'The selected document does not belong to this application.']);
+            exit;
+        }
+        $extension = strtolower(pathinfo((string)($file['name'] ?? ''), PATHINFO_EXTENSION));
+        if (in_array($existingDocument['document_key'], ['government_id_front', 'government_id_back'], true)
+            && !(($extension === 'png' && $mime === 'image/png')
+                || (in_array($extension, ['jpg', 'jpeg'], true) && $mime === 'image/jpeg'))) {
+            echo json_encode(['success' => false, 'message' => 'Only PNG, JPG, or JPEG images are accepted for government IDs.']);
             exit;
         }
         $replacement = file_get_contents($file['tmp_name']);
