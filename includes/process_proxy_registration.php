@@ -297,7 +297,11 @@ function processProxyRegistration(): array
             $seniorEmail = (string)($verifiedSenior['email_address'] ?? '');
             $completeAddress = (string)($verifiedSenior['complete_address'] ?? '');
             $healthStatus = (string)($verifiedSenior['health_status'] ?? '');
-            $healthCondition = (string)($verifiedSenior['health_condition'] ?? '');
+            // Local pension asks for a current condition on its own assessment form.
+            // Keep that submitted answer even when the older Senior ID has none.
+            if ($requestedBenefit !== 'Local Social Pension Assessment') {
+                $healthCondition = (string)($verifiedSenior['health_condition'] ?? '');
+            }
             $emergencyContactName = (string)($verifiedSenior['emergency_contact_name'] ?? '');
             $emergencyContact = (string)($verifiedSenior['emergency_contact'] ?? '');
             $emergencyContactRelationship = (string)($verifiedSenior['claimant_relationship'] ?? '');
@@ -465,10 +469,19 @@ function processProxyRegistration(): array
                 $claimantRelationship = $emergencyContactRelationship;
                 break;
             case 'Local Social Pension Assessment':
-                if ($isPensioner === null || $isPermanentIncome === null || $familySupport === null ||
-                    $healthCondition === '' || $ownsHouse === null || $isRenter === null || $atmCardNo === '') {
-                    $result['message'] = 'Please complete all fields on the Local Senior Pension economic-status form.';
-                    return $result;
+                foreach ([
+                    'Pension status' => $isPensioner,
+                    'Permanent income status' => $isPermanentIncome,
+                    'Regular family support' => $familySupport,
+                    'Condition / Illness' => $healthCondition,
+                    'Owns House' => $ownsHouse,
+                    'Renter' => $isRenter,
+                    'ATM or Temporary Cash Card Stub Number' => $atmCardNo,
+                ] as $label => $value) {
+                    if ($value === null || $value === '') {
+                        $result['message'] = $label . ' is required on the Local Senior Pension form.';
+                        return $result;
+                    }
                 }
                 if ($isPensioner === 1 && ($pensionSource === '' || $pensionAmount === null)) {
                     $result['message'] = 'Pension source and monthly amount are required when the senior receives a pension.';

@@ -352,6 +352,8 @@ async function main() {
     check(pensionPair.data.includes('Benefit Application Submitted'), 'Senior Pension accepts two ID images without an optional pension record');
     const pensionId = fixture('latest-pension-id');
     const pensionDetails = await request('/api/get_application_details.php?id=' + pensionId, admin);
+    check(pensionDetails.data.health_condition === 'Healthy',
+        'Senior Pension stores the current condition submitted on its assessment form');
     check(Boolean(pensionDetails.data.government_id_front) && Boolean(pensionDetails.data.government_id_back),
         'Senior Pension stores front and back under one application');
     for (const [page, cookie] of [['department_dashboard.php', admin], ['barangay_dash.php', staff], ['department_records.php', admin], ['department_archive.php', admin], ['barangay_archive.php', staff], ['verify_document.php?application=UI-CORRECTION', admin], ['submit_application.php?application=UI-CORRECTION', staff], ['proxy_registration.php', ''], ['field_operations.php', admin], ['field_operations.php', staff], ['import_records.php', admin]]) {
