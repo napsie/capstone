@@ -38,6 +38,9 @@ try {
 // Fetch Archived Applications
 $appWhere = ["is_archived = 1"];
 $appParams = [];
+$archiveLoadError = false;
+$archiveLookup = null;
+$archiveLookupEvent = null;
 
 if (!empty($search)) {
     $appWhere[] = "(id_number LIKE ? OR full_name LIKE ? OR lastName LIKE ? OR firstName LIKE ?)";
@@ -68,7 +71,29 @@ try {
     $stmtApp->execute($appParams);
     $archivedApplications = $stmtApp->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
+    error_log('Unable to load Department Archive applications: ' . $e->getMessage());
+    $archiveLoadError = true;
     $archivedApplications = [];
+}
+// An exact ID search should explain where a previously archived record is now.
+// Audit events are historical and must not be presented as current archive rows.
+$lookupId = strtoupper($search);
+if (!$archiveLoadError && $archivedApplications === [] && preg_match('/^[A-Z0-9][A-Z0-9-]{3,31}$/', $lookupId)) {
+    try {
+        $lookupStmt = $conn->prepare('SELECT id_number, full_name, workflow_state, status, is_archived, barangay FROM applications WHERE id_number = ? LIMIT 1');
+        $lookupStmt->execute([$lookupId]);
+        $archiveLookup = $lookupStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        if ($archiveLookup === null) {
+            $eventStmt = $conn->prepare("SELECT action, created_at FROM audit_trail
+                WHERE description LIKE ? AND action IN ('ARCHIVE_APPLICATION', 'RESTORE_APPLICATION', 'PERMANENT_DELETE_APPLICATION')
+                ORDER BY created_at DESC LIMIT 1");
+            $eventStmt->execute(['%' . $lookupId . '%']);
+            $archiveLookupEvent = $eventStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        }
+    } catch (PDOException $e) {
+        error_log('Unable to locate Archive application ' . $lookupId . ': ' . $e->getMessage());
+        $archiveLoadError = true;
+    }
 }
 $representedBarangays = array_values(array_unique(array_filter(array_column($archivedApplications, 'barangay'))));
 
@@ -219,6 +244,10 @@ $auditHasFilters = $search !== '' || $barangayFilter !== 'all' || $auditEventFil
 
         .empty-state { text-align: center; padding: 40px 20px; color: #64748b; }
         .empty-state i { font-size: 3rem; color: #cbd5e1; margin-bottom: 12px; }
+        .archive-search-result { padding:16px; margin:0 0 18px; border:1px solid #bfdbfe; border-radius:10px; background:#eff6ff; color:#1e3a5f; line-height:1.5; }
+        .archive-search-result > strong { display:block; margin-bottom:5px; }
+        .archive-search-result p { margin:0 0 10px; }
+        .archive-search-result--error { border-color:#fecaca; background:#fef2f2; color:#991b1b; }
         .audit-item { padding: 16px; border-bottom: 1px solid #f1f5f9; display: flex; gap: 14px; align-items: flex-start; }
         .audit-item:last-child { border-bottom: 0; }
         .audit-icon { width: 38px; height: 38px; border-radius: 50%; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; flex-shrink: 0; }
@@ -313,6 +342,36 @@ $auditHasFilters = $search !== '' || $barangayFilter !== 'all' || $auditEventFil
                             <a href="department_archive.php" class="btn" style="background:#e2e8f0;color:#475569;"><i class="fas fa-undo"></i> Reset</a>
                         <?php endif; ?>
                     </form>
+
+                    <?php if ($archiveLoadError): ?>
+                        <div class="archive-search-result archive-search-result--error" role="alert">Archived applications could not be loaded. Please refresh this page or check the deployment logs.</div>
+                    <?php elseif ($archiveLookup !== null):
+                        $lookupArchived = !empty($archiveLookup['is_archived']);
+                        $lookupState = $archiveLookup['workflow_state'] ?: ($archiveLookup['status'] ?: 'Unknown');
+                        $lookupTarget = in_array(strtolower($lookupState), ['verified', 'approved', 'released'], true)
+                            ? 'department_records.php?application=' : 'verify_document.php?application=';
+                    ?>
+                        <div class="archive-search-result" role="status">
+                            <strong><?php echo htmlspecialchars($archiveLookup['id_number']); ?> — <?php echo htmlspecialchars($archiveLookup['full_name']); ?></strong>
+                            <?php if ($lookupArchived): ?>
+                                <p>This application is archived but hidden by the current filters. Clear the filters to view it.</p>
+                                <a class="btn btn-restore" href="department_archive.php?tab=applications&amp;search=<?php echo rawurlencode($archiveLookup['id_number']); ?>">View archived application</a>
+                            <?php else: ?>
+                                <p>This application is currently active with status <strong><?php echo htmlspecialchars($lookupState); ?></strong>. It will not appear in the archived applications list.</p>
+                                <?php if ($lookupState === 'Rejected' || strtolower((string)$archiveLookup['status']) === 'rejected'): ?>
+                                    <button type="button" class="btn btn-restore restore-app-btn" data-id="<?php echo htmlspecialchars($archiveLookup['id_number']); ?>" data-name="<?php echo htmlspecialchars($archiveLookup['full_name']); ?>" data-rejected="1">Reopen for review</button>
+                                <?php else: ?>
+                                    <a class="btn btn-restore" href="<?php echo $lookupTarget . rawurlencode($archiveLookup['id_number']); ?>">Open current record</a>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                        </div>
+                    <?php elseif ($archiveLookupEvent !== null): ?>
+                        <div class="archive-search-result" role="status">
+                            <strong>No current application record found for <?php echo htmlspecialchars($lookupId); ?>.</strong>
+                            <p>The latest matching audit event was <?php echo htmlspecialchars(auditActionPresentation($archiveLookupEvent['action'])['label']); ?> on <?php echo htmlspecialchars(date('M j, Y g:i A', strtotime($archiveLookupEvent['created_at']))); ?>. Audit entries record past actions; they do not confirm that the application still exists.</p>
+                            <a class="btn btn-restore" href="department_archive.php?tab=audit&amp;search=<?php echo rawurlencode($lookupId); ?>">View audit history</a>
+                        </div>
+                    <?php endif; ?>
 
                     <div class="table-container">
                         <table class="table">

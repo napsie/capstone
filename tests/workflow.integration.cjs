@@ -254,6 +254,26 @@ async function main() {
         'Restore clears rejected status and records the reopening in history');
     check((await action(admin, 'OTHERQUEUE', 'reject', { comments: 'Second rejection' })).data.current_status === 'Rejected',
         'Restored application can be rejected and archived again');
+    const archivedAgain = await request('/pages/department_archive.php?search=OTHERQUEUE&tab=applications', admin, undefined, true);
+    check(archivedAgain.status === 200 && archivedAgain.data.includes('data-id="OTHERQUEUE"'),
+        'Rejected application appears in the Department Archive');
+    fixture('mark-active-rejected');
+    const staleArchiveSearch = await request('/pages/department_archive.php?search=OTHERQUEUE&tab=applications', admin, undefined, true);
+    check(staleArchiveSearch.data.includes('currently active with status') && staleArchiveSearch.data.includes('Reopen for review'),
+        'Archive search locates a rejected record with an outdated active flag');
+    check((await request('/api/restore_application.php', other, new URLSearchParams({ id: 'OTHERQUEUE' }))).status === 403,
+        'Barangay staff cannot reopen an active rejected record');
+    const reopenedStale = await request('/api/restore_application.php', admin, new URLSearchParams({ id: 'OTHERQUEUE' }));
+    check(reopenedStale.data.success && (await request('/api/get_application_details.php?id=OTHERQUEUE', admin)).data.workflow_state === 'For Review',
+        'Administrator can reopen an active rejected record for review');
+    const activeArchiveSearch = await request('/pages/department_archive.php?search=OTHERQUEUE&tab=applications', admin, undefined, true);
+    check(activeArchiveSearch.data.includes('currently active with status') && activeArchiveSearch.data.includes('Open current record'),
+        'Archive search points to the current location of a restored application');
+    fixture('audit-only-archive');
+    const auditOnlySearch = await request('/pages/department_archive.php?search=PRX-MISSING&tab=applications', admin, undefined, true);
+    check(auditOnlySearch.data.includes('No current application record found for PRX-MISSING')
+        && auditOnlySearch.data.includes('View audit history'),
+        'Archive search distinguishes an audit event from a current application record');
     check(!(await action(admin, 'UNDERAGE-PENSION', 'next')).data.success, 'Local Pension applicant under 65 cannot advance');
     check((await action(admin, 'PEN-LBANK', 'next')).data.current_status === 'Verified', 'Land Bank enrollment verifies for forwarding');
     const landbankTracker = await request('/pages/benefit_tracker.php?token=PRX-BENE&service=landbank', '', undefined, true);

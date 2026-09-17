@@ -32,6 +32,16 @@ if (($argv[1] ?? '') === 'reconcile-restored-rejection') {
     $conn->exec($sql);
     exit;
 }
+if (($argv[1] ?? '') === 'mark-active-rejected') {
+    $conn->exec("USE `$name`");
+    $conn->exec("UPDATE applications SET workflow_state = 'Rejected', status = 'rejected', is_archived = 0, archived_at = NULL, archived_by = NULL WHERE id_number = 'OTHERQUEUE'");
+    exit;
+}
+if (($argv[1] ?? '') === 'audit-only-archive') {
+    $conn->exec("USE `$name`");
+    $conn->exec("INSERT INTO audit_trail (username, role, action, description) VALUES ('test-admin', 'department_admin', 'ARCHIVE_APPLICATION', 'Rejected and archived application PRX-MISSING (Synthetic Applicant).')");
+    exit;
+}
 $schema = file_get_contents(dirname(__DIR__) . '/capstone1_schema.sql');
 // Explicitly remove all database-selection statements before using the isolated DB.
 $schema = preg_replace('/CREATE DATABASE IF NOT EXISTS `capstone1`[\s\S]*?;/i', '', $schema, 1, $created);

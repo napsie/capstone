@@ -45,17 +45,23 @@ if (isset($_POST['id'])) {
             echo json_encode(['success' => false, 'message' => 'Application was not found or is outside your scope.']);
             exit;
         }
-        if (empty($app['is_archived'])) {
+        $wasRejected = ($app['workflow_state'] ?? '') === 'Rejected' || strtolower((string)($app['status'] ?? '')) === 'rejected';
+        if (empty($app['is_archived']) && $wasRejected && !in_array($_SESSION['role'] ?? '', ['department_admin', 'super_admin'], true)) {
+            $conn->rollBack();
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Only a Department Administrator can reopen this rejected application.']);
+            exit;
+        }
+        if (empty($app['is_archived']) && !$wasRejected) {
             $conn->rollBack();
             echo json_encode(['success' => false, 'message' => 'Application is already active.']);
             exit;
         }
-        $wasRejected = ($app['workflow_state'] ?? '') === 'Rejected' || strtolower((string)($app['status'] ?? '')) === 'rejected';
         $newState = $wasRejected ? 'For Review' : ($app['workflow_state'] ?: 'Received');
         $updateStmt = $conn->prepare("UPDATE applications SET is_archived = 0, archived_at = NULL, archived_by = NULL,
             workflow_state = ?, status = CASE WHEN ? = 1 THEN 'pending' ELSE status END,
             return_reason = CASE WHEN ? = 1 THEN NULL ELSE return_reason END
-            WHERE $where AND is_archived = 1");
+            WHERE $where AND (is_archived = 1 OR workflow_state = 'Rejected' OR LOWER(COALESCE(status, '')) = 'rejected')");
         $updateStmt->execute([$newState, (int)$wasRejected, (int)$wasRejected, ...$params]);
         if ($updateStmt->rowCount() !== 1) {
             throw new RuntimeException('Application was not restored.');
