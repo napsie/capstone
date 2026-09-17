@@ -7,9 +7,14 @@ requireSameOriginMutation();
 require_once '../includes/audit_logger.php';
 
 // Authentication check
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['barangay_staff', 'department_admin', 'super_admin'])) {
+if (!isset($_SESSION['user_id'])) {
     http_response_code(401);
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+    exit;
+}
+if (!in_array($_SESSION['role'] ?? '', ['department_admin', 'super_admin'], true)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Only a Department Administrator can restore applications.']);
     exit;
 }
 
@@ -31,11 +36,6 @@ if (isset($_POST['id'])) {
         $conn->beginTransaction();
         $where = 'id_number = ?';
         $params = [$id];
-        if (($_SESSION['role'] ?? '') === 'barangay_staff') {
-            $where .= " AND barangay = ?";
-            $params[] = $_SESSION['barangay'] ?? '';
-        }
-
         $fetchStmt = $conn->prepare("SELECT full_name, barangay, application_type, workflow_state, status, is_archived FROM applications WHERE $where FOR UPDATE");
         $fetchStmt->execute($params);
         $app = $fetchStmt->fetch(PDO::FETCH_ASSOC);
@@ -46,12 +46,6 @@ if (isset($_POST['id'])) {
             exit;
         }
         $wasRejected = ($app['workflow_state'] ?? '') === 'Rejected' || strtolower((string)($app['status'] ?? '')) === 'rejected';
-        if (empty($app['is_archived']) && $wasRejected && !in_array($_SESSION['role'] ?? '', ['department_admin', 'super_admin'], true)) {
-            $conn->rollBack();
-            http_response_code(403);
-            echo json_encode(['success' => false, 'message' => 'Only a Department Administrator can reopen this rejected application.']);
-            exit;
-        }
         if (empty($app['is_archived']) && !$wasRejected) {
             $conn->rollBack();
             echo json_encode(['success' => false, 'message' => 'Application is already active.']);

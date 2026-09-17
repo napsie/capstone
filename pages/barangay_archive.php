@@ -322,13 +322,12 @@ $auditHasFilters = ($activeTab === 'audit' && $search !== '') || $auditEventFilt
                                 <th>Date Submitted</th>
                                 <th>Archived Date</th>
                                 <th>Archived By</th>
-                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody data-paginate="10" data-pagination-label="Archived application pages">
                             <?php if (empty($archivedApplications)): ?>
                                 <tr>
-                                    <td colspan="8">
+                                    <td colspan="7">
                                         <div class="empty-state">
                                             <i class="fas fa-box-open"></i>
                                             <p>No archived applications found</p>
@@ -352,11 +351,6 @@ $auditHasFilters = ($activeTab === 'audit' && $search !== '') || $auditEventFilt
                                         <td><?php echo date('M d, Y', strtotime($app['date_submitted'])); ?></td>
                                         <td><?php echo !empty($app['archived_at']) ? date('M d, Y h:i A', strtotime($app['archived_at'])) : '—'; ?></td>
                                         <td><?php echo htmlspecialchars($archiveActorNames[$app['archived_by']] ?? ($app['archived_by'] ?: 'System')); ?></td>
-                                        <td>
-                                            <button type="button" class="btn btn-restore restore-app-btn" data-id="<?php echo htmlspecialchars($app['id_number']); ?>" data-name="<?php echo htmlspecialchars($app['full_name']); ?>" data-rejected="<?php echo $archiveStatusClass === 'archive-status--rejected' ? '1' : '0'; ?>">
-                                                <i class="fas fa-undo"></i> Restore
-                                            </button>
-                                        </td>
                                     </tr>
                                 <?php endforeach; ?>
                             <?php endif; ?>
@@ -529,38 +523,6 @@ $auditHasFilters = ($activeTab === 'audit' && $search !== '') || $auditEventFilt
                 }
             }
 
-            document.querySelectorAll('.restore-app-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const appId = this.dataset.id;
-                    const appName = this.dataset.name;
-                    
-                    const restoreQuestion = this.dataset.rejected === '1'
-                        ? `Restore application ${appId} (${appName}) to For Review? Its earlier rejection will remain in the audit history.`
-                        : `Are you sure you want to restore application ${appId} (${appName}) back to the active queue?`;
-                    window.showCarelinkConfirm(restoreQuestion, function() {
-                        const formData = new FormData();
-                        formData.append('id', appId);
-
-                        fetch('../api/restore_application.php', {
-                            method: 'POST',
-                            body: formData
-                        })
-                        .then(res => res.json())
-                        .then(data => {
-                            if (data.success) {
-                                window.showCarelinkResult(data.message, true);
-                                setTimeout(() => location.reload(), 1200);
-                            } else {
-                                window.showCarelinkResult(data.message || 'Failed to restore application.', false);
-                            }
-                        })
-                        .catch(err => {
-                            console.error('Error restoring application:', err);
-                            window.showCarelinkResult('An error occurred while communicating with the server.', false);
-                        });
-                    });
-                });
-            });
         });
     </script>
 </body>

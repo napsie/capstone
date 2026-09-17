@@ -239,6 +239,11 @@ async function main() {
     check((await action(admin, 'CORRECT', 'next')).data.current_status === 'Verified', 'Department verifies resubmitted application');
     check(!(await action(admin, 'CORRECT', 'return', { comments: 'Reason', correctionDocuments: 'PSA' })).data.success, 'Completed application cannot be returned');
     check(!(await action(admin, 'ARCHIVED', 'next')).data.success, 'Archived application cannot advance');
+    const barangayArchive = await request('/pages/barangay_archive.php', staff, undefined, true);
+    check(barangayArchive.data.includes('data-id="ARCHIVED"') && !barangayArchive.data.includes('restore-app-btn'),
+        'SHDO archive lists records without a restore action');
+    check((await request('/api/restore_application.php', staff, new URLSearchParams({ id: 'ARCHIVED' }))).status === 403,
+        'SHDO cannot restore an archived application through the API');
     fixture('reconcile-restored-rejection');
     let reopened = (await request('/api/get_application_details.php?id=OTHERQUEUE', admin)).data;
     check(reopened.workflow_state === 'For Review' && reopened.status === 'pending',
