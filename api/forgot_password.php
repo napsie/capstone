@@ -44,7 +44,6 @@ try {
     $smtpEncryption = strtolower(trim((string) (getenv('SMTP_ENCRYPTION') ?: 'tls')));
     $mailFrom = trim((string) (getenv('MAIL_FROM_ADDRESS') ?: $smtpUsername));
     $mailFromName = trim((string) (getenv('MAIL_FROM_NAME') ?: 'SeniorLink'));
-    $baseUrl = rtrim(trim((string) getenv('APP_URL')), '/');
 
     if ($smtpHost === '' || $smtpUsername === '' || $smtpPassword === '' || $mailFrom === '') {
         error_log('Password reset email was not sent because SMTP environment variables are not configured.');
@@ -52,17 +51,9 @@ try {
         exit;
     }
 
-    if ($baseUrl === '') {
-        $httpsEnabled = !empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off';
-        $scheme = $httpsEnabled ? 'https' : 'http';
-        $host = preg_replace('/[^A-Za-z0-9.:-]/', '', (string) ($_SERVER['HTTP_HOST'] ?? 'localhost'));
-        $projectPath = str_replace('\\', '/', dirname(dirname((string) ($_SERVER['SCRIPT_NAME'] ?? '/api/forgot_password.php'))));
-        $baseUrl = $scheme . '://' . ($host ?: 'localhost') . rtrim($projectPath, '/');
-    }
-
     $otp = (string) random_int(100000, 999999);
-    $tokenHash = password_hash($otp, PASSWORD_DEFAULT);
     $expiry = date('Y-m-d H:i:s', strtotime('+10 minutes'));
+    $startedAt = microtime(true);
 
     $mail = new PHPMailer(true);
     $mail->isSMTP();
@@ -71,6 +62,11 @@ try {
     $mail->Username = $smtpUsername;
     $mail->Password = $smtpPassword;
     $mail->Port = $smtpPort;
+    // Railway should fail clearly instead of holding the reset screen for the
+    // library's default five-minute connection timeout. This does not shorten
+    // a successful Gmail delivery; it limits only an unavailable SMTP server.
+    $smtpTimeout = (int) (getenv('SMTP_TIMEOUT') ?: 20);
+    $mail->Timeout = max(5, min(60, $smtpTimeout));
     if ($smtpEncryption === 'ssl' || $smtpEncryption === 'smtps') {
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
     } elseif ($smtpEncryption !== '' && $smtpEncryption !== 'none') {
@@ -91,8 +87,10 @@ try {
     $mail->send();
 
     // Store a usable token only after the email has been accepted by the mail server.
+    $tokenHash = password_hash($otp, PASSWORD_DEFAULT);
     $stmt = $conn->prepare('UPDATE users SET reset_token = :token, reset_token_expiry = :expiry WHERE id = :id');
     $stmt->execute(['token' => $tokenHash, 'expiry' => $expiry, 'id' => $user['id']]);
+    error_log(sprintf('Password reset OTP accepted by SMTP in %.2f seconds for user ID %d.', microtime(true) - $startedAt, (int) $user['id']));
 
     echo json_encode(['success' => true, 'message' => $genericMessage]);
 } catch (Exception $e) {

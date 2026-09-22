@@ -23,13 +23,23 @@ if ($role === 'barangay_staff') {
     $params[] = $_SESSION['barangay'] ?? '';
 }
 if ($search !== '') {
-    $where[] = '(full_name LIKE ? OR senior_id_no LIKE ? OR id_number LIKE ?)';
+    // LOWER() keeps name/ID searches case-insensitive on both MySQL and PostgreSQL.
+    $where[] = '(LOWER(full_name) LIKE LOWER(?) OR LOWER(COALESCE(senior_id_no, \'\')) LIKE LOWER(?) OR LOWER(id_number) LIKE LOWER(?))';
     array_push($params, "%{$search}%", "%{$search}%", "%{$search}%");
 }
+
+// Railway may use PostgreSQL while the local XAMPP database uses MySQL.
+// Use each database's regular-expression operator so ID-status filtering works
+// identically in both environments.
+$temporaryIdPattern = '^OSCA-[0-9]{4}-[0-9A-F]{6}$';
+$isPostgres = ($driver ?? 'mysql') === 'pgsql';
+$temporaryIdCondition = $isPostgres
+    ? "senior_id_no ~* '{$temporaryIdPattern}'"
+    : "senior_id_no REGEXP '{$temporaryIdPattern}'";
 if ($idStatus === 'pending') {
-    $where[] = "(senior_id_no IS NULL OR senior_id_no = '' OR senior_id_no REGEXP '^OSCA-[0-9]{4}-[0-9A-F]{6}$')";
+    $where[] = "(senior_id_no IS NULL OR senior_id_no = '' OR {$temporaryIdCondition})";
 } elseif ($idStatus === 'generated') {
-    $where[] = "senior_id_no IS NOT NULL AND senior_id_no <> '' AND senior_id_no NOT REGEXP '^OSCA-[0-9]{4}-[0-9A-F]{6}$'";
+    $where[] = "senior_id_no IS NOT NULL AND senior_id_no <> '' AND NOT ({$temporaryIdCondition})";
 }
 $whereSql = implode(' AND ', $where);
 $countStmt = $conn->prepare("SELECT COUNT(*) FROM applications WHERE {$whereSql}");
@@ -75,7 +85,7 @@ function hasOfficialSeniorId(array $record): bool {
 <main class="main-content">
     <header class="page-header"><div class="page-header-left"><div class="greeting" id="greetingMsg"></div><h1>Digital <span>IDs</span></h1></div><div class="header-user"><?php $profilePicPath='../images/profile_pictures/'.($_SESSION['profile_picture']??'default.jpg'); if(!file_exists($profilePicPath)||is_dir($profilePicPath))$profilePicPath='../images/profile_pictures/default.jpg'; ?><img src="<?= htmlspecialchars($profilePicPath) ?>" alt="Profile"><div class="header-user-info"><h3><?= htmlspecialchars(trim(($_SESSION['first_name']??'').' '.($_SESSION['last_name']??''))) ?></h3><p><?= htmlspecialchars(ucwords(str_replace('_',' ',$role))) ?> · <?= $isDepartment?'Pasig City':htmlspecialchars($_SESSION['barangay']??'') ?></p></div></div></header>
 <div class="page-shell">
-    <div class="page-tools"><div class="records-summary"><h2>Issued Senior Citizen IDs</h2><p><span class="record-count"><?= number_format($total) ?></span> approved <?= $total === 1 ? 'record' : 'records' ?> available</p></div><form class="search" method="get"><select name="id_status" aria-label="Filter digital IDs"><option value="all" <?= $idStatus === 'all' ? 'selected' : '' ?>>All IDs</option><option value="pending" <?= $idStatus === 'pending' ? 'selected' : '' ?>>Not yet generated</option><option value="generated" <?= $idStatus === 'generated' ? 'selected' : '' ?>>Generated IDs</option></select><input name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Search name, ID, or application…" maxlength="100" aria-label="Search digital IDs"><button type="submit"><i class="fas fa-search"></i> Search</button><?php if ($search !== '' || $idStatus !== 'all'): ?><a class="clear-search" href="digital_ids.php">Clear</a><?php endif; ?></form></div>
+    <div class="page-tools"><div class="records-summary"><h2>Issued Senior Citizen IDs</h2><p><span class="record-count"><?= number_format($total) ?></span> approved <?= $total === 1 ? 'record' : 'records' ?> available</p></div><form class="search" method="get"><select name="id_status" aria-label="Filter digital IDs" onchange="this.form.submit()"><option value="all" <?= $idStatus === 'all' ? 'selected' : '' ?>>All IDs</option><option value="pending" <?= $idStatus === 'pending' ? 'selected' : '' ?>>Not yet generated</option><option value="generated" <?= $idStatus === 'generated' ? 'selected' : '' ?>>Generated IDs</option></select><input name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Search name, ID, or application…" maxlength="100" aria-label="Search digital IDs"><button type="submit"><i class="fas fa-search"></i> Search</button><?php if ($search !== '' || $idStatus !== 'all'): ?><a class="clear-search" href="digital_ids.php">Clear</a><?php endif; ?></form></div>
     <section class="card">
         <?php if (!$records): ?><div class="empty"><i class="fas fa-id-card fa-2x"></i><p>No approved digital IDs found.</p></div>
         <?php else: ?><table><thead><tr><th>Senior Citizen ID No.</th><th>Application Token</th><th>Applicant</th><th>Barangay</th><th>Birth Date</th><th class="action-cell">Action</th></tr></thead><tbody>
