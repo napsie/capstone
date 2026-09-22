@@ -30,5 +30,5 @@ require_once __DIR__ . '/../includes/system_branding.php';
         </ul>
     </div>
 </div>
-<script src="../assets/js/session-timeout.js?v=1"></script>
+<script src="../assets/js/session-timeout.js?v=3"></script>
 <?php include_once __DIR__ . '/legal_quick_access.php'; ?>

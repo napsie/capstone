@@ -200,6 +200,12 @@ header('Expires: 0');
                     <small>Pasig City Senior Services</small>
                 </span>
             </div>
+            <nav class="site-nav" aria-label="Account navigation">
+                <button type="button" class="btn-primary" data-login-view="admin" data-signup-entry aria-controls="adminLoginView">
+                    <span>Staff Sign Up</span>
+                    <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                </button>
+            </nav>
         </div>
     </header>
 
@@ -309,8 +315,8 @@ header('Expires: 0');
                             <div><strong>Reset SHDO password</strong><small>Enter the six-digit code sent to the account's registered email.</small></div>
                         </div>
                         <div class="form-group"><label for="staffResetOtp">Six-digit OTP</label><input id="staffResetOtp" type="text" data-reset-otp class="form-control" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" autocomplete="one-time-code" placeholder="000000" disabled></div>
-                        <div class="form-group"><label for="staffResetPassword">New password</label><input id="staffResetPassword" type="password" data-reset-password class="form-control" minlength="8" autocomplete="new-password" disabled></div>
-                        <div class="form-group"><label for="staffResetConfirm">Confirm new password</label><input id="staffResetConfirm" type="password" data-reset-confirm class="form-control" minlength="8" autocomplete="new-password" disabled></div>
+                        <div class="form-group"><label for="staffResetPassword">New password</label><div class="password-field"><input id="staffResetPassword" type="password" data-reset-password class="form-control" minlength="8" autocomplete="new-password" disabled><button type="button" class="toggle-password" data-password-target="staffResetPassword" aria-label="Show new password"><i class="fas fa-eye"></i></button></div></div>
+                        <div class="form-group"><label for="staffResetConfirm">Confirm new password</label><div class="password-field"><input id="staffResetConfirm" type="password" data-reset-confirm class="form-control" minlength="8" autocomplete="new-password" disabled><button type="button" class="toggle-password" data-password-target="staffResetConfirm" aria-label="Show confirmed password"><i class="fas fa-eye"></i></button></div></div>
                         <div class="portal-reset-actions">
                             <button type="button" class="portal-reset-back" data-reset-cancel><i class="fas fa-arrow-left" aria-hidden="true"></i> Back to sign in</button>
                             <button type="button" class="portal-login-submit" data-reset-submit disabled>Change password</button>
@@ -323,6 +329,7 @@ header('Expires: 0');
                 <button type="button" class="portal-login-back" data-login-back><i class="fas fa-arrow-left" aria-hidden="true"></i> Back to access choices</button>
                 <?php if ($loginView === 'admin' && $loginError): ?><div class="portal-login-error" role="alert" tabindex="-1"><?php echo htmlspecialchars($loginError); ?></div><?php endif; ?>
                 <form method="post" action="index.php?view=admin" class="portal-login-form">
+                    <p class="portal-signup-note"><i class="fas fa-shield-halved" aria-hidden="true"></i> Staff accounts are created by an authorized Department Administrator after sign-in.</p>
                     <input type="hidden" name="login_role" value="department_admin">
                     <div class="form-group"><label for="adminUsername">Username</label><input id="adminUsername" name="username" class="form-control" value="<?php echo $loginView === 'admin' ? htmlspecialchars($_POST['username'] ?? '') : ''; ?>" autocomplete="username" required></div>
                     <div class="form-group"><label for="adminPassword">Password</label><div class="password-field"><input type="password" id="adminPassword" name="password" class="form-control" autocomplete="current-password" required><button type="button" class="toggle-password" data-password-target="adminPassword" aria-label="Show password"><i class="fas fa-eye"></i></button></div></div>
@@ -335,8 +342,8 @@ header('Expires: 0');
                             <div><strong>Reset administrator password</strong><small>Enter the six-digit code sent to the account's registered email.</small></div>
                         </div>
                         <div class="form-group"><label for="adminResetOtp">Six-digit OTP</label><input id="adminResetOtp" type="text" data-reset-otp class="form-control" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" autocomplete="one-time-code" placeholder="000000" disabled></div>
-                        <div class="form-group"><label for="adminResetPassword">New password</label><input id="adminResetPassword" type="password" data-reset-password class="form-control" minlength="8" autocomplete="new-password" disabled></div>
-                        <div class="form-group"><label for="adminResetConfirm">Confirm new password</label><input id="adminResetConfirm" type="password" data-reset-confirm class="form-control" minlength="8" autocomplete="new-password" disabled></div>
+                        <div class="form-group"><label for="adminResetPassword">New password</label><div class="password-field"><input id="adminResetPassword" type="password" data-reset-password class="form-control" minlength="8" autocomplete="new-password" disabled><button type="button" class="toggle-password" data-password-target="adminResetPassword" aria-label="Show new password"><i class="fas fa-eye"></i></button></div></div>
+                        <div class="form-group"><label for="adminResetConfirm">Confirm new password</label><div class="password-field"><input id="adminResetConfirm" type="password" data-reset-confirm class="form-control" minlength="8" autocomplete="new-password" disabled><button type="button" class="toggle-password" data-password-target="adminResetConfirm" aria-label="Show confirmed password"><i class="fas fa-eye"></i></button></div></div>
                         <div class="portal-reset-actions">
                             <button type="button" class="portal-reset-back" data-reset-cancel><i class="fas fa-arrow-left" aria-hidden="true"></i> Back to sign in</button>
                             <button type="button" class="portal-login-submit" data-reset-submit disabled>Change password</button>
@@ -540,7 +547,7 @@ header('Expires: 0');
                 if (otpSection) {
                     otpSection.hidden = true;
                     otpSection.querySelectorAll('input').forEach(input => input.value = '');
-                    otpSection.querySelectorAll('input, button[data-reset-submit]').forEach(control => control.disabled = true);
+                    otpSection.querySelectorAll('input, button[data-reset-submit], button[data-password-target]').forEach(control => control.disabled = true);
                 }
                 const resetMessage = panel.querySelector('[data-reset-message]');
                 if (clearMessage && resetMessage) {

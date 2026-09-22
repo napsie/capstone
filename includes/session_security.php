@@ -24,7 +24,10 @@ function enforceAuthenticatedSessionTimeout(): void
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode(['success' => false, 'message' => 'Your session expired after 5 minutes of inactivity. Please sign in again.']);
         } else {
-            header('Location: ../index.php?session=expired');
+            $scriptName = str_replace('\\', '/', (string)($_SERVER['SCRIPT_NAME'] ?? '/index.php'));
+            $basePath = preg_replace('#/(pages|api)/[^/]+$#', '', $scriptName);
+            if ($basePath === $scriptName) $basePath = rtrim(dirname($scriptName), '/');
+            header('Location: ' . ($basePath ?: '') . '/index.php?session=expired');
         }
         exit;
     }

@@ -519,6 +519,8 @@ button.portal-card {
     box-shadow: var(--focus-ring);
 }
 .portal-login-form { display: grid; gap: 13px; }
+.portal-signup-note { display:flex; align-items:flex-start; gap:8px; margin:0; padding:10px 12px; border:1px solid #bfdbfe; border-radius:9px; background:#eff6ff; color:#1e3a5f; font-size:.76rem; line-height:1.4; }
+.portal-signup-note i { margin-top:2px; color:#2563eb; }
 .portal-login-form .form-group { margin: 0; }
 .portal-login-form label { display: block; margin-bottom: 6px; color: #334155; font-size: .76rem; font-weight: 700; }
 .portal-login-form .form-control { min-height: 48px; width: 100%; padding: 11px 13px; border: 1px solid #b9c8d8; border-radius: 10px; background: #fff; color: #172033; font: inherit; }

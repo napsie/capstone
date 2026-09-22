@@ -5,6 +5,8 @@
     let lastServerTouch = 0;
 
     const expire = () => {
+        if (window.__seniorlinkSessionExpiring) return;
+        window.__seniorlinkSessionExpiring = true;
         window.location.replace('../index.php?session=expired');
     };
     const schedule = () => {
@@ -32,5 +34,10 @@
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden && Date.now() >= deadline) expire();
     });
+    // The interval is a safeguard for browser timer throttling: if the page
+    // was sleeping in the background, it expires as soon as it becomes active.
+    window.setInterval(() => {
+        if (Date.now() >= deadline) expire();
+    }, 1000);
     schedule();
 })();
