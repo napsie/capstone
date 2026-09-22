@@ -290,15 +290,15 @@ try {
             display: none;
         }
 
-        /* Edit user modal */
-        #editUserModal { display: none; position: fixed; z-index: 1000; inset: 0; width: 100%; height: 100%; padding: 24px; overflow: hidden; background: rgba(2, 6, 23, 0.62); justify-content: center; align-items: center; }
-        #editUserModal .modal-content { display: flex; flex-direction: column; width: min(760px, 100%); max-width: 760px; max-height: calc(100dvh - 48px); margin: 0; padding: 0; overflow: hidden; background: #fff; border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 18px; box-shadow: 0 28px 70px rgba(2, 6, 23, 0.3); }
-        #editUserModal .modal-header { display: flex; flex: 0 0 auto; justify-content: space-between; align-items: center; min-height: 76px; margin: 0; padding: 18px 24px; border-bottom: 1px solid #e2e8f0; background: #fff; }
-        #editUserModal .modal-header h2 { display: flex; align-items: center; gap: 12px; margin: 0; color: var(--primary); font-size: 1.35rem; line-height: 1.25; }
-        #editUserModal .modal-header h2 i { display: grid; place-items: center; width: 40px; height: 40px; margin: 0; color: #1d4ed8; background: #eff6ff; border-radius: 10px; }
-        #editUserModal .modal-close { display: grid; place-items: center; width: 40px; min-width: 40px; height: 40px; padding: 0; color: #64748b; background: transparent; border: 0; border-radius: 10px; cursor: pointer; font-size: 1.25rem; transition: background-color .2s ease, color .2s ease; }
-        #editUserModal .modal-close:hover, #editUserModal .modal-close:focus-visible { color: #0f172a; background: #f1f5f9; outline: none; }
-        #editUserModal .modal-body { display: flex; flex: 1 1 auto; min-height: 0; padding: 0; overflow: hidden; }
+        /* User form modals */
+        #editUserModal, #addUserModal { display: none; position: fixed; z-index: 1000; inset: 0; width: 100%; height: 100%; padding: 24px; overflow: hidden; background: rgba(2, 6, 23, 0.62); justify-content: center; align-items: center; }
+        #editUserModal .modal-content, #addUserModal .modal-content { display: flex; flex-direction: column; width: min(760px, 100%); max-width: 760px; max-height: calc(100dvh - 48px); margin: 0; padding: 0; overflow: hidden; background: #fff; border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 18px; box-shadow: 0 28px 70px rgba(2, 6, 23, 0.3); }
+        #editUserModal .modal-header, #addUserModal .modal-header { display: flex; flex: 0 0 auto; justify-content: space-between; align-items: center; min-height: 76px; margin: 0; padding: 18px 24px; border-bottom: 1px solid #e2e8f0; background: #fff; }
+        #editUserModal .modal-header h2, #addUserModal .modal-header h2 { display: flex; align-items: center; gap: 12px; margin: 0; color: var(--primary); font-size: 1.35rem; line-height: 1.25; }
+        #editUserModal .modal-header h2 i, #addUserModal .modal-header h2 i { display: grid; place-items: center; width: 40px; height: 40px; margin: 0; color: #1d4ed8; background: #eff6ff; border-radius: 10px; }
+        #editUserModal .modal-close, #addUserModal .modal-close { display: grid; place-items: center; width: 40px; min-width: 40px; height: 40px; padding: 0; color: #64748b; background: transparent; border: 0; border-radius: 10px; cursor: pointer; font-size: 1.25rem; transition: background-color .2s ease, color .2s ease; }
+        #editUserModal .modal-close:hover, #editUserModal .modal-close:focus-visible, #addUserModal .modal-close:hover, #addUserModal .modal-close:focus-visible { color: #0f172a; background: #f1f5f9; outline: none; }
+        #editUserModal .modal-body, #addUserModal .modal-body { display: flex; flex: 1 1 auto; min-height: 0; padding: 0; overflow: hidden; }
         #editUserForm { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; max-height: none; overflow: hidden; }
         #editUserModal .modal-form-fields { flex: 1 1 auto; min-height: 0; padding: 22px 24px 18px; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
         #editUserModal .form-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
@@ -315,12 +315,19 @@ try {
         #editUserModal .modal-actions .btn { display: inline-flex; align-items: center; justify-content: center; min-width: 122px; min-height: 44px; padding: 10px 18px; border-radius: 9px; font-size: 14px; font-weight: 700; }
         #editUserModal .modal-actions .btn-secondary { color: #334155; background: #fff; border: 1px solid #cbd5e1; }
         #editUserModal .modal-actions .btn-secondary:hover { background: #f1f5f9; }
+        #addUserForm { display:flex; flex:1 1 auto; flex-direction:column; min-height:0; overflow:hidden; }
+        #addUserModal .modal-form-fields { flex:1 1 auto; min-height:0; padding:22px 24px 18px; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
+        #addUserModal .modal-actions { display:flex; flex:0 0 auto; justify-content:flex-end; gap:10px; margin:0; padding:16px 24px; background:#f8fafc; border-top:1px solid #e2e8f0; }
+        #addUserModal .modal-actions .btn { min-height:44px; font-weight:700; }
+        .add-user-cta { display:flex; align-items:center; justify-content:space-between; gap:20px; }
+        .add-user-cta h3 { margin:0 0 6px; background:none; color:var(--primary); padding:0; }
+        .add-user-cta p { margin:0; color:#64748b; }
 
         @media (max-width: 640px) {
-            #editUserModal { padding: 0 !important; align-items: stretch !important; }
-            #editUserModal .modal-content { height: 100dvh; max-height: 100dvh !important; overflow: hidden !important; border-radius: 0 !important; }
-            #editUserModal .modal-header { min-height: 68px; padding: 14px 16px !important; }
-            #editUserModal .modal-body { flex: 1 1 auto; min-height: 0; max-height: none !important; padding: 0 !important; overflow: hidden !important; }
+            #editUserModal, #addUserModal { padding: 0 !important; align-items: stretch !important; }
+            #editUserModal .modal-content, #addUserModal .modal-content { height: 100dvh; max-height: 100dvh !important; overflow: hidden !important; border-radius: 0 !important; }
+            #editUserModal .modal-header, #addUserModal .modal-header { min-height: 68px; padding: 14px 16px !important; }
+            #editUserModal .modal-body, #addUserModal .modal-body { flex: 1 1 auto; min-height: 0; max-height: none !important; padding: 0 !important; overflow: hidden !important; }
             #editUserForm { min-height: 0; max-height: none; }
             #editUserModal .modal-form-fields { padding: 18px 16px 6px; }
             #editUserModal .form-row { grid-template-columns: minmax(0, 1fr); gap: 0; }
@@ -328,6 +335,11 @@ try {
             #editUserModal .profile-upload .profile-picture-preview { width: 60px; height: 60px; }
             #editUserModal .modal-actions { padding: 14px 16px; }
             #editUserModal .modal-actions .btn { flex: 1 1 0; min-width: 0; }
+            #addUserModal .modal-form-fields { padding:18px 16px 6px; }
+            #addUserModal .form-row { grid-template-columns:minmax(0,1fr); gap:0; }
+            #addUserModal .modal-actions { padding:14px 16px; }
+            #addUserModal .modal-actions .btn { flex:1 1 0; min-width:0; }
+            .add-user-cta { align-items:flex-start; flex-direction:column; }
         }
     </style>
     <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
@@ -369,11 +381,18 @@ try {
             <?php if ($message): ?><div class="message"><?php echo $message; ?></div><?php endif; ?>
             <?php if ($error): ?><div class="error"><?php echo $error; ?></div><?php endif; ?>
             
-            <!-- Add User Card -->
-            <div class="card">
-                <h3><i class="fas fa-user-plus"></i> Add New User</h3>
+            <section class="card add-user-cta" aria-labelledby="addUserHeading">
+                <div><h3 id="addUserHeading"><i class="fas fa-user-plus"></i> User accounts</h3><p>Create an authorized Administrator or SHDO account.</p></div>
+                <button id="openAddUserModal" class="btn btn-success" type="button"><i class="fas fa-user-plus" aria-hidden="true"></i> Add User</button>
+            </section>
+
+            <div id="addUserModal" class="modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="addUserModalTitle">
+                <div class="modal-content">
+                    <div class="modal-header"><h2 id="addUserModalTitle"><i class="fas fa-user-plus" aria-hidden="true"></i> Add New User</h2><button type="button" class="modal-close" aria-label="Close add user dialog"><i class="fas fa-times" aria-hidden="true"></i></button></div>
+                    <div class="modal-body">
                 <form id="addUserForm" method="post" action="" enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                    <div class="modal-form-fields">
                     <div class="form-row">
                         <div class="form-group">
                             <label for="firstName">First Name</label>
@@ -450,11 +469,15 @@ try {
                             <input type="password" id="masterPassword" name="masterPassword" placeholder="Enter master password" required>
                         </div>
                     </div>
-                    <div class="actions">
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" data-close-add-user>Cancel</button>
+                        <button type="reset" class="btn btn-secondary">Reset</button>
                         <button type="submit" name="addUser" class="btn btn-success">Add User</button>
-                        <button type="reset" class="btn">Reset</button>
                     </div>
                 </form>
+                    </div>
+                </div>
             </div>
 
             <!-- Users List Card -->
@@ -749,6 +772,30 @@ try {
         }
 
         // --- Edit User Modal Logic ---
+        const addUserModal = document.getElementById('addUserModal');
+        const openAddUserModal = document.getElementById('openAddUserModal');
+        const addUserCloseButtons = addUserModal?.querySelectorAll('.modal-close, [data-close-add-user]') || [];
+
+        function openAddUserDialog() {
+            if (!addUserModal) return;
+            addUserModal._returnFocus = document.activeElement;
+            addUserModal.style.display = 'flex';
+            addUserModal.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+            window.setTimeout(() => document.getElementById('firstName')?.focus(), 0);
+        }
+
+        function closeAddUserDialog() {
+            if (!addUserModal) return;
+            addUserModal.style.display = 'none';
+            addUserModal.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+            addUserModal._returnFocus?.focus();
+        }
+
+        openAddUserModal?.addEventListener('click', openAddUserDialog);
+        addUserCloseButtons.forEach(button => button.addEventListener('click', closeAddUserDialog));
+
         const editUserModal = document.getElementById('editUserModal');
         const editUserForm = document.getElementById('editUserForm');
         const closeButtons = editUserModal.querySelectorAll('.modal-close, .modal-cancel');
@@ -866,14 +913,20 @@ try {
         closeButtons.forEach(btn => btn.addEventListener('click', closeEditUserModal));
 
         window.addEventListener('click', function(event) {
+            if (event.target === addUserModal) closeAddUserDialog();
             if (event.target == editUserModal) {
                 closeEditUserModal();
             }
         });
 
         document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' && addUserModal?.style.display === 'flex') closeAddUserDialog();
             if (event.key === 'Escape' && editUserModal.style.display === 'flex') closeEditUserModal();
         });
+
+        <?php if ($error !== ''): ?>
+        openAddUserDialog();
+        <?php endif; ?>
 
         const editProfilePictureInput = document.getElementById('editProfilePicture');
         const editProfilePicturePreview = document.getElementById('editProfilePicturePreview');

@@ -117,6 +117,16 @@ function hasOfficialSeniorId(array $record): bool {
 <script src="../assets/js/sidebar-toggle.js?v=3"></script>
 <script>
 (() => {
+    const digitalIdSearchForm = document.querySelector('.search');
+    const digitalIdSearchInput = digitalIdSearchForm?.querySelector('input[name="search"]');
+    let digitalIdSearchTimer;
+    digitalIdSearchInput?.addEventListener('input', () => {
+        window.clearTimeout(digitalIdSearchTimer);
+        digitalIdSearchTimer = window.setTimeout(() => {
+            // A normal submit keeps the selected ID-status filter in the URL.
+            digitalIdSearchForm.requestSubmit();
+        }, 350);
+    });
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
     document.getElementById('greetingMsg').innerHTML = greeting + ', <strong><?= htmlspecialchars(trim(($_SESSION['first_name'] ?? '') . ' ' . ($_SESSION['last_name'] ?? '')), ENT_QUOTES) ?></strong>!';

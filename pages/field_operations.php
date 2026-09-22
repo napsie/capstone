@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string)($_POST['action'] ?? '');
     if (in_array($action, ['create_batch', 'release_batch', 'receive_batch', 'update_batch_item'], true)) {
         operationsRedirect('Hardcopy batch processing has been removed from SENIORLINK.', false);
-    } elseif (in_array($action, ['add_personnel', 'toggle_personnel'], true)) {
+    } elseif (in_array($action, ['add_personnel', 'toggle_personnel', 'archive_personnel', 'restore_personnel'], true)) {
         $operationsAnchor = 'personnel';
     } else {
         $operationsAnchor = 'visits';
@@ -70,6 +70,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $contact = trim(strip_tags((string)($_POST['contact_number'] ?? '')));
             $assignedBarangay = trim(strip_tags((string)($_POST['barangay'] ?? '')));
             if ($name === '') operationsRedirect('Personnel name is required.', false);
+            if (mb_strlen($name) < 2) operationsRedirect('Personnel name must contain at least 2 characters.', false);
+            if (mb_strlen($name) > 80) operationsRedirect('Personnel name must not exceed 80 characters.', false);
+            if (!preg_match("/^[\\p{L}][\\p{L}\\p{M} .'-]*$/u", $name)) operationsRedirect('Personnel name may contain letters, spaces, periods, apostrophes, and hyphens only.', false);
             if (!in_array($position, ['Social Worker', 'Nurse', 'Field Officer', 'Other'], true)) operationsRedirect('Select a valid personnel position.', false);
             if ($assignedBarangay !== '' && !in_array($assignedBarangay, $barangays_list, true)) operationsRedirect('Select a valid barangay assignment.', false);
             $contact = normalizePhoneNumber($contact);
@@ -89,6 +92,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$personnelId]);
             logAudit($conn, 'TOGGLE_HOME_VISIT_PERSONNEL', "Changed active status for personnel #{$personnelId}.");
             operationsRedirect('Personnel availability updated.');
+        }
+
+        if ($action === 'archive_personnel') {
+            if (!$isDepartment) operationsRedirect('Only department administrators can archive personnel.', false);
+            $personnelId = filter_var($_POST['personnel_id'] ?? null, FILTER_VALIDATE_INT);
+            if (!$personnelId) operationsRedirect('Invalid personnel record.', false);
+
+            $personStmt = $conn->prepare('SELECT full_name FROM home_visit_personnel WHERE id = ? AND COALESCE(is_archived, 0) = 0');
+            $personStmt->execute([$personnelId]);
+            $person = $personStmt->fetch(PDO::FETCH_ASSOC);
+            if (!$person) operationsRedirect('This personnel record is already archived or unavailable.', false);
+
+            $assignedVisitStmt = $conn->prepare("SELECT COUNT(*) FROM applications WHERE home_visit_personnel_id = ? AND COALESCE(is_archived, 0) = 0 AND COALESCE(home_visit_status, '') IN ('Scheduled', 'In Progress')");
+            $assignedVisitStmt->execute([$personnelId]);
+            if ((int)$assignedVisitStmt->fetchColumn() > 0) {
+                operationsRedirect('This personnel member still has an active home visit. Reassign or complete that visit before archiving.', false);
+            }
+
+            $archivedBy = trim((string)($_SESSION['username'] ?? $_SESSION['user_id'] ?? 'Department Admin'));
+            $archiveStmt = $conn->prepare('UPDATE home_visit_personnel SET is_active = 0, is_archived = 1, archived_at = CURRENT_TIMESTAMP, archived_by = ? WHERE id = ? AND COALESCE(is_archived, 0) = 0');
+            $archiveStmt->execute([$archivedBy, $personnelId]);
+            if ($archiveStmt->rowCount() !== 1) operationsRedirect('The personnel record could not be archived. Please try again.', false);
+            logAudit($conn, 'ARCHIVE_HOME_VISIT_PERSONNEL', "Archived home visit personnel: {$person['full_name']}.");
+            operationsRedirect('Personnel archived. They can no longer be assigned to new home visits.');
+        }
+
+        if ($action === 'restore_personnel') {
+            if (!$isDepartment) operationsRedirect('Only department administrators can restore personnel.', false);
+            $personnelId = filter_var($_POST['personnel_id'] ?? null, FILTER_VALIDATE_INT);
+            if (!$personnelId) operationsRedirect('Invalid personnel record.', false);
+            $restoreStmt = $conn->prepare('UPDATE home_visit_personnel SET is_archived = 0, archived_at = NULL, archived_by = NULL, is_active = 0 WHERE id = ? AND COALESCE(is_archived, 0) = 1');
+            $restoreStmt->execute([$personnelId]);
+            if ($restoreStmt->rowCount() !== 1) operationsRedirect('The personnel record could not be restored. Please try again.', false);
+            logAudit($conn, 'RESTORE_HOME_VISIT_PERSONNEL', "Restored home visit personnel #{$personnelId} as inactive.");
+            operationsRedirect('Personnel restored as inactive. Activate them before assigning a new home visit.');
         }
 
         if ($action === 'save_visit') {
@@ -226,11 +264,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $notice = $_SESSION['field_operations_notice'] ?? null;
 unset($_SESSION['field_operations_notice']);
 
-$personnel = $conn->query('SELECT id, full_name, position, contact_number, barangay, is_active FROM home_visit_personnel ORDER BY is_active DESC, full_name')->fetchAll(PDO::FETCH_ASSOC);
+$personnel = $conn->query('SELECT id, full_name, position, contact_number, barangay, is_active FROM home_visit_personnel WHERE COALESCE(is_archived, 0) = 0 ORDER BY is_active DESC, full_name')->fetchAll(PDO::FETCH_ASSOC);
+$archivedPersonnel = $conn->query('SELECT id, full_name, position, barangay, archived_at FROM home_visit_personnel WHERE COALESCE(is_archived, 0) = 1 ORDER BY archived_at DESC, full_name')->fetchAll(PDO::FETCH_ASSOC);
 $activePersonnel = array_values(array_filter($personnel, static function ($p) use ($isDepartment, $barangay) {
     return (int)$p['is_active'] === 1
         && ($isDepartment || empty($p['barangay']) || $p['barangay'] === $barangay);
 }));
+
+$visitSearch = trim((string)($_GET['visit_search'] ?? ''));
+if (mb_strlen($visitSearch) > 100) $visitSearch = mb_substr($visitSearch, 0, 100);
+$visitStatusFilter = (string)($_GET['visit_status'] ?? 'all');
+$allowedVisitStatuses = ['all', 'Waiting for Home Visit', 'Scheduled', 'In Progress', 'Completed', 'Rejected'];
+if (!in_array($visitStatusFilter, $allowedVisitStatuses, true)) $visitStatusFilter = 'all';
+$visitDateFilter = trim((string)($_GET['visit_date'] ?? ''));
+if ($visitDateFilter !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $visitDateFilter)) $visitDateFilter = '';
+$visitBarangayFilter = $isDepartment ? trim((string)($_GET['visit_barangay'] ?? 'all')) : $barangay;
+if ($isDepartment && $visitBarangayFilter !== 'all' && !in_array($visitBarangayFilter, $barangays_list, true)) $visitBarangayFilter = 'all';
 
 $visitSql = "SELECT a.id_number, a.full_name, a.barangay, a.contact_number, a.workflow_state, a.application_type, a.date_submitted,
                     a.home_visit_eligibility, a.home_visit_eligibility_reason, a.home_visit_scheduled_at,
@@ -247,6 +296,25 @@ $visitParams = [];
 if (!$isDepartment) {
     $visitSql .= ' AND a.barangay = ?';
     $visitParams[] = $barangay;
+}
+if ($isDepartment && $visitBarangayFilter !== 'all') {
+    $visitSql .= ' AND a.barangay = ?';
+    $visitParams[] = $visitBarangayFilter;
+}
+if ($visitSearch !== '') {
+    $visitSql .= ' AND (a.full_name LIKE ? OR a.id_number LIKE ?)';
+    $visitParams[] = "%{$visitSearch}%";
+    $visitParams[] = "%{$visitSearch}%";
+}
+if ($visitStatusFilter === 'Waiting for Home Visit') {
+    $visitSql .= " AND COALESCE(NULLIF(a.home_visit_status, ''), 'Waiting for Home Visit') = 'Waiting for Home Visit'";
+} elseif ($visitStatusFilter !== 'all') {
+    $visitSql .= ' AND a.home_visit_status = ?';
+    $visitParams[] = $visitStatusFilter;
+}
+if ($visitDateFilter !== '') {
+    $visitSql .= ' AND DATE(a.home_visit_scheduled_at) = ?';
+    $visitParams[] = $visitDateFilter;
 }
 $visitSql .= " ORDER BY CASE COALESCE(NULLIF(a.home_visit_status, ''), 'Waiting for Home Visit') WHEN 'Waiting for Home Visit' THEN 0 WHEN 'Scheduled' THEN 1 WHEN 'In Progress' THEN 2 ELSE 3 END, a.home_visit_scheduled_at, a.date_submitted DESC";
 $visitStmt = $conn->prepare($visitSql);
@@ -298,6 +366,11 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
         .btn-success { background:#059669; color:#fff; }
         .btn-warning { background:#d97706; color:#fff; }
         .btn-muted { background:#e2e8f0; color:#334155; }
+        .visit-filters { display:grid; grid-template-columns:minmax(220px,2fr) minmax(165px,1fr) minmax(165px,1fr) minmax(165px,1fr) auto auto; gap:10px; align-items:end; padding:14px 18px; border-bottom:1px solid var(--border); background:#f8fafc; }
+        .visit-filters .field { min-width:0; }
+        .visit-filters label { display:block; margin-bottom:4px; color:#475569; font-size:.7rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
+        .visit-filters input,.visit-filters select { width:100%; min-height:40px; padding:8px 10px; border:1px solid #cbd5e1; border-radius:8px; background:#fff; font:inherit; font-size:.82rem; }
+        .visit-filters .btn { min-height:40px; white-space:nowrap; }
         .table-wrap { overflow:auto; }
         table { width:100%; border-collapse:collapse; min-width:900px; }
         th,td { padding:11px 12px; text-align:left; border-bottom:1px solid #e2e8f0; vertical-align:top; font-size:.82rem; }
@@ -336,9 +409,12 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
 
         @media(max-width:900px){
             .form-grid{grid-template-columns:1fr 1fr;}
+            .visit-filters { grid-template-columns:repeat(2,minmax(0,1fr)); }
         }
         @media(max-width:600px){
             .main-content{padding:14px}.form-grid{grid-template-columns:1fr}.full{grid-column:auto}
+            .visit-filters { grid-template-columns:1fr; }
+            .visit-filters .btn { width:100%; }
             .availability-count { white-space:nowrap; }
             .evaluation-modal { align-items:flex-end; padding:0; }
             .evaluation-dialog { width:100%; max-height:94dvh; border-width:1px 0 0; border-radius:18px 18px 0 0; }
@@ -380,6 +456,14 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
         <section id="tab-visits" class="tab-panel active" role="tabpanel" aria-labelledby="visitsTab">
             <div class="panel">
                 <div class="panel-head"><h2>Home Visit Monitoring</h2><span class="muted"><?= count($visits) ?> local pension record(s)</span></div>
+                <form class="visit-filters" method="get" aria-label="Filter home visits">
+                    <div class="field"><label for="visitSearch">Search</label><input id="visitSearch" name="visit_search" type="search" value="<?= htmlspecialchars($visitSearch) ?>" maxlength="100" placeholder="Senior name or application token"></div>
+                    <div class="field"><label for="visitStatus">Status</label><select id="visitStatus" name="visit_status"><option value="all">All statuses</option><?php foreach (array_slice($allowedVisitStatuses, 1) as $statusOption): ?><option value="<?= htmlspecialchars($statusOption) ?>" <?= $visitStatusFilter === $statusOption ? 'selected' : '' ?>><?= htmlspecialchars($statusOption) ?></option><?php endforeach; ?></select></div>
+                    <div class="field"><label for="visitDate">Home Visit Date</label><input id="visitDate" name="visit_date" type="date" value="<?= htmlspecialchars($visitDateFilter) ?>"></div>
+                    <?php if ($isDepartment): ?><div class="field"><label for="visitBarangay">Barangay</label><select id="visitBarangay" name="visit_barangay"><option value="all">All barangays</option><?php foreach ($barangays_list as $barangayOption): ?><option value="<?= htmlspecialchars($barangayOption) ?>" <?= $visitBarangayFilter === $barangayOption ? 'selected' : '' ?>><?= htmlspecialchars($barangayOption) ?></option><?php endforeach; ?></select></div><?php endif; ?>
+                    <button class="btn btn-primary" type="submit"><i class="fas fa-filter" aria-hidden="true"></i> Apply</button>
+                    <a class="btn btn-muted" href="field_operations.php">Clear</a>
+                </form>
                 <div class="table-wrap">
                     <table>
                         <thead><tr><th>Senior</th><th>Barangay</th><th>Eligibility</th><th>Home Visit Date</th><th>Personnel</th><th>Status</th><th><?= $isDepartment ? 'Manage' : 'Evaluate' ?></th></tr></thead>
@@ -454,7 +538,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
         <section id="tab-personnel" class="tab-panel" role="tabpanel" aria-labelledby="personnelTab">
             <div class="panel"><div class="panel-head"><h2>Add Home Visit Personnel</h2></div><div class="panel-body">
                 <form method="post" class="form-grid"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>"><input type="hidden" name="action" value="add_personnel">
-                    <div class="field"><label>Full Name</label><input name="full_name" maxlength="150" required></div>
+                    <div class="field"><label for="personnelFullName">Full Name</label><input id="personnelFullName" name="full_name" maxlength="80" minlength="2" pattern="[A-Za-zÀ-ÖØ-öø-ÿ .'-]+" title="Use letters, spaces, periods, apostrophes, and hyphens only. Maximum 80 characters." autocomplete="name" required><small class="muted">Maximum 80 characters. Letters and name punctuation only.</small></div>
                       <div class="field"><label>Position</label><select name="position" required><option value="">Select position</option><option>Social Worker</option><option>Nurse</option><option>Field Officer</option><option>Other</option></select></div>
                       <div class="field"><label>Contact Number</label><input type="tel" name="contact_number" maxlength="11" pattern="09[0-9]{9}" inputmode="numeric" placeholder="09XXXXXXXXX" title="Enter an 11-digit Philippine mobile number beginning with 09." required></div>
                       <div class="field"><label>Barangay Assignment (optional)</label><select name="barangay"><option value="">City-wide</option><?php foreach ($barangays_list as $barangayOption): ?><option value="<?= htmlspecialchars($barangayOption) ?>"><?= htmlspecialchars($barangayOption) ?></option><?php endforeach; ?></select></div>
@@ -463,7 +547,11 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
             </div></div>
             <div class="panel"><div class="panel-head"><h2>Personnel Directory</h2></div><div class="table-wrap"><table><thead><tr><th>Name</th><th>Position</th><th>Assignment</th><th>Contact</th><th>Status</th><th>Action</th></tr></thead><tbody data-paginate="10" data-pagination-label="Personnel directory pages">
                 <?php if (!$personnel): ?><tr><td colspan="6">No personnel added yet.</td></tr><?php endif; ?>
-                <?php foreach ($personnel as $p): ?><tr><td><strong><?= htmlspecialchars($p['full_name']) ?></strong></td><td><?= htmlspecialchars($p['position'] ?? '-') ?></td><td><?= htmlspecialchars($p['barangay'] ?: 'City-wide') ?></td><td><?= htmlspecialchars($p['contact_number'] ?? '-') ?></td><td><span class="badge <?= (int)$p['is_active'] ? 'eligible' : 'cancelled' ?>"><?= (int)$p['is_active'] ? 'Active' : 'Inactive' ?></span></td><td><form method="post"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>"><input type="hidden" name="action" value="toggle_personnel"><input type="hidden" name="personnel_id" value="<?= (int)$p['id'] ?>"><button class="btn btn-muted" type="submit"><?= (int)$p['is_active'] ? 'Deactivate' : 'Activate' ?></button></form></td></tr><?php endforeach; ?>
+                <?php foreach ($personnel as $p): ?><tr><td><strong><?= htmlspecialchars($p['full_name']) ?></strong></td><td><?= htmlspecialchars($p['position'] ?? '-') ?></td><td><?= htmlspecialchars($p['barangay'] ?: 'City-wide') ?></td><td><?= htmlspecialchars($p['contact_number'] ?? '-') ?></td><td><span class="badge <?= (int)$p['is_active'] ? 'eligible' : 'cancelled' ?>"><?= (int)$p['is_active'] ? 'Active' : 'Inactive' ?></span></td><td><div class="row-actions"><form method="post"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>"><input type="hidden" name="action" value="toggle_personnel"><input type="hidden" name="personnel_id" value="<?= (int)$p['id'] ?>"><button class="btn btn-muted" type="submit"><?= (int)$p['is_active'] ? 'Deactivate' : 'Activate' ?></button></form><form method="post" onsubmit="return confirm('Archive <?= htmlspecialchars($p['full_name'], ENT_QUOTES) ?>? They will no longer be available for new home visits.');"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>"><input type="hidden" name="action" value="archive_personnel"><input type="hidden" name="personnel_id" value="<?= (int)$p['id'] ?>"><button class="btn btn-danger" type="submit"><i class="fas fa-box-archive"></i> Archive</button></form></div></td></tr><?php endforeach; ?>
+            </tbody></table></div></div>
+            <div class="panel"><div class="panel-head"><h2>Archived Personnel</h2><span class="muted">Restored personnel remain inactive until you activate them.</span></div><div class="table-wrap"><table><thead><tr><th>Name</th><th>Position</th><th>Assignment</th><th>Archived</th><th>Action</th></tr></thead><tbody data-paginate="10" data-pagination-label="Archived personnel pages">
+                <?php if (!$archivedPersonnel): ?><tr><td colspan="5">No archived personnel.</td></tr><?php endif; ?>
+                <?php foreach ($archivedPersonnel as $p): ?><tr><td><strong><?= htmlspecialchars($p['full_name']) ?></strong></td><td><?= htmlspecialchars($p['position'] ?? '-') ?></td><td><?= htmlspecialchars($p['barangay'] ?: 'City-wide') ?></td><td><?= $p['archived_at'] ? htmlspecialchars(date('M j, Y', strtotime($p['archived_at']))) : '-' ?></td><td><form method="post"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>"><input type="hidden" name="action" value="restore_personnel"><input type="hidden" name="personnel_id" value="<?= (int)$p['id'] ?>"><button class="btn btn-muted" type="submit"><i class="fas fa-rotate-left"></i> Restore</button></form></td></tr><?php endforeach; ?>
             </tbody></table></div></div>
         </section>
         <?php endif; ?>

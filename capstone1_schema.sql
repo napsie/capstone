@@ -342,10 +342,14 @@ CREATE TABLE `home_visit_personnel` (
   `contact_number` varchar(30)  DEFAULT NULL,
   `barangay`       varchar(100) DEFAULT NULL,
   `is_active`      tinyint(1)   NOT NULL DEFAULT 1,
+  `is_archived`    tinyint(1)   NOT NULL DEFAULT 0,
+  `archived_at`    timestamp    NULL DEFAULT NULL,
+  `archived_by`    varchar(100) DEFAULT NULL,
   `created_by`     int(11)      DEFAULT NULL,
   `created_at`     timestamp    NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `idx_visit_personnel_active` (`is_active`),
+  KEY `idx_visit_personnel_archived` (`is_archived`),
   KEY `idx_visit_personnel_barangay` (`barangay`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
