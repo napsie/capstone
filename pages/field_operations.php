@@ -366,11 +366,13 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
         .btn-success { background:#059669; color:#fff; }
         .btn-warning { background:#d97706; color:#fff; }
         .btn-muted { background:#e2e8f0; color:#334155; }
-        .visit-filters { display:grid; grid-template-columns:minmax(220px,2fr) minmax(165px,1fr) minmax(165px,1fr) minmax(165px,1fr) auto auto; gap:10px; align-items:end; padding:14px 18px; border-bottom:1px solid var(--border); background:#f8fafc; }
+        .visit-filters { display:grid; grid-template-columns:minmax(220px,2fr) minmax(165px,1fr) minmax(165px,1fr) minmax(165px,1fr) auto; gap:12px; align-items:end; padding:16px 18px; border-bottom:1px solid #d7e6f7; background:linear-gradient(135deg,#eef7ff 0%,#f7fbff 58%,#eef6ff 100%); }
         .visit-filters .field { min-width:0; }
         .visit-filters label { display:block; margin-bottom:4px; color:#475569; font-size:.7rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
-        .visit-filters input,.visit-filters select { width:100%; min-height:40px; padding:8px 10px; border:1px solid #cbd5e1; border-radius:8px; background:#fff; font:inherit; font-size:.82rem; }
-        .visit-filters .btn { min-height:40px; white-space:nowrap; }
+        .visit-filters input,.visit-filters select { width:100%; min-height:42px; padding:8px 11px; border:1px solid #bfcee1; border-radius:9px; background:#fff; color:#334155; font:inherit; font-size:.82rem; box-shadow:0 1px 2px rgba(15,23,42,.03); }
+        .visit-filters input:focus,.visit-filters select:focus { outline:3px solid rgba(37,99,235,.16); border-color:#2563eb; }
+        .visit-filters .btn { min-height:42px; white-space:nowrap; }
+        .visit-filters .filter-note { grid-column:1/-1; margin:0; color:#64748b; font-size:.72rem; }
         .table-wrap { overflow:auto; }
         table { width:100%; border-collapse:collapse; min-width:900px; }
         th,td { padding:11px 12px; text-align:left; border-bottom:1px solid #e2e8f0; vertical-align:top; font-size:.82rem; }
@@ -461,8 +463,8 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
                     <div class="field"><label for="visitStatus">Status</label><select id="visitStatus" name="visit_status"><option value="all">All statuses</option><?php foreach (array_slice($allowedVisitStatuses, 1) as $statusOption): ?><option value="<?= htmlspecialchars($statusOption) ?>" <?= $visitStatusFilter === $statusOption ? 'selected' : '' ?>><?= htmlspecialchars($statusOption) ?></option><?php endforeach; ?></select></div>
                     <div class="field"><label for="visitDate">Home Visit Date</label><input id="visitDate" name="visit_date" type="date" value="<?= htmlspecialchars($visitDateFilter) ?>"></div>
                     <?php if ($isDepartment): ?><div class="field"><label for="visitBarangay">Barangay</label><select id="visitBarangay" name="visit_barangay"><option value="all">All barangays</option><?php foreach ($barangays_list as $barangayOption): ?><option value="<?= htmlspecialchars($barangayOption) ?>" <?= $visitBarangayFilter === $barangayOption ? 'selected' : '' ?>><?= htmlspecialchars($barangayOption) ?></option><?php endforeach; ?></select></div><?php endif; ?>
-                    <button class="btn btn-primary" type="submit"><i class="fas fa-filter" aria-hidden="true"></i> Apply</button>
                     <a class="btn btn-muted" href="field_operations.php">Clear</a>
+                    <p class="filter-note"><i class="fas fa-circle-info" aria-hidden="true"></i> Results update automatically when you change a filter.</p>
                 </form>
                 <div class="table-wrap">
                     <table>
@@ -491,7 +493,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
             </div>
 
             <?php if ($isDepartment): ?>
-            <div class="panel" id="visitEditor">
+            <div class="panel" id="visitEditor" hidden>
                 <div class="panel-head"><h2>Assign and Schedule</h2><span class="muted" id="visitEditorName">Select a senior above</span></div>
                 <div class="panel-body">
                     <form method="post" class="form-grid" id="visitForm">
@@ -559,6 +561,18 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
 </div>
 <script src="../assets/js/sidebar-toggle.js?v=3"></script>
 <script>
+    const visitFilterForm = document.querySelector('.visit-filters');
+    const visitSearchInput = document.getElementById('visitSearch');
+    let visitSearchTimer;
+
+    visitSearchInput?.addEventListener('input', () => {
+        window.clearTimeout(visitSearchTimer);
+        visitSearchTimer = window.setTimeout(() => visitFilterForm?.requestSubmit(), 350);
+    });
+    visitFilterForm?.querySelectorAll('select, input[type="date"]').forEach((control) => {
+        control.addEventListener('change', () => visitFilterForm.requestSubmit());
+    });
+
     const tabButtons = Array.from(document.querySelectorAll('.tab-btn'));
 
     function activateOperationsTab(tabName, updateHash = false) {
@@ -599,6 +613,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
     function openVisit(visit) {
         const assignmentEditor = document.getElementById('visitEditor');
         if (assignmentEditor) {
+            assignmentEditor.hidden = false;
             document.getElementById('visitApplicationId').value = visit.id_number;
             document.getElementById('visitEditorName').textContent = visit.full_name + ' (' + visit.id_number + ')';
             if (document.getElementById('visitReason')) document.getElementById('visitReason').value = visit.home_visit_eligibility_reason || '';
