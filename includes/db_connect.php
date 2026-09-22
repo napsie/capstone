@@ -1,4 +1,7 @@
 <?php
+date_default_timezone_set('Asia/Manila');
+require_once __DIR__ . '/session_security.php';
+enforceAuthenticatedSessionTimeout();
 /** Connection-only database bootstrap. Run schema changes with scripts/migrate.php. */
 $dbUrl = trim((string)getenv('DATABASE_URL'));
 $servername = 'localhost';
@@ -34,6 +37,13 @@ $pdoOptions = [
 
 try {
     $conn = new PDO($conn_str, $pdo_username, $pdo_password, $pdoOptions);
+    // Keep database-generated timestamps aligned with the Philippine timezone
+    // used by PHP and the browser-facing audit log.
+    if ($driver === 'mysql') {
+        $conn->exec("SET time_zone = '+08:00'");
+    } else {
+        $conn->exec("SET TIME ZONE 'Asia/Manila'");
+    }
 } catch (PDOException $e) {
     error_log('Database connection failed: ' . $e->getMessage());
     throw $e;

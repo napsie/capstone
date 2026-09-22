@@ -22,3 +22,11 @@ function dashboardResponseCachePath(string $key): string
         'seniorlink-dashboard-cache' . DIRECTORY_SEPARATOR . hash('sha256', $key) . '.json';
 }
 
+/** Clear cached dashboard aggregates after a data-changing action. */
+function clearDashboardResponseCache(): void
+{
+    $directory = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'seniorlink-dashboard-cache';
+    foreach (glob($directory . DIRECTORY_SEPARATOR . '*.json') ?: [] as $path) {
+        @unlink($path);
+    }
+}

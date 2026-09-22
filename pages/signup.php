@@ -51,18 +51,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (!verifyMasterPassword($masterPassword)) {
         $error = 'Invalid Master Password. Please try again.';
     } else {
-        $firstName = trim($_POST['firstName']);
-        $lastName = trim($_POST['lastName']);
-        $email = trim($_POST['email']);
+        $firstName = trim((string)($_POST['firstName'] ?? ''));
+        $lastName = trim((string)($_POST['lastName'] ?? ''));
+        $email = trim((string)($_POST['email'] ?? ''));
         $phone = normalizePhoneNumber($_POST['phone'] ?? '');
-        $username = trim($_POST['username']);
-        $password = $_POST['password'];
-        $confirmPassword = $_POST['confirmPassword'];
-        $role = $_POST['role'];
+        $username = trim((string)($_POST['username'] ?? ''));
+        $password = (string)($_POST['password'] ?? '');
+        $confirmPassword = (string)($_POST['confirmPassword'] ?? '');
+        $role = (string)($_POST['role'] ?? '');
         $barangay = isset($_POST['barangay']) ? $_POST['barangay'] : null;
 
         if (empty($firstName) || empty($lastName) || empty($email) || empty($phone) || empty($username) || empty($password) || empty($confirmPassword) || empty($role)) {
             $error = 'Please fill in all required fields.';
+        } else if (mb_strlen($firstName) > 80 || mb_strlen($lastName) > 80 || mb_strlen($email) > 254 || mb_strlen($username) > 50) {
+            $error = 'One or more fields exceed the allowed length.';
+        } else if (!in_array($role, ['barangay_staff', 'department_admin'], true)) {
+            $error = 'Select a valid staff role.';
         } else if (!isValidPhilippineMobileNumber($phone)) {
             $error = 'Enter a valid 11-digit Philippine mobile number beginning with 09.';
         } else if ($password !== $confirmPassword) {
@@ -362,6 +366,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             box-shadow: 0 0 0 3px rgba(23, 105, 170, 0.2);
         }
 
+        .password-control { position: relative; }
+        .password-control .form-control { padding-right: 44px; }
+        .password-toggle { position: absolute; top: 50%; right: 7px; width: 34px; height: 34px; transform: translateY(-50%); border: 0; border-radius: 7px; background: transparent; color: #526274; cursor: pointer; }
+        .password-toggle:hover, .password-toggle:focus-visible { background: #e8f0f8; color: #1769aa; outline: none; }
+
         .btn {
             min-height: 46px;
             padding: 10px 18px;
@@ -585,35 +594,35 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <div class="form-row">
                     <div class="form-group">
                         <label for="firstName">First Name</label>
-                        <input type="text" id="firstName" name="firstName" class="form-control" autocomplete="given-name" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')" required>
+                        <input type="text" id="firstName" name="firstName" class="form-control" maxlength="80" autocomplete="given-name" value="<?php echo htmlspecialchars($_POST['firstName'] ?? ''); ?>" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')" required>
                         <span id="firstNameError" class="error-message-inline" aria-live="polite"></span>
                     </div>
                     <div class="form-group">
                         <label for="lastName">Last Name</label>
-                        <input type="text" id="lastName" name="lastName" class="form-control" autocomplete="family-name" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')" required>
+                        <input type="text" id="lastName" name="lastName" class="form-control" maxlength="80" autocomplete="family-name" value="<?php echo htmlspecialchars($_POST['lastName'] ?? ''); ?>" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')" required>
                         <span id="lastNameError" class="error-message-inline" aria-live="polite"></span>
                     </div>
                 </div>
                 <div class="form-group">
                     <label for="email">Email</label>
-                    <input type="email" id="email" name="email" class="form-control" autocomplete="email" required>
+                    <input type="email" id="email" name="email" class="form-control" maxlength="254" autocomplete="email" value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>" required>
                     <span id="emailError" class="error-message-inline" aria-live="polite"></span>
                 </div>
                 <div class="form-group">
                     <label for="username">Username</label>
-                    <input type="text" id="username" name="username" class="form-control" autocomplete="username" required>
+                    <input type="text" id="username" name="username" class="form-control" maxlength="50" autocomplete="username" value="<?php echo htmlspecialchars($_POST['username'] ?? ''); ?>" required>
                     <span id="usernameError" class="error-message-inline" aria-live="polite"></span>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label for="password">Password</label>
-                        <input type="password" id="password" name="password" class="form-control" autocomplete="new-password" aria-describedby="passwordHint passwordError" required>
+                        <div class="password-control"><input type="password" id="password" name="password" class="form-control" maxlength="128" autocomplete="new-password" aria-describedby="passwordHint passwordError" required><button type="button" class="password-toggle" data-target="password" aria-label="Show password"><i class="fas fa-eye"></i></button></div>
                         <span id="passwordHint" class="form-hint">Use 8+ characters with uppercase, lowercase, number, and symbol.</span>
                         <span id="passwordError" class="error-message-inline" aria-live="polite"></span>
                     </div>
                     <div class="form-group">
                         <label for="confirmPassword">Confirm Password</label>
-                        <input type="password" id="confirmPassword" name="confirmPassword" class="form-control" autocomplete="new-password" required>
+                        <div class="password-control"><input type="password" id="confirmPassword" name="confirmPassword" class="form-control" maxlength="128" autocomplete="new-password" required><button type="button" class="password-toggle" data-target="confirmPassword" aria-label="Show password"><i class="fas fa-eye"></i></button></div>
                         <span id="confirmPasswordError" class="error-message-inline" aria-live="polite"></span>
                     </div>
                 </div>
@@ -652,7 +661,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </div>
                  <div class="form-group">
                     <label for="masterPassword">Master Password</label>
-                    <input type="password" id="masterPassword" name="masterPassword" class="form-control" autocomplete="current-password" aria-describedby="masterPasswordHint" required>
+                    <div class="password-control"><input type="password" id="masterPassword" name="masterPassword" class="form-control" maxlength="128" autocomplete="current-password" aria-describedby="masterPasswordHint" required><button type="button" class="password-toggle" data-target="masterPassword" aria-label="Show master password"><i class="fas fa-eye"></i></button></div>
                     <span id="masterPasswordHint" class="form-hint">Use the authorization password provided by the system administrator.</span>
                 </div>
                 </div>
@@ -681,6 +690,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         const confirmPasswordField = document.getElementById('confirmPassword');
         const passwordError = document.getElementById('passwordError');
         const confirmPasswordError = document.getElementById('confirmPasswordError');
+        document.querySelectorAll('.password-toggle').forEach(button => button.addEventListener('click', () => {
+            const input = document.getElementById(button.dataset.target);
+            const visible = input.type === 'text';
+            input.type = visible ? 'password' : 'text';
+            button.setAttribute('aria-label', `${visible ? 'Show' : 'Hide'} ${button.dataset.target === 'masterPassword' ? 'master password' : 'password'}`);
+            button.querySelector('i').className = visible ? 'fas fa-eye' : 'fas fa-eye-slash';
+        }));
 
         function validatePassword() {
             const password = passwordField.value;

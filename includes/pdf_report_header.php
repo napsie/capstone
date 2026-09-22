@@ -32,5 +32,8 @@ function standardPdfReportHeaderCommands(array $report, callable $escape, callab
     $commands[] = '0.10 0.18 0.28 rg BT /F1 8 Tf 48 403 Td (' . $escape(preg_replace('/^Generated:\s*/i', '', $report['generated'])) . ') Tj ET';
     $commands[] = 'BT /F1 8 Tf 277 403 Td (' . $escape($fit(preg_replace('/^Barangay Coverage:\s*/i', '', $report['coverage']), 35)) . ') Tj ET';
     $commands[] = 'BT /F1 8 Tf 505 403 Td (' . $escape($fit(preg_replace('/^Applied Filters:\s*/i', '', $report['filters']), 48)) . ') Tj ET';
+    if (isset($report['page'], $report['total_pages'])) {
+        $commands[] = '0.34 0.42 0.51 rg BT /F3 8 Tf 700 24 Td (' . $escape('Page ' . (int)$report['page'] . ' of ' . (int)$report['total_pages']) . ') Tj ET';
+    }
     return $commands;
 }

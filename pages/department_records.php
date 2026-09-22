@@ -872,7 +872,7 @@ function getStatusBadge($status) {
                     <div class="export-field">
                         <label for="exportYear">Year (if no date range)</label>
                         <select name="year" id="exportYear">
-                            <option value="all">All Years</option>
+                            <option value="all">Select a year</option>
                             <?php
                                 $currentYear = (int)date('Y');
                                 for ($y = $currentYear; $y >= 2020; $y--) {

@@ -1858,3 +1858,11 @@ html { -webkit-text-size-adjust: 100%; }
         gap: 9px;
     }
 }
+/* A disabled field must remain obvious without a hover state. */
+input:disabled, select:disabled, textarea:disabled {
+    background-color: #e5e7eb !important;
+    color: #6b7280 !important;
+    border-color: #cbd5e1 !important;
+    cursor: not-allowed;
+    opacity: 1;
+}

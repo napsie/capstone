@@ -44,6 +44,11 @@ document.addEventListener('DOMContentLoaded', () => {
             missingInput?.reportValidity();
             return false;
         }
+        if (!from && !to && (!year || year.value === 'all')) {
+            year?.setCustomValidity('Choose a specific year or select both dates before generating a report.');
+            year?.reportValidity();
+            return false;
+        }
         if (from && to && from > to) {
             dateTo.setCustomValidity('The end date must be the same as or later than the start date.');
             dateTo.reportValidity();
@@ -71,6 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     barangaySelect?.addEventListener('change', clearValidation);
     format?.addEventListener('change', clearValidation);
+    year?.addEventListener('change', clearValidation);
     form.addEventListener('submit', event => {
         syncPeriodControls();
         if (!validateReport()) event.preventDefault();

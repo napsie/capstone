@@ -84,6 +84,10 @@ $today = new DateTimeImmutable('today', $reportTimezone);
 if (($fromDate && $fromDate > $today) || ($toDate && $toDate > $today)) { http_response_code(400); exit('Report dates cannot be in the future.'); }
 if ($year !== 'all' && (!ctype_digit($year) || (int)$year < 2020 || (int)$year > (int)$today->format('Y'))) { http_response_code(400); exit('Invalid report year.'); }
 if ($scope === 'department' && $barangay !== 'all' && !in_array($barangay, $barangays_list, true)) { http_response_code(400); exit('Invalid barangay selection.'); }
+if ($year === 'all' && !$fromDate && !$toDate) {
+    http_response_code(400);
+    exit('Choose a specific year or a date range before generating a report.');
+}
 
 $where = [];
 $params = [];
@@ -131,12 +135,36 @@ elseif ($dateFrom !== '') $filterParts[] = 'From: ' . $dateFrom;
 elseif ($dateTo !== '') $filterParts[] = 'Until: ' . $dateTo;
 elseif ($year !== '' && $year !== 'all') $filterParts[] = 'Year: ' . $year;
 if ($reportMode === 'records' && $status !== 'all') $filterParts[] = 'Status: ' . $status;
-$filterLabel = $filterParts ? 'Applied Filters: ' . implode(' | ', $filterParts) : 'Applied Filters: All matching records';
+$filterLabel = $filterParts ? 'Applied Filters: ' . implode(' | ', $filterParts) : 'Applied Filters: Selected reporting period';
 
-$sql = "SELECT id_number, full_name, application_type, barangay, date_submitted, CASE WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') IN ('Approved','Released') THEN 'Verified' ELSE COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') END AS status FROM applications WHERE " . implode(' AND ', $where) . ' ORDER BY date_submitted DESC';
-$stmt = $conn->prepare($sql);
-$stmt->execute($params);
-$records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$whereSql = implode(' AND ', $where);
+$countStmt = $conn->prepare('SELECT COUNT(*) FROM applications WHERE ' . $whereSql);
+$countStmt->execute($params);
+$totalRecords = (int)$countStmt->fetchColumn();
+$maxExportRecords = 5000;
+
+if ($totalRecords === 0) {
+    http_response_code(404);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['success' => false, 'message' => 'No records were found for the selected report filters.']);
+    exit;
+}
+if ($totalRecords > $maxExportRecords) {
+    http_response_code(422);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['success' => false, 'message' => "This export contains {$totalRecords} records. Narrow the year, date range, barangay, or type to export at most {$maxExportRecords} records at a time."]);
+    exit;
+}
+
+$recordSelectSql = "SELECT id_number, full_name, application_type, barangay, date_submitted, CASE WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') IN ('Approved','Released') THEN 'Verified' ELSE COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') END AS status FROM applications WHERE {$whereSql} ORDER BY date_submitted DESC, id_number DESC";
+$fetchRecordChunk = static function (int $offset, int $limit) use ($conn, $recordSelectSql, $params): array {
+    $offset = max(0, $offset);
+    $limit = max(1, min(500, $limit));
+    $statement = $conn->prepare($recordSelectSql . " LIMIT {$limit} OFFSET {$offset}");
+    foreach ($params as $index => $value) $statement->bindValue($index + 1, $value);
+    $statement->execute();
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
+};
 
 if ($format === 'pdf') {
     $pdfEscape = static function ($value): string {
@@ -191,11 +219,10 @@ if ($format === 'pdf') {
     $pageHeight = 595;
     $left = 36;
     $rowsPerPage = 18;
-    // A valid filter with no matches still produces a usable, empty report
-    // instead of replacing the application with a plain-text error page.
-    $recordChunks = $records ? array_chunk($records, $rowsPerPage) : [[]];
+    $totalPdfPages = (int)ceil($totalRecords / $rowsPerPage);
     $streams = [];
-    foreach ($recordChunks as $pageIndex => $chunk) {
+    for ($pageIndex = 0; $pageIndex < $totalPdfPages; $pageIndex++) {
+        $chunk = $fetchRecordChunk($pageIndex * $rowsPerPage, $rowsPerPage);
         $commands = standardPdfReportHeaderCommands([
             'title' => $pdfTitle,
             'subtitle' => $pdfSubtitle,
@@ -204,6 +231,8 @@ if ($format === 'pdf') {
             'filters' => $filterLabel,
             'logo_width' => $logoDisplayWidth,
             'logo_height' => $logoDisplayHeight,
+            'page' => $pageIndex + 1,
+            'total_pages' => $totalPdfPages,
         ], $pdfEscape, $fit, $logoJpeg !== '');
         $y = 374;
         $commands[] = '0.08 0.28 0.50 rg ' . $left . ' ' . ($y - 4) . ' 770 20 re f';
@@ -230,12 +259,9 @@ if ($format === 'pdf') {
             $commands[] = '0.82 0.86 0.91 RG 0.4 w ' . $left . ' ' . ($y - 6) . ' m 806 ' . ($y - 6) . ' l S';
             $y -= 19;
         }
-        if (!$chunk) {
-            $commands[] = '0.35 0.40 0.48 rg BT /F3 9 Tf 340 330 Td (No matching records found.) Tj ET';
-        }
         $commands[] = '0.76 0.81 0.87 RG 0.5 w 36 32 m 806 32 l S';
-        $commands[] = '0.35 0.40 0.48 rg BT /F1 7.5 Tf 36 18 Td (SENIORLINK Official Report - Total records: ' . count($records) . ') Tj ET';
-        $commands[] = 'BT /F1 7.5 Tf 728 18 Td (Page ' . ($pageIndex + 1) . ' of ' . count($recordChunks) . ') Tj ET';
+        $commands[] = '0.35 0.40 0.48 rg BT /F1 7.5 Tf 36 18 Td (SENIORLINK Official Report - Total records: ' . $totalRecords . ') Tj ET';
+        $commands[] = 'BT /F1 7.5 Tf 728 18 Td (Page ' . ($pageIndex + 1) . ' of ' . $totalPdfPages . ') Tj ET';
         $streams[] = implode("\n", $commands);
     }
 
@@ -291,7 +317,7 @@ if (!class_exists('ZipArchive')) {
 $headers = ['#', 'Applicant Name', 'Application ID', 'Application Type', 'Barangay', 'Date Submitted', 'Status'];
 $headerRow = 14;
 $firstDataRow = $headerRow + 1;
-$lastDataRow = $headerRow + count($records);
+$lastDataRow = $headerRow + $totalRecords;
 $excelTitle = $reportMode === 'verification' ? 'DOCUMENT VERIFICATION QUEUE'
     : ($reportMode === 'queue' ? 'APPLICATIONS QUEUE' : ($scope === 'department' ? 'VERIFIED APPLICATION RECORDS' : 'APPLICATION RECORDS'));
 $excelSubtitle = $scope === 'department' ? 'Pasig City' : ($assignedBarangay ?: 'Assigned Barangay');
@@ -310,7 +336,7 @@ $rowsXml[] = '<row r="8" ht="8" customHeight="1"></row>';
 $rowsXml[] = '<row r="9" ht="18" customHeight="1">' . excelInlineCell('A9', 'GENERATED DATE', 7) . excelInlineCell('C9', 'BARANGAY COVERAGE', 7) . excelInlineCell('E9', 'APPLIED FILTERS', 7) . '</row>';
 $rowsXml[] = '<row r="10" ht="25" customHeight="1">' . excelInlineCell('A10', $generatedValue, 8) . excelInlineCell('C10', $coverageValue, 8) . excelInlineCell('E10', $filtersValue, 8) . '</row>';
 $rowsXml[] = '<row r="11" ht="8" customHeight="1"></row>';
-$rowsXml[] = '<row r="12" ht="22" customHeight="1">' . excelInlineCell('A12', 'Total Records', 9) . excelNumberCell('C12', count($records), 10) . '</row>';
+$rowsXml[] = '<row r="12" ht="22" customHeight="1">' . excelInlineCell('A12', 'Total Records', 9) . excelNumberCell('C12', $totalRecords, 10) . '</row>';
 $rowsXml[] = '<row r="13" ht="8" customHeight="1"></row>';
 
 $headerCells = '';
@@ -319,18 +345,21 @@ foreach ($headers as $index => $label) {
 }
 $rowsXml[] = '<row r="' . $headerRow . '" ht="25" customHeight="1">' . $headerCells . '</row>';
 
-foreach ($records as $index => $record) {
-    $rowNumber = $firstDataRow + $index;
-    $style = $index % 2 === 0 ? 12 : 13;
-    $dateSerial = !empty($record['date_submitted']) ? excelDateSerial($record['date_submitted']) : null;
-    $cells = excelNumberCell('A' . $rowNumber, $index + 1, 18 + ($index % 2));
-    $cells .= excelInlineCell('B' . $rowNumber, $record['full_name'], $style);
-    $cells .= excelInlineCell('C' . $rowNumber, $record['id_number'], 14 + ($index % 2));
-    $cells .= excelInlineCell('D' . $rowNumber, applicationTypeLabel($record['application_type']), $style);
-    $cells .= excelInlineCell('E' . $rowNumber, $record['barangay'], $style);
-    $cells .= $dateSerial === null ? excelInlineCell('F' . $rowNumber, '', $style) : excelNumberCell('F' . $rowNumber, $dateSerial, 16 + ($index % 2));
-    $cells .= excelInlineCell('G' . $rowNumber, $record['status'], $style);
-    $rowsXml[] = '<row r="' . $rowNumber . '" ht="21" customHeight="1">' . $cells . '</row>';
+for ($offset = 0; $offset < $totalRecords; $offset += 500) {
+    foreach ($fetchRecordChunk($offset, 500) as $chunkIndex => $record) {
+        $index = $offset + $chunkIndex;
+        $rowNumber = $firstDataRow + $index;
+        $style = $index % 2 === 0 ? 12 : 13;
+        $dateSerial = !empty($record['date_submitted']) ? excelDateSerial($record['date_submitted']) : null;
+        $cells = excelNumberCell('A' . $rowNumber, $index + 1, 18 + ($index % 2));
+        $cells .= excelInlineCell('B' . $rowNumber, $record['full_name'], $style);
+        $cells .= excelInlineCell('C' . $rowNumber, $record['id_number'], 14 + ($index % 2));
+        $cells .= excelInlineCell('D' . $rowNumber, applicationTypeLabel($record['application_type']), $style);
+        $cells .= excelInlineCell('E' . $rowNumber, $record['barangay'], $style);
+        $cells .= $dateSerial === null ? excelInlineCell('F' . $rowNumber, '', $style) : excelNumberCell('F' . $rowNumber, $dateSerial, 16 + ($index % 2));
+        $cells .= excelInlineCell('G' . $rowNumber, $record['status'], $style);
+        $rowsXml[] = '<row r="' . $rowNumber . '" ht="21" customHeight="1">' . $cells . '</row>';
+    }
 }
 
 // Embed the same database-selected logo used throughout SENIORLINK. Converting

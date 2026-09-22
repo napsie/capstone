@@ -175,19 +175,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addUser'])) {
 // Fetch users from the database
 try {
     $barangayFilter = isset($_GET['barangay']) ? $_GET['barangay'] : 'all';
-    
-    if ($barangayFilter === 'all') {
-        $stmt = $conn->prepare("SELECT id, first_name, last_name, email, phone, role, barangay, profile_picture FROM users WHERE (is_archived = 0 OR is_archived IS NULL)");
-        $stmt->execute();
-    } else {
-        $stmt = $conn->prepare("SELECT id, first_name, last_name, email, phone, role, barangay, profile_picture FROM users WHERE barangay = :barangay AND (is_archived = 0 OR is_archived IS NULL)");
-        $stmt->execute(['barangay' => $barangayFilter]);
+    if ($barangayFilter !== 'all' && !in_array($barangayFilter, $barangays_list, true)) $barangayFilter = 'all';
+    $userPage = max(1, (int)($_GET['user_page'] ?? 1));
+    $usersPerPage = 25;
+    $userWhere = '(is_archived = 0 OR is_archived IS NULL)';
+    $userParams = [];
+    if ($barangayFilter !== 'all') {
+        $userWhere .= ' AND barangay = :barangay';
+        $userParams[':barangay'] = $barangayFilter;
     }
-    
+    $countStmt = $conn->prepare("SELECT COUNT(*) FROM users WHERE {$userWhere}");
+    $countStmt->execute($userParams);
+    $usersTotal = (int)$countStmt->fetchColumn();
+    $usersTotalPages = max(1, (int)ceil($usersTotal / $usersPerPage));
+    $userPage = min($userPage, $usersTotalPages);
+    $userOffset = ($userPage - 1) * $usersPerPage;
+    $stmt = $conn->prepare("SELECT id, first_name, last_name, email, phone, role, barangay, profile_picture FROM users WHERE {$userWhere} ORDER BY last_name, first_name LIMIT :limit OFFSET :offset");
+    foreach ($userParams as $key => $value) $stmt->bindValue($key, $value, PDO::PARAM_STR);
+    $stmt->bindValue(':limit', $usersPerPage, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $userOffset, PDO::PARAM_INT);
+    $stmt->execute();
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     $error = "Error fetching users: " . $e->getMessage();
     $users = [];
+    $usersTotal = 0;
+    $usersTotalPages = 1;
+    $userPage = 1;
 }
 
 ?>
@@ -205,6 +219,9 @@ try {
         :root { --primary: #0f172a; --secondary: #1e3a5f; --accent: #2563eb; --success: #10b981; --warning: #f59e0b; --light: #f8fafc; --dark: #020617; --gray: #94a3b8; }
         body { background-color: #f1f5f9; color: #0f172a; line-height: 1.6; }
         .container { display: flex; }
+        .pagination { display:flex; align-items:center; justify-content:center; gap:12px; padding:16px; }
+        .pagination a { padding:7px 12px; border:1px solid #cbd5e1; border-radius:7px; color:#1e3a5f; background:#fff; font-weight:700; text-decoration:none; }
+        .pagination a.disabled { pointer-events:none; opacity:.45; }
         .main-content { flex-grow: 1; padding: 20px; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0; }
         .header h1 {
@@ -488,6 +505,13 @@ try {
                         </tbody>
                     </table>
                 </div>
+                <?php if ($usersTotalPages > 1): $userQuery = $_GET; ?>
+                    <nav class="pagination" aria-label="User account pages">
+                        <?php $userQuery['user_page'] = max(1, $userPage - 1); ?><a class="<?= $userPage === 1 ? 'disabled' : '' ?>" href="?<?= htmlspecialchars(http_build_query($userQuery), ENT_QUOTES) ?>">Previous</a>
+                        <span>Page <?= $userPage ?> of <?= $usersTotalPages ?></span>
+                        <?php $userQuery['user_page'] = min($usersTotalPages, $userPage + 1); ?><a class="<?= $userPage === $usersTotalPages ? 'disabled' : '' ?>" href="?<?= htmlspecialchars(http_build_query($userQuery), ENT_QUOTES) ?>">Next</a>
+                    </nav>
+                <?php endif; ?>
             </div>
         </div>
     </div>

@@ -1,0 +1,32 @@
+<?php
+/**
+ * Shared authenticated-session guard.  It is loaded by db_connect.php so it
+ * covers pages and API endpoints consistently after they start a session.
+ */
+function enforceAuthenticatedSessionTimeout(): void
+{
+    if (session_status() !== PHP_SESSION_ACTIVE || !isset($_SESSION['user_id'])) return;
+
+    $idleLimit = 300; // Five minutes, as approved for this system.
+    $now = time();
+    $lastActivity = (int)($_SESSION['last_activity_at'] ?? $now);
+    if ($now - $lastActivity > $idleLimit) {
+        $_SESSION = [];
+        if (ini_get('session.use_cookies')) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', time() - 42000, $params['path'], $params['domain'], (bool)$params['secure'], (bool)$params['httponly']);
+        }
+        session_destroy();
+
+        $isApi = str_contains(str_replace('\\', '/', (string)($_SERVER['SCRIPT_NAME'] ?? '')), '/api/');
+        if ($isApi) {
+            http_response_code(401);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['success' => false, 'message' => 'Your session expired after 5 minutes of inactivity. Please sign in again.']);
+        } else {
+            header('Location: ../index.php?session=expired');
+        }
+        exit;
+    }
+    $_SESSION['last_activity_at'] = $now;
+}

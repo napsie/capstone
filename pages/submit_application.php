@@ -662,7 +662,7 @@ unset($_SESSION['application_submission_notice']);
                     <div class="export-field">
                         <label for="exportYear">Year (if no date range)</label>
                         <select name="year" id="exportYear">
-                            <option value="all">All Years</option>
+                            <option value="all">Select a year</option>
                             <?php
                                 $currentYear = (int)date('Y');
                                 for ($y = $currentYear; $y >= 2020; $y--) {
@@ -851,8 +851,11 @@ unset($_SESSION['application_submission_notice']);
         return `<div class="deadline-alerts">${alerts.map(alert => `<span class="deadline-alert deadline-alert--${escapeQueueText(alert.level || 'info')}" title="${escapeQueueText(alert.detail || '')}"><i class="fas fa-clock"></i>${escapeQueueText(alert.label)}</span>`).join('')}</div>`;
     }
 
+    let applicationsRequestController = null;
     function fetchApplications(page = applicationsPage) {
         applicationsPage = page;
+        applicationsRequestController?.abort();
+        applicationsRequestController = new AbortController();
         tableBody.innerHTML = '<tr><td colspan="9" style="text-align:center;">Loading applications…</td></tr>';
         
         let url = `../api/search_applications.php?query=${encodeURIComponent(searchInput.value)}&page=${applicationsPage}&per_page=25`;
@@ -861,7 +864,7 @@ unset($_SESSION['application_submission_notice']);
         url += `&status=${encodeURIComponent('Received,Submitted,For Review,Needs Correction')}`;
         if (userBarangay)                url += `&barangay=${encodeURIComponent(userBarangay)}`;
 
-        fetch(url)
+        fetch(url, { signal: applicationsRequestController.signal })
             .then(r => r.json())
             .then(result => {
                 if (!result.success) throw new Error(result.message || 'Unable to load applications');
@@ -924,6 +927,10 @@ unset($_SESSION['application_submission_notice']);
             .catch(err => {
                 console.error(err);
                 tableBody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--danger);">Error loading applications.</td></tr>';
+            })
+            .catch(error => {
+                if (error.name === 'AbortError') return;
+                tableBody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#b91c1c;">Unable to load applications. Please try again.</td></tr>';
             });
     }
 
@@ -946,7 +953,7 @@ unset($_SESSION['application_submission_notice']);
     let searchTimer;
     searchInput.addEventListener('input', () => {
         clearTimeout(searchTimer);
-        searchTimer = setTimeout(() => fetchApplications(1), 250);
+        searchTimer = setTimeout(() => fetchApplications(1), 350);
     });
 
     // Open the application from the name, View button, or anywhere on its row.

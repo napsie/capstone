@@ -5,6 +5,7 @@ require_once '../includes/deadline_alerts.php';
 require_once '../includes/audit_logger.php';
 require_once '../includes/data_normalizer.php';
 require_once '../includes/application_types.php';
+require_once '../includes/barangays_list.php';
 
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'] ?? '', ['barangay_staff', 'department_admin'], true)) {
     header('Location: ../index.php');
@@ -69,6 +70,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $contact = trim(strip_tags((string)($_POST['contact_number'] ?? '')));
             $assignedBarangay = trim(strip_tags((string)($_POST['barangay'] ?? '')));
             if ($name === '') operationsRedirect('Personnel name is required.', false);
+            if (!in_array($position, ['Social Worker', 'Nurse', 'Field Officer', 'Other'], true)) operationsRedirect('Select a valid personnel position.', false);
+            if ($assignedBarangay !== '' && !in_array($assignedBarangay, $barangays_list, true)) operationsRedirect('Select a valid barangay assignment.', false);
             $contact = normalizePhoneNumber($contact);
             if (!isValidPhilippineMobileNumber($contact, true)) operationsRedirect('Contact number must contain exactly 11 digits and begin with 09.', false);
 
@@ -452,9 +455,9 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
             <div class="panel"><div class="panel-head"><h2>Add Home Visit Personnel</h2></div><div class="panel-body">
                 <form method="post" class="form-grid"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>"><input type="hidden" name="action" value="add_personnel">
                     <div class="field"><label>Full Name</label><input name="full_name" maxlength="150" required></div>
-                    <div class="field"><label>Position</label><input name="position" maxlength="100" placeholder="Social Worker"></div>
-                    <div class="field"><label>Contact Number</label><input type="tel" name="contact_number" maxlength="11" pattern="09[0-9]{9}" inputmode="numeric" placeholder="09XXXXXXXXX" title="Enter an 11-digit Philippine mobile number beginning with 09."></div>
-                    <div class="field"><label>Barangay Assignment (optional)</label><input name="barangay" maxlength="100" placeholder="Leave blank for city-wide"></div>
+                      <div class="field"><label>Position</label><select name="position" required><option value="">Select position</option><option>Social Worker</option><option>Nurse</option><option>Field Officer</option><option>Other</option></select></div>
+                      <div class="field"><label>Contact Number</label><input type="tel" name="contact_number" maxlength="11" pattern="09[0-9]{9}" inputmode="numeric" placeholder="09XXXXXXXXX" title="Enter an 11-digit Philippine mobile number beginning with 09." required></div>
+                      <div class="field"><label>Barangay Assignment (optional)</label><select name="barangay"><option value="">City-wide</option><?php foreach ($barangays_list as $barangayOption): ?><option value="<?= htmlspecialchars($barangayOption) ?>"><?= htmlspecialchars($barangayOption) ?></option><?php endforeach; ?></select></div>
                     <div class="full"><button class="btn btn-primary" type="submit"><i class="fas fa-user-plus"></i> Add Personnel</button></div>
                 </form>
             </div></div>

@@ -43,7 +43,12 @@ if (!function_exists('logAudit')) {
             $ipAddress = substr($ipAddress, 0, 45);
 
             $stmt = $conn->prepare("INSERT INTO audit_trail (user_id, username, role, barangay, action, description, ip_address) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            return $stmt->execute([$uId, $username, $role, $barangay, $action, $description, $ipAddress]);
+            $logged = $stmt->execute([$uId, $username, $role, $barangay, $action, $description, $ipAddress]);
+            if ($logged && preg_match('/^(ADD|CREATE|UPDATE|ARCHIVE|RESTORE|DELETE|ASSIGN|SAVE|TOGGLE|SET)_/i', $action)) {
+                require_once __DIR__ . '/dashboard_response_cache.php';
+                clearDashboardResponseCache();
+            }
+            return $logged;
         } catch (Exception $e) {
             error_log("Audit Trail Error: " . $e->getMessage());
             return false;
