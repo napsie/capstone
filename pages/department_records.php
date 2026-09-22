@@ -913,7 +913,7 @@ function getStatusBadge($status) {
 
 <script src="../assets/js/sidebar-toggle.js?v=3"></script>
 <script src="../assets/js/application-documents.js?v=10"></script>
-<script src="../assets/js/report-validation.js?v=3"></script>
+<script src="../assets/js/report-validation.js?v=4"></script>
 <script src="../assets/js/application-details.js?v=16"></script>
 <script src="../assets/js/application-modal-data.js?v=1"></script>
 <script src="../assets/js/seniorlink-feedback.js?v=1"></script>

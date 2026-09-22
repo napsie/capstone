@@ -333,7 +333,7 @@ try {
     <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
-    <script src="../assets/js/table-pagination.js?v=1" defer></script>
+    <script src="../assets/js/table-pagination.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
 </head>
@@ -472,7 +472,7 @@ try {
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="usersTableBody" data-paginate="10" data-pagination-label="User account pages">
+                        <tbody id="usersTableBody">
                             <?php foreach ($users as $user): ?>
                                 <tr>
                                     <td>

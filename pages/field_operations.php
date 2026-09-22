@@ -269,7 +269,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
     <link rel="stylesheet" href="<?= htmlspecialchars($sidebarCss) ?>?v=4">
     <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
-    <script src="../assets/js/table-pagination.js?v=1" defer></script>
+    <script src="../assets/js/table-pagination.js?v=2" defer></script>
     <style>
         :root { --primary:#0f172a; --accent:#2563eb; --border:#dbe4ef; --muted:#64748b; --card:#fff; --bg:#f1f5f9; }
         * { box-sizing:border-box; }

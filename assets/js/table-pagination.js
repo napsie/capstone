@@ -72,18 +72,15 @@
             const end = Math.min(start + this.pageSize, rows.length);
             rows.forEach((row, index) => row.classList.toggle('table-pagination__hidden', index < start || index >= end));
 
-            if (rows.length <= this.pageSize) {
-                this.nav.hidden = true;
-                this.nav.innerHTML = '';
-                return;
-            }
-
             const firstPage = Math.max(1, Math.min(this.page - 2, pageCount - 4));
             const lastPage = Math.min(pageCount, firstPage + 4);
             let numberedPages = '';
             for (let pageNumber = firstPage; pageNumber <= lastPage; pageNumber += 1) {
                 numberedPages += `<button type="button" class="table-pagination__page${pageNumber === this.page ? ' is-current' : ''}" data-table-page="${pageNumber}" ${pageNumber === this.page ? 'aria-current="page"' : ''}>${pageNumber}</button>`;
             }
+            // Always show the page summary and navigation. This makes it clear
+            // that the table is paginated even when the current result has only
+            // one page after a search or filter.
             this.nav.hidden = false;
             this.nav.innerHTML = `<div class="table-pagination__summary">Showing ${start + 1}&ndash;${end} of ${rows.length}</div>
                 <div class="table-pagination__controls">
@@ -95,7 +92,22 @@
     }
 
     function initialize(root = document) {
-        root.querySelectorAll('tbody[data-paginate]').forEach(tbody => {
+        const paginatedBodies = [...root.querySelectorAll('tbody[data-paginate]')];
+
+        // The import preview is temporary (maximum 1,000 uploaded rows) and
+        // therefore uses the same client paginator instead of loading all rows
+        // into a server-side list.
+        if (location.pathname.endsWith('/import_records.php')) {
+            root.querySelectorAll('.table-wrap table tbody').forEach(tbody => {
+                if (!paginatedBodies.includes(tbody)) {
+                    tbody.dataset.paginate = '10';
+                    tbody.dataset.paginationLabel = 'Import preview pages';
+                    paginatedBodies.push(tbody);
+                }
+            });
+        }
+
+        paginatedBodies.forEach(tbody => {
             if (!instances.has(tbody)) instances.set(tbody, new TablePaginator(tbody));
         });
     }

@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearValidation = () => {
         dateFrom?.setCustomValidity('');
         dateTo?.setCustomValidity('');
+        year?.setCustomValidity('');
         barangaySelect?.setCustomValidity('');
         format?.setCustomValidity('');
     };
@@ -69,10 +70,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     [dateFrom, dateTo].forEach(input => {
-        input?.addEventListener('input', () => {
+        const onPeriodChange = () => {
             clearValidation();
             syncPeriodControls();
-        });
+        };
+        input?.addEventListener('input', onPeriodChange);
+        input?.addEventListener('change', onPeriodChange);
     });
     barangaySelect?.addEventListener('change', clearValidation);
     format?.addEventListener('change', clearValidation);

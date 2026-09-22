@@ -31,4 +31,8 @@ require_once __DIR__ . '/../includes/system_branding.php';
     </div>
 </div>
 <script src="../assets/js/session-timeout.js?v=5"></script>
+<?php if ($current_page === 'import_records.php'): ?>
+<link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
+<script src="../assets/js/table-pagination.js?v=2" defer></script>
+<?php endif; ?>
 <?php include_once __DIR__ . '/legal_quick_access.php'; ?>

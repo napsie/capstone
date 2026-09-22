@@ -367,7 +367,7 @@ unset($_SESSION['application_submission_notice']);
     <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
-    <script src="../assets/js/table-pagination.js?v=1" defer></script>
+    <script src="../assets/js/table-pagination.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
     <link rel="stylesheet" href="../assets/css/applicant-modal.css?v=1">
@@ -719,7 +719,7 @@ unset($_SESSION['application_submission_notice']);
 <script src="../assets/js/application-modal-data.js?v=1"></script>
 <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 <script src="../assets/js/application-form-generator.js?v=1"></script>
-<script src="../assets/js/report-validation.js?v=3"></script>
+<script src="../assets/js/report-validation.js?v=4"></script>
 <script>
     const TYPE_LABELS = <?php echo json_encode(getApplicationTypeOptions()); ?>;
     

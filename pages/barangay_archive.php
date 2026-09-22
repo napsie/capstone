@@ -250,7 +250,7 @@ $auditHasFilters = ($activeTab === 'audit' && $search !== '') || $auditEventFilt
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
     <link rel="stylesheet" href="../assets/css/audit-log.css?v=2">
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
-    <script src="../assets/js/table-pagination.js?v=1" defer></script>
+    <script src="../assets/js/table-pagination.js?v=2" defer></script>
 <link rel="stylesheet" href="../assets/css/application-documents.css?v=8">
 </head>
 <body>
