@@ -519,8 +519,9 @@ button.portal-card {
     box-shadow: var(--focus-ring);
 }
 .portal-login-form { display: grid; gap: 13px; }
-.portal-signup-note { display:flex; align-items:flex-start; gap:8px; margin:0; padding:10px 12px; border:1px solid #bfdbfe; border-radius:9px; background:#eff6ff; color:#1e3a5f; font-size:.76rem; line-height:1.4; }
-.portal-signup-note i { margin-top:2px; color:#2563eb; }
+.portal-signup-note { display:flex; align-items:flex-start; gap:10px; margin:0; padding:11px 12px; border:1px solid #b9e6cb; border-radius:10px; background:#f0fdf4; color:#24573a; font-size:.75rem; line-height:1.42; }
+.portal-signup-note i { display:grid; place-items:center; flex:0 0 26px; width:26px; height:26px; margin-top:1px; border-radius:50%; background:#dcfce7; color:#16814b; }
+.portal-signup-note strong { display:block; margin-bottom:1px; color:#14532d; font-size:.76rem; }
 .portal-login-form .form-group { margin: 0; }
 .portal-login-form label { display: block; margin-bottom: 6px; color: #334155; font-size: .76rem; font-weight: 700; }
 .portal-login-form .form-control { min-height: 48px; width: 100%; padding: 11px 13px; border: 1px solid #b9c8d8; border-radius: 10px; background: #fff; color: #172033; font: inherit; }
@@ -552,6 +553,11 @@ button.portal-card {
 .portal-login-form .toggle-password i { width: 18px; line-height: 1; text-align: center; }
 .portal-login-form .toggle-password:hover { color: #174f83; background: #edf5fb; }
 .portal-login-options { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 38px; }
+.portal-login-links { display:flex; align-items:center; gap:10px; }
+.portal-signup-action { display:inline-flex; align-items:center; gap:6px; min-height:34px; padding:6px 9px; border:1px solid #86d5a8; border-radius:8px; background:#f0fdf4; color:#157a40; font:800 .72rem Inter,sans-serif; cursor:pointer; }
+.portal-signup-action:hover { border-color:#22a65a; background:#dcfce7; color:#14532d; }
+.portal-signup-action:focus-visible { outline:none; box-shadow:var(--focus-ring); }
+@media (max-width: 520px) { .portal-login-options { align-items:flex-start; flex-direction:column; } .portal-login-links { width:100%; justify-content:space-between; } }
 .portal-remember { display: flex !important; align-items: center; gap: 8px; margin: 0 !important; font-weight: 600 !important; }
 .portal-remember input { width: 19px; height: 19px; margin: 0; accent-color: #178b4b; }
 .portal-forgot { min-height: 38px; padding: 7px 5px; border: 0; border-radius: 7px; color: #155d99; background: transparent; font: 700 .75rem Inter,sans-serif; cursor: pointer; }

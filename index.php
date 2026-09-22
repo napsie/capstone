@@ -175,7 +175,7 @@ header('Expires: 0');
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/seniorlink-public.css?v=1">
-    <link rel="stylesheet" href="assets/css/landing.css?v=35">
+    <link rel="stylesheet" href="assets/css/landing.css?v=36">
     <link rel="stylesheet" href="assets/css/seniorlink-ui.css?v=20">
     <script src="assets/js/modal-hci.js?v=2" defer></script>
 </head>
@@ -200,12 +200,6 @@ header('Expires: 0');
                     <small>Pasig City Senior Services</small>
                 </span>
             </div>
-            <nav class="site-nav" aria-label="Account navigation">
-                <button type="button" class="btn-primary" data-login-view="admin" data-signup-entry aria-controls="adminLoginView">
-                    <span>Staff Sign Up</span>
-                    <i class="fas fa-arrow-right" aria-hidden="true"></i>
-                </button>
-            </nav>
         </div>
     </header>
 
@@ -329,11 +323,11 @@ header('Expires: 0');
                 <button type="button" class="portal-login-back" data-login-back><i class="fas fa-arrow-left" aria-hidden="true"></i> Back to access choices</button>
                 <?php if ($loginView === 'admin' && $loginError): ?><div class="portal-login-error" role="alert" tabindex="-1"><?php echo htmlspecialchars($loginError); ?></div><?php endif; ?>
                 <form method="post" action="index.php?view=admin" class="portal-login-form">
-                    <p class="portal-signup-note"><i class="fas fa-shield-halved" aria-hidden="true"></i> Staff accounts are created by an authorized Department Administrator after sign-in.</p>
+                    <div class="portal-signup-note" role="note"><i class="fas fa-shield-halved" aria-hidden="true"></i><span><strong>Authorized staff registration</strong>Create an account only if you have the system authorization password.</span></div>
                     <input type="hidden" name="login_role" value="department_admin">
                     <div class="form-group"><label for="adminUsername">Username</label><input id="adminUsername" name="username" class="form-control" value="<?php echo $loginView === 'admin' ? htmlspecialchars($_POST['username'] ?? '') : ''; ?>" autocomplete="username" required></div>
                     <div class="form-group"><label for="adminPassword">Password</label><div class="password-field"><input type="password" id="adminPassword" name="password" class="form-control" autocomplete="current-password" required><button type="button" class="toggle-password" data-password-target="adminPassword" aria-label="Show password"><i class="fas fa-eye"></i></button></div></div>
-                    <div class="portal-login-options"><label class="portal-remember"><input type="checkbox" name="remember"> Remember me</label><button type="button" class="portal-forgot" data-forgot-password>Forgot password?</button></div>
+                    <div class="portal-login-options"><label class="portal-remember"><input type="checkbox" name="remember"> Remember me</label><div class="portal-login-links"><button type="button" class="portal-signup-action" data-signup-view><i class="fas fa-user-plus" aria-hidden="true"></i> Create staff account</button><button type="button" class="portal-forgot" data-forgot-password>Forgot password?</button></div></div>
                     <button type="submit" class="portal-login-submit">Sign in as Administrator <i class="fas fa-arrow-right" aria-hidden="true"></i></button>
                     <div class="forgot-password-message" data-reset-message aria-live="polite"></div>
                     <div class="portal-otp-reset" data-otp-reset hidden>
@@ -350,6 +344,11 @@ header('Expires: 0');
                         </div>
                     </div>
                 </form>
+            </div>
+
+            <div class="portal-login-view portal-signup-view" id="signupView" data-login-panel="signup">
+                <button type="button" class="portal-login-back" data-login-back><i class="fas fa-arrow-left" aria-hidden="true"></i> Back to access choices</button>
+                <iframe class="signup-frame" id="signupFrame" src="pages/signup.php?embed=1" title="Create a SENIORLINK staff account" scrolling="yes"></iframe>
             </div>
 
         </section>
@@ -557,12 +556,12 @@ header('Expires: 0');
             };
 
             const showLogin = view => {
-                document.documentElement.classList.remove('signup-view-open');
+                document.documentElement.classList.toggle('signup-view-open', view === 'signup');
                 document.documentElement.classList.toggle('login-view-open', view === 'staff' || view === 'admin');
                 choices?.classList.add('is-hidden');
                 panels.forEach(panel => panel.classList.toggle('is-active', panel.dataset.loginPanel === view));
-                if (heading) heading.textContent = view === 'staff' ? 'SHDO sign in' : 'Administrator sign in';
-                if (description) description.textContent = 'Enter your account details to continue.';
+                if (heading) heading.textContent = view === 'staff' ? 'SHDO sign in' : (view === 'admin' ? 'Administrator sign in' : 'Create staff account');
+                if (description) description.textContent = view === 'signup' ? 'Enter the staff member’s details and provide the authorization password.' : 'Enter your account details to continue.';
                 const active = panels.find(panel => panel.dataset.loginPanel === view);
                 window.requestAnimationFrame(() => active?.querySelector('input:not([type="hidden"]), iframe')?.focus());
             };
@@ -584,6 +583,7 @@ header('Expires: 0');
             document.querySelectorAll('[data-login-view]').forEach(card => {
                 card.addEventListener('click', () => showLogin(card.dataset.loginView));
             });
+            document.querySelectorAll('[data-signup-view]').forEach(button => button.addEventListener('click', () => showLogin('signup')));
             document.querySelectorAll('[data-login-back]').forEach(button => button.addEventListener('click', showChoices));
             const keepLoginFieldVisible = () => {
                 if (!document.documentElement.classList.contains('login-view-open') || window.innerWidth > 600) {

@@ -8,13 +8,7 @@ require_once '../includes/data_normalizer.php';
 
 $success = '';
 $error = '';
-$isEmbedded = false;
-
-// Staff accounts are created only from the authenticated User Management area.
-if (($_SESSION['role'] ?? '') !== 'department_admin') {
-    header('Location: ../index.php');
-    exit;
-}
+$isEmbedded = isset($_GET['embed']) && $_GET['embed'] === '1';
 
 function saveSignupProfilePicture(array $file): string
 {
