@@ -28,5 +28,10 @@ function enforceAuthenticatedSessionTimeout(): void
         }
         exit;
     }
-    $_SESSION['last_activity_at'] = $now;
+    // Background reads (for example dashboard refreshes) must not extend an
+    // idle session. Page loads and state-changing requests still count.
+    $scriptName = str_replace('\\', '/', (string)($_SERVER['SCRIPT_NAME'] ?? ''));
+    $isBackgroundRead = str_contains($scriptName, '/api/')
+        && strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'GET';
+    if (!$isBackgroundRead) $_SESSION['last_activity_at'] = $now;
 }

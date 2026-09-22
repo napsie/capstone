@@ -26,4 +26,5 @@ require_once __DIR__ . '/../includes/system_branding.php';
         <li class="logout-item"><a href="../index.php?logout=true" data-tooltip="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i> <span class="link-text">Logout</span></a></li>
     </ul>
 </div>
+<script src="../assets/js/session-timeout.js?v=1"></script>
 <?php include_once __DIR__ . '/legal_quick_access.php'; ?>

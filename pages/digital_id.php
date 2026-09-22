@@ -57,7 +57,8 @@ $embedded = ($_GET['embed'] ?? '') === '1';
     </style>
 </head>
 <body class="<?= $embedded ? 'embedded' : '' ?>">
-<main class="page">
+<?php if (!$embedded): ?><script src="../assets/js/session-timeout.js?v=1"></script><?php endif; ?>
+  <main class="page">
     <div class="topbar"><h1>Temporary Digital Senior Citizen ID</h1><div class="actions"><button class="button" type="button" onclick="history.back()"><i class="fas fa-arrow-left"></i> Back</button><button class="button primary" type="button" onclick="window.print()"><i class="fas fa-print"></i> Print / Save PDF</button></div></div>
     <section class="panel">
         <div class="intro"><div><h2>Approved digital credential</h2><p>Available while the applicant waits for the physical OSCA card.<br><strong>Application Token:</strong> <?= htmlspecialchars($application['id_number']) ?> — use this token to track the application.</p></div><span class="badge">TEMPORARY</span></div>

@@ -157,7 +157,8 @@ if ($verifiedSenior) {
     </style>
 </head>
 <body>
-<a href="../index.php" class="back-btn"><i class="fas fa-arrow-left"></i> Back to Home</a>
+<script src="../assets/js/session-timeout.js?v=1"></script>
+  <a href="../index.php" class="back-btn"><i class="fas fa-arrow-left"></i> Back to Home</a>
 <div class="page-bg page-bg--pages" aria-hidden="true"></div>
 <?php if (!$verifiedSenior && !$proxySuccess): ?>
 <main class="landing-wrapper benefit-portal">
