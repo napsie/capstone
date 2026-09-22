@@ -57,7 +57,7 @@ $embedded = ($_GET['embed'] ?? '') === '1';
     </style>
 </head>
 <body class="<?= $embedded ? 'embedded' : '' ?>">
-<?php if (!$embedded): ?><script src="../assets/js/session-timeout.js?v=3"></script><?php endif; ?>
+<?php if (!$embedded): ?><script src="../assets/js/session-timeout.js?v=5"></script><?php endif; ?>
   <main class="page">
     <div class="topbar"><h1>Temporary Digital Senior Citizen ID</h1><div class="actions"><button class="button" type="button" onclick="history.back()"><i class="fas fa-arrow-left"></i> Back</button><button class="button primary" type="button" onclick="window.print()"><i class="fas fa-print"></i> Print / Save PDF</button></div></div>
     <section class="panel">

@@ -23,8 +23,8 @@ require_once __DIR__ . '/../includes/system_branding.php';
         <li class="<?php echo ($current_page == 'field_operations.php') ? 'active' : ''; ?>"><a href="field_operations.php" data-tooltip="Home Visits" aria-label="Home Visits"><i class="fas fa-house-medical"></i> <span class="link-text">Home Visits</span></a></li>
         <li class="<?php echo ($current_page == 'barangay_archive.php') ? 'active' : ''; ?>"><a href="barangay_archive.php" data-tooltip="Archive" aria-label="Archive"><i class="fas fa-archive"></i> <span class="link-text">Archive</span></a></li>
         <li class="<?php echo ($current_page == 'settings.php') ? 'active' : ''; ?>"><a href="settings.php" data-tooltip="Settings" aria-label="Settings"><i class="fas fa-cog"></i> <span class="link-text">Settings</span></a></li>
-        <li class="logout-item"><a href="../index.php?logout=true" data-tooltip="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i> <span class="link-text">Logout</span></a></li>
+        <li class="logout-item"><a href="../index.php?logout=true" data-logout-confirm data-tooltip="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i> <span class="link-text">Logout</span></a></li>
     </ul>
 </div>
-<script src="../assets/js/session-timeout.js?v=3"></script>
+<script src="../assets/js/session-timeout.js?v=5"></script>
 <?php include_once __DIR__ . '/legal_quick_access.php'; ?>

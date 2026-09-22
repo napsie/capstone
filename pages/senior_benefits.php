@@ -157,7 +157,7 @@ if ($verifiedSenior) {
     </style>
 </head>
 <body>
-<script src="../assets/js/session-timeout.js?v=3"></script>
+<script src="../assets/js/session-timeout.js?v=5"></script>
   <a href="../index.php" class="back-btn"><i class="fas fa-arrow-left"></i> Back to Home</a>
 <div class="page-bg page-bg--pages" aria-hidden="true"></div>
 <?php if (!$verifiedSenior && !$proxySuccess): ?>
