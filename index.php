@@ -200,12 +200,6 @@ header('Expires: 0');
                     <small>Pasig City Senior Services</small>
                 </span>
             </div>
-            <nav class="site-nav" aria-label="Main navigation">
-                <button type="button" class="btn-primary" data-signup-view aria-controls="signupView">
-                    <span>Sign Up</span>
-                    <i class="fas fa-arrow-right" aria-hidden="true"></i>
-                </button>
-            </nav>
         </div>
     </header>
 
@@ -349,11 +343,6 @@ header('Expires: 0');
                         </div>
                     </div>
                 </form>
-            </div>
-
-            <div class="portal-login-view portal-signup-view" id="signupView" data-login-panel="signup">
-                <button type="button" class="portal-login-back" data-login-back><i class="fas fa-arrow-left" aria-hidden="true"></i> Back to access choices</button>
-                <iframe class="signup-frame" id="signupFrame" src="pages/signup.php?embed=1" title="Create a SENIORLINK staff account" scrolling="yes"></iframe>
             </div>
 
         </section>
@@ -543,7 +532,6 @@ header('Expires: 0');
             const heading = document.getElementById('portal-heading');
             const description = document.getElementById('portal-description');
             const panels = [...document.querySelectorAll('[data-login-panel]')];
-            const signupFrame = document.getElementById('signupFrame');
 
             const closePasswordReset = (panel, clearMessage = true) => {
                 if (!panel) return;
@@ -562,12 +550,12 @@ header('Expires: 0');
             };
 
             const showLogin = view => {
-                document.documentElement.classList.toggle('signup-view-open', view === 'signup');
+                document.documentElement.classList.remove('signup-view-open');
                 document.documentElement.classList.toggle('login-view-open', view === 'staff' || view === 'admin');
                 choices?.classList.add('is-hidden');
                 panels.forEach(panel => panel.classList.toggle('is-active', panel.dataset.loginPanel === view));
-                if (heading) heading.textContent = view === 'staff' ? 'SHDO sign in' : (view === 'admin' ? 'Administrator sign in' : 'Create staff account');
-                if (description) description.textContent = view === 'signup' ? 'Enter the staff member’s details and assign the correct access role.' : 'Enter your account details to continue.';
+                if (heading) heading.textContent = view === 'staff' ? 'SHDO sign in' : 'Administrator sign in';
+                if (description) description.textContent = 'Enter your account details to continue.';
                 const active = panels.find(panel => panel.dataset.loginPanel === view);
                 window.requestAnimationFrame(() => active?.querySelector('input:not([type="hidden"]), iframe')?.focus());
             };
@@ -589,7 +577,6 @@ header('Expires: 0');
             document.querySelectorAll('[data-login-view]').forEach(card => {
                 card.addEventListener('click', () => showLogin(card.dataset.loginView));
             });
-            document.querySelectorAll('[data-signup-view]').forEach(button => button.addEventListener('click', () => showLogin('signup')));
             document.querySelectorAll('[data-login-back]').forEach(button => button.addEventListener('click', showChoices));
             const keepLoginFieldVisible = () => {
                 if (!document.documentElement.classList.contains('login-view-open') || window.innerWidth > 600) {

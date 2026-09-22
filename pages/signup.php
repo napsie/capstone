@@ -1,4 +1,5 @@
 <?php
+session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/barangays_list.php';
 require_once '../includes/password_validation.php';
@@ -7,7 +8,13 @@ require_once '../includes/data_normalizer.php';
 
 $success = '';
 $error = '';
-$isEmbedded = isset($_GET['embed']) && $_GET['embed'] === '1';
+$isEmbedded = false;
+
+// Staff accounts are created only from the authenticated User Management area.
+if (($_SESSION['role'] ?? '') !== 'department_admin') {
+    header('Location: ../index.php');
+    exit;
+}
 
 function saveSignupProfilePicture(array $file): string
 {
