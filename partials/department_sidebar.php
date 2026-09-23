@@ -34,5 +34,22 @@ require_once __DIR__ . '/../includes/system_branding.php';
 <?php if ($current_page === 'import_records.php'): ?>
 <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
 <script src="../assets/js/table-pagination.js?v=2" defer></script>
+<script src="../assets/js/seniorlink-feedback.js?v=1" defer></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const importForm = document.querySelector('form.actions');
+    if (!importForm) return;
+    importForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const importButton = importForm.querySelector('[name="commit_import"]');
+        if (!importButton || importButton.disabled) return;
+        const count = importButton.textContent.replace(/[^0-9]/g, '');
+        window.showCarelinkConfirm(
+            `Import ${count || 'these'} validated record(s)? This adds records to the system and cannot be undone from this page.`,
+            () => importForm.submit()
+        );
+    });
+});
+</script>
 <?php endif; ?>
 <?php include_once __DIR__ . '/legal_quick_access.php'; ?>

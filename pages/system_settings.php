@@ -447,7 +447,7 @@ try {
         <div class="settings-grid">
             <div class="card">
                 <h3><i class="fas fa-image"></i> System and Report Logo</h3>
-                <form action="" method="POST" enctype="multipart/form-data">
+                <form id="systemLogoForm" action="" method="POST" enctype="multipart/form-data">
                     <div class="form-group" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
                         <img src="<?php echo htmlspecialchars(systemLogoUrl($conn)); ?>?v=<?php echo urlencode(systemLogoFilename($conn)); ?>" alt="Current system logo" style="width:76px;height:76px;object-fit:contain;border:1px solid #dbe4ef;border-radius:12px;background:#fff;">
                         <div style="flex:1;min-width:220px;"><label for="systemLogo">Current System Logo</label><input type="file" id="systemLogo" name="systemLogo" accept="image/png,image/jpeg,.png,.jpg,.jpeg" required><small>PNG or JPEG, up to 5 MB. The logo appears throughout the system and on new PDF and Excel reports.</small></div>
@@ -475,5 +475,22 @@ try {
 
 </script>
 <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
+<script>
+    document.getElementById('systemLogoForm')?.addEventListener('submit', function(event) {
+        if (this.dataset.confirmed === 'true') return;
+        if (!this.reportValidity()) {
+            event.preventDefault();
+            return;
+        }
+        event.preventDefault();
+        window.showCarelinkConfirm(
+            'Replace the system logo? The new logo will appear throughout the system and in future reports.',
+            () => {
+                this.dataset.confirmed = 'true';
+                this.requestSubmit();
+            }
+        );
+    });
+</script>
 </body>
 </html>

@@ -769,6 +769,23 @@ try {
                     });
                 });
             }
+
+            let addUserConfirmationAccepted = false;
+            addUserForm.addEventListener('submit', (event) => {
+                if (addUserConfirmationAccepted) return;
+                if (!addUserForm.reportValidity()) {
+                    event.preventDefault();
+                    return;
+                }
+                event.preventDefault();
+                window.showCarelinkConfirm(
+                    'Create this staff account? The new user will be able to sign in with the role you selected.',
+                    () => {
+                        addUserConfirmationAccepted = true;
+                        addUserForm.requestSubmit();
+                    }
+                );
+            });
         }
 
         // --- Edit User Modal Logic ---

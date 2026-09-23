@@ -493,9 +493,10 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
             </div>
 
             <?php if ($isDepartment): ?>
-            <div class="panel" id="visitEditor" hidden>
-                <div class="panel-head"><h2>Assign and Schedule</h2><span class="muted" id="visitEditorName">Select a senior above</span></div>
-                <div class="panel-body">
+            <div class="evaluation-modal" id="visitEditor" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="visitEditorTitle">
+                <div class="evaluation-dialog">
+                    <div class="evaluation-modal-head"><div><span class="modal-eyebrow">Home Visit Assignment</span><h2 id="visitEditorTitle">Assign and Schedule</h2><span class="muted" id="visitEditorName">Select a senior above</span></div><button class="evaluation-close" type="button" data-close-assignment aria-label="Close assignment form">&times;</button></div>
+                    <div class="evaluation-modal-body">
                     <form method="post" class="form-grid" id="visitForm">
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
                         <input type="hidden" name="action" value="save_visit">
@@ -504,8 +505,9 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
                         <div class="field visit-assignment"><label>Assigned Personnel</label><select name="personnel_id" id="visitPersonnel"><option value="">Select personnel</option><?php foreach ($activePersonnel as $p): ?><option value="<?= (int)$p['id'] ?>"><?= htmlspecialchars($p['full_name'] . (!empty($p['position']) ? ' - ' . $p['position'] : '')) ?></option><?php endforeach; ?></select></div>
                         <div class="field visit-assignment"><label for="visitSchedule">Home Visit Date</label><input type="date" name="scheduled_at" id="visitSchedule" title="Choose a Monday-to-Friday home visit date." onclick="if (this.showPicker && !this.disabled) this.showPicker()"></div>
                         <div class="field"><label>Internal scheduling note (optional)</label><input name="reason" id="visitReason" maxlength="255" placeholder="Internal reason or assignment note"></div>
-                        <div class="full"><button class="btn btn-primary" type="submit"><i class="fas fa-save"></i> Save Assignment</button></div>
+                        <div class="full" style="display:flex;justify-content:flex-end;gap:9px"><button class="btn btn-muted" type="button" data-close-assignment>Cancel</button><button class="btn btn-primary" type="submit"><i class="fas fa-save"></i> Save Assignment</button></div>
                     </form>
+                    </div>
                 </div>
             </div>
             <?php endif; ?>
@@ -549,17 +551,18 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
             </div></div>
             <div class="panel"><div class="panel-head"><h2>Personnel Directory</h2></div><div class="table-wrap"><table><thead><tr><th>Name</th><th>Position</th><th>Assignment</th><th>Contact</th><th>Status</th><th>Action</th></tr></thead><tbody data-paginate="10" data-pagination-label="Personnel directory pages">
                 <?php if (!$personnel): ?><tr><td colspan="6">No personnel added yet.</td></tr><?php endif; ?>
-                <?php foreach ($personnel as $p): ?><tr><td><strong><?= htmlspecialchars($p['full_name']) ?></strong></td><td><?= htmlspecialchars($p['position'] ?? '-') ?></td><td><?= htmlspecialchars($p['barangay'] ?: 'City-wide') ?></td><td><?= htmlspecialchars($p['contact_number'] ?? '-') ?></td><td><span class="badge <?= (int)$p['is_active'] ? 'eligible' : 'cancelled' ?>"><?= (int)$p['is_active'] ? 'Active' : 'Inactive' ?></span></td><td><div class="row-actions"><form method="post"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>"><input type="hidden" name="action" value="toggle_personnel"><input type="hidden" name="personnel_id" value="<?= (int)$p['id'] ?>"><button class="btn btn-muted" type="submit"><?= (int)$p['is_active'] ? 'Deactivate' : 'Activate' ?></button></form><form method="post" onsubmit="return confirm('Archive <?= htmlspecialchars($p['full_name'], ENT_QUOTES) ?>? They will no longer be available for new home visits.');"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>"><input type="hidden" name="action" value="archive_personnel"><input type="hidden" name="personnel_id" value="<?= (int)$p['id'] ?>"><button class="btn btn-danger" type="submit"><i class="fas fa-box-archive"></i> Archive</button></form></div></td></tr><?php endforeach; ?>
+                <?php foreach ($personnel as $p): ?><tr><td><strong><?= htmlspecialchars($p['full_name']) ?></strong></td><td><?= htmlspecialchars($p['position'] ?? '-') ?></td><td><?= htmlspecialchars($p['barangay'] ?: 'City-wide') ?></td><td><?= htmlspecialchars($p['contact_number'] ?? '-') ?></td><td><span class="badge <?= (int)$p['is_active'] ? 'eligible' : 'cancelled' ?>"><?= (int)$p['is_active'] ? 'Active' : 'Inactive' ?></span></td><td><div class="row-actions"><form method="post" data-confirm-message="<?= (int)$p['is_active'] ? 'Deactivate ' : 'Activate ' ?><?= htmlspecialchars($p['full_name'], ENT_QUOTES) ?>? This changes whether they can be assigned to new home visits."><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>"><input type="hidden" name="action" value="toggle_personnel"><input type="hidden" name="personnel_id" value="<?= (int)$p['id'] ?>"><button class="btn btn-muted" type="submit"><?= (int)$p['is_active'] ? 'Deactivate' : 'Activate' ?></button></form><form method="post" data-confirm-message="Archive <?= htmlspecialchars($p['full_name'], ENT_QUOTES) ?>? They will no longer be available for new home visits."><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>"><input type="hidden" name="action" value="archive_personnel"><input type="hidden" name="personnel_id" value="<?= (int)$p['id'] ?>"><button class="btn btn-danger" type="submit"><i class="fas fa-box-archive"></i> Archive</button></form></div></td></tr><?php endforeach; ?>
             </tbody></table></div></div>
             <div class="panel"><div class="panel-head"><h2>Archived Personnel</h2><span class="muted">Restored personnel remain inactive until you activate them.</span></div><div class="table-wrap"><table><thead><tr><th>Name</th><th>Position</th><th>Assignment</th><th>Archived</th><th>Action</th></tr></thead><tbody data-paginate="10" data-pagination-label="Archived personnel pages">
                 <?php if (!$archivedPersonnel): ?><tr><td colspan="5">No archived personnel.</td></tr><?php endif; ?>
-                <?php foreach ($archivedPersonnel as $p): ?><tr><td><strong><?= htmlspecialchars($p['full_name']) ?></strong></td><td><?= htmlspecialchars($p['position'] ?? '-') ?></td><td><?= htmlspecialchars($p['barangay'] ?: 'City-wide') ?></td><td><?= $p['archived_at'] ? htmlspecialchars(date('M j, Y', strtotime($p['archived_at']))) : '-' ?></td><td><form method="post"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>"><input type="hidden" name="action" value="restore_personnel"><input type="hidden" name="personnel_id" value="<?= (int)$p['id'] ?>"><button class="btn btn-muted" type="submit"><i class="fas fa-rotate-left"></i> Restore</button></form></td></tr><?php endforeach; ?>
+                <?php foreach ($archivedPersonnel as $p): ?><tr><td><strong><?= htmlspecialchars($p['full_name']) ?></strong></td><td><?= htmlspecialchars($p['position'] ?? '-') ?></td><td><?= htmlspecialchars($p['barangay'] ?: 'City-wide') ?></td><td><?= $p['archived_at'] ? htmlspecialchars(date('M j, Y', strtotime($p['archived_at']))) : '-' ?></td><td><form method="post" data-confirm-message="Restore <?= htmlspecialchars($p['full_name'], ENT_QUOTES) ?>? They will remain inactive until you activate them."><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>"><input type="hidden" name="action" value="restore_personnel"><input type="hidden" name="personnel_id" value="<?= (int)$p['id'] ?>"><button class="btn btn-muted" type="submit"><i class="fas fa-rotate-left"></i> Restore</button></form></td></tr><?php endforeach; ?>
             </tbody></table></div></div>
         </section>
         <?php endif; ?>
     </div>
 </div>
 <script src="../assets/js/sidebar-toggle.js?v=3"></script>
+<script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 <script>
     const visitFilterForm = document.querySelector('.visit-filters');
     const visitSearchInput = document.getElementById('visitSearch');
@@ -613,13 +616,15 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
     function openVisit(visit) {
         const assignmentEditor = document.getElementById('visitEditor');
         if (assignmentEditor) {
-            assignmentEditor.hidden = false;
             document.getElementById('visitApplicationId').value = visit.id_number;
             document.getElementById('visitEditorName').textContent = visit.full_name + ' (' + visit.id_number + ')';
             if (document.getElementById('visitReason')) document.getElementById('visitReason').value = visit.home_visit_eligibility_reason || '';
             if (document.getElementById('visitPersonnel')) document.getElementById('visitPersonnel').value = visit.home_visit_personnel_id || '';
             if (document.getElementById('visitSchedule')) document.getElementById('visitSchedule').value = toDateInput(visit.home_visit_scheduled_at);
-            assignmentEditor.scrollIntoView({behavior:'smooth', block:'start'});
+            assignmentEditor.classList.add('open');
+            assignmentEditor.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('evaluation-open');
+            window.setTimeout(() => document.getElementById('visitPersonnel')?.focus(), 0);
             return;
         }
 
@@ -661,6 +666,17 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
     }
 
     const evaluationModal = document.getElementById('evaluationModal');
+    const assignmentModal = document.getElementById('visitEditor');
+
+    function closeAssignmentModal() {
+        if (!assignmentModal) return;
+        assignmentModal.classList.remove('open');
+        assignmentModal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('evaluation-open');
+    }
+
+    document.querySelectorAll('[data-close-assignment]').forEach((button) => button.addEventListener('click', closeAssignmentModal));
+    assignmentModal?.addEventListener('click', (event) => { if (event.target === assignmentModal) closeAssignmentModal(); });
     const evaluationForm = document.getElementById('visitStatusForm');
     const dependentFields = {
         is_pensioner: ['pension_source', 'pension_amount'],
@@ -691,8 +707,13 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
     };
     document.querySelectorAll('[data-close-evaluation]').forEach((button) => button.addEventListener('click', closeEvaluation));
     evaluationModal?.addEventListener('click', (event) => { if (event.target === evaluationModal) closeEvaluation(); });
-    document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && evaluationModal?.classList.contains('open')) closeEvaluation(); });
+    document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') return;
+        if (assignmentModal?.classList.contains('open')) closeAssignmentModal();
+        if (evaluationModal?.classList.contains('open')) closeEvaluation();
+    });
 
+    let evaluationConfirmationAccepted = false;
     evaluationForm?.addEventListener('submit', async (event) => {
         event.preventDefault();
         const status = evaluationForm.elements.namedItem('visit_status').value;
@@ -701,6 +722,18 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
         if (status === 'Completed') requiredWhenComplete.forEach((name) => evaluationForm.elements.namedItem(name)?.setAttribute('required', 'required'));
         updateEvaluationDependencies();
         if (!evaluationForm.reportValidity()) return;
+
+        if (!evaluationConfirmationAccepted && (status === 'Completed' || status === 'Rejected')) {
+            const confirmation = status === 'Rejected'
+                ? 'Reject this home visit? The record will be removed from the active home-visit list.'
+                : 'Mark this home visit as completed? The submitted evaluation will become part of the senior’s record.';
+            window.showCarelinkConfirm(confirmation, () => {
+                evaluationConfirmationAccepted = true;
+                evaluationForm.requestSubmit();
+            });
+            return;
+        }
+        evaluationConfirmationAccepted = false;
 
         const saveButton = document.getElementById('saveEvaluation');
         const message = document.getElementById('evaluationMessage');
@@ -790,6 +823,30 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
         });
         document.getElementById('visitForm')?.addEventListener('submit', validateVisitSchedule);
     }
+
+    const assignmentForm = document.getElementById('visitForm');
+    assignmentForm?.addEventListener('submit', (event) => {
+        if (assignmentForm.dataset.confirmed === 'true') return;
+        if (!assignmentForm.reportValidity()) {
+            event.preventDefault();
+            return;
+        }
+        event.preventDefault();
+        window.showCarelinkConfirm(
+            'Save this home visit assignment? The selected personnel and date will be recorded.',
+            () => {
+                assignmentForm.dataset.confirmed = 'true';
+                assignmentForm.requestSubmit();
+            }
+        );
+    });
+
+    document.querySelectorAll('form[data-confirm-message]').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            window.showCarelinkConfirm(form.dataset.confirmMessage, () => form.submit());
+        });
+    });
 </script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
