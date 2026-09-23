@@ -564,7 +564,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
 </head>
 <body class="<?php echo $isEmbedded ? 'signup-embedded' : ''; ?>">
-    <script src="../assets/js/session-timeout.js?v=5"></script>
     <!-- Back Button -->
     <a href="../index.php" class="back-btn">
         <i class="fas fa-arrow-left"></i>

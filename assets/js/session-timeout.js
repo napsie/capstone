@@ -1,8 +1,15 @@
 (() => {
+    // A page can include more than one shared layout or an embedded view.
+    // Keep exactly one idle timer running so an older duplicate cannot expire
+    // an actively used session.
+    if (window.__seniorlinkSessionTimeoutLoaded) return;
+    window.__seniorlinkSessionTimeoutLoaded = true;
+
     const idleLimitMs = 5 * 60 * 1000;
     let deadline = Date.now() + idleLimitMs;
     let timer = null;
     let lastServerTouch = 0;
+    let lastClientActivity = 0;
 
     const expire = () => {
         if (window.__seniorlinkSessionExpiring) return;
@@ -24,12 +31,18 @@
         timer = window.setTimeout(expire, Math.max(0, deadline - Date.now()));
     };
     const recordActivity = () => {
-        deadline = Date.now() + idleLimitMs;
+        const now = Date.now();
+        // Pointer movement and typing can occur many times per second. One
+        // activity update per second is enough to keep the deadline accurate
+        // while avoiding unnecessary timer resets and server requests.
+        if (now - lastClientActivity < 1000) return;
+        lastClientActivity = now;
+        deadline = now + idleLimitMs;
         schedule();
         // Keep the server timestamp in step with real user activity, without
         // sending one request for every keystroke or pointer movement.
-        if (Date.now() - lastServerTouch >= 30 * 1000) {
-            lastServerTouch = Date.now();
+        if (now - lastServerTouch >= 15 * 1000) {
+            lastServerTouch = now;
             fetch('../api/session_touch.php', { method: 'POST', credentials: 'same-origin' })
                 .then(response => { if (response.status === 401) expire(); })
                 .catch(() => {});
@@ -38,12 +51,19 @@
 
     // Only genuine user interaction extends the visible session. Background
     // dashboard fetches must never keep an inactive account signed in.
-    ['pointerdown', 'keydown', 'touchstart', 'scroll'].forEach(eventName => {
+    [
+        'pointerdown', 'pointermove', 'keydown', 'input', 'change',
+        'focusin', 'touchstart', 'touchmove', 'scroll'
+    ].forEach(eventName => {
         window.addEventListener(eventName, recordActivity, { passive: true });
     });
     document.addEventListener('visibilitychange', () => {
-        if (!document.hidden && Date.now() >= deadline) expire();
+        if (!document.hidden) {
+            if (Date.now() >= deadline) expire();
+            else recordActivity();
+        }
     });
+    window.addEventListener('focus', recordActivity, { passive: true });
 
     let logoutTrigger = null;
     const closeLogoutDialog = () => {

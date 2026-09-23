@@ -211,6 +211,32 @@ if ($format === 'pdf') {
     $logoDisplayWidth = $logoWidth * $logoPointScale;
     $logoDisplayHeight = $logoHeight * $logoPointScale;
 
+    // The OSCA mark is part of the official report layout. It is embedded
+    // separately so the currently selected SENIORLINK logo remains configurable.
+    $oscaJpeg = '';
+    $oscaWidth = 1;
+    $oscaHeight = 1;
+    $oscaSource = @file_get_contents(__DIR__ . '/../images/system_logos/official-osca-logo.png');
+    $oscaImage = $oscaSource !== false ? @imagecreatefromstring($oscaSource) : false;
+    if ($oscaImage) {
+        $sourceWidth = imagesx($oscaImage);
+        $sourceHeight = imagesy($oscaImage);
+        $scale = min(1, 400 / max($sourceWidth, $sourceHeight));
+        $oscaWidth = max(1, (int)round($sourceWidth * $scale));
+        $oscaHeight = max(1, (int)round($sourceHeight * $scale));
+        $rgbOsca = imagecreatetruecolor($oscaWidth, $oscaHeight);
+        imagefill($rgbOsca, 0, 0, imagecolorallocate($rgbOsca, 255, 255, 255));
+        imagecopyresampled($rgbOsca, $oscaImage, 0, 0, 0, 0, $oscaWidth, $oscaHeight, $sourceWidth, $sourceHeight);
+        ob_start();
+        imagejpeg($rgbOsca, null, 90);
+        $oscaJpeg = (string)ob_get_clean();
+        imagedestroy($rgbOsca);
+        imagedestroy($oscaImage);
+    }
+    $oscaPointScale = min(54 / max(1, $oscaWidth), 64 / max(1, $oscaHeight));
+    $oscaDisplayWidth = $oscaWidth * $oscaPointScale;
+    $oscaDisplayHeight = $oscaHeight * $oscaPointScale;
+
     $columns = [
         ['#', 28, 4], ['APPLICANT NAME', 185, 31], ['APPLICATION ID', 105, 17],
         ['APPLICATION TYPE', 170, 28], ['BARANGAY', 110, 17], ['DATE', 85, 12], ['STATUS', 87, 13],
@@ -231,6 +257,9 @@ if ($format === 'pdf') {
             'filters' => $filterLabel,
             'logo_width' => $logoDisplayWidth,
             'logo_height' => $logoDisplayHeight,
+            'has_osca_logo' => $oscaJpeg !== '',
+            'osca_logo_width' => $oscaDisplayWidth,
+            'osca_logo_height' => $oscaDisplayHeight,
             'page' => $pageIndex + 1,
             'total_pages' => $totalPdfPages,
         ], $pdfEscape, $fit, $logoJpeg !== '');
@@ -272,18 +301,28 @@ if ($format === 'pdf') {
         5 => '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique >>',
     ];
     $logoObject = 0;
+    $oscaObject = 0;
+    $nextObject = 6;
     if ($logoJpeg !== '') {
-        $logoObject = 6;
+        $logoObject = $nextObject++;
         $objects[$logoObject] = '<< /Type /XObject /Subtype /Image /Width ' . $logoWidth . ' /Height ' . $logoHeight
             . ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' . strlen($logoJpeg) . ">>\nstream\n" . $logoJpeg . "\nendstream";
     }
+    if ($oscaJpeg !== '') {
+        $oscaObject = $nextObject++;
+        $objects[$oscaObject] = '<< /Type /XObject /Subtype /Image /Width ' . $oscaWidth . ' /Height ' . $oscaHeight
+            . ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' . strlen($oscaJpeg) . ">>\nstream\n" . $oscaJpeg . "\nendstream";
+    }
     $kids = [];
-    $pageBaseObject = $logoObject ? 7 : 6;
+    $pageBaseObject = $nextObject;
     foreach ($streams as $index => $stream) {
         $pageObject = $pageBaseObject + ($index * 2);
         $contentObject = $pageObject + 1;
         $kids[] = $pageObject . ' 0 R';
-        $xObjects = $logoObject ? ' /XObject << /Logo ' . $logoObject . ' 0 R >>' : '';
+        $xObjectEntries = [];
+        if ($logoObject) $xObjectEntries[] = '/Logo ' . $logoObject . ' 0 R';
+        if ($oscaObject) $xObjectEntries[] = '/OSCA ' . $oscaObject . ' 0 R';
+        $xObjects = $xObjectEntries ? ' /XObject << ' . implode(' ', $xObjectEntries) . ' >>' : '';
         $objects[$pageObject] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' . $pageWidth . ' ' . $pageHeight . '] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >>' . $xObjects . ' >> /Contents ' . $contentObject . ' 0 R >>';
         $objects[$contentObject] = '<< /Length ' . strlen($stream) . " >>\nstream\n" . $stream . "\nendstream";
     }
