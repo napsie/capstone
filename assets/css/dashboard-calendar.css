@@ -301,32 +301,35 @@
     .dashboard-panels .calendar-card .calendar-table td { height: 34px !important; }
 }
 
-/* Department dashboard pairs each insight card into aligned grid rows. */
+/* Department dashboard keeps charts in the main column and utility cards in
+   the side column. The charts container owns its responsive chart grid. */
 @media (min-width: 992px) {
     .department-dashboard .dashboard-panels {
         grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
-        grid-template-rows: 360px 360px;
-        align-items: stretch;
+        grid-template-rows: auto;
+        align-items: start;
         gap: 14px;
         margin-bottom: 16px;
     }
 
-    .department-dashboard .dashboard-panels > .left-panel,
-    .department-dashboard .dashboard-panels > .right-panel,
-    .department-dashboard .dashboard-panels .charts-container {
-        display: contents;
+    .department-dashboard .dashboard-panels > .left-panel {
+        display: flex;
+        grid-column: 1;
+        grid-row: 1;
     }
 
-    .department-dashboard .charts-container .chart-card:first-child { grid-column: 1; grid-row: 1; }
-    .department-dashboard .right-panel .recent-apps-card { grid-column: 2; grid-row: 1; }
-    .department-dashboard .charts-container .chart-card:nth-child(2) { grid-column: 1; grid-row: 2; }
-    .department-dashboard .right-panel .calendar-card { grid-column: 2; grid-row: 2; }
+    .department-dashboard .dashboard-panels > .right-panel {
+        display: flex;
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    .department-dashboard .dashboard-panels .charts-container { display: grid; }
 
     .department-dashboard .chart-card,
     .department-dashboard .calendar-card,
     .department-dashboard .recent-apps-card {
         box-sizing: border-box;
-        height: 100%;
         min-height: 0;
         margin: 0;
         overflow: hidden;

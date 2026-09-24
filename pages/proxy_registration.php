@@ -415,8 +415,10 @@ $resetUrl = 'proxy_registration.php';
     </script>
     <script src="../assets/js/form-drafts.js?v=1"></script>
     <script src="../assets/js/resilient-form-submit.js?v=1"></script>
+    <script src="../assets/js/prx-token-input.js?v=1"></script>
     <script>
         SeniorlinkFormDrafts.initialize({ clearOnSuccess: <?php echo $proxySuccess ? 'true' : 'false'; ?> });
+        window.initPrxTokenInput(document.getElementById('benefitPermanentToken'));
     </script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {

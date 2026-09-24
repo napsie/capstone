@@ -46,7 +46,7 @@ if ($token !== '') {
 
         if ($matchedApplication) {
             $rootId = (string)($matchedApplication['parent_senior_id'] ?: $matchedApplication['id_number']);
-            $rootStmt = $conn->prepare("SELECT id_number, proxy_token, senior_id_no, full_name, id_purpose, date_submitted FROM applications WHERE id_number = ? AND COALESCE(is_archived, 0) = 0 LIMIT 1");
+            $rootStmt = $conn->prepare("SELECT id_number, proxy_token, senior_id_no, full_name, id_purpose, birth_date, date_submitted FROM applications WHERE id_number = ? AND COALESCE(is_archived, 0) = 0 LIMIT 1");
             $rootStmt->execute([$rootId]);
             $root = $rootStmt->fetch(PDO::FETCH_ASSOC) ?: $matchedApplication;
             $rootToken = strtoupper(trim((string)($root['proxy_token'] ?? '')));
@@ -148,6 +148,25 @@ $isTransferredSenior = isset($root) && strtolower(trim((string)($root['id_purpos
 $benefitEligibleAt = $isTransferredSenior
     ? date('Y-m-d', strtotime((string)$root['date_submitted'] . ' +2 years'))
     : '';
+$isBirthday = false;
+$seniorAge = null;
+$milestoneAge = null;
+$seniorBirthDateValue = trim((string)($root['birth_date'] ?? $application['birth_date'] ?? ''));
+if ($application && $seniorBirthDateValue !== '') {
+    try {
+        $trackerTimezone = new DateTimeZone('Asia/Manila');
+        $trackerToday = new DateTimeImmutable('today', $trackerTimezone);
+        $seniorBirthDate = new DateTimeImmutable($seniorBirthDateValue, $trackerTimezone);
+        if ($seniorBirthDate <= $trackerToday) {
+            $seniorAge = $seniorBirthDate->diff($trackerToday)->y;
+            $isBirthday = $seniorBirthDate->format('m-d') === $trackerToday->format('m-d');
+            $milestoneAge = milestoneAgeForCurrentAge($seniorAge);
+        }
+    } catch (Throwable $e) {
+        $seniorAge = null;
+        $milestoneAge = null;
+    }
+}
 $digitalIdEligible = $application
     && ($application['application_type'] ?? '') === 'senior'
     && in_array($rawStatus, ['Verified', 'Approved', 'Released'], true)
@@ -241,6 +260,15 @@ $photoVerified = $digitalIdEligible && is_array($photoGrant)
         .status-note { margin:0 0 22px; padding:13px 14px; color:#155e35; background:#ecfdf3; border:1px solid #bbf7d0; border-radius:10px; }
         .status-note.rejected { color:#991b1b; background:#fef2f2; border-color:#fecaca; }
         .status-note.landbank { color:#1e3a5f; background:#eff6ff; border-color:#bfdbfe; }
+        .senior-notices { display:grid; gap:10px; margin:0 0 22px; }
+        .senior-notice { display:flex; align-items:flex-start; gap:12px; padding:14px 16px; border:1px solid; border-radius:12px; line-height:1.5; }
+        .senior-notice i { display:grid; place-items:center; flex:0 0 36px; width:36px; height:36px; border-radius:50%; font-size:1rem; }
+        .senior-notice strong { display:block; margin-bottom:2px; }
+        .senior-notice p { margin:0; font-size:.86rem; }
+        .senior-notice.birthday { border-color:#f9a8d4; background:#fdf2f8; color:#9d174d; }
+        .senior-notice.birthday i { background:#fce7f3; color:#db2777; }
+        .senior-notice.milestone { border-color:#fcd34d; background:#fffbeb; color:#854d0e; }
+        .senior-notice.milestone i { background:#fef3c7; color:#d97706; }
         .digital-id-section { margin:28px 0; padding:20px; border:1px solid #bfdbfe; border-radius:14px; background:#eff6ff; }
         .digital-id-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:14px; }
         .digital-id-heading h2 { margin:0 0 4px; font-size:1.05rem; color:#172033; }
@@ -320,6 +348,22 @@ $photoVerified = $digitalIdEligible && is_array($photoGrant)
                         <?php endforeach; ?>
                     </select>
                 </form>
+                <?php if ($isBirthday || $milestoneAge !== null): ?>
+                    <section class="senior-notices" aria-label="Senior citizen notices" aria-live="polite">
+                        <?php if ($isBirthday): ?>
+                            <div class="senior-notice birthday" role="status">
+                                <i class="fas fa-cake-candles" aria-hidden="true"></i>
+                                <div><strong>Happy Birthday, <?php echo htmlspecialchars($applicantName); ?>!</strong><p>Wishing you good health and happiness as you celebrate turning <?php echo number_format((int)$seniorAge); ?> today.</p></div>
+                            </div>
+                        <?php endif; ?>
+                        <?php if ($milestoneAge !== null): ?>
+                            <div class="senior-notice milestone" role="status">
+                                <i class="fas fa-gift" aria-hidden="true"></i>
+                                <div><strong>You meet the age requirement for the Milestone Cash Gift.</strong><p>At age <?php echo number_format((int)$seniorAge); ?>, you may apply for the Octogenarian, Nonagenarian, or Centenarian benefit. OSCA will verify your Senior Citizen ID, Pasig residency, and supporting documents.</p></div>
+                            </div>
+                        <?php endif; ?>
+                    </section>
+                <?php endif; ?>
                 <div class="summary">
                     <div class="fact"><span>Permanent Token ID</span><?php echo htmlspecialchars($permanentToken); ?></div>
                     <div class="fact"><span>Current Status</span><?php echo htmlspecialchars($displayStatus ?: 'Received'); ?></div>

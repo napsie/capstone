@@ -118,11 +118,11 @@ async function main() {
         && currentLogo.headers.get('cache-control').includes('no-cache')
         && Buffer.from(await currentLogo.arrayBuffer()).equals(logoBytes),
         'New logo is served immediately on system pages');
-    const pdfReport = await request('/api/export_records_excel.php?scope=department&format=pdf', admin, undefined, true);
+    const pdfReport = await request('/api/export_records_excel.php?scope=department&format=pdf&year=2026', admin, undefined, true);
     check(pdfReport.status === 200 && pdfReport.headers.get('content-type') === 'application/pdf'
         && pdfReport.data.startsWith('%PDF') && pdfReport.data.includes('/Logo'),
         'PDF report includes the saved logo');
-    const excelReport = await request('/api/export_records_excel.php?scope=department&format=excel', admin, undefined, true);
+    const excelReport = await request('/api/export_records_excel.php?scope=department&format=excel&year=2026', admin, undefined, true);
     check(excelReport.status === 200 && excelReport.headers.get('content-type').includes('spreadsheetml.sheet')
         && excelReport.data.startsWith('PK') && excelReport.data.includes('system-logo.png'),
         'Excel report includes the saved logo');

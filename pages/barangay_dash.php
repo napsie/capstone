@@ -81,8 +81,15 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
         .calendar-table td.inactive { color: var(--gray); background-color: #f9f9f9; }
         .calendar-table td.today { background: var(--secondary); color: white; border-radius: 50%; font-weight: bold; }
         
-        .charts-container { display: flex; flex-direction: column; gap: 20px; }
+        .dashboard-page .charts-container { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+        .chart-card { min-width: 0; }
+        .dashboard-page .chart-card.chart-card-wide { grid-column: 1 / -1; }
         .chart-wrapper { position: relative; height: 260px; max-height: 260px; width: 100%; }
+        @media (min-width: 768px) {
+            .dashboard-page .charts-container { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+            .dashboard-page .chart-card-half { height: 100%; }
+            .dashboard-page .chart-card-half .chart-wrapper { height: 240px; max-height: 240px; }
+        }
         .notifications-list { max-height: 450px; overflow-y: auto; }
         .recent-apps-card {
             max-height: 320px;
@@ -130,7 +137,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
     <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=6">
     <link rel="stylesheet" href="../assets/css/metric-cards.css?v=2">
-    <link rel="stylesheet" href="../assets/css/dashboard-calendar.css?v=8">
+    <link rel="stylesheet" href="../assets/css/dashboard-calendar.css?v=9">
 <script src="../assets/js/dashboard-chart-fallback.js?v=1"></script>
 <script src="../assets/js/dashboard-calendar.js?v=1" defer></script>
 </head>
@@ -182,11 +189,15 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
             <div class="dashboard-panels">
                 <div class="left-panel">
                     <div class="charts-container">
-                        <div class="chart-card">
+                        <div class="chart-card chart-card-half">
                             <h3><span><i class="fas fa-chart-pie"></i> Status distribution</span><small>Current applications by workflow stage</small></h3>
                             <div class="chart-wrapper is-loading"><canvas id="statusChart" aria-label="Chart of barangay applications by workflow status" role="img">Application status chart</canvas></div>
                         </div>
-                        <div class="chart-card">
+                        <div class="chart-card chart-card-half">
+                            <h3><span><i class="fas fa-venus-mars"></i> Female and male senior trend</span><small>Monthly senior citizen records during the last 12 months</small></h3>
+                            <div class="chart-wrapper is-loading"><canvas id="genderChart" aria-label="Line chart comparing monthly female and male senior citizen records in the barangay" role="img">Monthly female and male senior citizen trend chart</canvas></div>
+                        </div>
+                        <div class="chart-card chart-card-wide">
                             <h3><span><i class="fas fa-chart-column"></i> Monthly applications</span><small>Submission volume during the last 12 months</small></h3>
                             <div class="chart-wrapper is-loading"><canvas id="monthlyChart" aria-label="Chart of monthly barangay application volume" role="img">Monthly application chart</canvas></div>
                         </div>
@@ -563,12 +574,109 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                     animation: false,
                     plugins: { 
                         legend: { 
-                            position: 'right',
+                            position: 'bottom',
                             labels: {
-                                color: textColor
+                                color: textColor,
+                                boxWidth: 12,
+                                padding: 14,
+                                usePointStyle: true
                             }
                         } 
                     } 
+                }
+            });
+        }
+
+        // --- Female and Male Seniors Chart ---
+        const genderCtx = document.getElementById('genderChart')?.getContext('2d');
+        if (genderCtx && data.gender_stats) {
+            const genderMonths = [];
+            for (let i = 11; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(1);
+                date.setMonth(date.getMonth() - i);
+                genderMonths.push({
+                    label: date.toLocaleString('default', { month: 'short' }) + ' ' + date.getFullYear().toString().slice(2),
+                    month: date.getMonth() + 1,
+                    year: date.getFullYear()
+                });
+            }
+            const femaleData = Array(12).fill(0);
+            const maleData = Array(12).fill(0);
+            data.gender_stats.forEach(item => {
+                const index = genderMonths.findIndex(month => month.month == item.month_num && month.year == item.year);
+                if (index === -1) return;
+                if (item.gender === 'Female') femaleData[index] = parseInt(item.count, 10) || 0;
+                if (item.gender === 'Male') maleData[index] = parseInt(item.count, 10) || 0;
+            });
+
+            new Chart(genderCtx, {
+                type: 'line',
+                data: {
+                    labels: genderMonths.map(month => month.label),
+                    datasets: [
+                        {
+                            label: 'Female',
+                            data: femaleData,
+                            borderColor: '#ec4899',
+                            backgroundColor: 'rgba(236, 72, 153, 0.12)',
+                            pointBackgroundColor: '#ec4899',
+                            borderWidth: 3,
+                            pointRadius: 4,
+                            tension: 0.3,
+                            fill: false
+                        },
+                        {
+                            label: 'Male',
+                            data: maleData,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.12)',
+                            pointBackgroundColor: '#3b82f6',
+                            borderWidth: 3,
+                            pointRadius: 4,
+                            tension: 0.3,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: textColor,
+                                boxWidth: 12,
+                                padding: 14,
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: context => `${context.dataset.label}: ${context.raw}`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: textColor, precision: 0 },
+                            grid: { color: gridColor },
+                            title: { display: true, text: 'Senior records', color: textColor }
+                        },
+                        x: {
+                            ticks: {
+                                color: textColor,
+                                autoSkip: true,
+                                maxTicksLimit: 6,
+                                maxRotation: 0
+                            },
+                            grid: { display: false }
+                        }
+                    }
                 }
             });
         }
@@ -590,7 +698,6 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
 
                 const chartLabels = twelveMonths.map(m => `${m.name} ${m.year.toString().slice(2)}`); // e.g., "Nov 23"
 
-                const pwdData = Array(12).fill(0);
                 const seniorData = Array(12).fill(0);
 
                 data.monthly.forEach(item => {
@@ -600,9 +707,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                     );
 
                     if (index !== -1) { // If a matching month is found
-                        if (item.application_type === 'pwd') { // Corrected to match database casing
-                            pwdData[index] = item.count;
-                        } else if (item.application_type === 'senior') { // Corrected to match database casing
+                        if (item.application_type === 'senior') {
                             seniorData[index] = item.count;
                         }
                     }

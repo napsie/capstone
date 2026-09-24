@@ -58,9 +58,41 @@ try {
     $response['data']['barangay_records'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // ── Yearly Records Chart Data ──
-    $stmt = $conn->prepare("SELECT YEAR(date_submitted) as year, COUNT(*) as count FROM applications WHERE (is_archived = 0 OR is_archived IS NULL) GROUP BY YEAR(date_submitted) ORDER BY year ASC");
+    $yearExpression = ($driver ?? 'mysql') === 'pgsql'
+        ? 'EXTRACT(YEAR FROM date_submitted)'
+        : 'YEAR(date_submitted)';
+    $stmt = $conn->prepare("SELECT {$yearExpression} as year, COUNT(*) as count FROM applications WHERE (is_archived = 0 OR is_archived IS NULL) GROUP BY {$yearExpression} ORDER BY year ASC");
     $stmt->execute();
     $response['data']['yearly_records'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // ── Monthly Female/Male Senior Records (last 12 months) ──
+    $monthExpression = ($driver ?? 'mysql') === 'pgsql'
+        ? 'EXTRACT(MONTH FROM date_submitted)'
+        : 'MONTH(date_submitted)';
+    $recentTwelveMonths = ($driver ?? 'mysql') === 'pgsql'
+        ? "CURRENT_DATE - INTERVAL '12 months'"
+        : 'DATE_SUB(NOW(), INTERVAL 12 MONTH)';
+    $stmt = $conn->prepare("
+        SELECT
+            {$yearExpression} AS year,
+            {$monthExpression} AS month_num,
+            CASE
+                WHEN LOWER(TRIM(gender)) = 'female' THEN 'Female'
+                WHEN LOWER(TRIM(gender)) = 'male' THEN 'Male'
+            END AS gender,
+            COUNT(*) AS count
+        FROM applications
+        WHERE (is_archived = 0 OR is_archived IS NULL)
+          AND LOWER(TRIM(gender)) IN ('female', 'male')
+          AND date_submitted >= {$recentTwelveMonths}
+        GROUP BY {$yearExpression}, {$monthExpression}, CASE
+                     WHEN LOWER(TRIM(gender)) = 'female' THEN 'Female'
+                     WHEN LOWER(TRIM(gender)) = 'male' THEN 'Male'
+                 END
+        ORDER BY year ASC, month_num ASC
+    ");
+    $stmt->execute();
+    $response['data']['gender_monthly_records'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // ── Stat Cards: one aggregate scan for all summary values ──
     $stmt = $conn->prepare("

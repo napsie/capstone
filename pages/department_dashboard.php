@@ -196,17 +196,26 @@ if (empty($_SESSION['login_audit_recorded'])) {
             }
         }
 
-        .charts-container {
-            display: flex;
-            flex-direction: column;
+        .dashboard-page .charts-container {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
             gap: 20px;
         }
 
         .chart-card {
+            min-width: 0;
             background: white;
             border-radius: 10px;
             padding: 20px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .dashboard-page .chart-card.chart-card-wide { grid-column: 1 / -1; }
+
+        @media (min-width: 768px) {
+            .dashboard-page .charts-container { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+            .dashboard-page .chart-card-half { height: 100%; }
+            .dashboard-page .chart-card-half .chart-wrapper { height: 240px; max-height: 240px; }
         }
 
         .chart-card h3 {
@@ -573,7 +582,7 @@ if (empty($_SESSION['login_audit_recorded'])) {
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
     <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=5">
     <link rel="stylesheet" href="../assets/css/metric-cards.css?v=2">
-    <link rel="stylesheet" href="../assets/css/dashboard-calendar.css?v=8">
+    <link rel="stylesheet" href="../assets/css/dashboard-calendar.css?v=9">
 <script src="../assets/js/dashboard-chart-fallback.js?v=1"></script>
 <script src="../assets/js/dashboard-calendar.js?v=1" defer></script>
 </head>
@@ -665,13 +674,17 @@ if (empty($_SESSION['login_audit_recorded'])) {
             <div class="dashboard-panels">
                         <div class="left-panel">
                             <div class="charts-container">
-                                <div class="chart-card">
+                                <div class="chart-card chart-card-wide">
                                     <h3><span><i class="fas fa-chart-bar"></i> Records by barangay</span><small>Compare verified records across Pasig City</small></h3>
                                     <div class="chart-wrapper is-loading"><canvas id="barangayRecordsChart" aria-label="Chart comparing records across barangays" role="img">Barangay records chart</canvas></div>
                                 </div>
-                                <div class="chart-card">
+                                <div class="chart-card chart-card-half">
                                     <h3><span><i class="fas fa-chart-line"></i> Yearly records</span><small>Record growth and processing trends over time</small></h3>
                                     <div class="chart-wrapper is-loading"><canvas id="yearlyRecordsChart" aria-label="Chart of yearly records and processing trends" role="img">Yearly records chart</canvas></div>
+                                </div>
+                                <div class="chart-card chart-card-half">
+                                    <h3><span><i class="fas fa-venus-mars"></i> Female and male senior trend</span><small>Monthly senior citizen records during the last 12 months</small></h3>
+                                    <div class="chart-wrapper is-loading"><canvas id="genderMonthlyChart" aria-label="Line chart comparing monthly female and male senior citizen records across Pasig City" role="img">Monthly female and male senior citizen trend chart</canvas></div>
                                 </div>
                             </div>
                         </div>
@@ -969,7 +982,7 @@ if (empty($_SESSION['login_audit_recorded'])) {
         }
 
         function initializeDepartmentCharts(data) {
-            const { barangay_records, yearly_records } = data;
+            const { barangay_records, yearly_records, gender_monthly_records } = data;
 
             // Barangay Records Chart (Horizontal Bar)
             const barangayRecordsCtx = document.getElementById('barangayRecordsChart')?.getContext('2d');
@@ -1043,6 +1056,84 @@ if (empty($_SESSION['login_audit_recorded'])) {
                         },
                         scales: {
                             y: { beginAtZero: true }
+                        }
+                    }
+                });
+            }
+
+            // Female and Male Senior Records (two-line monthly trend)
+            const genderMonthlyCtx = document.getElementById('genderMonthlyChart')?.getContext('2d');
+            if (genderMonthlyCtx && gender_monthly_records) {
+                const genderMonths = [];
+                for (let i = 11; i >= 0; i--) {
+                    const date = new Date();
+                    date.setDate(1);
+                    date.setMonth(date.getMonth() - i);
+                    genderMonths.push({
+                        label: date.toLocaleString('default', { month: 'short' }) + ' ' + date.getFullYear().toString().slice(2),
+                        month: date.getMonth() + 1,
+                        year: date.getFullYear()
+                    });
+                }
+                const femaleData = Array(12).fill(0);
+                const maleData = Array(12).fill(0);
+                gender_monthly_records.forEach(record => {
+                    const index = genderMonths.findIndex(month => month.month == record.month_num && month.year == record.year);
+                    if (index === -1) return;
+                    if (record.gender === 'Female') femaleData[index] = parseInt(record.count, 10) || 0;
+                    if (record.gender === 'Male') maleData[index] = parseInt(record.count, 10) || 0;
+                });
+
+                new Chart(genderMonthlyCtx, {
+                    type: 'line',
+                    data: {
+                        labels: genderMonths.map(month => month.label),
+                        datasets: [
+                            {
+                                label: 'Female',
+                                data: femaleData,
+                                borderColor: '#ec4899',
+                                pointBackgroundColor: '#ec4899',
+                                borderWidth: 3,
+                                pointRadius: 4,
+                                tension: 0.3,
+                                fill: false
+                            },
+                            {
+                                label: 'Male',
+                                data: maleData,
+                                borderColor: '#3b82f6',
+                                pointBackgroundColor: '#3b82f6',
+                                borderWidth: 3,
+                                pointRadius: 4,
+                                tension: 0.3,
+                                fill: false
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: { boxWidth: 12, padding: 14, usePointStyle: true }
+                            },
+                            tooltip: {
+                                callbacks: { label: context => `${context.dataset.label}: ${context.raw}` }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { precision: 0 },
+                                title: { display: true, text: 'Senior records' }
+                            },
+                            x: {
+                                ticks: { autoSkip: true, maxTicksLimit: 6, maxRotation: 0 },
+                                grid: { display: false }
+                            }
                         }
                     }
                 });

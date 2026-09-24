@@ -22,6 +22,7 @@ $response = [
     'data'    => [
         'stats'          => [],
         'workflow_stats' => [],
+        'gender_stats'   => [],
         'monthly'        => [],
         'notifications'  => [],
         'priority_count' => 0,
@@ -69,7 +70,31 @@ try {
     $workflowStmt->execute(['barangay' => $barangay]);
     $response['data']['workflow_stats'] = $workflowStmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // 3. Compute summary counts in one scan instead of three near-identical queries.
+    // 3. Get the monthly female/male trend for senior citizens in this barangay.
+    $genderStmt = $conn->prepare("
+        SELECT
+            MONTH(date_submitted) AS month_num,
+            YEAR(date_submitted) AS year,
+            CASE
+                WHEN LOWER(TRIM(gender)) = 'female' THEN 'Female'
+                WHEN LOWER(TRIM(gender)) = 'male' THEN 'Male'
+            END AS gender,
+            COUNT(*) AS count
+        FROM applications
+        WHERE barangay = :barangay
+          AND (is_archived = 0 OR is_archived IS NULL)
+          AND LOWER(TRIM(gender)) IN ('female', 'male')
+          AND date_submitted >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+        GROUP BY YEAR(date_submitted), MONTH(date_submitted), CASE
+                     WHEN LOWER(TRIM(gender)) = 'female' THEN 'Female'
+                     WHEN LOWER(TRIM(gender)) = 'male' THEN 'Male'
+                 END
+        ORDER BY YEAR(date_submitted), MONTH(date_submitted)
+    ");
+    $genderStmt->execute(['barangay' => $barangay]);
+    $response['data']['gender_stats'] = $genderStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // 4. Compute summary counts in one scan instead of three near-identical queries.
     $summaryStmt = $conn->prepare("
         SELECT
             COUNT(*) AS total_count,

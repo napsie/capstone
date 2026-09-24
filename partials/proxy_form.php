@@ -677,7 +677,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             <input type="hidden" name="verify_benefit_access" value="1">
             <div class="benefit-access-grid">
                 <div><label for="benefitSeniorCitizenId">Senior Citizen ID Number</label><input id="benefitSeniorCitizenId" name="seniorCitizenId" autocomplete="off" required></div>
-                <div><label for="benefitPermanentToken">Permanent ID Token</label><input id="benefitPermanentToken" name="permanentToken" placeholder="PRX-XXXX" maxlength="16" autocomplete="off" required></div>
+                <div><label for="benefitPermanentToken">Permanent ID Token</label><input id="benefitPermanentToken" name="permanentToken" value="PRX-" placeholder="PRX-XXXX" maxlength="16" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="benefitPermanentTokenHint" required><small id="benefitPermanentTokenHint">PRX- is added for you. Enter the remaining letters or numbers.</small></div>
             </div>
             <button class="benefit-access-submit" type="submit"><i class="fas fa-user-check" aria-hidden="true"></i> Verify Identity</button>
         </form>
