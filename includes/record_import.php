@@ -78,6 +78,42 @@ function excelCellText(SimpleXMLElement $cell, array $sharedStrings): string {
     return $type === 's' ? trim((string)($sharedStrings[(int)$value] ?? '')) : trim($value);
 }
 
+function parseImportXml(string $contents): ?SimpleXMLElement {
+    if (str_starts_with($contents, "\xFF\xFE")) $contents = mb_convert_encoding(substr($contents, 2), 'UTF-8', 'UTF-16LE');
+    elseif (str_starts_with($contents, "\xFE\xFF")) $contents = mb_convert_encoding(substr($contents, 2), 'UTF-8', 'UTF-16BE');
+    $contents = preg_replace('/^\xEF\xBB\xBF/', '', $contents) ?? $contents;
+    if (!preg_match('//u', $contents)) {
+        $converted = @iconv('UTF-8', 'UTF-8//IGNORE', $contents);
+        if ($converted !== false) $contents = $converted;
+    }
+    $cleaned = preg_replace('/[^\x{0009}\x{000A}\x{000D}\x{0020}-\x{D7FF}\x{E000}-\x{FFFD}\x{10000}-\x{10FFFF}]/u', '', $contents);
+    if ($cleaned !== null) $contents = $cleaned;
+
+    $previous = libxml_use_internal_errors(true);
+    $xml = simplexml_load_string($contents, SimpleXMLElement::class, LIBXML_NONET | LIBXML_COMPACT | LIBXML_PARSEHUGE);
+    if ($xml === false && class_exists('DOMDocument')) {
+        $document = new DOMDocument();
+        $document->recover = true;
+        if ($document->loadXML($contents, LIBXML_NONET | LIBXML_COMPACT | LIBXML_PARSEHUGE)) {
+            $recovered = simplexml_import_dom($document);
+            if ($recovered !== false) $xml = $recovered;
+        }
+    }
+    libxml_clear_errors();
+    libxml_use_internal_errors($previous);
+    return $xml === false ? null : $xml;
+}
+
+function xlsxWorksheetEntries(ZipArchive $zip): array {
+    $entries = [];
+    for ($index = 0; $index < $zip->numFiles; $index++) {
+        $name = (string)$zip->getNameIndex($index);
+        if (preg_match('#^xl/worksheets/[^/]+\.xml$#i', $name)) $entries[] = $name;
+    }
+    natsort($entries);
+    return array_values($entries);
+}
+
 function parseXlsxRecords(string $path): array {
     if (!class_exists('ZipArchive')) throw new RuntimeException('Excel import requires the PHP ZIP extension.');
     $zip = new ZipArchive();
@@ -85,7 +121,7 @@ function parseXlsxRecords(string $path): array {
     $sharedStrings = [];
     $sharedXml = $zip->getFromName('xl/sharedStrings.xml');
     if ($sharedXml !== false) {
-        $xml = simplexml_load_string($sharedXml);
+        $xml = parseImportXml($sharedXml);
         if ($xml) foreach ($xml->si as $item) {
             $parts = [];
             if (isset($item->t)) $parts[] = (string)$item->t;
@@ -93,11 +129,15 @@ function parseXlsxRecords(string $path): array {
             $sharedStrings[] = implode('', $parts);
         }
     }
-    $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
+    $sheet = null;
+    foreach (xlsxWorksheetEntries($zip) as $worksheetEntry) {
+        $sheetXml = $zip->getFromName($worksheetEntry);
+        if ($sheetXml === false) continue;
+        $candidate = parseImportXml($sheetXml);
+        if ($candidate && isset($candidate->sheetData)) { $sheet = $candidate; break; }
+    }
     $zip->close();
-    if ($sheetXml === false) throw new RuntimeException('The first worksheet could not be read.');
-    $sheet = simplexml_load_string($sheetXml);
-    if (!$sheet) throw new RuntimeException('The Excel worksheet is invalid.');
+    if (!$sheet) throw new RuntimeException('No readable worksheet was found. Open the file in Excel, save it as .xlsx, and try again.');
     $rows = [];
     foreach ($sheet->sheetData->row as $row) {
         $values = [];

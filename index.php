@@ -714,5 +714,6 @@ header('Expires: 0');
         })();
     </script>
 
+<script src="assets/js/form-language.js?v=2" defer></script>
 </body>
 </html>

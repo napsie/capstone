@@ -492,5 +492,6 @@ $photoVerified = $digitalIdEligible && is_array($photoGrant)
     scanner.render(useResult, () => {});
 })();
 </script>
+<script src="../assets/js/form-language.js?v=2" defer></script>
 </body>
 </html>

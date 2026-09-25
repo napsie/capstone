@@ -1,4 +1,5 @@
 <?php
+?><script src="../assets/js/form-language.js?v=2" defer></script><?php
 /**
  * Proxy pre-registration and benefit application form partial.
  * Expects: $barangays_list, $proxySuccess, $proxyQrUrl, $proxyTransactionId, $proxyOption, $proxyMessage, $formAction, $resetUrl

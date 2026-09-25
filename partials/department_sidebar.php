@@ -31,6 +31,7 @@ require_once __DIR__ . '/../includes/system_branding.php';
     </div>
 </div>
 <script src="../assets/js/session-timeout.js?v=6"></script>
+<script src="../assets/js/form-language.js?v=2" defer></script>
 <?php if ($current_page === 'import_records.php'): ?>
 <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
 <script src="../assets/js/table-pagination.js?v=2" defer></script>

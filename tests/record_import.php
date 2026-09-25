@@ -30,4 +30,22 @@ expectImportValue(buildImportAddress([]), '', 'missing address is not filled wit
 expectImportValue(normalizeImportDate('02/29/2024'), '2024-02-29', 'valid leap-day date');
 expectImportValue(normalizeImportDate('02/30/2024'), null, 'impossible date rejected');
 
+$temporaryWorkbook = tempnam(sys_get_temp_dir(), 'seniorlink-xlsx-');
+$zip = new ZipArchive();
+$zip->open($temporaryWorkbook, ZipArchive::OVERWRITE);
+$worksheet = '<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>Name' . chr(11) . '</t></is></c></row><row r="2"><c r="A2" t="inlineStr"><is><t>Test Senior</t></is></c></row></sheetData></worksheet>';
+$zip->addFromString('xl/worksheets/sheet2.xml', $worksheet);
+$zip->close();
+$recoveredRows = parseXlsxRecords($temporaryWorkbook);
+@unlink($temporaryWorkbook);
+expectImportValue($recoveredRows[0][0] ?? null, 'Name', 'worksheet control characters are repaired');
+expectImportValue($recoveredRows[1][0] ?? null, 'Test Senior', 'alternate worksheet entry is read');
+
+$sampleWorkbook = 'D:/Downloads/Group_2_Pasig_Senior_Citizen_Sample_Data_Final.xlsx';
+if (is_file($sampleWorkbook)) {
+    $sampleRecords = importRowsToAssociative(parseXlsxRecords($sampleWorkbook));
+    expectImportValue(count($sampleRecords), 50, 'provided sample workbook record count');
+    expectImportValue(normalizePhoneNumber($sampleRecords[0]['contact_number'] ?? ''), '090000000001', 'provided workbook contact mapping');
+}
+
 echo "PASS: record import helpers\n";

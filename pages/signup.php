@@ -825,5 +825,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             profilePicturePreview.onload = () => URL.revokeObjectURL(previewUrl);
         });
     </script>
+<script src="../assets/js/form-language.js?v=2" defer></script>
 </body>
 </html>
