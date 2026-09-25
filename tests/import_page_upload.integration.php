@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/db_connect.php';
 
-$workbook = 'D:/Downloads/Group_2_Pasig_Senior_Citizen_Sample_Data_Final.xlsx';
+$workbook = 'D:/Downloads/Group_3_Pasig_Senior_Citizen_Data_With_Numeric_ID_and_Benefits.xlsx';
 if (!is_file($workbook)) {
     fwrite(STDERR, "SKIP: provided workbook is unavailable\n");
     exit(0);
@@ -38,13 +38,16 @@ try {
     $bufferLevel = ob_get_level();
     ob_start();
     include 'import_records.php';
-    $html = '';
-    while (ob_get_level() > $bufferLevel) $html = ob_get_clean() . $html;
+    while (ob_get_level() > $bufferLevel + 1) ob_end_flush();
+    $html = ob_get_clean();
     if (!str_contains($html, '<strong>50</strong> valid of <strong>50</strong> rows')) {
         throw new RuntimeException('The web upload did not produce a 50-of-50 validation preview.');
     }
     if (str_contains($html, 'The Excel worksheet is invalid') || str_contains($html, 'No readable worksheet was found')) {
         throw new RuntimeException('The web upload still reported a worksheet parsing error.');
+    }
+    if (!str_contains($html, 'type="hidden" name="commit_import" value="1"')) {
+        throw new RuntimeException('The final import form is missing its commit marker.');
     }
     $conn->rollBack();
     echo "PASS: web upload validates all 50 workbook rows\n";

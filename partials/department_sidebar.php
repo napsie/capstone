@@ -47,7 +47,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const count = importButton.textContent.replace(/[^0-9]/g, '');
         window.showCarelinkConfirm(
             `Import ${count || 'these'} validated record(s)? This adds records to the system and cannot be undone from this page.`,
-            () => importForm.submit()
+            () => {
+                let commitField = importForm.querySelector('input[name="commit_import"]');
+                if (!commitField) {
+                    commitField = document.createElement('input');
+                    commitField.type = 'hidden';
+                    commitField.name = 'commit_import';
+                    importForm.appendChild(commitField);
+                }
+                commitField.value = '1';
+                importForm.submit();
+            }
         );
     });
 });

@@ -12,6 +12,7 @@ expectImportValue(normalizeImportHeader('firstName'), 'first_name', 'camel-case 
 expectImportValue(normalizeImportHeader('Senior Citizen ID'), 'senior_id_no', 'Senior ID header alias');
 expectImportValue(normalizeImportHeader('Contact Number (fictional placeholder)'), 'contact_number', 'sample workbook contact header');
 expectImportValue(normalizeImportHeader('Emergency Contact Number (fictional placeholder)'), 'emergency_contact', 'sample workbook emergency contact header');
+expectImportValue(normalizeImportHeader('Approved Benefit'), 'requested_benefit', 'approved benefit header');
 expectImportValue(normalizePhoneNumber('0900-0000-0001'), '090000000001', 'formatted contact converted to digits');
 expectImportValue(normalizePhoneNumber('9000000001'), '09000000001', 'numeric Excel contact restores leading zero');
 expectImportValue(isValidImportContactNumber('0900-0000-0001'), true, 'fictional formatted import contact accepted');
@@ -46,6 +47,14 @@ if (is_file($sampleWorkbook)) {
     $sampleRecords = importRowsToAssociative(parseXlsxRecords($sampleWorkbook));
     expectImportValue(count($sampleRecords), 50, 'provided sample workbook record count');
     expectImportValue(normalizePhoneNumber($sampleRecords[0]['contact_number'] ?? ''), '090000000001', 'provided workbook contact mapping');
+}
+
+$numericIdWorkbook = 'D:/Downloads/Group_3_Pasig_Senior_Citizen_Data_With_Numeric_ID_and_Benefits.xlsx';
+if (is_file($numericIdWorkbook)) {
+    $numericIdRecords = importRowsToAssociative(parseXlsxRecords($numericIdWorkbook));
+    expectImportValue(count($numericIdRecords), 50, 'numeric-ID workbook record count');
+    expectImportValue($numericIdRecords[0]['senior_id_no'] ?? null, '202600000001', 'numeric Senior ID is preserved');
+    expectImportValue($numericIdRecords[0]['requested_benefit'] ?? null, 'Senior Citizen ID', 'approved benefit is mapped');
 }
 
 echo "PASS: record import helpers\n";

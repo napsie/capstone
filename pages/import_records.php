@@ -171,11 +171,13 @@ ob_start(static fn(string $html): string => str_replace(
         'Upload historical records',
         'Select a CSV or Excel file to validate before importing.',
         '<strong>Required:</strong> application_type, full_name, birth_date, complete_address, barangay. Senior ID records also require senior_id_no.',
+        '<form method="post" class="actions">',
     ],
     [
         'Upload information-only records',
         'Select a CSV or Excel file based on the Senior Application form. Photos and document files are not required.',
         '<strong>Required:</strong> application_type, birth_date, barangay, a name (full_name or first_name and last_name), and an address (complete_address or address components). Senior ID, contact details, photos, and document files are optional.',
+        '<form method="post" class="actions"><input type="hidden" name="commit_import" value="1">',
     ],
     $html
 ));

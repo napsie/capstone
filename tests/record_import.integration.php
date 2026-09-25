@@ -30,7 +30,8 @@ try {
         throw new RuntimeException('Import job did not preserve the numeric contact number.');
     }
 
-    $sampleWorkbook = 'D:/Downloads/Group_2_Pasig_Senior_Citizen_Sample_Data_Final.xlsx';
+    $sampleWorkbook = 'D:/Downloads/Group_3_Pasig_Senior_Citizen_Data_With_Numeric_ID_and_Benefits.xlsx';
+    if (!is_file($sampleWorkbook)) $sampleWorkbook = 'D:/Downloads/Group_2_Pasig_Senior_Citizen_Sample_Data_Final.xlsx';
     if (is_file($sampleWorkbook)) {
         $sampleRecords = importRowsToAssociative(parseXlsxRecords($sampleWorkbook));
         $imported = 0;
@@ -45,8 +46,12 @@ try {
             if (!isValidImportContactNumber($record['contact_number'] ?? '') || !isValidImportContactNumber($record['emergency_contact'] ?? '')) {
                 throw new RuntimeException('The provided workbook produced an invalid contact number on row ' . ($record['_row'] ?? '?'));
             }
+            $numericSeniorId = normalizeSeniorId($record['senior_id_no'] ?? '');
+            if (str_contains(basename($sampleWorkbook), 'Group_3') && !preg_match('/^[0-9]{12}$/', $numericSeniorId)) {
+                throw new RuntimeException('The Group 3 workbook did not preserve its numeric Senior ID on row ' . ($record['_row'] ?? '?'));
+            }
             $statement->execute([
-                'IMPORT-XLSX-' . bin2hex(random_bytes(5)), $fullName, 'senior', 'Senior Citizen ID Registration',
+                'IMPORT-XLSX-' . bin2hex(random_bytes(5)), $fullName, 'senior', normalizeWhitespace($record['requested_benefit'] ?? '') ?: 'Senior Citizen ID Registration',
                 normalizePersonName($record['last_name'] ?? '') ?: null, normalizePersonName($record['first_name'] ?? '') ?: null,
                 normalizePersonName($record['middle_name'] ?? '') ?: null, normalizeWhitespace($record['suffix'] ?? '') ?: null,
                 $birthDate, normalizeWhitespace($record['gender'] ?? '') ?: null, normalizeWhitespace($record['civil_status'] ?? '') ?: null,
@@ -57,7 +62,8 @@ try {
                 normalizePersonName($record['mothers_maiden_name'] ?? '') ?: null, normalizeWhitespace($record['health_status'] ?? '') ?: null,
                 normalizeWhitespace($record['health_condition'] ?? '') ?: null, normalizePersonName($record['emergency_contact_name'] ?? '') ?: null,
                 normalizePhoneNumber($record['emergency_contact'] ?? ''), normalizeWhitespace($record['emergency_contact_relationship'] ?? '') ?: null,
-                strtolower(normalizeWhitespace($record['id_purpose'] ?? '')) ?: null, date('Y-m-d'), null, 'Information-only workbook import test',
+                strtolower(normalizeWhitespace($record['id_purpose'] ?? '')) ?: null, date('Y-m-d'),
+                $numericSeniorId !== '' ? 'TEST-' . $numericSeniorId : null, 'Information-only workbook import test',
             ]);
             $imported++;
         }

@@ -6,6 +6,7 @@ function normalizeImportHeader(string $value): string {
     $header = trim(preg_replace('/[^a-z0-9]+/', '_', $value), '_');
     $aliases = [
         'applicationtype' => 'application_type', 'requestedbenefit' => 'requested_benefit',
+        'benefit_applied' => 'requested_benefit', 'approved_benefit' => 'requested_benefit',
         'senioridno' => 'senior_id_no', 'senior_id' => 'senior_id_no', 'senior_citizen_id' => 'senior_id_no', 'seniorcitizenid' => 'senior_id_no',
         'fullname' => 'full_name', 'firstname' => 'first_name', 'middlename' => 'middle_name', 'lastname' => 'last_name',
         'birthdate' => 'birth_date', 'contactnumber' => 'contact_number', 'emailaddress' => 'email_address',
@@ -71,10 +72,27 @@ function parseCsvRecords(string $path): array {
     return $rows;
 }
 
+function spreadsheetMainChildren(SimpleXMLElement $element): SimpleXMLElement {
+    $namespaces = $element->getNamespaces(true);
+    $mainNamespace = $namespaces[''] ?? $namespaces['x'] ?? null;
+    if ($mainNamespace === null && $namespaces) $mainNamespace = reset($namespaces);
+    return $mainNamespace ? $element->children($mainNamespace) : $element;
+}
+
 function excelCellText(SimpleXMLElement $cell, array $sharedStrings): string {
-    $type = (string)$cell['t'];
-    if ($type === 'inlineStr') return trim((string)$cell->is->t);
-    $value = (string)$cell->v;
+    $type = (string)$cell->attributes()['t'];
+    $cellChildren = spreadsheetMainChildren($cell);
+    if ($type === 'inlineStr') {
+        $inline = spreadsheetMainChildren($cellChildren->is);
+        $parts = [];
+        if (isset($inline->t)) $parts[] = (string)$inline->t;
+        foreach ($inline->r as $run) {
+            $runChildren = spreadsheetMainChildren($run);
+            if (isset($runChildren->t)) $parts[] = (string)$runChildren->t;
+        }
+        return trim(implode('', $parts));
+    }
+    $value = (string)$cellChildren->v;
     return $type === 's' ? trim((string)($sharedStrings[(int)$value] ?? '')) : trim($value);
 }
 
@@ -122,10 +140,14 @@ function parseXlsxRecords(string $path): array {
     $sharedXml = $zip->getFromName('xl/sharedStrings.xml');
     if ($sharedXml !== false) {
         $xml = parseImportXml($sharedXml);
-        if ($xml) foreach ($xml->si as $item) {
+        if ($xml !== null) foreach (spreadsheetMainChildren($xml)->si as $item) {
+            $itemChildren = spreadsheetMainChildren($item);
             $parts = [];
-            if (isset($item->t)) $parts[] = (string)$item->t;
-            foreach ($item->r as $run) $parts[] = (string)$run->t;
+            if (isset($itemChildren->t)) $parts[] = (string)$itemChildren->t;
+            foreach ($itemChildren->r as $run) {
+                $runChildren = spreadsheetMainChildren($run);
+                if (isset($runChildren->t)) $parts[] = (string)$runChildren->t;
+            }
             $sharedStrings[] = implode('', $parts);
         }
     }
@@ -134,15 +156,17 @@ function parseXlsxRecords(string $path): array {
         $sheetXml = $zip->getFromName($worksheetEntry);
         if ($sheetXml === false) continue;
         $candidate = parseImportXml($sheetXml);
-        if ($candidate && isset($candidate->sheetData)) { $sheet = $candidate; break; }
+        if ($candidate !== null && isset(spreadsheetMainChildren($candidate)->sheetData)) { $sheet = $candidate; break; }
     }
     $zip->close();
-    if (!$sheet) throw new RuntimeException('No readable worksheet was found. Open the file in Excel, save it as .xlsx, and try again.');
+    if ($sheet === null) throw new RuntimeException('No readable worksheet was found. Open the file in Excel, save it as .xlsx, and try again.');
     $rows = [];
-    foreach ($sheet->sheetData->row as $row) {
+    $sheetChildren = spreadsheetMainChildren($sheet);
+    $sheetData = spreadsheetMainChildren($sheetChildren->sheetData);
+    foreach ($sheetData->row as $row) {
         $values = [];
-        foreach ($row->c as $cell) {
-            preg_match('/^[A-Z]+/', (string)$cell['r'], $match);
+        foreach (spreadsheetMainChildren($row)->c as $cell) {
+            preg_match('/^[A-Z]+/', (string)$cell->attributes()['r'], $match);
             $letters = $match[0] ?? 'A';
             $index = 0;
             foreach (str_split($letters) as $letter) $index = ($index * 26) + (ord($letter) - 64);
