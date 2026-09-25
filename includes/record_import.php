@@ -3,7 +3,45 @@ require_once __DIR__ . '/data_normalizer.php';
 
 function normalizeImportHeader(string $value): string {
     $value = strtolower(trim(preg_replace('/^\xEF\xBB\xBF/', '', $value) ?? $value));
-    return trim(preg_replace('/[^a-z0-9]+/', '_', $value), '_');
+    $header = trim(preg_replace('/[^a-z0-9]+/', '_', $value), '_');
+    $aliases = [
+        'applicationtype' => 'application_type', 'requestedbenefit' => 'requested_benefit',
+        'senioridno' => 'senior_id_no', 'senior_id' => 'senior_id_no', 'senior_citizen_id' => 'senior_id_no', 'seniorcitizenid' => 'senior_id_no',
+        'fullname' => 'full_name', 'firstname' => 'first_name', 'middlename' => 'middle_name', 'lastname' => 'last_name',
+        'birthdate' => 'birth_date', 'contactnumber' => 'contact_number', 'emailaddress' => 'email_address',
+        'completeaddress' => 'complete_address', 'houseno' => 'house_no',
+        'placeofbirth' => 'place_of_birth', 'civilstatus' => 'civil_status', 'mothersmaidenname' => 'mothers_maiden_name',
+        'zipcode' => 'zip_code', 'healthstatus' => 'health_status', 'healthcondition' => 'health_condition',
+        'emergencycontactname' => 'emergency_contact_name', 'emergencycontact' => 'emergency_contact',
+        'emergencycontactrelationship' => 'emergency_contact_relationship', 'idpurpose' => 'id_purpose',
+        'datesubmitted' => 'date_submitted', 'additionalnotes' => 'additional_notes',
+    ];
+    return $aliases[$header] ?? $header;
+}
+
+function buildImportFullName(array $record): string {
+    $fullName = normalizePersonName($record['full_name'] ?? '');
+    if ($fullName !== '') return $fullName;
+    return normalizePersonName(implode(' ', array_filter([
+        $record['first_name'] ?? '', $record['middle_name'] ?? '',
+        $record['last_name'] ?? '', $record['suffix'] ?? '',
+    ], static fn($value) => trim((string)$value) !== '')));
+}
+
+function buildImportAddress(array $record): string {
+    $address = normalizeWhitespace($record['complete_address'] ?? '');
+    if ($address !== '') return $address;
+    $hasAddressInformation = array_filter([
+        $record['house_no'] ?? '', $record['street'] ?? '', $record['barangay'] ?? '',
+        $record['city'] ?? '', $record['province'] ?? '',
+    ], static fn($value) => trim((string)$value) !== '');
+    if (!$hasAddressInformation) return '';
+    $city = trim((string)($record['city'] ?? '')) ?: 'Pasig City';
+    $province = trim((string)($record['province'] ?? '')) ?: 'Metro Manila';
+    return normalizeWhitespace(implode(', ', array_filter([
+        trim(implode(' ', array_filter([$record['house_no'] ?? '', $record['street'] ?? ''], static fn($value) => trim((string)$value) !== ''))),
+        $record['barangay'] ?? '', $city, $province,
+    ], static fn($value) => trim((string)$value) !== '')));
 }
 
 function parseCsvRecords(string $path): array {
@@ -82,7 +120,8 @@ function normalizeImportDate(string $value): ?string {
     if (is_numeric($value)) return gmdate('Y-m-d', ((int)$value - 25569) * 86400);
     foreach (['!Y-m-d', '!m/d/Y', '!m/d/y', '!d/m/Y'] as $format) {
         $date = DateTimeImmutable::createFromFormat($format, $value);
-        if ($date) return $date->format('Y-m-d');
+        $errors = DateTimeImmutable::getLastErrors();
+        if ($date && ($errors === false || ((int)$errors['warning_count'] === 0 && (int)$errors['error_count'] === 0))) return $date->format('Y-m-d');
     }
     return null;
 }
