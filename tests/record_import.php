@@ -10,6 +10,12 @@ function expectImportValue($actual, $expected, string $message): void {
 
 expectImportValue(normalizeImportHeader('firstName'), 'first_name', 'camel-case form header');
 expectImportValue(normalizeImportHeader('Senior Citizen ID'), 'senior_id_no', 'Senior ID header alias');
+expectImportValue(normalizeImportHeader('Contact Number (fictional placeholder)'), 'contact_number', 'sample workbook contact header');
+expectImportValue(normalizeImportHeader('Emergency Contact Number (fictional placeholder)'), 'emergency_contact', 'sample workbook emergency contact header');
+expectImportValue(normalizePhoneNumber('0900-0000-0001'), '090000000001', 'formatted contact converted to digits');
+expectImportValue(normalizePhoneNumber('9000000001'), '09000000001', 'numeric Excel contact restores leading zero');
+expectImportValue(isValidImportContactNumber('0900-0000-0001'), true, 'fictional formatted import contact accepted');
+expectImportValue(isValidImportContactNumber('not-a-number'), false, 'non-numeric contact rejected');
 expectImportValue(
     buildImportFullName(['first_name' => 'JUAN', 'middle_name' => 'SANTOS', 'last_name' => 'DELA CRUZ']),
     'Juan Santos Dela Cruz',

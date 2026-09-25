@@ -9,10 +9,16 @@ function normalizeImportHeader(string $value): string {
         'senioridno' => 'senior_id_no', 'senior_id' => 'senior_id_no', 'senior_citizen_id' => 'senior_id_no', 'seniorcitizenid' => 'senior_id_no',
         'fullname' => 'full_name', 'firstname' => 'first_name', 'middlename' => 'middle_name', 'lastname' => 'last_name',
         'birthdate' => 'birth_date', 'contactnumber' => 'contact_number', 'emailaddress' => 'email_address',
+        'contact_number_fictional_placeholder' => 'contact_number',
         'completeaddress' => 'complete_address', 'houseno' => 'house_no',
+        'house_unit_no' => 'house_no', 'street_subdivision' => 'street',
         'placeofbirth' => 'place_of_birth', 'civilstatus' => 'civil_status', 'mothersmaidenname' => 'mothers_maiden_name',
+        'mother_s_maiden_name' => 'mothers_maiden_name', 'sex' => 'gender',
         'zipcode' => 'zip_code', 'healthstatus' => 'health_status', 'healthcondition' => 'health_condition',
+        'nearest_landmark' => 'landmark', 'senior_s_email_address' => 'email_address',
+        'id_application_purpose' => 'id_purpose', 'frail_sick_or_pwd_details' => 'health_condition',
         'emergencycontactname' => 'emergency_contact_name', 'emergencycontact' => 'emergency_contact',
+        'emergency_contact_number_fictional_placeholder' => 'emergency_contact', 'relationship' => 'emergency_contact_relationship',
         'emergencycontactrelationship' => 'emergency_contact_relationship', 'idpurpose' => 'id_purpose',
         'datesubmitted' => 'date_submitted', 'additionalnotes' => 'additional_notes',
     ];
@@ -42,6 +48,14 @@ function buildImportAddress(array $record): string {
         trim(implode(' ', array_filter([$record['house_no'] ?? '', $record['street'] ?? ''], static fn($value) => trim((string)$value) !== ''))),
         $record['barangay'] ?? '', $city, $province,
     ], static fn($value) => trim((string)$value) !== '')));
+}
+
+function isValidImportContactNumber(?string $value): bool {
+    $value = trim((string)$value);
+    if ($value === '') return true;
+    if (preg_match('/^[0-9+().\-\s]+$/', $value) !== 1) return false;
+    $digits = normalizePhoneNumber($value);
+    return preg_match('/^[0-9]{7,15}$/', $digits) === 1;
 }
 
 function parseCsvRecords(string $path): array {
@@ -142,7 +156,7 @@ function createImportJob(PDO $conn, string $filename, string $checksum, array $r
     $stmt = $conn->prepare('INSERT INTO import_jobs (job_token,original_filename,file_checksum,status,total_rows,valid_rows,error_rows,duplicate_rows,created_by,created_by_username) VALUES (?,?,?,\'ready\',?,?,?,?,?,?)');
     $stmt->execute([$token, $filename, $checksum, count($rows), $valid, count($rows) - $valid, $duplicates, $actor['id'] ?? null, $actor['username'] ?? 'Department Admin']);
     $jobId = (int)$conn->lastInsertId();
-    $rowStmt = $conn->prepare('INSERT INTO import_job_rows (import_job_id,row_number,normalized_payload,validation_errors,duplicate_matches,status) VALUES (?,?,?,?,?,?)');
+    $rowStmt = $conn->prepare('INSERT INTO import_job_rows (import_job_id,`row_number`,normalized_payload,validation_errors,duplicate_matches,status) VALUES (?,?,?,?,?,?)');
     foreach ($rows as $row) {
         $errors = $row['errors'] ?? [];
         $duplicateErrors = array_values(array_filter($errors, static fn($error) => stripos($error, 'duplicate') !== false || stripos($error, 'exists') !== false));
@@ -152,7 +166,7 @@ function createImportJob(PDO $conn, string $filename, string $checksum, array $r
 }
 
 function loadImportJobRows(PDO $conn, string $token): array {
-    $stmt = $conn->prepare('SELECT r.normalized_payload FROM import_job_rows r INNER JOIN import_jobs j ON j.id=r.import_job_id WHERE j.job_token=? ORDER BY r.row_number');
+    $stmt = $conn->prepare('SELECT r.normalized_payload FROM import_job_rows r INNER JOIN import_jobs j ON j.id=r.import_job_id WHERE j.job_token=? ORDER BY r.`row_number`');
     $stmt->execute([$token]);
     return array_values(array_filter(array_map(static fn($json) => json_decode($json, true), $stmt->fetchAll(PDO::FETCH_COLUMN))));
 }

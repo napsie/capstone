@@ -16,7 +16,7 @@ $importToken = trim((string)($_GET['resume'] ?? $_POST['import_token'] ?? $_SESS
 if (isset($_GET['error_report']) && $importToken !== '') {
     header('Content-Type: text/csv; charset=UTF-8');
     header('Content-Disposition: attachment; filename="seniorlink_import_errors.csv"');
-    $report = $conn->prepare('SELECT r.row_number,r.normalized_payload,r.validation_errors FROM import_job_rows r INNER JOIN import_jobs j ON j.id=r.import_job_id WHERE j.job_token=? AND r.validation_errors IS NOT NULL ORDER BY r.row_number');
+    $report = $conn->prepare('SELECT r.`row_number`,r.normalized_payload,r.validation_errors FROM import_job_rows r INNER JOIN import_jobs j ON j.id=r.import_job_id WHERE j.job_token=? AND r.validation_errors IS NOT NULL ORDER BY r.`row_number`');
     $report->execute([$importToken]);
     $out = fopen('php://output', 'wb'); fputcsv($out, ['row','senior_id','name','errors']);
     foreach ($report as $item) { $payload=json_decode($item['normalized_payload'],true) ?: []; $rowErrors=json_decode($item['validation_errors'],true) ?: []; fputcsv($out, [$item['row_number'],$payload['senior_id_no']??'',$payload['full_name']??'',implode('; ',$rowErrors)]); }
@@ -120,8 +120,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($fullName === '') $rowErrors[] = 'Full name or first and last name is required';
                     if (!$birth || $birth > date('Y-m-d')) $rowErrors[] = 'Valid birth date is required';
                     if ($completeAddress === '') $rowErrors[] = 'Complete address or address components are required';
-                    if (($record['contact_number'] ?? '') !== '' && !isValidPhilippineMobileNumber($record['contact_number'])) $rowErrors[] = 'Contact number must be 11 digits beginning with 09';
-                    if (($record['emergency_contact'] ?? '') !== '' && !isValidPhilippineMobileNumber($record['emergency_contact'])) $rowErrors[] = 'Emergency contact must be 11 digits beginning with 09';
+                    if (!isValidImportContactNumber($record['contact_number'] ?? '')) $rowErrors[] = 'Contact number must contain 7 to 15 digits';
+                    if (!isValidImportContactNumber($record['emergency_contact'] ?? '')) $rowErrors[] = 'Emergency contact must contain 7 to 15 digits';
                     if (!in_array($record['barangay'] ?? '', $barangays_list, true)) $rowErrors[] = 'Invalid barangay';
                     if ($seniorId !== '' && !preg_match('/^[A-Z0-9][A-Z0-9 -]{2,49}$/', $seniorId)) $rowErrors[] = 'Invalid Senior ID format';
                     if ($type === 'senior' && $seniorId !== '' && isset($seenIds[$seniorId])) $rowErrors[] = 'Duplicate Senior ID in file';
