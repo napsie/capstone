@@ -92,8 +92,21 @@ $formAction = 'senior_benefits.php';
 $resetUrl = 'senior_benefits.php?reset=1';
 $benefitPortalMode = true;
 $unavailableBenefitRequests = [];
+$hasCompletedLandbankEnrollment = false;
 
 if ($verifiedSenior) {
+    $landbankCompletionStmt = $conn->prepare("SELECT COUNT(*) FROM applications
+        WHERE (parent_senior_id = ? OR senior_id_no = ? OR id_number = ?)
+          AND (application_type = 'landbank' OR COALESCE(landbank_card_no, '') <> '')
+          AND COALESCE(workflow_state, '') IN ('Verified','Approved','Released')
+          AND COALESCE(is_archived, 0) = 0");
+    $landbankCompletionStmt->execute([
+        $verifiedSenior['id_number'],
+        $verifiedSenior['senior_id_no'] ?? '',
+        $verifiedSenior['id_number'],
+    ]);
+    $hasCompletedLandbankEnrollment = (int)$landbankCompletionStmt->fetchColumn() > 0;
+
     $existingBenefitsStmt = $conn->prepare("SELECT requested_benefit, workflow_state, status
         FROM applications
         WHERE id_number <> ?

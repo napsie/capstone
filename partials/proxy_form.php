@@ -719,6 +719,13 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             if (!empty($transferBenefitsLocked) && $selectedPublicBenefit !== 'Senior Citizen ID Registration') {
                 $selectedPublicBenefit = '';
             }
+            if ($benefitPortalMode
+                && $selectedPublicBenefit === 'Local Social Pension Assessment'
+                && $verifiedBenefitAge !== null
+                && $verifiedBenefitAge >= 80
+                && empty($hasCompletedLandbankEnrollment)) {
+                $selectedPublicBenefit = '';
+            }
             $hasSelectedPublicBenefit = $selectedPublicBenefit !== '';
             ?>
             <div class="public-benefit-selector<?php echo $hasSelectedPublicBenefit ? ' hidden' : ''; ?>" id="publicBenefitSelector">
@@ -732,7 +739,12 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                         $milestoneBlocked = $benefitPortalMode && $value === 'Milestone Cash Gift' && $verifiedMilestoneAge === null;
                         $alreadyApplied = $benefitPortalMode && array_key_exists($value, $unavailableBenefitRequests);
                         $residencyBlocked = $benefitPortalMode && !empty($transferBenefitsLocked) && $value !== 'Senior Citizen ID Registration';
-                        $benefitBlocked = $ageBlocked || $milestoneBlocked || $alreadyApplied || $residencyBlocked;
+                        $landbankPrerequisiteBlocked = $benefitPortalMode
+                            && $value === 'Local Social Pension Assessment'
+                            && $verifiedBenefitAge !== null
+                            && $verifiedBenefitAge >= 80
+                            && empty($hasCompletedLandbankEnrollment);
+                        $benefitBlocked = $ageBlocked || $milestoneBlocked || $alreadyApplied || $residencyBlocked || $landbankPrerequisiteBlocked;
                         ?>
                         <button type="button" class="benefit-choice-card<?php echo $residencyBlocked ? ' residency-locked' : ''; ?>" style="--benefit-color:<?php echo $color; ?>" data-benefit-value="<?php echo htmlspecialchars($value); ?>" data-residency-locked="<?php echo $residencyBlocked ? 'true' : 'false'; ?>" aria-pressed="false" <?php echo $benefitBlocked ? 'disabled aria-disabled="true"' : ''; ?> onclick="openPublicBenefitModal(<?php echo htmlspecialchars(json_encode($value), ENT_QUOTES, 'UTF-8'); ?>, this)">
                             <span class="benefit-choice-check"><i class="fas fa-check" aria-hidden="true"></i></span>
@@ -740,6 +752,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                             <span class="benefit-choice-title"><?php echo htmlspecialchars($title); ?></span>
                             <span class="benefit-choice-desc"><?php echo htmlspecialchars($description); ?></span>
                             <?php if ($residencyBlocked): ?><span class="benefit-choice-ineligible"><i class="fas fa-lock" aria-hidden="true"></i> Available <?php echo htmlspecialchars($transferBenefitEligibleAt->format('F j, Y')); ?> after the 2-year residency period.</span>
+                            <?php elseif ($landbankPrerequisiteBlocked): ?><span class="benefit-choice-ineligible"><i class="fas fa-lock" aria-hidden="true"></i> Complete the Land Bank Cash Card Enrollment application first to unlock Local Pension.</span>
                             <?php elseif ($alreadyApplied): ?><span class="benefit-choice-ineligible">Already applied — <?php echo htmlspecialchars($unavailableBenefitRequests[$value]); ?>.</span>
                             <?php elseif ($ageBlocked): ?><span class="benefit-choice-ineligible">Not eligible at current age<?php echo $verifiedBenefitAge !== null ? ' (' . (int)$verifiedBenefitAge . ')' : ''; ?>. Required: <?php echo $minimumBenefitAge; ?> or older.</span>
                             <?php elseif ($milestoneBlocked): ?><span class="benefit-choice-ineligible">Not eligible at current age<?php echo $verifiedBenefitAge !== null ? ' (' . (int)$verifiedBenefitAge . ')' : ''; ?>. Required: 80, 85, 90, 95, or 100+.</span><?php endif; ?>
