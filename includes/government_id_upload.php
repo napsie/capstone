@@ -1,14 +1,19 @@
 <?php
 
-function governmentIdPairError(string $fileKey): ?string
+function governmentIdPairError(string $fileKey, string $documentLabel = 'valid government ID'): ?string
 {
+    $usesDefaultLabel = $documentLabel === 'valid government ID';
     $files = $_FILES[$fileKey] ?? null;
     $errors = $files['error'] ?? [];
     if (!is_array($errors) || count($errors) < 2) {
-        return 'Please upload both the front and back of your valid government ID.';
+        return $usesDefaultLabel
+            ? 'Please upload both the front and back of your valid government ID.'
+            : 'Please upload both required pictures for ' . $documentLabel . '.';
     }
     if (count($errors) > 2) {
-        return 'You can only upload 2 images: front and back of the ID.';
+        return $usesDefaultLabel
+            ? 'You can only upload 2 images: front and back of the ID.'
+            : 'You can only upload 2 images for ' . $documentLabel . '.';
     }
     $finfo = new finfo(FILEINFO_MIME_TYPE);
     foreach ([0, 1] as $index) {
@@ -22,7 +27,9 @@ function governmentIdPairError(string $fileKey): ?string
             || !in_array($mime, ['image/png', 'image/jpeg'], true)
             || ($extension === 'png' && $mime !== 'image/png')
             || ($extension !== 'png' && $mime !== 'image/jpeg')) {
-            return 'Upload PNG, JPG, or JPEG images only for both sides of the valid government ID (up to 10 MB each).';
+            return $usesDefaultLabel
+                ? 'Upload PNG, JPG, or JPEG images only for both sides of the valid government ID (up to 10 MB each).'
+                : 'Upload PNG, JPG, or JPEG images only for ' . $documentLabel . ' (up to 10 MB each).';
         }
     }
     return null;

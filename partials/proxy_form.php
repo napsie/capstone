@@ -957,7 +957,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                     <div class="form-row">
                         <div class="form-group">
                             <label for="emergencyContactName">Emergency Contact Name <span style="color:#b91c1c;">*</span></label>
-                            <input type="text" id="emergencyContactName" name="emergencyContactName" class="form-control" value="<?php echo $old('emergencyContactName'); ?>" data-benefit-required>
+                            <input type="text" id="emergencyContactName" name="emergencyContactName" class="form-control" value="<?php echo $old('emergencyContactName'); ?>" pattern="[\p{L}\p{M} .'-]+" title="Use letters only. Spaces, periods, apostrophes, and hyphens are allowed." autocomplete="name" data-benefit-required>
                         </div>
                         <div class="form-group">
                             <label for="emergencyContact">Emergency Contact Number <span style="color:#b91c1c;">*</span></label>
@@ -1148,7 +1148,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                     </div>
                     <div class="form-row">
                         <div class="form-group"><label for="burialClaimantName">Name of Applicant / Claimant <span style="color:#b91c1c;">*</span></label><input type="text" id="burialClaimantName" name="claimantName" class="form-control" value="<?php echo $old('claimantName'); ?>" data-benefit-required></div>
-                        <div class="form-group"><label for="burialClaimantContact">Claimant Contact Number <span style="color:#b91c1c;">*</span></label><input type="tel" id="burialClaimantContact" name="claimantContact" class="form-control" maxlength="11" pattern="09[0-9]{9}" inputmode="numeric" value="<?php echo $old('claimantContact'); ?>" data-benefit-required></div>
+                        <div class="form-group"><label for="burialClaimantContact">Claimant Contact Number <span style="color:#b91c1c;">*</span></label><input type="tel" id="burialClaimantContact" name="claimantContact" class="form-control" maxlength="11" pattern="09[0-9]{9}" inputmode="numeric" autocomplete="tel" placeholder="09XXXXXXXXX" title="Enter an 11-digit mobile number beginning with 09." value="<?php echo $old('claimantContact'); ?>" data-benefit-required></div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
@@ -1196,6 +1196,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                     <label for="barangay_residency_file"><span data-document-label="secondary">Barangay Residency Certificate</span> <span class="req">*</span></label>
                     <p class="slot-desc" data-document-description="secondary">Issued by the barangay within the last 6 months confirming Pasig residency.</p>
                     <input type="file" id="barangay_residency_file" name="barangay_residency_file" accept="image/jpeg,application/pdf" capture="environment" required>
+                    <div class="id-pair-preview" data-id-pair-preview hidden></div><p class="id-pair-error" data-id-pair-error role="alert" hidden></p>
                 </div>
 
                 <div class="upload-slot" data-document-slot="supporting">
@@ -1586,6 +1587,9 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
         const idImageTypeMessage = 'Upload PNG, JPG, or JPEG images only for both sides of the valid government ID.';
         const isIdImage = file => (/\.png$/i.test(file.name) && ['image/png', ''].includes(file.type))
             || (/\.jpe?g$/i.test(file.name) && ['image/jpeg', ''].includes(file.type));
+        const idPairMissingMessage = input => input.id === 'barangay_residency_file'
+            ? 'Please upload both pictures: Claimant ID 1 and Claimant ID 2.'
+            : idImageMessage;
 
         function showGovernmentIdError(input, message) {
             const error = input.closest('.upload-slot')?.querySelector('[data-id-pair-error]');
@@ -1605,7 +1609,10 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             if (!preview) return;
             preview.replaceChildren();
             preview.hidden = !state.files.some(Boolean);
-            ['Front of ID', 'Back of ID'].forEach((side, index) => {
+            const sideLabels = input.id === 'barangay_residency_file'
+                ? ['Claimant ID 1', 'Claimant ID 2']
+                : ['Front of ID', 'Back of ID'];
+            sideLabels.forEach((side, index) => {
                 const file = state.files[index];
                 if (!file) return;
                 const url = URL.createObjectURL(file);
@@ -1618,7 +1625,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 const replace = document.createElement('button'); replace.type = 'button'; replace.textContent = 'Replace';
                 replace.addEventListener('click', () => { state.replaceIndex = index; state.replacePicker.click(); });
                 const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Remove';
-                remove.addEventListener('click', () => { state.files[index] = null; renderGovernmentIdFiles(input); showGovernmentIdError(input, idImageMessage); });
+                remove.addEventListener('click', () => { state.files[index] = null; renderGovernmentIdFiles(input); showGovernmentIdError(input, idPairMissingMessage(input)); });
                 actions.append(view, replace, remove); row.append(image, title, actions); preview.append(row);
             });
         }
@@ -1649,7 +1656,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                     if (file && isIdImage(file) && state.replaceIndex !== null) {
                         state.files[state.replaceIndex] = file;
                         renderGovernmentIdFiles(input);
-                        showGovernmentIdError(input, state.files.every(Boolean) ? '' : idImageMessage);
+                        showGovernmentIdError(input, state.files.every(Boolean) ? '' : idPairMissingMessage(input));
                     } else if (file) showGovernmentIdError(input, idImageTypeMessage);
                     state.replaceIndex = null; replacePicker.value = '';
                 });
@@ -1700,6 +1707,8 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             }
             setGovernmentIdPairMode(document.getElementById('psa_birth_cert_file'),
                 ['Land Bank Cash Card Enrollment', 'Local Social Pension Assessment'].includes(selectedBenefit));
+            setGovernmentIdPairMode(document.getElementById('barangay_residency_file'),
+                selectedBenefit === 'Burial Assistance');
 
             let hasExtraDocuments = false;
             document.querySelectorAll('[data-extra-document-benefits]').forEach(slot => {
@@ -1799,7 +1808,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 const pairError = pairInput.closest('.upload-slot')?.querySelector('[data-id-pair-error]');
                 if (!pair?.files.every(Boolean) || (pairError && !pairError.hidden)) {
                     event.preventDefault();
-                    if (!pair?.files.every(Boolean)) showGovernmentIdError(pairInput, idImageMessage);
+                    if (!pair?.files.every(Boolean)) showGovernmentIdError(pairInput, idPairMissingMessage(pairInput));
                     pairInput.closest('.upload-slot')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     pairInput.focus({ preventScroll: true });
                     return;
@@ -1876,13 +1885,26 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                     state.files[empty] = incoming[0];
                 }
                 renderGovernmentIdFiles(input);
-                showGovernmentIdError(input, state.files.every(Boolean) ? '' : idImageMessage);
+                showGovernmentIdError(input, state.files.every(Boolean) ? '' : idPairMissingMessage(input));
             });
         });
 
         ['houseNo', 'street', 'barangay', 'zipCode'].forEach(id => {
             document.getElementById(id)?.addEventListener('input', syncCompleteAddress);
             document.getElementById(id)?.addEventListener('change', syncCompleteAddress);
+        });
+
+        const emergencyContactNameInput = document.getElementById('emergencyContactName');
+        emergencyContactNameInput?.addEventListener('input', () => {
+            emergencyContactNameInput.value = emergencyContactNameInput.value
+                .replace(/[^\p{L}\p{M}\s.'’-]/gu, '')
+                .replace(/’/g, "'");
+        });
+
+        document.querySelectorAll('input[type="tel"][inputmode="numeric"]').forEach(input => {
+            input.addEventListener('input', () => {
+                input.value = input.value.replace(/\D/g, '').slice(0, 11);
+            });
         });
 
         document.getElementById('requestedBenefit')?.addEventListener('change', updateBenefitSpecificFields);

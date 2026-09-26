@@ -54,13 +54,21 @@ if ($queueFilters['barangay'] !== 'all') {
 }
 
 $queuePage = max(1, (int)($_GET['page'] ?? 1));
-$queuePerPage = 25;
+$queuePerPage = 10;
 $queueCountStmt = $conn->prepare('SELECT COUNT(*) FROM applications WHERE ' . implode(' AND ', $queueConditions));
 $queueCountStmt->execute($queueParams);
 $filteredQueueCount = (int)$queueCountStmt->fetchColumn();
 $queueTotalPages = max(1, (int)ceil($filteredQueueCount / $queuePerPage));
 $queuePage = min($queuePage, $queueTotalPages);
 $queueOffset = ($queuePage - 1) * $queuePerPage;
+$queueFirstShown = $filteredQueueCount > 0 ? $queueOffset + 1 : 0;
+$queueLastShown = min($queueOffset + $queuePerPage, $filteredQueueCount);
+$queuePageStart = max(1, $queuePage - 2);
+$queuePageEnd = min($queueTotalPages, $queuePage + 2);
+if ($queuePageEnd - $queuePageStart < 4) {
+    $queuePageStart = max(1, $queuePageEnd - 4);
+    $queuePageEnd = min($queueTotalPages, $queuePageStart + 4);
+}
 
 $queueSql = "SELECT id_number as id, full_name, application_type, requested_benefit, id_purpose, barangay, date_submitted,
                     status, workflow_state, home_visit_status, home_visit_scheduled_at, date_of_death, death_registration_date,
@@ -192,6 +200,9 @@ $hasQueueFilters = $queueFilters['search'] !== ''
         .btn-filter-clear { color: #475569; background: #fff; border: 1px solid #cbd5e1; }
         .btn-filter-clear:hover { color: #0f172a; background: #f1f5f9; }
         .table-wrap.is-filtering { opacity: .55; pointer-events: none; transition: opacity .15s ease; }
+        #queuePagination { margin: 0; border-width: 1px 0 0; border-radius: 0; }
+        #queuePagination .table-pagination__page { text-decoration: none; }
+        #queuePagination .table-pagination__page[aria-disabled="true"] { color: #9aa9b8; background: #eef2f6; border-color: #d8e0e8; cursor: not-allowed; }
 
         @media (max-width: 1180px) {
             .queue-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -602,17 +613,37 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                     </tbody>
                 </table>
             </div>
-            <?php if ($queueTotalPages > 1):
-                $queueQuery = $_GET;
-            ?>
-            <nav class="server-pagination" aria-label="Verification queue pages" style="display:flex;align-items:center;justify-content:center;gap:12px;padding:16px;">
-                <?php $queueQuery['page'] = max(1, $queuePage - 1); ?>
-                <a class="btn btn-filter-clear" <?php echo $queuePage > 1 ? 'href="?' . htmlspecialchars(http_build_query($queueQuery)) . '"' : 'aria-disabled="true"'; ?>>Previous</a>
-                <span>Page <?php echo $queuePage; ?> of <?php echo $queueTotalPages; ?></span>
-                <?php $queueQuery['page'] = min($queueTotalPages, $queuePage + 1); ?>
-                <a class="btn btn-filter-clear" <?php echo $queuePage < $queueTotalPages ? 'href="?' . htmlspecialchars(http_build_query($queueQuery)) . '"' : 'aria-disabled="true"'; ?>>Next</a>
+            <?php $queueQuery = array_filter([
+                'search' => $queueFilters['search'],
+                'type' => $queueFilters['type'] !== 'all' ? $queueFilters['type'] : null,
+                'barangay' => $queueFilters['barangay'] !== 'all' ? $queueFilters['barangay'] : null,
+            ], static fn($value) => $value !== null && $value !== ''); ?>
+            <nav id="queuePagination" class="table-pagination server-pagination" aria-label="Verification queue pages">
+                <div class="table-pagination__summary">
+                    Showing <?php echo number_format($queueFirstShown); ?>&ndash;<?php echo number_format($queueLastShown); ?> of <?php echo number_format($filteredQueueCount); ?>
+                </div>
+                <div class="table-pagination__controls">
+                    <?php if ($queuePage > 1): $queueQuery['page'] = $queuePage - 1; ?>
+                        <a class="table-pagination__page table-pagination__direction" href="?<?php echo htmlspecialchars(http_build_query($queueQuery)); ?>"><i class="fas fa-chevron-left" aria-hidden="true"></i><span>Previous</span></a>
+                    <?php else: ?>
+                        <span class="table-pagination__page table-pagination__direction" aria-disabled="true"><i class="fas fa-chevron-left" aria-hidden="true"></i><span>Previous</span></span>
+                    <?php endif; ?>
+
+                    <?php for ($pageNumber = $queuePageStart; $pageNumber <= $queuePageEnd; $pageNumber++): ?>
+                        <?php if ($pageNumber === $queuePage): ?>
+                            <span class="table-pagination__page is-current" aria-current="page"><?php echo $pageNumber; ?></span>
+                        <?php else: $queueQuery['page'] = $pageNumber; ?>
+                            <a class="table-pagination__page" href="?<?php echo htmlspecialchars(http_build_query($queueQuery)); ?>" aria-label="Page <?php echo $pageNumber; ?>"><?php echo $pageNumber; ?></a>
+                        <?php endif; ?>
+                    <?php endfor; ?>
+
+                    <?php if ($queuePage < $queueTotalPages): $queueQuery['page'] = $queuePage + 1; ?>
+                        <a class="table-pagination__page table-pagination__direction" href="?<?php echo htmlspecialchars(http_build_query($queueQuery)); ?>"><span>Next</span><i class="fas fa-chevron-right" aria-hidden="true"></i></a>
+                    <?php else: ?>
+                        <span class="table-pagination__page table-pagination__direction" aria-disabled="true"><span>Next</span><i class="fas fa-chevron-right" aria-hidden="true"></i></span>
+                    <?php endif; ?>
+                </div>
             </nav>
-            <?php endif; ?>
         </div>
 
         <div class="page-footer">Centralized Profiling and Record Authentication System &bull; Pasig City Department &copy; <?php echo date('Y'); ?></div>
@@ -866,10 +897,12 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                 const nextDocument = new DOMParser().parseFromString(html, 'text/html');
                 const nextTableBody = nextDocument.querySelector('.records-tbl tbody');
                 const nextResultCount = nextDocument.getElementById('queueResultCount');
-                if (!nextTableBody || !nextResultCount) throw new Error('Invalid filter response.');
+                const nextPagination = nextDocument.getElementById('queuePagination');
+                if (!nextTableBody || !nextResultCount || !nextPagination) throw new Error('Invalid filter response.');
 
                 document.querySelector('.records-tbl tbody').innerHTML = nextTableBody.innerHTML;
                 document.getElementById('queueResultCount').innerHTML = nextResultCount.innerHTML;
+                document.getElementById('queuePagination').replaceWith(nextPagination);
                 clearQueueFilters.hidden = !hasActiveQueueFilters();
                 window.history.replaceState({}, '', url);
             } catch (error) {

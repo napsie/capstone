@@ -256,7 +256,7 @@ function getApplicationBenefitDetails(): array {
             ],
             'form_documents' => [
                 ['field' => 'psa_birth_cert_file', 'label' => 'Certified True Copy of Death Certificate', 'description' => 'Upload the certificate showing its Local Civil Registry number.'],
-                ['field' => 'barangay_residency_file', 'label' => 'Two Valid IDs of Claimant', 'description' => 'Upload front and back copies showing three specimen signatures.'],
+                ['field' => 'barangay_residency_file', 'label' => 'Two Valid IDs of Claimant', 'description' => 'Upload exactly 2 pictures: Claimant ID 1 and Claimant ID 2, showing the required specimen signatures.'],
                 ['field' => 'comelec_cert_file', 'label' => 'Deceased Senior Citizen ID', 'description' => 'Upload the front and back of the deceased senior citizen ID.'],
                 ['field' => 'deceased_landbank_card_file', 'label' => 'Deceased Landbank Cash Card', 'description' => 'Upload the front and back of the deceased Landbank cash card.', 'extra' => true],
             ],

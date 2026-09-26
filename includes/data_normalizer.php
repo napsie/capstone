@@ -8,6 +8,12 @@ function normalizePersonName(?string $value): string {
     return $value === '' ? '' : mb_convert_case(mb_strtolower($value, 'UTF-8'), MB_CASE_TITLE, 'UTF-8');
 }
 
+function isValidPersonName(?string $value): bool {
+    $value = normalizeWhitespace($value);
+    return $value !== ''
+        && preg_match("/^[\\p{L}\\p{M}]+(?:[ .'-][\\p{L}\\p{M}]+)*$/u", $value) === 1;
+}
+
 function normalizePhoneNumber(?string $value): string {
     $digits = preg_replace('/\D+/', '', (string)$value) ?? '';
     if (str_starts_with($digits, '63') && strlen($digits) === 12) $digits = '0' . substr($digits, 2);
@@ -32,7 +38,7 @@ function normalizeBarangayName(?string $value, array $barangays): string {
 }
 
 function normalizeApplicationInput(array $input, array $barangays = []): array {
-    $nameKeys = ['full_name','fullName','firstName','middleName','lastName','mothersMaidenName','proxyName','claimantName','applicantName'];
+    $nameKeys = ['full_name','fullName','firstName','middleName','lastName','mothersMaidenName','emergencyContactName','proxyName','claimantName','applicantName'];
     $phoneKeys = ['contact_number','contactNumber','emergencyContact','proxyContactNumber','claimantContact'];
     $addressKeys = ['complete_address','completeAddress','houseNo','street','city','province','landmark'];
     foreach ($nameKeys as $key) if (array_key_exists($key, $input)) $input[$key] = normalizePersonName($input[$key]);

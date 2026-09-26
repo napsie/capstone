@@ -462,7 +462,11 @@ function processProxyRegistration(): array
                     $result['message'] = 'Please specify the senior citizen\'s health condition.';
                     return $result;
                 }
-                if ($emergencyContactName === '' || $emergencyContactRelationship === '' || !isValidPhilippineMobileNumber($emergencyContact)) {
+                if (!isValidPersonName($emergencyContactName)) {
+                    $result['message'] = 'Emergency contact name may contain letters only, with spaces, periods, apostrophes, or hyphens.';
+                    return $result;
+                }
+                if ($emergencyContactRelationship === '' || !isValidPhilippineMobileNumber($emergencyContact)) {
                     $result['message'] = 'Please provide the emergency contact name, relationship, and a valid 11-digit mobile number.';
                     return $result;
                 }
@@ -676,7 +680,8 @@ function processProxyRegistration(): array
         }
         $governmentIdPrimary = in_array($requestedBenefit, ['Land Bank Cash Card Enrollment', 'Local Social Pension Assessment'], true);
         $governmentIdField = $requestedBenefit === 'Senior Citizen ID Registration' ? 'valid_id_file'
-            : ($governmentIdPrimary ? 'psa_birth_cert_file' : null);
+            : ($governmentIdPrimary ? 'psa_birth_cert_file'
+                : ($requestedBenefit === 'Burial Assistance' ? 'barangay_residency_file' : null));
         foreach ($requiredUploads as $key => $label) {
             if ($key === $governmentIdField) continue;
             if (!isset($_FILES[$key]) || $_FILES[$key]['error'] !== UPLOAD_ERR_OK) {
@@ -684,7 +689,8 @@ function processProxyRegistration(): array
                 return $result;
             }
         }
-        if ($governmentIdField !== null && ($pairError = governmentIdPairError($governmentIdField)) !== null) {
+        $governmentIdDocumentLabel = $requestedBenefit === 'Burial Assistance' ? 'the two valid claimant IDs' : 'the valid government ID';
+        if ($governmentIdField !== null && ($pairError = governmentIdPairError($governmentIdField, $governmentIdDocumentLabel)) !== null) {
             $result['message'] = $pairError;
             return $result;
         }
@@ -696,7 +702,9 @@ function processProxyRegistration(): array
         $psaBirthCert = $governmentIdPrimary
             ? saveUploadedProxyFile('psa_birth_cert_file', $transactionId, 'psa_birth_cert', true, 0)
             : saveUploadedProxyFile('psa_birth_cert_file', $transactionId, 'psa_birth_cert');
-        $barangayResidency = saveUploadedProxyFile('barangay_residency_file', $transactionId, 'barangay_residency');
+        $barangayResidency = $requestedBenefit === 'Burial Assistance'
+            ? saveUploadedProxyFile('barangay_residency_file', $transactionId, 'claimant_id_1', true, 0)
+            : saveUploadedProxyFile('barangay_residency_file', $transactionId, 'barangay_residency');
         $comelecCert = saveUploadedProxyFile(
             'comelec_cert_file',
             $transactionId,
@@ -705,10 +713,11 @@ function processProxyRegistration(): array
         );
         $idImage = saveUploadedProxyFile('id_photo_file', $transactionId, 'id_photo', true);
         $governmentIdFront = $governmentIdField !== null
-            ? ($governmentIdPrimary ? $psaBirthCert : saveUploadedProxyFile('valid_id_file', $transactionId, 'government_id_front', true, 0))
+            ? ($governmentIdPrimary ? $psaBirthCert
+                : ($requestedBenefit === 'Burial Assistance' ? $barangayResidency : saveUploadedProxyFile('valid_id_file', $transactionId, 'government_id_front', true, 0)))
             : null;
         $governmentIdBack = $governmentIdField !== null
-            ? saveUploadedProxyFile($governmentIdField, $transactionId, 'government_id_back', true, 1)
+            ? saveUploadedProxyFile($governmentIdField, $transactionId, $requestedBenefit === 'Burial Assistance' ? 'claimant_id_2' : 'government_id_back', true, 1)
             : null;
         $deceasedLandbankCard = null;
         $proofOfLife = null;
@@ -740,7 +749,9 @@ function processProxyRegistration(): array
             return $result;
         }
         if ($governmentIdField !== null && (!$governmentIdFront || !$governmentIdBack)) {
-            $result['message'] = 'Please upload both the front and back of your valid government ID.';
+            $result['message'] = $requestedBenefit === 'Burial Assistance'
+                ? 'Please upload both valid claimant ID pictures.'
+                : 'Please upload both the front and back of your valid government ID.';
             return $result;
         }
 
@@ -814,12 +825,12 @@ function processProxyRegistration(): array
             );
             foreach ([
                 ['psa_birth_cert',$requestedBenefit === 'Senior Citizen ID Registration' ? $seniorDocumentLabels[0] : ($benefitDocumentLabels[0] ?? 'PSA Birth Certificate'),$governmentIdPrimary ? null : $psaBirthCert],
-                ['barangay_residency',$requestedBenefit === 'Senior Citizen ID Registration' ? $seniorDocumentLabels[1] : ($benefitDocumentLabels[1] ?? 'Barangay Residency Certificate'),$barangayResidency],
+                ['barangay_residency',$requestedBenefit === 'Senior Citizen ID Registration' ? $seniorDocumentLabels[1] : ($benefitDocumentLabels[1] ?? 'Barangay Residency Certificate'),$governmentIdField === 'barangay_residency_file' ? null : $barangayResidency],
                 ['comelec_cert',$requestedBenefit === 'Senior Citizen ID Registration' ? $seniorDocumentLabels[2] : ($benefitDocumentLabels[2] ?? 'COMELEC Certificate'),$comelecCert],
                 ['deceased_landbank_card',$benefitDocumentLabels[3] ?? 'Deceased Landbank Cash Card',$deceasedLandbankCard],
                 ['id_image','ID / Identification Photo',$idImage],
-                ['government_id_front','Valid Government ID — Front of ID',$governmentIdFront],
-                ['government_id_back','Valid Government ID — Back of ID',$governmentIdBack],
+                ['government_id_front',$requestedBenefit === 'Burial Assistance' ? 'Valid Claimant ID 1' : 'Valid Government ID — Front of ID',$governmentIdFront],
+                ['government_id_back',$requestedBenefit === 'Burial Assistance' ? 'Valid Claimant ID 2' : 'Valid Government ID — Back of ID',$governmentIdBack],
                 ['proof_of_life','Proof of Relationship',$proofOfLife],
                 ['auth_letter','Original Copy of Affidavit (if applicable)',$authLetter],
             ] as [$key,$label,$path]) {
