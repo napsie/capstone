@@ -2,6 +2,7 @@
 session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/application_types.php';
+require_once '../includes/system_branding.php';
 
 header('Cache-Control: private, no-store');
 
@@ -135,6 +136,21 @@ foreach (array_reverse($history) as $event) {
     if (($event['new_state'] ?? '') === 'Released') {
         $releasedAt = (string)($event['changed_at'] ?? '');
         break;
+    }
+}
+$digitalSeniorId = trim((string)($application['senior_id_no'] ?? ''));
+$showDigitalId = $application
+    && ($application['application_type'] ?? '') === 'senior'
+    && in_array($rawStatus, ['Verified', 'Approved', 'Released'], true)
+    && $digitalSeniorId !== ''
+    && !preg_match('/^OSCA-[0-9]{4}-[0-9A-F]{6}$/i', $digitalSeniorId);
+$digitalIdIssuedAt = (string)($application['date_submitted'] ?? '');
+if ($showDigitalId) {
+    foreach (array_reverse($history) as $event) {
+        if (in_array((string)($event['new_state'] ?? ''), ['Verified', 'Approved', 'Released'], true)) {
+            $digitalIdIssuedAt = (string)($event['changed_at'] ?? $digitalIdIssuedAt);
+            break;
+        }
     }
 }
 $isTransferredSenior = isset($root) && strtolower(trim((string)($root['id_purpose'] ?? ''))) === 'transfer';
@@ -346,6 +362,34 @@ if ($application && $seniorBirthDateValue !== '') {
                     <?php endforeach; ?>
                     <?php endif; ?>
                 </div>
+
+                <?php if ($showDigitalId): ?>
+                    <section class="digital-id-section" aria-labelledby="digitalIdHeading">
+                        <div class="digital-id-heading">
+                            <div><h2 id="digitalIdHeading">Temporary Digital Senior Citizen ID</h2><p>Available while waiting for the physical OSCA card.</p></div>
+                            <span class="temporary-badge">TEMPORARY</span>
+                        </div>
+                        <div class="digital-id">
+                            <div class="digital-id-head">
+                                <img class="digital-id-logo" src="<?php echo htmlspecialchars(systemLogoUrl($conn)); ?>" alt="SENIORLINK logo">
+                                <div class="digital-id-agency"><small>Republic of the Philippines</small><strong>City Government of Pasig</strong><span>Office for Senior Citizens Affairs</span></div>
+                            </div>
+                            <div class="digital-id-body">
+                                <div class="digital-id-fields">
+                                    <div class="digital-id-number"><span>ID NO.</span><?php echo htmlspecialchars($digitalSeniorId); ?></div>
+                                    <div class="digital-field"><span>NAME</span><strong><?php echo htmlspecialchars((string)$application['full_name']); ?></strong></div>
+                                    <div class="digital-field digital-field--address"><span>ADDRESS</span><strong><?php echo htmlspecialchars((string)($application['complete_address'] ?? '—')); ?></strong></div>
+                                    <div class="digital-field"><span>BARANGAY</span><strong><?php echo htmlspecialchars((string)($application['barangay'] ?? '—')); ?>, PASIG CITY</strong></div>
+                                </div>
+                                <div class="digital-photo-wrap" aria-label="Applicant photo hidden for privacy"><i class="fas fa-user" aria-hidden="true"></i></div>
+                                <div class="digital-id-footer">
+                                    <div><?php echo !empty($application['birth_date']) ? htmlspecialchars(date('m/d/Y', strtotime((string)$application['birth_date']))) : '—'; ?><span>DATE OF BIRTH</span></div>
+                                    <div><?php echo $digitalIdIssuedAt !== '' ? htmlspecialchars(date('m/d/Y', strtotime($digitalIdIssuedAt))) : '—'; ?><span>DATE ISSUED</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                <?php endif; ?>
 
                 <h2>Status History</h2>
                 <div class="timeline">
