@@ -325,6 +325,7 @@ function processProxyRegistration(): array
         $requiredFields = [
             'Benefit or Service Requested' => $requestedBenefit,
             'Last Name' => $lastName, 'First Name' => $firstName,
+            'Mother\'s Maiden Name' => $mothersMaidenName,
             'Sex' => $gender, 'House / Unit Number' => $houseNo,
             'Street / Subdivision' => $street, 'Barangay' => $barangay,
         ];

@@ -828,8 +828,8 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                         <input type="text" id="placeOfBirth" name="placeOfBirth" class="form-control" value="<?php echo $old('placeOfBirth'); ?>" placeholder="City / Municipality, Province" required>
                     </div>
                     <div class="form-group">
-                        <label for="mothersMaidenName">Mother's Maiden Name <span id="mothersMaidenRequired" class="required-marker" hidden>*</span></label>
-                        <input type="text" id="mothersMaidenName" name="mothersMaidenName" class="form-control" value="<?php echo $old('mothersMaidenName'); ?>" placeholder="Full maiden name">
+                        <label for="mothersMaidenName">Mother's Maiden Name <span id="mothersMaidenRequired" class="required-marker">*</span></label>
+                        <input type="text" id="mothersMaidenName" name="mothersMaidenName" class="form-control" value="<?php echo $old('mothersMaidenName'); ?>" placeholder="Full maiden name" autocomplete="off" required>
                     </div>
                 </div>
                 <div class="form-row">
@@ -1508,9 +1508,9 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             });
 
             const mothersMaidenName = document.getElementById('mothersMaidenName');
-            if (mothersMaidenName) mothersMaidenName.required = requiredFieldNames.includes('mothersMaidenName');
+            if (mothersMaidenName) mothersMaidenName.required = true;
             const mothersMaidenRequired = document.getElementById('mothersMaidenRequired');
-            if (mothersMaidenRequired) mothersMaidenRequired.hidden = !mothersMaidenName?.required;
+            if (mothersMaidenRequired) mothersMaidenRequired.hidden = false;
             if (supportSection) supportSection.hidden = !needsSupportAssessment;
             ['mobilityStatus', 'livingArrangement'].forEach(id => {
                 const control = document.getElementById(id);
