@@ -146,6 +146,10 @@ $showDigitalId = $application
     && !preg_match('/^OSCA-[0-9]{4}-[0-9A-F]{6}$/i', $digitalSeniorId);
 $digitalIdIssuedAt = (string)($application['date_submitted'] ?? '');
 if ($showDigitalId) {
+    $_SESSION['tracker_photo_access'] = [
+        'id' => (string)$application['id_number'],
+        'expires' => time() + 600,
+    ];
     foreach (array_reverse($history) as $event) {
         if (in_array((string)($event['new_state'] ?? ''), ['Verified', 'Approved', 'Released'], true)) {
             $digitalIdIssuedAt = (string)($event['changed_at'] ?? $digitalIdIssuedAt);
@@ -381,7 +385,7 @@ if ($application && $seniorBirthDateValue !== '') {
                                     <div class="digital-field digital-field--address"><span>ADDRESS</span><strong><?php echo htmlspecialchars((string)($application['complete_address'] ?? '—')); ?></strong></div>
                                     <div class="digital-field"><span>BARANGAY</span><strong><?php echo htmlspecialchars((string)($application['barangay'] ?? '—')); ?>, PASIG CITY</strong></div>
                                 </div>
-                                <div class="digital-photo-wrap" aria-label="Applicant photo hidden for privacy"><i class="fas fa-user" aria-hidden="true"></i></div>
+                                <div class="digital-photo-wrap"><i class="fas fa-user" aria-hidden="true"></i><img class="digital-id-photo" src="../api/tracker_id_photo.php?id=<?php echo rawurlencode((string)$application['id_number']); ?>" alt="Applicant ID photo" onerror="this.remove()"></div>
                                 <div class="digital-id-footer">
                                     <div><?php echo !empty($application['birth_date']) ? htmlspecialchars(date('m/d/Y', strtotime((string)$application['birth_date']))) : '—'; ?><span>DATE OF BIRTH</span></div>
                                     <div><?php echo $digitalIdIssuedAt !== '' ? htmlspecialchars(date('m/d/Y', strtotime($digitalIdIssuedAt))) : '—'; ?><span>DATE ISSUED</span></div>
