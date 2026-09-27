@@ -65,18 +65,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         if ($action === 'add_personnel') {
             if (!$isDepartment) operationsRedirect('Only department administrators can add personnel.', false);
-            $name = trim(strip_tags((string)($_POST['full_name'] ?? '')));
+            $name = normalizeWhitespace(strip_tags((string)($_POST['full_name'] ?? '')));
             $position = trim(strip_tags((string)($_POST['position'] ?? '')));
             $contact = trim(strip_tags((string)($_POST['contact_number'] ?? '')));
             $assignedBarangay = trim(strip_tags((string)($_POST['barangay'] ?? '')));
             if ($name === '') operationsRedirect('Personnel name is required.', false);
             if (mb_strlen($name) < 2) operationsRedirect('Personnel name must contain at least 2 characters.', false);
-            if (mb_strlen($name) > 80) operationsRedirect('Personnel name must not exceed 80 characters.', false);
+            if (mb_strlen($name) > 60) operationsRedirect('Personnel name must not exceed 60 characters.', false);
             if (!preg_match("/^[\\p{L}][\\p{L}\\p{M} .'-]*$/u", $name)) operationsRedirect('Personnel name may contain letters, spaces, periods, apostrophes, and hyphens only.', false);
             if (!in_array($position, ['Social Worker', 'Nurse', 'Field Officer', 'Other'], true)) operationsRedirect('Select a valid personnel position.', false);
             if ($assignedBarangay !== '' && !in_array($assignedBarangay, $barangays_list, true)) operationsRedirect('Select a valid barangay assignment.', false);
             $contact = normalizePhoneNumber($contact);
-            if (!isValidPhilippineMobileNumber($contact, true)) operationsRedirect('Contact number must contain exactly 11 digits and begin with 09.', false);
+            if (!isValidPhilippineMobileNumber($contact)) operationsRedirect('Contact number must contain exactly 11 digits and begin with 09.', false);
 
             $stmt = $conn->prepare('INSERT INTO home_visit_personnel (full_name, position, contact_number, barangay, created_by) VALUES (?, ?, ?, ?, ?)');
             $stmt->execute([$name, $position ?: null, $contact ?: null, $assignedBarangay ?: null, $_SESSION['user_id']]);
@@ -382,6 +382,14 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
         .badge.scheduled,.badge.released { background:#dbeafe; color:#1d4ed8; }
         .badge.incomplete,.badge.cancelled,.badge.rejected,.badge.not-eligible { background:#fee2e2; color:#991b1b; }
         .muted { color:var(--muted); font-size:.78rem; }
+        .personnel-table { table-layout:fixed; }
+        .personnel-table th:nth-child(1) { width:25%; }
+        .personnel-table th:nth-child(2) { width:17%; }
+        .personnel-table th:nth-child(3) { width:16%; }
+        .personnel-table th:nth-child(4) { width:15%; }
+        .personnel-table th:nth-child(5) { width:10%; }
+        .personnel-table th:nth-child(6) { width:17%; }
+        .personnel-value { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .sr-only { position:absolute!important; width:1px!important; height:1px!important; padding:0!important; margin:-1px!important; overflow:hidden!important; clip:rect(0,0,0,0)!important; white-space:nowrap!important; border:0!important; }
         .notice { display:flex; align-items:center; gap:10px; }
         .notice i { flex:0 0 auto; font-size:1rem; }
@@ -542,16 +550,16 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
         <section id="tab-personnel" class="tab-panel" role="tabpanel" aria-labelledby="personnelTab">
             <div class="panel"><div class="panel-head"><h2>Add Home Visit Personnel</h2></div><div class="panel-body">
                 <form method="post" class="form-grid"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>"><input type="hidden" name="action" value="add_personnel">
-                    <div class="field"><label for="personnelFullName">Full Name</label><input id="personnelFullName" name="full_name" maxlength="80" minlength="2" pattern="[A-Za-zÀ-ÖØ-öø-ÿ .'-]+" title="Use letters, spaces, periods, apostrophes, and hyphens only. Maximum 80 characters." autocomplete="name" required><small class="muted">Maximum 80 characters. Letters and name punctuation only.</small></div>
+                    <div class="field"><label for="personnelFullName">Full Name</label><input id="personnelFullName" name="full_name" maxlength="60" minlength="2" pattern="[A-Za-zÀ-ÖØ-öø-ÿ .'-]+" title="Use letters, spaces, periods, apostrophes, and hyphens only. Maximum 60 characters." autocomplete="name" required><small class="muted">Maximum 60 characters. Letters and name punctuation only.</small></div>
                       <div class="field"><label>Position</label><select name="position" required><option value="">Select position</option><option>Social Worker</option><option>Nurse</option><option>Field Officer</option><option>Other</option></select></div>
                       <div class="field"><label>Contact Number</label><input type="tel" name="contact_number" maxlength="11" pattern="09[0-9]{9}" inputmode="numeric" placeholder="09XXXXXXXXX" title="Enter an 11-digit Philippine mobile number beginning with 09." required></div>
                       <div class="field"><label>Barangay Assignment (optional)</label><select name="barangay"><option value="">City-wide</option><?php foreach ($barangays_list as $barangayOption): ?><option value="<?= htmlspecialchars($barangayOption) ?>"><?= htmlspecialchars($barangayOption) ?></option><?php endforeach; ?></select></div>
                     <div class="full"><button class="btn btn-primary" type="submit"><i class="fas fa-user-plus"></i> Add Personnel</button></div>
                 </form>
             </div></div>
-            <div class="panel"><div class="panel-head"><h2>Personnel Directory</h2></div><div class="table-wrap"><table><thead><tr><th>Name</th><th>Position</th><th>Assignment</th><th>Contact</th><th>Status</th><th>Action</th></tr></thead><tbody data-paginate="10" data-pagination-label="Personnel directory pages">
+            <div class="panel"><div class="panel-head"><h2>Personnel Directory</h2></div><div class="table-wrap"><table class="personnel-table"><thead><tr><th>Name</th><th>Position</th><th>Assignment</th><th>Contact</th><th>Status</th><th>Action</th></tr></thead><tbody data-paginate="10" data-pagination-label="Personnel directory pages">
                 <?php if (!$personnel): ?><tr><td colspan="6">No personnel added yet.</td></tr><?php endif; ?>
-                <?php foreach ($personnel as $p): ?><tr><td><strong><?= htmlspecialchars($p['full_name']) ?></strong></td><td><?= htmlspecialchars($p['position'] ?? '-') ?></td><td><?= htmlspecialchars($p['barangay'] ?: 'City-wide') ?></td><td><?= htmlspecialchars($p['contact_number'] ?? '-') ?></td><td><span class="badge <?= (int)$p['is_active'] ? 'eligible' : 'cancelled' ?>"><?= (int)$p['is_active'] ? 'Active' : 'Inactive' ?></span></td><td><div class="row-actions"><form method="post" data-confirm-message="<?= (int)$p['is_active'] ? 'Deactivate ' : 'Activate ' ?><?= htmlspecialchars($p['full_name'], ENT_QUOTES) ?>? This changes whether they can be assigned to new home visits."><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>"><input type="hidden" name="action" value="toggle_personnel"><input type="hidden" name="personnel_id" value="<?= (int)$p['id'] ?>"><button class="btn btn-muted" type="submit"><?= (int)$p['is_active'] ? 'Deactivate' : 'Activate' ?></button></form><form method="post" data-confirm-message="Archive <?= htmlspecialchars($p['full_name'], ENT_QUOTES) ?>? They will no longer be available for new home visits."><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>"><input type="hidden" name="action" value="archive_personnel"><input type="hidden" name="personnel_id" value="<?= (int)$p['id'] ?>"><button class="btn btn-danger" type="submit"><i class="fas fa-box-archive"></i> Archive</button></form></div></td></tr><?php endforeach; ?>
+                <?php foreach ($personnel as $p): ?><tr><td><strong class="personnel-value" title="<?= htmlspecialchars($p['full_name'], ENT_QUOTES) ?>"><?= htmlspecialchars($p['full_name']) ?></strong></td><td><span class="personnel-value" title="<?= htmlspecialchars($p['position'] ?? '-', ENT_QUOTES) ?>"><?= htmlspecialchars($p['position'] ?? '-') ?></span></td><td><span class="personnel-value" title="<?= htmlspecialchars($p['barangay'] ?: 'City-wide', ENT_QUOTES) ?>"><?= htmlspecialchars($p['barangay'] ?: 'City-wide') ?></span></td><td><span class="personnel-value" title="<?= htmlspecialchars($p['contact_number'] ?? '-', ENT_QUOTES) ?>"><?= htmlspecialchars($p['contact_number'] ?? '-') ?></span></td><td><span class="badge <?= (int)$p['is_active'] ? 'eligible' : 'cancelled' ?>"><?= (int)$p['is_active'] ? 'Active' : 'Inactive' ?></span></td><td><div class="row-actions"><form method="post" data-confirm-message="<?= (int)$p['is_active'] ? 'Deactivate ' : 'Activate ' ?><?= htmlspecialchars($p['full_name'], ENT_QUOTES) ?>? This changes whether they can be assigned to new home visits."><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>"><input type="hidden" name="action" value="toggle_personnel"><input type="hidden" name="personnel_id" value="<?= (int)$p['id'] ?>"><button class="btn btn-muted" type="submit"><?= (int)$p['is_active'] ? 'Deactivate' : 'Activate' ?></button></form><form method="post" data-confirm-message="Archive <?= htmlspecialchars($p['full_name'], ENT_QUOTES) ?>? They will no longer be available for new home visits."><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>"><input type="hidden" name="action" value="archive_personnel"><input type="hidden" name="personnel_id" value="<?= (int)$p['id'] ?>"><button class="btn btn-danger" type="submit"><i class="fas fa-box-archive"></i> Archive</button></form></div></td></tr><?php endforeach; ?>
             </tbody></table></div></div>
             <div class="panel"><div class="panel-head"><h2>Archived Personnel</h2><span class="muted">Restored personnel remain inactive until you activate them.</span></div><div class="table-wrap"><table><thead><tr><th>Name</th><th>Position</th><th>Assignment</th><th>Archived</th><th>Action</th></tr></thead><tbody data-paginate="10" data-pagination-label="Archived personnel pages">
                 <?php if (!$archivedPersonnel): ?><tr><td colspan="5">No archived personnel.</td></tr><?php endif; ?>

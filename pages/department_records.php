@@ -16,7 +16,7 @@ $search          = $_GET['search'] ?? '';
 $barangayFilter  = $_GET['barangay'] ?? 'all';
 $typeFilter      = $_GET['type'] ?? 'all';
 $page            = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
-$recordsPerPage  = 15;
+$recordsPerPage  = 10;
 
 // Build dynamic query
 $baseQuery    = "FROM applications";
@@ -339,6 +339,13 @@ function getStatusBadge($status) {
         .pagination-links a:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
         .pagination-links .current { background: var(--accent); color: #fff; border-color: var(--accent); }
         .pagination-links .disabled { color: var(--gray); cursor: not-allowed; opacity: 0.5; }
+        .pagination-direction { gap: 7px; min-width: 92px !important; }
+        @media (max-width: 600px) {
+            .pagination-bar { align-items: stretch; flex-direction: column; padding: 14px; }
+            .pagination-info { text-align: center; }
+            .pagination-links { justify-content: center; }
+            .pagination-direction { flex: 1 1 110px; }
+        }
 
         /* ─── Modal ──────────────────────────────────────────────────────── */
         .modal-overlay {
@@ -675,19 +682,18 @@ function getStatusBadge($status) {
             </div>
 
             <!-- Pagination -->
-            <?php if ($totalPages > 1): ?>
             <?php
                 $qs = http_build_query(array_filter(['search' => $search, 'barangay' => ($barangayFilter !== 'all' ? $barangayFilter : ''), 'type' => ($typeFilter !== 'all' ? $typeFilter : '')]));
             ?>
-            <div class="pagination-bar">
+            <nav class="pagination-bar" aria-label="Department record pages">
                 <div class="pagination-info">
                     Page <?php echo $page; ?> of <?php echo $totalPages; ?> &bull; <?php echo number_format($totalApplicants); ?> seniors &bull; <?php echo number_format($totalRecords); ?> applications
                 </div>
                 <div class="pagination-links">
                     <?php if ($page > 1): ?>
-                        <a href="?page=<?php echo $page-1; ?>&<?php echo $qs; ?>"><i class="fas fa-chevron-left"></i></a>
+                        <a class="pagination-direction" href="?page=<?php echo $page-1; ?>&<?php echo $qs; ?>" aria-label="Previous page"><i class="fas fa-chevron-left" aria-hidden="true"></i> Previous</a>
                     <?php else: ?>
-                        <span class="disabled"><i class="fas fa-chevron-left"></i></span>
+                        <span class="disabled pagination-direction" aria-disabled="true"><i class="fas fa-chevron-left" aria-hidden="true"></i> Previous</span>
                     <?php endif; ?>
 
                     <?php
@@ -702,13 +708,12 @@ function getStatusBadge($status) {
                     ?>
 
                     <?php if ($page < $totalPages): ?>
-                        <a href="?page=<?php echo $page+1; ?>&<?php echo $qs; ?>"><i class="fas fa-chevron-right"></i></a>
+                        <a class="pagination-direction" href="?page=<?php echo $page+1; ?>&<?php echo $qs; ?>" aria-label="Next page">Next <i class="fas fa-chevron-right" aria-hidden="true"></i></a>
                     <?php else: ?>
-                        <span class="disabled"><i class="fas fa-chevron-right"></i></span>
+                        <span class="disabled pagination-direction" aria-disabled="true">Next <i class="fas fa-chevron-right" aria-hidden="true"></i></span>
                     <?php endif; ?>
                 </div>
-            </div>
-            <?php endif; ?>
+            </nav>
         </div>
 
         <div class="page-footer">Centralized Profiling and Record Authentication System &bull; Pasig City Department &copy; <?php echo date('Y'); ?></div>

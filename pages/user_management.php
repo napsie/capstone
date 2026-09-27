@@ -177,7 +177,7 @@ try {
     $barangayFilter = isset($_GET['barangay']) ? $_GET['barangay'] : 'all';
     if ($barangayFilter !== 'all' && !in_array($barangayFilter, $barangays_list, true)) $barangayFilter = 'all';
     $userPage = max(1, (int)($_GET['user_page'] ?? 1));
-    $usersPerPage = 25;
+    $usersPerPage = 10;
     $userWhere = '(is_archived = 0 OR is_archived IS NULL)';
     $userParams = [];
     if ($barangayFilter !== 'all') {
@@ -190,6 +190,8 @@ try {
     $usersTotalPages = max(1, (int)ceil($usersTotal / $usersPerPage));
     $userPage = min($userPage, $usersTotalPages);
     $userOffset = ($userPage - 1) * $usersPerPage;
+    $userFirstShown = $usersTotal > 0 ? $userOffset + 1 : 0;
+    $userLastShown = min($userOffset + $usersPerPage, $usersTotal);
     $stmt = $conn->prepare("SELECT id, first_name, last_name, email, phone, role, barangay, profile_picture FROM users WHERE {$userWhere} ORDER BY last_name, first_name LIMIT :limit OFFSET :offset");
     foreach ($userParams as $key => $value) $stmt->bindValue($key, $value, PDO::PARAM_STR);
     $stmt->bindValue(':limit', $usersPerPage, PDO::PARAM_INT);
@@ -202,6 +204,8 @@ try {
     $usersTotal = 0;
     $usersTotalPages = 1;
     $userPage = 1;
+    $userFirstShown = 0;
+    $userLastShown = 0;
 }
 
 ?>
@@ -219,9 +223,15 @@ try {
         :root { --primary: #0f172a; --secondary: #1e3a5f; --accent: #2563eb; --success: #10b981; --warning: #f59e0b; --light: #f8fafc; --dark: #020617; --gray: #94a3b8; }
         body { background-color: #f1f5f9; color: #0f172a; line-height: 1.6; }
         .container { display: flex; }
-        .pagination { display:flex; align-items:center; justify-content:center; gap:12px; padding:16px; }
-        .pagination a { padding:7px 12px; border:1px solid #cbd5e1; border-radius:7px; color:#1e3a5f; background:#fff; font-weight:700; text-decoration:none; }
-        .pagination a.disabled { pointer-events:none; opacity:.45; }
+        .pagination { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px; border-top:1px solid #e2e8f0; background:#f8fafc; }
+        .pagination-summary { color:#64748b; font-size:.8rem; font-weight:700; }
+        .pagination-controls { display:flex; align-items:center; justify-content:flex-end; gap:6px; flex-wrap:wrap; }
+        .pagination :is(a, span.pagination-page) { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-width:38px; min-height:38px; padding:7px 11px; border:1px solid #cbd5e1; border-radius:8px; color:#1e3a5f; background:#fff; font-size:.8rem; font-weight:700; text-decoration:none; }
+        .pagination a:hover { color:#fff; background:#1e3a5f; border-color:#1e3a5f; }
+        .pagination .current { color:#fff !important; background:#2563eb !important; border-color:#2563eb !important; }
+        .pagination .disabled { pointer-events:none; opacity:.45; }
+        .pagination-direction { min-width:96px !important; }
+        @media(max-width:600px){.pagination{align-items:stretch;flex-direction:column}.pagination-summary{text-align:center}.pagination-controls{justify-content:center}.pagination-direction{flex:1 1 110px}}
         .main-content { flex-grow: 1; padding: 20px; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0; }
         .header h1 {
@@ -528,13 +538,29 @@ try {
                         </tbody>
                     </table>
                 </div>
-                <?php if ($usersTotalPages > 1): $userQuery = $_GET; ?>
+                <?php
+                    $userQuery = $_GET;
+                    $userPageStart = max(1, $userPage - 2);
+                    $userPageEnd = min($usersTotalPages, $userPage + 2);
+                    if ($userPageEnd - $userPageStart < 4) {
+                        $userPageStart = max(1, $userPageEnd - 4);
+                        $userPageEnd = min($usersTotalPages, $userPageStart + 4);
+                    }
+                ?>
                     <nav class="pagination" aria-label="User account pages">
-                        <?php $userQuery['user_page'] = max(1, $userPage - 1); ?><a class="<?= $userPage === 1 ? 'disabled' : '' ?>" href="?<?= htmlspecialchars(http_build_query($userQuery), ENT_QUOTES) ?>">Previous</a>
-                        <span>Page <?= $userPage ?> of <?= $usersTotalPages ?></span>
-                        <?php $userQuery['user_page'] = min($usersTotalPages, $userPage + 1); ?><a class="<?= $userPage === $usersTotalPages ? 'disabled' : '' ?>" href="?<?= htmlspecialchars(http_build_query($userQuery), ENT_QUOTES) ?>">Next</a>
+                        <div class="pagination-summary">Showing <?= number_format($userFirstShown) ?>&ndash;<?= number_format($userLastShown) ?> of <?= number_format($usersTotal) ?> users</div>
+                        <div class="pagination-controls">
+                            <?php $userQuery['user_page'] = max(1, $userPage - 1); ?><a class="pagination-direction <?= $userPage === 1 ? 'disabled' : '' ?>" href="?<?= htmlspecialchars(http_build_query($userQuery), ENT_QUOTES) ?>" aria-label="Previous page"><i class="fas fa-chevron-left" aria-hidden="true"></i> Previous</a>
+                            <?php for ($pageNumber = $userPageStart; $pageNumber <= $userPageEnd; $pageNumber++): ?>
+                                <?php if ($pageNumber === $userPage): ?>
+                                    <span class="pagination-page current" aria-current="page"><?= $pageNumber ?></span>
+                                <?php else: $userQuery['user_page'] = $pageNumber; ?>
+                                    <a href="?<?= htmlspecialchars(http_build_query($userQuery), ENT_QUOTES) ?>" aria-label="Page <?= $pageNumber ?>"><?= $pageNumber ?></a>
+                                <?php endif; ?>
+                            <?php endfor; ?>
+                            <?php $userQuery['user_page'] = min($usersTotalPages, $userPage + 1); ?><a class="pagination-direction <?= $userPage === $usersTotalPages ? 'disabled' : '' ?>" href="?<?= htmlspecialchars(http_build_query($userQuery), ENT_QUOTES) ?>" aria-label="Next page">Next <i class="fas fa-chevron-right" aria-hidden="true"></i></a>
+                        </div>
                     </nav>
-                <?php endif; ?>
             </div>
         </div>
     </div>

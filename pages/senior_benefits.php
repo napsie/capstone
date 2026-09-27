@@ -158,7 +158,7 @@ if ($verifiedSenior) {
     <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/seniorlink-public.css?v=1"><link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
+    <link rel="stylesheet" href="../assets/css/seniorlink-public.css?v=2"><link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <link rel="stylesheet" href="../assets/css/benefit-information-modal.css?v=1">
     <style>
         body{font-family:Inter,sans-serif}.page-bg{position:fixed!important;inset:0!important;width:100vw;height:100vh;transform:none!important;animation:none!important}.page-bg::before,.page-bg::after{transform:none!important;animation:none!important}.benefit-portal{padding-top:80px}.benefit-access{max-width:760px;padding:0}.benefit-access h1{margin-bottom:8px}.benefit-access>p{margin-bottom:20px;color:#64748b;line-height:1.55}
