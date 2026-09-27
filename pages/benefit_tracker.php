@@ -2,8 +2,6 @@
 session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/application_types.php';
-require_once '../includes/system_branding.php';
-require_once '../includes/data_normalizer.php';
 
 header('Cache-Control: private, no-store');
 
@@ -28,15 +26,13 @@ $serviceNotApplied = false;
 $applicantName = '';
 $history = [];
 $error = '';
-$photoAccessError = '';
 
 if ($token !== '') {
     if (!preg_match('/^PRX-[A-Z0-9]{4,12}$/', $token)) {
         $error = 'Enter a valid permanent PRX Token ID, such as PRX-7K2M.';
     } else {
-        $stmt = $conn->prepare("SELECT id_number, parent_senior_id, proxy_token, full_name, application_type, requested_benefit, workflow_state, status, expected_release_date, home_visit_status, date_submitted, id_purpose,
-                                       senior_id_no, birth_date, complete_address, barangay, contact_number,
-                                       ((id_image IS NOT NULL AND id_image <> '') OR EXISTS (SELECT 1 FROM application_documents d WHERE d.application_id = applications.id_number AND d.document_key = 'id_image' AND d.is_current = 1)) AS has_id_photo
+        $stmt = $conn->prepare("SELECT id_number, parent_senior_id, proxy_token, full_name, application_type, requested_benefit, workflow_state, status, home_visit_status, date_submitted, id_purpose,
+                                       senior_id_no, birth_date, complete_address, barangay, contact_number
                                 FROM applications
                                 WHERE (id_number = ? OR proxy_token = ?) AND COALESCE(is_archived, 0) = 0
                                 ORDER BY CASE WHEN id_number = ? THEN 0 ELSE 1 END, date_submitted ASC
@@ -54,9 +50,8 @@ if ($token !== '') {
                 ? $rootToken
                 : $token;
             $applicantName = trim((string)($root['full_name'] ?? $matchedApplication['full_name'] ?? ''));
-            $servicesStmt = $conn->prepare("SELECT id_number, parent_senior_id, proxy_token, full_name, application_type, requested_benefit, workflow_state, status, expected_release_date, home_visit_status, date_submitted, id_purpose,
-                                                   senior_id_no, birth_date, complete_address, barangay, contact_number,
-                                                   ((id_image IS NOT NULL AND id_image <> '') OR EXISTS (SELECT 1 FROM application_documents d WHERE d.application_id = applications.id_number AND d.document_key = 'id_image' AND d.is_current = 1)) AS has_id_photo
+            $servicesStmt = $conn->prepare("SELECT id_number, parent_senior_id, proxy_token, full_name, application_type, requested_benefit, workflow_state, status, home_visit_status, date_submitted, id_purpose,
+                                                   senior_id_no, birth_date, complete_address, barangay, contact_number
                                             FROM applications
                                             WHERE (id_number = ? OR parent_senior_id = ? OR (senior_id_no <> '' AND senior_id_no = ?))
                                               AND COALESCE(is_archived, 0) = 0
@@ -142,8 +137,6 @@ foreach (array_reverse($history) as $event) {
         break;
     }
 }
-$expectedReleaseDate = !$serviceNotApplied && in_array($rawStatus, ['Verified', 'Approved', 'Released'], true)
-    ? trim((string)($application['expected_release_date'] ?? '')) : '';
 $isTransferredSenior = isset($root) && strtolower(trim((string)($root['id_purpose'] ?? ''))) === 'transfer';
 $benefitEligibleAt = $isTransferredSenior
     ? date('Y-m-d', strtotime((string)$root['date_submitted'] . ' +2 years'))
@@ -151,6 +144,7 @@ $benefitEligibleAt = $isTransferredSenior
 $isBirthday = false;
 $seniorAge = null;
 $milestoneAge = null;
+$milestoneProgram = '';
 $seniorBirthDateValue = trim((string)($root['birth_date'] ?? $application['birth_date'] ?? ''));
 if ($application && $seniorBirthDateValue !== '') {
     try {
@@ -161,63 +155,18 @@ if ($application && $seniorBirthDateValue !== '') {
             $seniorAge = $seniorBirthDate->diff($trackerToday)->y;
             $isBirthday = $seniorBirthDate->format('m-d') === $trackerToday->format('m-d');
             $milestoneAge = milestoneAgeForCurrentAge($seniorAge);
+            if ($milestoneAge !== null) {
+                $milestoneProgram = $seniorAge >= 100
+                    ? 'Centenarian'
+                    : ($seniorAge >= 90 ? 'Nonagenarian' : 'Octogenarian');
+            }
         }
     } catch (Throwable $e) {
         $seniorAge = null;
         $milestoneAge = null;
+        $milestoneProgram = '';
     }
 }
-$digitalIdEligible = $application
-    && ($application['application_type'] ?? '') === 'senior'
-    && in_array($rawStatus, ['Verified', 'Approved', 'Released'], true)
-    && trim((string)($application['senior_id_no'] ?? '')) !== ''
-    && !preg_match('/^OSCA-[0-9]{4}-[0-9A-F]{6}$/i', trim((string)$application['senior_id_no']));
-$digitalIdIssuedAt = '';
-if ($digitalIdEligible) {
-    foreach (array_reverse($history) as $event) {
-        if (($event['new_state'] ?? '') === 'Verified') {
-            $digitalIdIssuedAt = (string)($event['changed_at'] ?? '');
-            break;
-        }
-    }
-    if ($digitalIdIssuedAt === '') $digitalIdIssuedAt = (string)$application['date_submitted'];
-}
-$digitalIdAge = null;
-if ($digitalIdEligible && !empty($application['birth_date'])) {
-    try { $digitalIdAge = (new DateTimeImmutable($application['birth_date']))->diff(new DateTimeImmutable('today'))->y; }
-    catch (Exception $e) { $digitalIdAge = null; }
-}
-$photoApplicationId = $digitalIdEligible ? (string)$application['id_number'] : '';
-if ($digitalIdEligible && empty($_SESSION['tracker_photo_csrf'])) {
-    $_SESSION['tracker_photo_csrf'] = bin2hex(random_bytes(16));
-}
-if ($digitalIdEligible && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reveal_photo'])) {
-    $csrf = (string)($_POST['photo_csrf'] ?? '');
-    $submittedPhone = normalizePhoneNumber((string)($_POST['registered_phone'] ?? ''));
-    $registeredPhone = normalizePhoneNumber((string)($application['contact_number'] ?? ''));
-    $attempts = $_SESSION['tracker_photo_attempts'][$photoApplicationId] ?? ['count' => 0, 'until' => time() + 900];
-    if (!is_array($attempts) || (int)($attempts['until'] ?? 0) < time()) {
-        $attempts = ['count' => 0, 'until' => time() + 900];
-    }
-    if ($csrf === '' || !hash_equals((string)$_SESSION['tracker_photo_csrf'], $csrf)) {
-        $photoAccessError = 'Please reload the page and try again.';
-    } elseif ((int)$attempts['count'] >= 5) {
-        $photoAccessError = 'Too many attempts. Please try again later.';
-    } elseif (preg_match('/^09\d{9}$/', $submittedPhone) !== 1 || !hash_equals($registeredPhone, $submittedPhone)) {
-        $attempts['count'] = (int)$attempts['count'] + 1;
-        $_SESSION['tracker_photo_attempts'][$photoApplicationId] = $attempts;
-        $photoAccessError = 'The mobile number did not match this application.';
-    } else {
-        unset($_SESSION['tracker_photo_attempts'][$photoApplicationId]);
-        $_SESSION['tracker_photo_access'] = ['id' => $photoApplicationId, 'expires' => time() + 600];
-        header('Location: benefit_tracker.php?token=' . rawurlencode($permanentToken) . '&service=senior#digitalIdTitle');
-        exit;
-    }
-}
-$photoGrant = $_SESSION['tracker_photo_access'] ?? null;
-$photoVerified = $digitalIdEligible && is_array($photoGrant)
-    && hash_equals((string)($photoGrant['id'] ?? ''), $photoApplicationId)
-    && (int)($photoGrant['expires'] ?? 0) > time();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -359,7 +308,7 @@ $photoVerified = $digitalIdEligible && is_array($photoGrant)
                         <?php if ($milestoneAge !== null): ?>
                             <div class="senior-notice milestone" role="status">
                                 <i class="fas fa-gift" aria-hidden="true"></i>
-                                <div><strong>You meet the age requirement for the Milestone Cash Gift.</strong><p>At age <?php echo number_format((int)$seniorAge); ?>, you may apply for the Octogenarian, Nonagenarian, or Centenarian benefit. OSCA will verify your Senior Citizen ID, Pasig residency, and supporting documents.</p></div>
+                                <div><strong>You meet the age requirement for the <?php echo htmlspecialchars($milestoneProgram); ?> Cash Gift.</strong><p>At age <?php echo number_format((int)$seniorAge); ?>, you may apply specifically for the <?php echo htmlspecialchars($milestoneProgram); ?> benefit. OSCA will verify your Senior Citizen ID, Pasig residency, and supporting documents.</p></div>
                             </div>
                         <?php endif; ?>
                     </section>
@@ -371,7 +320,6 @@ $photoVerified = $digitalIdEligible && is_array($photoGrant)
                     <div class="fact"><span>Request Type</span><?php echo htmlspecialchars($tokenType); ?></div>
                     <div class="fact"><span>Service</span><?php echo htmlspecialchars($serviceLabel); ?></div>
                     <div class="fact"><span>Date Submitted</span><?php echo $application['date_submitted'] ? htmlspecialchars(date('F j, Y g:i A', strtotime($application['date_submitted']))) : '—'; ?></div>
-                    <div class="fact"><span>Expected Release Date</span><?php echo $expectedReleaseDate !== '' ? htmlspecialchars(date('F j, Y', strtotime($expectedReleaseDate))) : ($serviceNotApplied || !in_array($rawStatus, ['Verified', 'Approved', 'Released'], true) ? 'Available after verification' : 'Schedule to follow'); ?></div>
                     <div class="fact"><span>Actual Release Date</span><?php echo $releasedAt !== '' ? htmlspecialchars(date('F j, Y g:i A', strtotime($releasedAt))) : 'Not yet released'; ?></div>
                 </div>
 
@@ -388,60 +336,6 @@ $photoVerified = $digitalIdEligible && is_array($photoGrant)
                     <?php elseif ($isLandbankApplication): ?><i class="fas fa-circle-info" aria-hidden="true"></i> After OSCA verifies this application, it will be forwarded to <strong>LANDBANK</strong>. Current status: <strong><?php echo htmlspecialchars($status ?: 'Received'); ?></strong>.
                     <?php else: ?>Your application is currently <strong><?php echo htmlspecialchars($status ?: 'Received'); ?></strong>. This page will reflect updates made by the reviewing office.<?php endif; ?>
                 </p>
-
-                <?php if ($digitalIdEligible): ?>
-                    <section class="digital-id-section" aria-labelledby="digitalIdTitle">
-                        <div class="digital-id-heading">
-                            <div>
-                                <h2 id="digitalIdTitle"><i class="fas fa-id-card" aria-hidden="true"></i> Temporary Digital Senior Citizen ID</h2>
-                                <p>Your digital ID is available because your Senior Citizen ID application was approved.</p>
-                            </div>
-                            <span class="temporary-badge">TEMPORARY</span>
-                        </div>
-                        <div class="digital-id" role="img" aria-label="Temporary digital Senior Citizen ID for <?php echo htmlspecialchars($application['full_name']); ?>">
-                            <div class="digital-id-head">
-                                <img class="digital-id-logo" src="<?php echo htmlspecialchars(systemLogoUrl($conn)); ?>" alt="SENIORLINK logo">
-                                <div class="digital-id-agency">
-                                    <small>Republic of the Philippines</small>
-                                    <strong>City Government of Pasig</strong>
-                                    <span>Office for Senior Citizens Affairs</span>
-                                </div>
-                            </div>
-                            <div class="digital-id-body">
-                                <div class="digital-id-fields">
-                                    <div class="digital-id-number"><span>ID NO.</span><?php echo htmlspecialchars($application['senior_id_no']); ?></div>
-                                    <div class="digital-field"><span>NAME</span><strong><?php echo htmlspecialchars($application['full_name']); ?></strong></div>
-                                    <div class="digital-field digital-field--address"><span>ADDRESS</span><strong><?php echo htmlspecialchars($application['complete_address']); ?></strong></div>
-                                    <div class="digital-field"><span>BARANGAY</span><strong><?php echo htmlspecialchars($application['barangay']); ?>, PASIG CITY</strong></div>
-                                </div>
-                                <div class="digital-photo-wrap">
-                                    <i class="fas fa-user" aria-hidden="true"></i>
-                                    <?php if ($photoVerified && !empty($application['has_id_photo'])): ?>
-                                        <img class="digital-id-photo" src="../api/tracker_id_photo.php?id=<?php echo rawurlencode($photoApplicationId); ?>" alt="Applicant photo">
-                                    <?php endif; ?>
-                                </div>
-                                <div class="digital-id-footer">
-                                    <div><?php echo htmlspecialchars(date('m/d/Y', strtotime($application['birth_date']))); ?><?php echo $digitalIdAge !== null ? ' (' . $digitalIdAge . ')' : ''; ?><span>DATE OF BIRTH / AGE</span></div>
-                                    <div><?php echo htmlspecialchars(date('m/d/Y', strtotime($digitalIdIssuedAt))); ?><span>DATE ISSUED</span></div>
-                                </div>
-                            </div>
-                        </div>
-                        <?php if (empty($application['has_id_photo'])): ?>
-                            <p class="digital-id-notice">No applicant photo is stored for this application. Please contact the reviewing office to add it.</p>
-                        <?php elseif (!$photoVerified): ?>
-                            <form method="post" class="digital-photo-access" autocomplete="off">
-                                <label for="registered_phone">To show the applicant photo, enter the mobile number registered with this application.</label>
-                                <div class="digital-photo-access-row">
-                                    <input id="registered_phone" name="registered_phone" type="tel" inputmode="tel" autocomplete="off" maxlength="20" required>
-                                    <input type="hidden" name="photo_csrf" value="<?php echo htmlspecialchars((string)$_SESSION['tracker_photo_csrf']); ?>">
-                                    <button type="submit" name="reveal_photo" value="1">Show photo</button>
-                                </div>
-                                <?php if ($photoAccessError !== ''): ?><p class="digital-photo-access-error" role="alert"><?php echo htmlspecialchars($photoAccessError); ?></p><?php endif; ?>
-                            </form>
-                        <?php endif; ?>
-                        <p class="digital-id-notice"><i class="fas fa-circle-info" aria-hidden="true"></i> Temporary digital credential only. Use it while waiting for the physical OSCA card.</p>
-                    </section>
-                <?php endif; ?>
 
                 <h2>Processing Progress</h2>
                 <div class="progress" aria-label="Application processing progress">

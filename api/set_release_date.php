@@ -9,7 +9,7 @@ requireSameOriginMutation();
 
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'] ?? '', ['department_admin', 'super_admin'], true)) {
     http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Only a Department Administrator can set the expected release date.']);
+    echo json_encode(['success' => false, 'message' => 'Only a Department Administrator can set the release date.']);
     exit;
 }
 
@@ -27,7 +27,7 @@ if (!$clear) {
     $today = new DateTimeImmutable('today', $timezone);
     if (!$date || $date->format('Y-m-d') !== $dateText || $date < $today) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'Choose today or a future date for the expected release.']);
+        echo json_encode(['success' => false, 'message' => 'Choose today or a future release date.']);
         exit;
     }
 }
@@ -52,7 +52,7 @@ try {
     if (!$clear && trim((string)($app['senior_id_no'] ?? '')) === '') {
         $conn->rollBack();
         http_response_code(409);
-        echo json_encode(['success' => false, 'message' => 'Assign the official Senior Citizen ID before scheduling an expected release date.']);
+        echo json_encode(['success' => false, 'message' => 'Assign the official Senior Citizen ID before setting a release date.']);
         exit;
     }
     $newDate = $clear ? null : $dateText;
@@ -65,8 +65,8 @@ try {
     $update = $conn->prepare('UPDATE applications SET expected_release_date = ? WHERE id_number = ?');
     $update->execute([$newDate, $appId]);
     $comment = $newDate === null
-        ? 'Expected release date removed.'
-        : ($oldDate === null ? "Expected release date set to {$newDate}." : "Expected release date changed from {$oldDate} to {$newDate}.");
+        ? 'Release date removed.'
+        : ($oldDate === null ? "Release date set to {$newDate}." : "Release date changed from {$oldDate} to {$newDate}.");
     $history = $conn->prepare('INSERT INTO application_history (application_id, previous_state, new_state, changed_by, comments) VALUES (?, ?, ?, ?, ?)');
     $history->execute([$appId, $app['workflow_state'], $app['workflow_state'], $_SESSION['username'] ?? 'System', $comment]);
     logAudit($conn, 'UPDATE_RELEASE_DATE', "{$comment} Application {$appId} ({$app['full_name']}).");

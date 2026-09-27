@@ -194,7 +194,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                             <div class="chart-wrapper is-loading"><canvas id="statusChart" aria-label="Chart of barangay applications by workflow status" role="img">Application status chart</canvas></div>
                         </div>
                         <div class="chart-card chart-card-half">
-                            <h3><span><i class="fas fa-venus-mars"></i> Female and male senior trend</span><small>Monthly senior citizen records during the last 12 months</small></h3>
+                            <h3><span><i class="fas fa-venus-mars"></i> Female and male senior trend</span><small>All registered senior profiles by month, regardless of application status</small></h3>
                             <div class="chart-wrapper is-loading"><canvas id="genderChart" aria-label="Line chart comparing monthly female and male senior citizen records in the barangay" role="img">Monthly female and male senior citizen trend chart</canvas></div>
                         </div>
                         <div class="chart-card chart-card-wide">
@@ -357,6 +357,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
 
         observeDashboardCharts();
         loadDashboardData();
+        setInterval(() => loadDashboardData(true), 30000);
     });
 
     function loadChartLibrary() {
@@ -395,10 +396,10 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
         observer.observe(chartArea);
     }
 
-    function loadDashboardData() {
+    function loadDashboardData(silent = false) {
         const list = document.getElementById('realtime-notifications-list');
-        if (list) list.innerHTML = '<div class="dashboard-state" role="status">Updating dashboard…</div>';
-        document.querySelectorAll('.chart-wrapper').forEach(el => el.classList.add('is-loading'));
+        if (!silent && list) list.innerHTML = '<div class="dashboard-state" role="status">Updating dashboard…</div>';
+        if (!silent) document.querySelectorAll('.chart-wrapper').forEach(el => el.classList.add('is-loading'));
 
         fetch('../api/barangay_dashboard_data.php', { headers: { 'Accept': 'application/json' } })
             .then(response => {
@@ -408,6 +409,10 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
             .then(result => {
                 if (result.success) {
                     dashboardChartData = result.data;
+                    if (chartsInitialized && window.Chart) {
+                        document.querySelectorAll('.chart-wrapper canvas').forEach(canvas => Chart.getChart(canvas)?.destroy());
+                        chartsInitialized = false;
+                    }
                     if (document.querySelector('.charts-container')?.getBoundingClientRect().top < window.innerHeight + 160) renderVisibleCharts();
                     renderNotifications(result.data.notifications);
                     renderStatsStrip(result.data);
@@ -417,7 +422,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
             })
             .catch(error => {
                 console.error('Error fetching dashboard data:', error);
-                showDashboardError();
+                if (!silent) showDashboardError();
             });
     }
 

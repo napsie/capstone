@@ -24,10 +24,12 @@ $whereClauses = ["(is_archived = 0 OR is_archived IS NULL)", "(workflow_state IN
 $params       = [];
 
 if (!empty($search)) {
-    $whereClauses[] = "(full_name LIKE :search_name OR id_number LIKE :search_id)";
+    $whereClauses[] = "(full_name LIKE :search_name OR id_number LIKE :search_id OR senior_id_no LIKE :search_senior_id OR EXISTS (SELECT 1 FROM applications senior_profile WHERE senior_profile.id_number = applications.parent_senior_id AND senior_profile.senior_id_no LIKE :search_parent_senior_id))";
     $searchValue = "%$search%";
     $params[':search_name'] = $searchValue;
     $params[':search_id'] = $searchValue;
+    $params[':search_senior_id'] = $searchValue;
+    $params[':search_parent_senior_id'] = $searchValue;
 }
 if ($barangayFilter !== 'all') {
     $whereClauses[] = "barangay = :barangay";
@@ -46,7 +48,7 @@ $recordPage = fetchApplicationRecordPage(
     $conn,
     $baseQuery . $whereSql,
     $params,
-    "id_number as id, full_name, birth_date, application_type, requested_benefit, id_purpose, barangay, date_submitted, CASE WHEN COALESCE(workflow_state, status) IN ('Approved','Released') THEN 'Verified' ELSE COALESCE(workflow_state, status) END as status",
+    "id_number as id, full_name, birth_date, application_type, requested_benefit, id_purpose, barangay, date_submitted, COALESCE(NULLIF(senior_id_no, ''), (SELECT NULLIF(TRIM(senior_profile.senior_id_no), '') FROM applications senior_profile WHERE senior_profile.id_number = applications.parent_senior_id LIMIT 1)) as official_senior_id, CASE WHEN COALESCE(workflow_state, status) IN ('Approved','Released') THEN 'Verified' ELSE COALESCE(workflow_state, status) END as status",
     $page,
     $recordsPerPage,
     true
@@ -286,6 +288,8 @@ function getStatusBadge($status) {
         .btn-view:hover { background: var(--primary); color: #fff; border-color: var(--primary); transform: translateY(-1px); }
 
         .person-row.is-expanded { background: #f5f9ff; }
+        .person-senior-id { display:block; margin-top:4px; color:#1d4ed8; font-size:.73rem; font-weight:800; overflow-wrap:anywhere; }
+        .person-senior-id.is-pending { color:#64748b; font-weight:650; }
         .person-birth-date { display:block; margin-top:3px; color:#64748b; font-size:.73rem; }
         .application-summary { display:flex; flex-direction:column; gap:4px; }
         .application-summary strong { color:#0f172a; font-size:.86rem; }
@@ -483,7 +487,7 @@ function getStatusBadge($status) {
         /* Footer */
         .page-footer { text-align:center; padding:24px; font-size:0.78rem; color:var(--gray); }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=21">
     <link rel="stylesheet" href="../assets/css/metric-cards.css?v=1">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
@@ -559,7 +563,7 @@ function getStatusBadge($status) {
             <div class="records-card-header">
                 <h2><i class="fas fa-folder-open"></i> All Verified Records – Pasig City</h2>
                 <div class="header-actions">
-                    <button type="button" class="btn btn-ghost" onclick="exportDepartmentRecords()">
+                    <button type="button" class="btn btn-ghost report-action-btn" onclick="exportDepartmentRecords()">
                         <i class="fas fa-file-excel"></i> Generate Report
                     </button>
                 </div>
@@ -631,12 +635,18 @@ function getStatusBadge($status) {
                                 $typeLabel = applicationRecordTypeLabel($application['application_type'], $application['id_purpose'] ?? null);
                                 if (!in_array($typeLabel, $typeLabels, true)) $typeLabels[] = $typeLabel;
                             }
+                            $officialSeniorId = '';
+                            foreach ($personApplications as $application) {
+                                $candidateSeniorId = trim((string)($application['official_senior_id'] ?? ''));
+                                if ($candidateSeniorId !== '') { $officialSeniorId = $candidateSeniorId; break; }
+                            }
                             $detailsId = 'person-applications-' . $person['key'];
                         ?>
                         <tr class="person-row">
                             <td>
                                 <div class="name-cell">
                                     <div class="full-name"><?php echo htmlspecialchars($person['full_name']); ?></div>
+                                    <span class="person-senior-id<?php echo $officialSeniorId === '' ? ' is-pending' : ''; ?>">ID Number: <?php echo $officialSeniorId !== '' ? htmlspecialchars($officialSeniorId) : 'Not yet assigned'; ?></span>
                                     <span class="person-birth-date">Born <?php echo date('M d, Y', strtotime($person['birth_date'])); ?></span>
                                 </div>
                             </td>
@@ -803,15 +813,15 @@ function getStatusBadge($status) {
                     </div>
                     <section class="release-schedule" id="releaseScheduleSection" aria-labelledby="releaseScheduleTitle" hidden>
                         <h3 id="releaseScheduleTitle"><i class="fas fa-calendar-days" aria-hidden="true"></i> Release schedule</h3>
-                        <p>Set an expected date after verification and official Senior Citizen ID assignment. The applicant will see it in Track Application. This does not mark the item as released.</p>
-                        <p><strong>Current expected date:</strong> <span id="releaseScheduleCurrent">No date set yet</span></p>
+                        <p>Set the release date after verification and official Senior Citizen ID assignment. You can update it if the release schedule changes.</p>
+                        <p><strong>Current release date:</strong> <span id="releaseScheduleCurrent">No date set yet</span></p>
                         <form id="releaseScheduleForm" novalidate>
-                            <label for="expectedReleaseDate">Expected release date</label>
+                            <label for="expectedReleaseDate">Release date</label>
                             <input type="date" id="expectedReleaseDate" name="expectedReleaseDate" min="<?php echo (new DateTimeImmutable('today', new DateTimeZone('Asia/Manila')))->format('Y-m-d'); ?>" required aria-describedby="releaseDateHelp releaseDateError">
                             <p id="releaseDateHelp">Choose today or a later date. You can change it if the schedule changes.</p>
                             <p id="releaseDateError" class="release-schedule-error" role="alert" hidden></p>
                             <div class="release-schedule-actions">
-                                <button type="submit" class="btn btn-primary" id="saveReleaseDate">Save expected date</button>
+                                <button type="submit" class="btn btn-primary" id="saveReleaseDate">Save release date</button>
                                 <button type="button" class="btn btn-ghost" id="removeReleaseDate" hidden>Remove date</button>
                             </div>
                         </form>
@@ -909,7 +919,7 @@ function getStatusBadge($status) {
                 </div>
                 <div class="export-actions">
                     <button type="button" class="btn btn-ghost" id="cancelExportBtn">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-download"></i> Generate Report</button>
+                    <button type="submit" class="btn btn-primary report-action-btn"><i class="fas fa-download"></i> Generate Report</button>
                 </div>
             </div>
         </form>
@@ -995,7 +1005,7 @@ function getStatusBadge($status) {
             saveExpectedReleaseDate(false);
         });
         document.getElementById('removeReleaseDate').addEventListener('click', function() {
-            window.showCarelinkConfirm('Remove the expected release date? Track Application will show that the schedule is still to follow.', () => saveExpectedReleaseDate(true));
+            window.showCarelinkConfirm('Remove the release date?', () => saveExpectedReleaseDate(true));
         });
         document.getElementById('applicationModal').addEventListener('click', function(e) {
             if (e.target === this) closeModal();
@@ -1040,7 +1050,7 @@ function getStatusBadge($status) {
             return;
         }
         if (!remove && (!dateInput.value || dateInput.value < dateInput.min)) {
-            error.textContent = 'Choose today or a future date for the expected release.';
+            error.textContent = 'Choose today or a future release date.';
             error.hidden = false;
             dateInput.focus();
             return;
@@ -1075,7 +1085,7 @@ function getStatusBadge($status) {
         } finally {
             saveButton.disabled = section.dataset.canSchedule !== 'true';
             removeButton.disabled = false;
-            saveButton.textContent = 'Save expected date';
+            saveButton.textContent = 'Save release date';
         }
     }
 

@@ -84,9 +84,8 @@ async function main() {
     check((await request('/api/get_application_details.php?id=PRX-BENE', admin)).data.expected_release_date === releaseDate,
         'Verified record details show the saved date');
     const scheduledTracker = await request('/pages/benefit_tracker.php?token=PRX-BENE&service=senior', '', undefined, true);
-    check(scheduledTracker.data.includes('Expected Release Date') && scheduledTracker.data.includes('Actual Release Date')
-        && scheduledTracker.data.includes(new Date(releaseDate + 'T00:00:00').getFullYear().toString()),
-        'Tracker distinguishes expected and actual release dates');
+    check(!scheduledTracker.data.includes('Expected Release Date') && scheduledTracker.data.includes('Actual Release Date'),
+        'Tracker shows only the actual release date');
     const rescheduled = await request('/api/set_release_date.php', admin, releaseForm('PRX-BENE', laterReleaseDate));
     check(rescheduled.data.success && rescheduled.data.expected_release_date === laterReleaseDate,
         'Administrator can reschedule the expected release');
@@ -95,11 +94,11 @@ async function main() {
         'Administrator can remove an expected release date');
     const releaseDetails = (await request('/api/get_application_details.php?id=PRX-BENE', admin)).data;
     check(releaseDetails.workflow_state === 'Verified' && !releaseDetails.expected_release_date
-        && releaseDetails.history.some(h => h.comments.includes('Expected release date changed'))
-        && releaseDetails.history.some(h => h.comments.includes('Expected release date removed')),
+        && releaseDetails.history.some(h => h.comments.includes('Release date changed'))
+        && releaseDetails.history.some(h => h.comments.includes('Release date removed')),
         'Schedule edits are audited without changing verification status');
-    check((await request('/pages/benefit_tracker.php?token=PRX-BENE&service=senior', '', undefined, true)).data.includes('Schedule to follow'),
-        'Tracker returns to schedule-to-follow after date removal');
+    check(!(await request('/pages/benefit_tracker.php?token=PRX-BENE&service=senior', '', undefined, true)).data.includes('Expected Release Date'),
+        'Tracker keeps the internal expected date hidden after schedule removal');
     const settingsBefore = await request('/pages/system_settings.php', admin, undefined, true);
     check(settingsBefore.status === 200 && settingsBefore.data.includes('System and Report Logo')
         && !settingsBefore.data.includes('System Maintenance') && !settingsBefore.data.includes('Security Settings'),
@@ -155,19 +154,8 @@ async function main() {
     const noDashToken = await request('/pages/benefit_tracker.php?token=prxbene&service=senior', '', undefined, true);
     check(noDashToken.status === 200 && noDashToken.data.includes('Benefits Portal Senior'), 'Tracker accepts a PRX token typed without the dash');
     const trackedId = await request('/pages/benefit_tracker.php?token=PRX-BENE&service=senior', '', undefined, true);
-    const trackerCookie = trackedId.headers.getSetCookie().map(cookie => cookie.split(';')[0]).join('; ');
-    const csrfMatch = trackedId.data.match(/name="photo_csrf" value="([a-f0-9]+)"/);
-    check(trackedId.status === 200 && csrfMatch && !trackedId.data.includes('tracker_id_photo.php?id='), 'Tracker hides applicant photo before verification');
-    check((await request('/api/tracker_id_photo.php?id=PRX-BENE', '', undefined, true)).status === 403, 'Applicant photo rejects anonymous requests');
-    const wrongPhone = await request('/pages/benefit_tracker.php?token=PRX-BENE&service=senior', trackerCookie, new URLSearchParams({ reveal_photo: '1', photo_csrf: csrfMatch[1], registered_phone: '09171111111' }), true);
-    check(wrongPhone.status === 200 && wrongPhone.data.includes('mobile number did not match'), 'Wrong mobile number cannot reveal photo');
-    const correctPhone = await request('/pages/benefit_tracker.php?token=PRX-BENE&service=senior', trackerCookie, new URLSearchParams({ reveal_photo: '1', photo_csrf: csrfMatch[1], registered_phone: '09170000000' }), true);
-    check(correctPhone.status === 302, 'Registered mobile number verifies photo access');
-    const verifiedTracker = await request('/pages/benefit_tracker.php?token=PRX-BENE&service=senior', trackerCookie, undefined, true);
-    check(verifiedTracker.data.includes('tracker_id_photo.php?id=PRX-BENE'), 'Verified tracker renders applicant photo');
-    const servedPhoto = await request('/api/tracker_id_photo.php?id=PRX-BENE', trackerCookie, undefined, true);
-    check(servedPhoto.status === 200 && servedPhoto.headers.get('content-type') === 'image/png', 'Verified session can load private applicant photo');
-    check((await request('/api/tracker_id_photo.php?id=VALID', trackerCookie, undefined, true)).status === 403, 'Photo access is limited to verified application');
+    check(trackedId.status === 200 && !trackedId.data.includes('Temporary Digital Senior Citizen ID')
+        && !trackedId.data.includes('name="photo_csrf"'), 'Tracker no longer displays a temporary digital ID or photo access form');
     const seniorIdPortal = await request('/pages/proxy_registration.php', '', undefined, true);
     check(seniorIdPortal.data.includes('<option value="new"') && seniorIdPortal.data.includes('<option value="transfer"')
         && !seniorIdPortal.data.includes('<option value="change"') && !seniorIdPortal.data.includes('<option value="lost"'),

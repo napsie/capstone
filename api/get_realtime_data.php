@@ -83,6 +83,8 @@ try {
             COUNT(*) AS count
         FROM applications
         WHERE (is_archived = 0 OR is_archived IS NULL)
+          AND application_type = 'senior'
+          AND COALESCE(parent_senior_id, '') = ''
           AND LOWER(TRIM(gender)) IN ('female', 'male')
           AND date_submitted >= {$recentTwelveMonths}
         GROUP BY {$yearExpression}, {$monthExpression}, CASE

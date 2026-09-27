@@ -231,11 +231,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 if ($familySupport !== 1) $familySupportAmount = null;
                 if ($personalIncome !== 1) $personalIncomeAmount = null;
-                $healthCondition = trim(strip_tags((string)($_POST['health_condition'] ?? '')));
+                $submittedHealthConditions = $_POST['health_conditions'] ?? [];
+                if (!is_array($submittedHealthConditions)) $submittedHealthConditions = [];
+                $allowedHealthConditions = array_values(array_filter(
+                    getHealthConditionOptions(),
+                    static fn(string $condition): bool => $condition !== 'Other medical condition'
+                ));
+                $allowedHealthConditions[] = 'Other';
+                $submittedHealthConditions = array_values(array_unique(array_map(
+                    static fn($condition): string => trim(strip_tags((string)$condition)),
+                    $submittedHealthConditions
+                )));
+                foreach ($submittedHealthConditions as $condition) {
+                    if (!in_array($condition, $allowedHealthConditions, true)) operationsRedirect('Select only the available medical conditions.', false);
+                }
+                $otherHealthCondition = str_replace(';', ',', trim(strip_tags((string)($_POST['health_condition_other'] ?? ''))));
+                if (count($submittedHealthConditions) > 1 && in_array('None / No known illness', $submittedHealthConditions, true)) {
+                    operationsRedirect('“None / No known illness” cannot be combined with another medical condition.', false);
+                }
+                if (in_array('Other', $submittedHealthConditions, true)) {
+                    if ($otherHealthCondition === '') operationsRedirect('Describe the other medical condition.', false);
+                    $submittedHealthConditions = array_values(array_filter($submittedHealthConditions, static fn(string $condition): bool => $condition !== 'Other'));
+                    $submittedHealthConditions[] = 'Other: ' . $otherHealthCondition;
+                }
+                if ($status === 'Completed' && !$submittedHealthConditions) operationsRedirect('Select at least one medical condition.', false);
+                $healthCondition = implode('; ', $submittedHealthConditions);
+                if (mb_strlen($healthCondition) > 255) operationsRedirect('The combined medical conditions must not exceed 255 characters.', false);
                 $withMaintenance = ($_POST['with_maintenance'] ?? '') === '' ? null : (int)$_POST['with_maintenance'];
                 $maintenanceSpec = trim(strip_tags((string)($_POST['maintenance_spec'] ?? '')));
                 $confirmationName = trim(strip_tags((string)($_POST['confirmation_name'] ?? '')));
                 $confirmationContact = trim(strip_tags((string)($_POST['confirmation_contact'] ?? '')));
+                if ($confirmationName !== '' && (mb_strlen($confirmationName) < 2 || mb_strlen($confirmationName) > 100 || !isValidPersonName($confirmationName))) {
+                    operationsRedirect('Confirmation Made With must contain a valid name using letters, spaces, periods, apostrophes, or hyphens only.', false);
+                }
                 $stmt = $conn->prepare("UPDATE applications SET home_visit_status = ?, home_visit_notes = ?, home_visit_completed_at = CASE WHEN ? = 'Completed' THEN CURRENT_TIMESTAMP ELSE NULL END,
                     home_visit_eligibility = CASE WHEN ? = 'Completed' THEN ? ELSE home_visit_eligibility END,
                     home_visit_eligibility_reason = CASE WHEN ? = 'Completed' THEN ? ELSE home_visit_eligibility_reason END,
@@ -302,9 +330,10 @@ if ($isDepartment && $visitBarangayFilter !== 'all') {
     $visitParams[] = $visitBarangayFilter;
 }
 if ($visitSearch !== '') {
+    $visitTokenSearch = preg_replace('/^TOKEN-/i', 'PEN-', $visitSearch) ?? $visitSearch;
     $visitSql .= ' AND (a.full_name LIKE ? OR a.id_number LIKE ?)';
     $visitParams[] = "%{$visitSearch}%";
-    $visitParams[] = "%{$visitSearch}%";
+    $visitParams[] = "%{$visitTokenSearch}%";
 }
 if ($visitStatusFilter === 'Waiting for Home Visit') {
     $visitSql .= " AND COALESCE(NULLIF(a.home_visit_status, ''), 'Waiting for Home Visit') = 'Waiting for Home Visit'";
@@ -415,11 +444,19 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
         .evaluation-message { margin:0; padding:10px 12px; border-radius:9px; font-size:.82rem; font-weight:650; }
         .evaluation-message.error { display:block; color:#991b1b; background:#fef2f2; }
         .evaluation-message.ok { display:block; color:#166534; background:#f0fdf4; }
+        fieldset.field { min-width:0; margin:0; padding:0; border:0; }
+        fieldset.field > legend { width:100%; margin:0 0 5px; padding:0; color:#334155; font-size:.72rem; font-weight:800; }
+        .condition-picker { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; padding:11px; border:1px solid #cbd5e1; border-radius:10px; background:#f8fafc; }
+        .condition-choice { display:flex; align-items:flex-start; gap:8px; min-width:0; padding:8px 9px; border:1px solid #e2e8f0; border-radius:8px; background:#fff; color:#334155; font-size:.78rem; line-height:1.3; cursor:pointer; }
+        .condition-choice:has(input:checked) { border-color:#60a5fa; background:#eff6ff; color:#1d4ed8; }
+        .condition-choice input { width:18px; height:18px; flex:0 0 18px; margin:0; accent-color:#2563eb; }
+        .condition-other { margin-top:9px; }
         body.evaluation-open { overflow:hidden; }
 
         @media(max-width:900px){
             .form-grid{grid-template-columns:1fr 1fr;}
             .visit-filters { grid-template-columns:repeat(2,minmax(0,1fr)); }
+            .condition-picker { grid-template-columns:repeat(2,minmax(0,1fr)); }
         }
         @media(max-width:600px){
             .main-content{padding:14px}.form-grid{grid-template-columns:1fr}.full{grid-column:auto}
@@ -431,6 +468,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
             .evaluation-modal-head,.evaluation-modal-body,.evaluation-modal-actions { padding-left:14px; padding-right:14px; }
             .evaluation-senior-summary { grid-template-columns:1fr; }
             .evaluation-modal-actions .btn { flex:1 1 0; }
+            .condition-picker { grid-template-columns:1fr; }
         }
     </style>
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
@@ -480,9 +518,12 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
                         <tbody data-paginate="10" data-pagination-label="Home visit pages">
                         <?php if (!$visits): ?><tr><td colspan="<?= $isDepartment ? 7 : 6 ?>">No local pension applications found.</td></tr><?php endif; ?>
                         <?php foreach ($visits as $visit): ?>
-                            <?php $visitDeadlineAlerts = applicationDeadlineAlerts($visit); ?>
+                            <?php
+                                $visitDeadlineAlerts = applicationDeadlineAlerts($visit);
+                                $displayVisitToken = preg_replace('/^PEN-/i', 'TOKEN-', (string)$visit['id_number']) ?? (string)$visit['id_number'];
+                            ?>
                             <tr id="visit-row-<?= htmlspecialchars($visit['id_number']) ?>">
-                                <td><strong><?= htmlspecialchars($visit['full_name']) ?></strong><br><span class="muted"><?= htmlspecialchars($visit['id_number']) ?></span></td>
+                                <td><strong><?= htmlspecialchars($visit['full_name']) ?></strong><br><span class="muted"><?= htmlspecialchars($displayVisitToken) ?></span></td>
                                 <td><?= htmlspecialchars($visit['barangay']) ?></td>
                                 <td><span class="badge <?= strtolower(str_replace(' ', '-', $visit['home_visit_eligibility'] ?? 'pending')) ?>"><?= htmlspecialchars($visit['home_visit_eligibility'] ?: 'Pending') ?></span><br><span class="muted"><?= htmlspecialchars($visit['home_visit_eligibility_reason'] ?? '') ?></span></td>
                                 <td><?= $visit['home_visit_scheduled_at'] ? htmlspecialchars(date('M j, Y', strtotime($visit['home_visit_scheduled_at']))) : '-' ?>
@@ -534,9 +575,9 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
                         <div class="field"><label>Pension Source</label><input name="pension_source"></div><div class="field"><label>Pension Amount</label><input type="number" min="0" step="0.01" name="pension_amount"></div>
                         <div class="field"><label>Regular Family Support?</label><select name="family_support"><option value="">Select</option><option value="1">Yes</option><option value="0">No</option></select></div><div class="field"><label>Family Support Amount</label><input type="number" min="0" step="0.01" name="family_support_amount"></div>
                         <div class="field"><label>Personal Income?</label><select name="personal_income"><option value="">Select</option><option value="1">Yes</option><option value="0">No</option></select></div><div class="field"><label>Personal Income Amount</label><input type="number" min="0" step="0.01" name="personal_income_amount"></div>
-                        <div class="field full"><label for="healthConditionVisit">Condition / Illness</label><select id="healthConditionVisit" name="health_condition"><option value="">Select condition</option><?php foreach (getHealthConditionOptions() as $condition): ?><option value="<?= htmlspecialchars($condition) ?>"><?= htmlspecialchars($condition) ?></option><?php endforeach; ?></select></div>
+                        <fieldset class="field full"><legend>Condition / Illness</legend><div class="condition-picker" id="healthConditionVisit"><?php foreach (getHealthConditionOptions() as $condition): ?><?php if ($condition === 'Other medical condition') continue; ?><label class="condition-choice"><input type="checkbox" name="health_conditions[]" value="<?= htmlspecialchars($condition) ?>"><span><?= htmlspecialchars($condition) ?></span></label><?php endforeach; ?><label class="condition-choice"><input type="checkbox" name="health_conditions[]" value="Other" id="otherHealthConditionToggle"><span>Other</span></label></div><div class="condition-other" id="otherHealthConditionWrap" hidden><label for="otherHealthCondition">Other medical condition</label><input id="otherHealthCondition" name="health_condition_other" maxlength="120" placeholder="Describe the condition"></div></fieldset>
                         <div class="field"><label>With Maintenance?</label><select name="with_maintenance"><option value="">Select</option><option value="1">Yes</option><option value="0">No</option></select></div><div class="field"><label>Maintenance Details</label><input name="maintenance_spec"></div>
-                        <div class="field"><label>Confirmation Made With</label><input name="confirmation_name"></div><div class="field"><label>Confirmation Contact No.</label><input type="tel" name="confirmation_contact" maxlength="11" pattern="09[0-9]{9}"></div>
+                        <div class="field"><label for="confirmationName">Confirmation Made With</label><input id="confirmationName" name="confirmation_name" minlength="2" maxlength="100" pattern="[\p{L}\p{M} .'-]+" title="Use letters, spaces, periods, apostrophes, and hyphens only." autocomplete="name"></div><div class="field"><label>Confirmation Contact No.</label><input type="tel" name="confirmation_contact" maxlength="11" pattern="09[0-9]{9}"></div>
                         <div class="field"><label>Final Evaluation</label><select name="eligibility"><option value="">Select</option><option>Eligible</option><option>Not Eligible</option></select></div><div class="field"><label>Reason for Decision</label><input name="eligibility_reason"></div>
                         <div class="field full"><label>Observations / Visit Summary</label><textarea name="notes" placeholder="Required when completing a visit"></textarea></div>
                         <p class="evaluation-message full" id="evaluationMessage" aria-live="polite" hidden></p>
@@ -653,7 +694,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
             is_pensioner: visit.is_pensioner, pension_source: visit.pension_source, pension_amount: visit.pension_amount,
             family_support: visit.family_support, family_support_amount: visit.family_support_amount,
             personal_income: visit.personal_income, personal_income_amount: visit.personal_income_amount,
-            health_condition: visit.health_condition, with_maintenance: visit.with_maintenance,
+            with_maintenance: visit.with_maintenance,
             maintenance_spec: visit.maintenance_spec, confirmation_name: visit.claimant_name,
             confirmation_contact: visit.claimant_contact, eligibility: visit.home_visit_eligibility,
             eligibility_reason: visit.home_visit_eligibility_reason, notes: visit.visit_summary || visit.home_visit_notes
@@ -662,6 +703,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
             const field = form.elements.namedItem(name);
             if (field) field.value = value === null || value === undefined ? '' : String(value);
         });
+        setHealthConditionSelections(visit.health_condition || '');
         updateEvaluationDependencies();
         const message = document.getElementById('evaluationMessage');
         message.hidden = true;
@@ -686,6 +728,50 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
     document.querySelectorAll('[data-close-assignment]').forEach((button) => button.addEventListener('click', closeAssignmentModal));
     assignmentModal?.addEventListener('click', (event) => { if (event.target === assignmentModal) closeAssignmentModal(); });
     const evaluationForm = document.getElementById('visitStatusForm');
+    const otherHealthConditionToggle = document.getElementById('otherHealthConditionToggle');
+    const otherHealthConditionWrap = document.getElementById('otherHealthConditionWrap');
+    const otherHealthConditionInput = document.getElementById('otherHealthCondition');
+    function updateOtherHealthCondition() {
+        const selected = Boolean(otherHealthConditionToggle?.checked);
+        if (otherHealthConditionWrap) otherHealthConditionWrap.hidden = !selected;
+        if (otherHealthConditionInput) {
+            otherHealthConditionInput.disabled = !selected;
+            otherHealthConditionInput.required = selected;
+            if (!selected) otherHealthConditionInput.value = '';
+        }
+    }
+    function setHealthConditionSelections(storedValue) {
+        if (!evaluationForm) return;
+        const checkboxes = Array.from(evaluationForm.querySelectorAll('input[name="health_conditions[]"]'));
+        checkboxes.forEach(checkbox => { checkbox.checked = false; });
+        if (otherHealthConditionInput) otherHealthConditionInput.value = '';
+        String(storedValue || '').split(/\s*;\s*/).filter(Boolean).forEach(condition => {
+            const exact = checkboxes.find(checkbox => checkbox.value === condition);
+            if (exact) { exact.checked = true; return; }
+            if (otherHealthConditionToggle) otherHealthConditionToggle.checked = true;
+            if (otherHealthConditionInput) otherHealthConditionInput.value = condition.replace(/^Other:\s*/i, '');
+        });
+        updateOtherHealthCondition();
+    }
+    otherHealthConditionToggle?.addEventListener('change', updateOtherHealthCondition);
+    const confirmationNameInput = document.getElementById('confirmationName');
+    confirmationNameInput?.addEventListener('input', () => {
+        confirmationNameInput.value = confirmationNameInput.value
+            .replace(/[^\p{L}\p{M}\s.'’-]/gu, '')
+            .replace(/’/g, "'");
+    });
+    evaluationForm?.querySelectorAll('input[name="health_conditions[]"]').forEach(checkbox => {
+        checkbox.addEventListener('change', () => {
+            const checkboxes = Array.from(evaluationForm.querySelectorAll('input[name="health_conditions[]"]'));
+            if (checkbox.checked && checkbox.value === 'None / No known illness') {
+                checkboxes.forEach(other => { if (other !== checkbox) other.checked = false; });
+            } else if (checkbox.checked) {
+                const noneOption = checkboxes.find(other => other.value === 'None / No known illness');
+                if (noneOption) noneOption.checked = false;
+            }
+            updateOtherHealthCondition();
+        });
+    });
     const dependentFields = {
         is_pensioner: ['pension_source', 'pension_amount'],
         family_support: ['family_support_amount'],
@@ -728,6 +814,9 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
         const requiredWhenComplete = ['living_arrangement', 'is_pensioner', 'family_support', 'eligibility', 'notes'];
         requiredWhenComplete.forEach((name) => evaluationForm.elements.namedItem(name)?.removeAttribute('required'));
         if (status === 'Completed') requiredWhenComplete.forEach((name) => evaluationForm.elements.namedItem(name)?.setAttribute('required', 'required'));
+        const conditionCheckboxes = Array.from(evaluationForm.querySelectorAll('input[name="health_conditions[]"]'));
+        const conditionValidityTarget = conditionCheckboxes[0];
+        conditionValidityTarget?.setCustomValidity(status === 'Completed' && !conditionCheckboxes.some(input => input.checked) ? 'Select at least one medical condition.' : '');
         updateEvaluationDependencies();
         if (!evaluationForm.reportValidity()) return;
 
@@ -770,7 +859,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
                         visit_status:'home_visit_status', living_arrangement:'living_arrangement', is_pensioner:'is_pensioner',
                         pension_source:'pension_source', pension_amount:'pension_amount', family_support:'family_support',
                         family_support_amount:'family_support_amount', personal_income:'personal_income',
-                        personal_income_amount:'personal_income_amount', health_condition:'health_condition',
+                        personal_income_amount:'personal_income_amount',
                         with_maintenance:'with_maintenance', maintenance_spec:'maintenance_spec',
                         confirmation_name:'claimant_name', confirmation_contact:'claimant_contact',
                         eligibility:'home_visit_eligibility', eligibility_reason:'home_visit_eligibility_reason',
@@ -779,6 +868,8 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
                     Object.entries(fieldMap).forEach(([fieldName, property]) => {
                         updatedVisit[property] = evaluationForm.elements.namedItem(fieldName)?.value ?? '';
                     });
+                    const selectedConditions = Array.from(evaluationForm.querySelectorAll('input[name="health_conditions[]"]:checked')).map(input => input.value === 'Other' ? `Other: ${otherHealthConditionInput?.value || ''}` : input.value);
+                    updatedVisit.health_condition = selectedConditions.join('; ');
                     updatedVisit.home_visit_notes = evaluationForm.elements.namedItem('notes')?.value || '';
                     button.onclick = () => openVisit(updatedVisit);
                 }

@@ -498,12 +498,14 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
     .benefit-choice-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        grid-auto-rows: 1fr;
         gap: 16px;
         margin-bottom: 20px;
     }
 
     .benefit-choice-card {
         position: relative;
+        height: 100%;
         min-height: 230px;
         padding: 24px 22px;
         overflow: hidden;
@@ -605,8 +607,8 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
         .public-benefit-body { padding:14px; }
         .public-benefit-actions { padding:12px 14px; }
         .public-benefit-actions button { flex:1 1 0; }
-        .benefit-choice-grid { grid-template-columns:1fr; gap:10px; }
-        .benefit-choice-card { display:grid; grid-template-columns:48px minmax(0,1fr) 22px; grid-template-rows:auto auto auto; column-gap:13px; min-height:0; padding:16px; }
+        .benefit-choice-grid { grid-template-columns:1fr; grid-auto-rows:auto; gap:10px; }
+        .benefit-choice-card { display:grid; grid-template-columns:48px minmax(0,1fr) 22px; grid-template-rows:auto auto auto; column-gap:13px; height:auto; min-height:0; padding:16px; }
         .benefit-choice-icon { grid-column:1; grid-row:1 / span 3; width:46px; height:46px; margin:0; align-self:start; font-size:1.05rem; }
         .benefit-choice-title { grid-column:2; grid-row:1; max-width:none; padding-right:0; font-size:.98rem; }
         .benefit-choice-desc { grid-column:2; grid-row:2; margin-top:5px; font-size:.79rem; line-height:1.4; }
@@ -1148,8 +1150,8 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                         </select>
                     </div>
                     <div class="form-row">
-                        <div class="form-group"><label for="claimantName">Claimant Name <span style="color:#b91c1c;">*</span></label><input type="text" id="claimantName" name="claimantName" class="form-control" value="<?php echo $old('claimantName'); ?>" data-benefit-required></div>
-                        <div class="form-group"><label for="claimantRelationship">Relationship <span style="color:#b91c1c;">*</span></label><input type="text" id="claimantRelationship" name="claimantRelationship" class="form-control" value="<?php echo $old('claimantRelationship'); ?>" data-benefit-required placeholder="Self, child, spouse, etc."></div>
+                        <div class="form-group"><label for="claimantName">Claimant Name <span style="color:#b91c1c;">*</span></label><input type="text" id="claimantName" name="claimantName" class="form-control" pattern="[\p{L}\p{M} .]+" title="Use letters, spaces, and periods only." data-claimant-name-only value="<?php echo $old('claimantName'); ?>" data-benefit-required></div>
+                        <div class="form-group"><label for="claimantRelationship">Relationship <span style="color:#b91c1c;">*</span></label><select id="claimantRelationship" name="claimantRelationship" class="form-control" data-benefit-required><option value="">— Select Relationship —</option><?php foreach (getEmergencyContactRelationshipOptions() as $relationship): ?><option value="<?php echo htmlspecialchars($relationship); ?>" <?php echo $old('claimantRelationship') === $relationship ? 'selected' : ''; ?>><?php echo htmlspecialchars($relationship); ?></option><?php endforeach; ?></select></div>
                         <div class="form-group"><label for="claimantContact">Claimant Contact <span style="color:#b91c1c;">*</span></label><input type="tel" id="claimantContact" name="claimantContact" class="form-control" maxlength="11" pattern="09[0-9]{9}" inputmode="numeric" value="<?php echo $old('claimantContact'); ?>" data-benefit-required></div>
                     </div>
                 </div>
@@ -1173,11 +1175,11 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                         </div>
                     </div>
                     <div class="form-row">
-                        <div class="form-group"><label for="seniorIdNo">Deceased Senior ID Number <span style="color:#b91c1c;">*</span></label><input type="text" id="seniorIdNo" name="seniorIdNo" class="form-control" value="<?php echo $old('seniorIdNo'); ?>" data-benefit-required></div>
-                        <div class="form-group"><label for="landbankCardNo">Landbank Cash Card Number <span style="color:#b91c1c;">*</span></label><input type="text" id="landbankCardNo" name="landbankCardNo" class="form-control" value="<?php echo $old('landbankCardNo'); ?>" data-benefit-required></div>
+                        <div class="form-group"><label for="seniorIdNo">Deceased Senior ID Number <span style="color:#b91c1c;">*</span></label><input type="text" id="seniorIdNo" name="seniorIdNo" class="form-control" inputmode="numeric" pattern="[0-9]+" maxlength="50" title="Enter numbers only." data-digits-only value="<?php echo $old('seniorIdNo'); ?>" data-benefit-required></div>
+                        <div class="form-group"><label for="landbankCardNo">Landbank Cash Card Number <span style="color:#b91c1c;">*</span></label><input type="text" id="landbankCardNo" name="landbankCardNo" class="form-control" inputmode="numeric" pattern="[0-9]+" maxlength="50" title="Enter numbers only." data-digits-only value="<?php echo $old('landbankCardNo'); ?>" data-benefit-required></div>
                     </div>
                     <div class="form-row">
-                        <div class="form-group"><label for="burialClaimantName">Name of Applicant / Claimant <span style="color:#b91c1c;">*</span></label><input type="text" id="burialClaimantName" name="claimantName" class="form-control" value="<?php echo $old('claimantName'); ?>" data-benefit-required></div>
+                        <div class="form-group"><label for="burialClaimantName">Name of Applicant / Claimant <span style="color:#b91c1c;">*</span></label><input type="text" id="burialClaimantName" name="claimantName" class="form-control" pattern="[\p{L}\p{M} .]+" title="Use letters, spaces, and periods only." data-claimant-name-only value="<?php echo $old('claimantName'); ?>" data-benefit-required></div>
                         <div class="form-group"><label for="burialClaimantContact">Claimant Contact Number <span style="color:#b91c1c;">*</span></label><input type="tel" id="burialClaimantContact" name="claimantContact" class="form-control" maxlength="11" pattern="09[0-9]{9}" inputmode="numeric" autocomplete="tel" placeholder="09XXXXXXXXX" title="Enter an 11-digit mobile number beginning with 09." value="<?php echo $old('claimantContact'); ?>" data-benefit-required></div>
                     </div>
                     <div class="form-row">
@@ -1187,6 +1189,10 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                                 <option value="">— Select Proof —</option>
                                 <?php foreach (['Marriage Contract', 'Birth Certificate', 'Other'] as $value): ?><option value="<?php echo $value; ?>" <?php echo $old('idTypePresented') === $value ? 'selected' : ''; ?>><?php echo $value; ?></option><?php endforeach; ?>
                             </select>
+                            <div id="idTypePresentedOtherWrap" hidden style="margin-top: 0.75rem;">
+                                <label for="idTypePresentedOther">Specify other proof <span style="color:#b91c1c;">*</span></label>
+                                <input type="text" id="idTypePresentedOther" name="idTypePresentedOther" class="form-control" maxlength="100" placeholder="Enter proof of relationship" value="<?php echo $old('idTypePresentedOther'); ?>" disabled>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label for="controlNo">Affidavit Type (if applicable)</label>
@@ -1194,6 +1200,10 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                                 <option value="">Not applicable</option>
                                 <?php foreach (['Kinship', 'Discrepancy', 'Died single without a child', 'Cohabitation', 'Other'] as $value): ?><option value="<?php echo $value; ?>" <?php echo $old('controlNo') === $value ? 'selected' : ''; ?>><?php echo $value; ?></option><?php endforeach; ?>
                             </select>
+                            <div id="controlNoOtherWrap" hidden style="margin-top: 0.75rem;">
+                                <label for="controlNoOther">Specify other affidavit type <span style="color:#b91c1c;">*</span></label>
+                                <input type="text" id="controlNoOther" name="controlNoOther" class="form-control" maxlength="100" placeholder="Enter affidavit type" value="<?php echo $old('controlNoOther'); ?>" disabled>
+                            </div>
                         </div>
                     </div>
                     <div class="form-group"><label for="visitSummary">Remarks / Notes</label><textarea id="visitSummary" name="visitSummary" class="form-control" rows="3"><?php echo $old('visitSummary'); ?></textarea></div>
@@ -1617,9 +1627,12 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
         const idImageTypeMessage = 'Upload PNG, JPG, or JPEG images only for both sides of the valid government ID.';
         const isIdImage = file => (/\.png$/i.test(file.name) && ['image/png', ''].includes(file.type))
             || (/\.jpe?g$/i.test(file.name) && ['image/jpeg', ''].includes(file.type));
-        const idPairMissingMessage = input => input.id === 'barangay_residency_file'
-            ? 'Please upload both pictures: Claimant ID 1 and Claimant ID 2.'
-            : idImageMessage;
+        const idPairMissingMessage = input => {
+            if (input.id !== 'barangay_residency_file') return idImageMessage;
+            return document.getElementById('requestedBenefit')?.value === 'Milestone Cash Gift'
+                ? 'Please upload both the front and back of the Senior Citizen OSCA ID.'
+                : 'Please upload both pictures: Claimant ID 1 and Claimant ID 2.';
+        };
 
         function showGovernmentIdError(input, message) {
             const error = input.closest('.upload-slot')?.querySelector('[data-id-pair-error]');
@@ -1639,7 +1652,9 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             if (!preview) return;
             preview.replaceChildren();
             preview.hidden = !state.files.some(Boolean);
-            const sideLabels = input.id === 'barangay_residency_file'
+            const isMilestoneOscaId = input.id === 'barangay_residency_file'
+                && document.getElementById('requestedBenefit')?.value === 'Milestone Cash Gift';
+            const sideLabels = input.id === 'barangay_residency_file' && !isMilestoneOscaId
                 ? ['Claimant ID 1', 'Claimant ID 2']
                 : ['Front of ID', 'Back of ID'];
             sideLabels.forEach((side, index) => {
@@ -1738,7 +1753,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             setGovernmentIdPairMode(document.getElementById('psa_birth_cert_file'),
                 ['Land Bank Cash Card Enrollment', 'Local Social Pension Assessment'].includes(selectedBenefit));
             setGovernmentIdPairMode(document.getElementById('barangay_residency_file'),
-                selectedBenefit === 'Burial Assistance');
+                ['Burial Assistance', 'Milestone Cash Gift'].includes(selectedBenefit));
 
             let hasExtraDocuments = false;
             document.querySelectorAll('[data-extra-document-benefits]').forEach(slot => {
@@ -1756,6 +1771,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             if (selectedBenefit === 'Senior Citizen ID Registration') updateSeniorIdDocuments();
             else setGovernmentIdPairMode(document.getElementById('valid_id_file'), false);
             updateBurialAffidavitRequirement();
+            updateBurialOtherFields();
         }
 
         function updateBurialAffidavitRequirement() {
@@ -1765,6 +1781,25 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             const input = document.getElementById('auth_letter_file');
             if (slot) slot.hidden = !hasAffidavit;
             if (input) { input.disabled = !hasAffidavit; input.required = hasAffidavit; }
+        }
+
+        function updateBurialOtherFields() {
+            const isBurial = document.getElementById('requestedBenefit')?.value === 'Burial Assistance';
+            [
+                ['idTypePresented', 'idTypePresentedOtherWrap', 'idTypePresentedOther'],
+                ['controlNo', 'controlNoOtherWrap', 'controlNoOther']
+            ].forEach(([selectId, wrapperId, inputId]) => {
+                const select = document.getElementById(selectId);
+                const wrapper = document.getElementById(wrapperId);
+                const input = document.getElementById(inputId);
+                const shouldShow = isBurial && select?.value === 'Other';
+                if (wrapper) wrapper.hidden = !shouldShow;
+                if (input) {
+                    input.disabled = !shouldShow;
+                    input.required = shouldShow;
+                    if (!shouldShow) input.value = '';
+                }
+            });
         }
 
         function updateSeniorIdDocuments() {
@@ -1937,15 +1972,32 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             });
         });
 
+        document.querySelectorAll('[data-digits-only]').forEach(input => {
+            input.addEventListener('input', () => {
+                input.value = input.value.replace(/\D/g, '').slice(0, Number(input.maxLength) || 50);
+            });
+        });
+
+        document.querySelectorAll('[data-claimant-name-only]').forEach(input => {
+            input.addEventListener('input', () => {
+                input.value = input.value.replace(/[^\p{L}\p{M}\s.]/gu, '');
+            });
+        });
+
         document.getElementById('requestedBenefit')?.addEventListener('change', updateBenefitSpecificFields);
         document.getElementById('idPurpose')?.addEventListener('change', updateSeniorIdDocuments);
-        document.getElementById('controlNo')?.addEventListener('change', updateBurialAffidavitRequirement);
+        document.getElementById('idTypePresented')?.addEventListener('change', updateBurialOtherFields);
+        document.getElementById('controlNo')?.addEventListener('change', () => {
+            updateBurialAffidavitRequirement();
+            updateBurialOtherFields();
+        });
         document.getElementById('newSeniorForm')?.addEventListener('input', updateNewSeniorProgress);
         document.getElementById('newSeniorForm')?.addEventListener('change', updateNewSeniorProgress);
         ['isPensioner', 'isPermanentIncome', 'familySupport'].forEach(id => {
             document.getElementById(id)?.addEventListener('change', updateFinancialRequirements);
         });
         updateBenefitSpecificFields();
+        updateBurialOtherFields();
         updateNewSeniorProgress();
 
         if (document.getElementById('birthDate')?.value) calculateProxyAge2026();

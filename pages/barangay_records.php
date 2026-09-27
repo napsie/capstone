@@ -581,7 +581,7 @@ function getStatusClass($status) {
             color: var(--gray);
         }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=21">
     <link rel="stylesheet" href="../assets/css/metric-cards.css?v=1">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
@@ -650,7 +650,7 @@ function getStatusClass($status) {
         <div class="records-card">
             <div class="records-card-header">
                 <h2><i class="fas fa-folder-open"></i> Application Records</h2>
-                <button class="btn-export" onclick="openExportModal()">
+                <button class="btn-export report-action-btn" onclick="openExportModal()">
                     <i class="fas fa-file-excel"></i> Generate Report
                 </button>
             </div>
@@ -931,7 +931,7 @@ function getStatusClass($status) {
                 </div>
                 <div class="export-actions">
                     <button type="button" class="btn-export-cancel" id="cancelExportBtn">Cancel</button>
-                    <button type="submit" class="btn-export-submit"><i class="fas fa-download"></i> Generate Report</button>
+                    <button type="submit" class="btn-export-submit report-action-btn"><i class="fas fa-download"></i> Generate Report</button>
                 </div>
             </div>
         </form>

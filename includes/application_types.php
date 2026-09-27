@@ -221,7 +221,7 @@ function getApplicationBenefitDetails(): array {
             ],
             'form_documents' => [
                 ['field' => 'psa_birth_cert_file', 'label' => 'PSA Certificate of Live Birth', 'description' => 'Certificate of live birth duly issued or authenticated by the Philippine Statistics Authority.'],
-                ['field' => 'barangay_residency_file', 'label' => 'Senior Citizen OSCA ID (Front and Back)', 'description' => 'Clear front-and-back copy of the Pasig City Senior Citizen identification card.'],
+                ['field' => 'barangay_residency_file', 'label' => 'Senior Citizen OSCA ID (Front and Back)', 'description' => 'Upload exactly 2 pictures: the front and back of the Pasig City Senior Citizen identification card.'],
                 ['field' => 'comelec_cert_file', 'label' => 'Latest A4-Size Whole-Body Picture', 'description' => 'Recent whole-body photograph in A4 portrait format.', 'image_only' => true],
             ],
         ],

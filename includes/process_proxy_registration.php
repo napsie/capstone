@@ -246,6 +246,8 @@ function processProxyRegistration(): array
         $tin = trim($_POST['tin'] ?? '');
         $seniorIdTypePresented = trim($_POST['idTypePresented'] ?? $_POST['seniorIdTypePresented'] ?? '');
         $controlNo = trim($_POST['controlNo'] ?? '');
+        $idTypePresentedOther = trim(strip_tags((string)($_POST['idTypePresentedOther'] ?? '')));
+        $controlNoOther = trim(strip_tags((string)($_POST['controlNoOther'] ?? '')));
         $atmCardNo = trim($_POST['atmCardNo'] ?? '');
         $nationality = trim($_POST['nationality'] ?? '');
         $sourceOfFunds = trim($_POST['sourceOfFunds'] ?? '');
@@ -261,6 +263,7 @@ function processProxyRegistration(): array
         $deathRegistrationDate = trim($_POST['deathRegistrationDate'] ?? '');
         $relationshipToDeceased = trim($_POST['relationshipToDeceased'] ?? '');
         $landbankCardNo = trim($_POST['landbankCardNo'] ?? '');
+        $deceasedSeniorIdNo = trim($_POST['seniorIdNo'] ?? '');
         
         // Representative intake is intentionally disabled for the public form.
         $proxyName = $proxyRelationship = $proxyContactNumber = '';
@@ -520,6 +523,14 @@ function processProxyRegistration(): array
                     $result['message'] = 'Please complete the claimant details with a valid 11-digit mobile number.';
                     return $result;
                 }
+                if (preg_match('/^[\p{L}\p{M}]+(?:[ .][\p{L}\p{M}]+)*$/u', $claimantName) !== 1) {
+                    $result['message'] = 'Claimant name may contain letters, spaces, and periods only.';
+                    return $result;
+                }
+                if (!in_array($claimantRelationship, getEmergencyContactRelationshipOptions(), true)) {
+                    $result['message'] = 'Please select a valid claimant relationship.';
+                    return $result;
+                }
                 break;
             case 'Burial Assistance':
                 if ($dateOfDeath === '' || $relationshipToDeceased === '' || $claimantName === '' || $landbankCardNo === '') {
@@ -530,6 +541,14 @@ function processProxyRegistration(): array
                     $result['message'] = 'Please select a valid relationship to the deceased.';
                     return $result;
                 }
+                if (preg_match('/^\d+$/', $deceasedSeniorIdNo) !== 1 || preg_match('/^\d+$/', $landbankCardNo) !== 1) {
+                    $result['message'] = 'Deceased Senior ID and Landbank Cash Card numbers must contain numbers only.';
+                    return $result;
+                }
+                if (preg_match('/^[\p{L}\p{M}]+(?:[ .][\p{L}\p{M}]+)*$/u', $claimantName) !== 1) {
+                    $result['message'] = 'Applicant or claimant name may contain letters, spaces, and periods only.';
+                    return $result;
+                }
                 if (!isValidPhilippineMobileNumber($claimantContact)) {
                     $result['message'] = 'Claimant contact number must be a valid 11-digit Philippine mobile number.';
                     return $result;
@@ -538,9 +557,27 @@ function processProxyRegistration(): array
                     $result['message'] = 'Please select the proof of relationship to the deceased.';
                     return $result;
                 }
+                if ($seniorIdTypePresented === 'Other' && $idTypePresentedOther === '') {
+                    $result['message'] = 'Please specify the other proof of relationship.';
+                    return $result;
+                }
                 if ($controlNo !== '' && !in_array($controlNo, ['Kinship', 'Discrepancy', 'Died single without a child', 'Cohabitation', 'Other'], true)) {
                     $result['message'] = 'Please select a valid affidavit type.';
                     return $result;
+                }
+                if ($controlNo === 'Other' && $controlNoOther === '') {
+                    $result['message'] = 'Please specify the other affidavit type.';
+                    return $result;
+                }
+                if (mb_strlen($idTypePresentedOther) > 100 || mb_strlen($controlNoOther) > 100) {
+                    $result['message'] = 'Other proof and affidavit descriptions must not exceed 100 characters.';
+                    return $result;
+                }
+                if ($seniorIdTypePresented === 'Other') {
+                    $seniorIdTypePresented = 'Other: ' . $idTypePresentedOther;
+                }
+                if ($controlNo === 'Other') {
+                    $controlNo = 'Other: ' . $controlNoOther;
                 }
                 $burialFilingDays = filingWorkingDays($dateOfDeath, date('Y-m-d'));
                 if ($burialFilingDays === null) {
@@ -682,7 +719,7 @@ function processProxyRegistration(): array
         $governmentIdPrimary = in_array($requestedBenefit, ['Land Bank Cash Card Enrollment', 'Local Social Pension Assessment'], true);
         $governmentIdField = $requestedBenefit === 'Senior Citizen ID Registration' ? 'valid_id_file'
             : ($governmentIdPrimary ? 'psa_birth_cert_file'
-                : ($requestedBenefit === 'Burial Assistance' ? 'barangay_residency_file' : null));
+                : (in_array($requestedBenefit, ['Burial Assistance', 'Milestone Cash Gift'], true) ? 'barangay_residency_file' : null));
         foreach ($requiredUploads as $key => $label) {
             if ($key === $governmentIdField) continue;
             if (!isset($_FILES[$key]) || $_FILES[$key]['error'] !== UPLOAD_ERR_OK) {
@@ -690,7 +727,11 @@ function processProxyRegistration(): array
                 return $result;
             }
         }
-        $governmentIdDocumentLabel = $requestedBenefit === 'Burial Assistance' ? 'the two valid claimant IDs' : 'the valid government ID';
+        $governmentIdDocumentLabel = match ($requestedBenefit) {
+            'Burial Assistance' => 'the two valid claimant IDs',
+            'Milestone Cash Gift' => 'the Senior Citizen OSCA ID front and back images',
+            default => 'the valid government ID',
+        };
         if ($governmentIdField !== null && ($pairError = governmentIdPairError($governmentIdField, $governmentIdDocumentLabel)) !== null) {
             $result['message'] = $pairError;
             return $result;
@@ -705,7 +746,9 @@ function processProxyRegistration(): array
             : saveUploadedProxyFile('psa_birth_cert_file', $transactionId, 'psa_birth_cert');
         $barangayResidency = $requestedBenefit === 'Burial Assistance'
             ? saveUploadedProxyFile('barangay_residency_file', $transactionId, 'claimant_id_1', true, 0)
-            : saveUploadedProxyFile('barangay_residency_file', $transactionId, 'barangay_residency');
+            : ($requestedBenefit === 'Milestone Cash Gift'
+                ? null
+                : saveUploadedProxyFile('barangay_residency_file', $transactionId, 'barangay_residency'));
         $comelecCert = saveUploadedProxyFile(
             'comelec_cert_file',
             $transactionId,
@@ -715,7 +758,8 @@ function processProxyRegistration(): array
         $idImage = saveUploadedProxyFile('id_photo_file', $transactionId, 'id_photo', true);
         $governmentIdFront = $governmentIdField !== null
             ? ($governmentIdPrimary ? $psaBirthCert
-                : ($requestedBenefit === 'Burial Assistance' ? $barangayResidency : saveUploadedProxyFile('valid_id_file', $transactionId, 'government_id_front', true, 0)))
+                : ($requestedBenefit === 'Burial Assistance' ? $barangayResidency
+                    : saveUploadedProxyFile($governmentIdField, $transactionId, $requestedBenefit === 'Milestone Cash Gift' ? 'osca_id_front' : 'government_id_front', true, 0)))
             : null;
         $governmentIdBack = $governmentIdField !== null
             ? saveUploadedProxyFile($governmentIdField, $transactionId, $requestedBenefit === 'Burial Assistance' ? 'claimant_id_2' : 'government_id_back', true, 1)
@@ -750,9 +794,11 @@ function processProxyRegistration(): array
             return $result;
         }
         if ($governmentIdField !== null && (!$governmentIdFront || !$governmentIdBack)) {
-            $result['message'] = $requestedBenefit === 'Burial Assistance'
-                ? 'Please upload both valid claimant ID pictures.'
-                : 'Please upload both the front and back of your valid government ID.';
+            $result['message'] = match ($requestedBenefit) {
+                'Burial Assistance' => 'Please upload both valid claimant ID pictures.',
+                'Milestone Cash Gift' => 'Please upload both the front and back of the Senior Citizen OSCA ID.',
+                default => 'Please upload both the front and back of your valid government ID.',
+            };
             return $result;
         }
 
@@ -830,8 +876,8 @@ function processProxyRegistration(): array
                 ['comelec_cert',$requestedBenefit === 'Senior Citizen ID Registration' ? $seniorDocumentLabels[2] : ($benefitDocumentLabels[2] ?? 'COMELEC Certificate'),$comelecCert],
                 ['deceased_landbank_card',$benefitDocumentLabels[3] ?? 'Deceased Landbank Cash Card',$deceasedLandbankCard],
                 ['id_image','ID / Identification Photo',$idImage],
-                ['government_id_front',$requestedBenefit === 'Burial Assistance' ? 'Valid Claimant ID 1' : 'Valid Government ID — Front of ID',$governmentIdFront],
-                ['government_id_back',$requestedBenefit === 'Burial Assistance' ? 'Valid Claimant ID 2' : 'Valid Government ID — Back of ID',$governmentIdBack],
+                ['government_id_front',$requestedBenefit === 'Burial Assistance' ? 'Valid Claimant ID 1' : ($requestedBenefit === 'Milestone Cash Gift' ? 'Senior Citizen OSCA ID — Front' : 'Valid Government ID — Front of ID'),$governmentIdFront],
+                ['government_id_back',$requestedBenefit === 'Burial Assistance' ? 'Valid Claimant ID 2' : ($requestedBenefit === 'Milestone Cash Gift' ? 'Senior Citizen OSCA ID — Back' : 'Valid Government ID — Back of ID'),$governmentIdBack],
                 ['proof_of_life','Proof of Relationship',$proofOfLife],
                 ['auth_letter','Original Copy of Affidavit (if applicable)',$authLetter],
             ] as [$key,$label,$path]) {

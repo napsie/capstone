@@ -83,6 +83,8 @@ try {
         FROM applications
         WHERE barangay = :barangay
           AND (is_archived = 0 OR is_archived IS NULL)
+          AND application_type = 'senior'
+          AND COALESCE(parent_senior_id, '') = ''
           AND LOWER(TRIM(gender)) IN ('female', 'male')
           AND date_submitted >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
         GROUP BY YEAR(date_submitted), MONTH(date_submitted), CASE

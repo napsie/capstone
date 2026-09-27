@@ -683,7 +683,7 @@ if (empty($_SESSION['login_audit_recorded'])) {
                                     <div class="chart-wrapper is-loading"><canvas id="yearlyRecordsChart" aria-label="Chart of yearly records and processing trends" role="img">Yearly records chart</canvas></div>
                                 </div>
                                 <div class="chart-card chart-card-half">
-                                    <h3><span><i class="fas fa-venus-mars"></i> Female and male senior trend</span><small>Monthly senior citizen records during the last 12 months</small></h3>
+                                    <h3><span><i class="fas fa-venus-mars"></i> Female and male senior trend</span><small>All registered senior profiles by month, regardless of application status</small></h3>
                                     <div class="chart-wrapper is-loading"><canvas id="genderMonthlyChart" aria-label="Line chart comparing monthly female and male senior citizen records across Pasig City" role="img">Monthly female and male senior citizen trend chart</canvas></div>
                                 </div>
                             </div>
@@ -805,6 +805,7 @@ if (empty($_SESSION['login_audit_recorded'])) {
 
             observeDashboardCharts();
             loadDashboardData();
+            setInterval(() => loadDashboardData(true), 30000);
         });
 
         function loadChartLibrary() {
@@ -843,10 +844,10 @@ if (empty($_SESSION['login_audit_recorded'])) {
             observer.observe(chartArea);
         }
 
-        function loadDashboardData() {
+        function loadDashboardData(silent = false) {
             const list = document.getElementById('realtime-notifications-list');
-            if (list) list.innerHTML = '<div class="dashboard-state" role="status">Updating dashboard…</div>';
-            document.querySelectorAll('.chart-wrapper').forEach(el => el.classList.add('is-loading'));
+            if (!silent && list) list.innerHTML = '<div class="dashboard-state" role="status">Updating dashboard…</div>';
+            if (!silent) document.querySelectorAll('.chart-wrapper').forEach(el => el.classList.add('is-loading'));
             fetch('../api/get_realtime_data.php', { headers: { 'Accept': 'application/json' } })
                 .then(response => {
                     if (!response.ok) throw new Error(`Request failed (${response.status})`);
@@ -856,6 +857,10 @@ if (empty($_SESSION['login_audit_recorded'])) {
                     if (result.status === 'success') {
                         renderNotifications(result.data.notifications);
                         dashboardChartData = result.data;
+                        if (chartsInitialized && window.Chart) {
+                            document.querySelectorAll('.chart-wrapper canvas').forEach(canvas => Chart.getChart(canvas)?.destroy());
+                            chartsInitialized = false;
+                        }
                         if (document.querySelector('.charts-container')?.getBoundingClientRect().top < window.innerHeight + 160) renderVisibleCharts();
                         updateStatCards(result.data); // Call new function to update stat cards
                     } else {
@@ -864,7 +869,7 @@ if (empty($_SESSION['login_audit_recorded'])) {
                 })
                 .catch(error => {
                     console.error('Error fetching dashboard data:', error);
-                    showDashboardError();
+                    if (!silent) showDashboardError();
                 });
         }
 
