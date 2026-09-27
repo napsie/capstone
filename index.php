@@ -245,6 +245,21 @@ header('Expires: 0');
                 </span>
             </div>
             <div class="portal-cards<?php echo $loginView !== '' ? ' is-hidden' : ''; ?>" id="portalRoleChoices">
+                <a href="pages/proxy_registration.php" class="portal-card portal-card-primary" id="proxyCard"
+                   aria-label="Open senior citizen application services">
+                    <div class="portal-card-icon proxy" aria-hidden="true">
+                        <i class="fas fa-qrcode"></i>
+                    </div>
+                    <div class="portal-card-body">
+                        <span class="portal-role">For senior citizens</span>
+                        <h4>Senior Application Portal</h4>
+                        <p>Apply for a Senior ID or access senior benefits.</p>
+                    </div>
+                    <span class="portal-card-arrow" aria-hidden="true">
+                        <i class="fas fa-arrow-right"></i>
+                    </span>
+                </a>
+
                 <button type="button" class="portal-card" id="staffCard" data-login-view="staff"
                    aria-label="Senior Citizen Help Desk Office login — register beneficiaries and manage local records">
                     <div class="portal-card-icon staff" aria-hidden="true">
@@ -274,21 +289,6 @@ header('Expires: 0');
                         <i class="fas fa-arrow-right"></i>
                     </span>
                 </button>
-
-                <a href="pages/proxy_registration.php" class="portal-card" id="proxyCard"
-                   aria-label="Open senior citizen application services">
-                    <div class="portal-card-icon proxy" aria-hidden="true">
-                        <i class="fas fa-qrcode"></i>
-                    </div>
-                    <div class="portal-card-body">
-                        <span class="portal-role">For senior citizens</span>
-                        <h4>Senior Application Portal</h4>
-                        <p>Apply for a Senior ID or access senior benefits.</p>
-                    </div>
-                    <span class="portal-card-arrow" aria-hidden="true">
-                        <i class="fas fa-arrow-right"></i>
-                    </span>
-                </a>
 
             </div>
 

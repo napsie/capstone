@@ -619,8 +619,9 @@ button.portal-card {
     transition: none;
 }
 
-.portal-card:nth-child(2)::before { background: #25a65b; }
-.portal-card:nth-child(3)::before { background: #dda514; }
+#staffCard::before { background: #2674c6; }
+#adminCard::before { background: #25a65b; }
+#proxyCard::before { background: #dda514; }
 
 .portal-card:hover::before {
     inset-block: 0;
@@ -678,9 +679,9 @@ button.portal-card {
     font-size: 0.61rem;
 }
 
-.portal-card:nth-child(1) .portal-role { color: #286bb0; }
-.portal-card:nth-child(2) .portal-role { color: #1b8a4a; }
-.portal-card:nth-child(3) .portal-role { color: #a87400; }
+#staffCard .portal-role { color: #286bb0; }
+#adminCard .portal-role { color: #1b8a4a; }
+#proxyCard .portal-role { color: #a87400; }
 .portal-tracker { margin-top:16px; padding:15px 16px; background:#f2f7fb; border:1px solid #d8e4ec; border-radius:16px; }
 .portal-tracker-heading { display:flex; align-items:center; gap:10px; margin-bottom:11px; }
 .portal-tracker-heading > span:last-child { min-width:0; }
@@ -1006,6 +1007,12 @@ button.portal-card {
     .portal-card-body p { font-size: 0.69rem; line-height: 1.42; }
     .portal-card-arrow { width: 34px; height: 34px; }
     .portal-card-number { display: none; }
+    .portal-card-primary {
+        border-color: #f0cf78;
+        background: linear-gradient(135deg, #fffdf5, #fff);
+        box-shadow: 0 7px 18px rgba(157, 107, 0, .1);
+    }
+    .portal-card-primary .portal-card-arrow { color: #946500; background: #fff3c7; }
     .portal-tracker-controls { grid-template-columns: 1fr; }
     .portal-tracker-controls button { padding-block: 11px; }
     .track-content { width:100%; max-height:calc(100dvh - 24px); padding:20px 16px; border-radius:18px; scrollbar-width:thin; }
