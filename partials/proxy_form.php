@@ -828,7 +828,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                         <input type="text" id="placeOfBirth" name="placeOfBirth" class="form-control" value="<?php echo $old('placeOfBirth'); ?>" placeholder="City / Municipality, Province" required>
                     </div>
                     <div class="form-group">
-                        <label for="mothersMaidenName">Mother's Maiden Name <span id="mothersMaidenRequired" class="required-marker">*</span></label>
+                        <label for="mothersMaidenName">Mother's Maiden Name <span id="mothersMaidenRequired" class="required-marker" style="color:#b91c1c;">*</span></label>
                         <input type="text" id="mothersMaidenName" name="mothersMaidenName" class="form-control" value="<?php echo $old('mothersMaidenName'); ?>" placeholder="Full maiden name" autocomplete="off" required>
                     </div>
                 </div>
