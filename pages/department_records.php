@@ -803,7 +803,7 @@ function getStatusBadge($status) {
                     </div>
                     <section class="release-schedule" id="releaseScheduleSection" aria-labelledby="releaseScheduleTitle" hidden>
                         <h3 id="releaseScheduleTitle"><i class="fas fa-calendar-days" aria-hidden="true"></i> Release schedule</h3>
-                        <p>Set an expected date after verification. The applicant will see it in Track Application. This does not mark the item as released.</p>
+                        <p>Set an expected date after verification and official Senior Citizen ID assignment. The applicant will see it in Track Application. This does not mark the item as released.</p>
                         <p><strong>Current expected date:</strong> <span id="releaseScheduleCurrent">No date set yet</span></p>
                         <form id="releaseScheduleForm" novalidate>
                             <label for="expectedReleaseDate">Expected release date</label>
@@ -1034,6 +1034,11 @@ function getStatusBadge($status) {
         error.hidden = true;
         error.textContent = '';
         status.textContent = '';
+        if (!remove && section.dataset.canSchedule !== 'true') {
+            error.textContent = 'Verify the application and assign its official Senior Citizen ID before scheduling a release date.';
+            error.hidden = false;
+            return;
+        }
         if (!remove && (!dateInput.value || dateInput.value < dateInput.min)) {
             error.textContent = 'Choose today or a future date for the expected release.';
             error.hidden = false;
@@ -1068,7 +1073,7 @@ function getStatusBadge($status) {
             error.hidden = false;
             if (!remove) dateInput.focus();
         } finally {
-            saveButton.disabled = false;
+            saveButton.disabled = section.dataset.canSchedule !== 'true';
             removeButton.disabled = false;
             saveButton.textContent = 'Save expected date';
         }
@@ -1112,7 +1117,12 @@ function getStatusBadge($status) {
     /* ─── Open modal and populate ───────────────────────────── */
     function openApplicationModal(appId) {
         document.getElementById('btnOfficialForm').disabled = true;
-        document.getElementById('releaseScheduleSection').hidden = true;
+        const releaseScheduleSection = document.getElementById('releaseScheduleSection');
+        releaseScheduleSection.hidden = true;
+        releaseScheduleSection.dataset.canSchedule = 'false';
+        document.getElementById('expectedReleaseDate').disabled = true;
+        document.getElementById('saveReleaseDate').disabled = true;
+        document.getElementById('releaseDateHelp').textContent = 'Verification and an official Senior Citizen ID are required before scheduling.';
         document.getElementById('releaseDateStatus').textContent = '';
         document.getElementById('releaseDateError').hidden = true;
         // Reset placeholders
@@ -1146,9 +1156,19 @@ function getStatusBadge($status) {
                 const currentState = app.workflow_state || app.status || 'Received';
                 const scheduleSection = document.getElementById('releaseScheduleSection');
                 if (['Verified', 'Approved'].includes(currentState) && !Number(app.is_archived)) {
+                    const hasOfficialId = String(app.senior_id_no || '').trim() !== '';
                     scheduleSection.hidden = false;
                     scheduleSection.dataset.applicationId = app.id_number;
-                    document.getElementById('expectedReleaseDate').value = app.expected_release_date || '';
+                    scheduleSection.dataset.canSchedule = hasOfficialId ? 'true' : 'false';
+                    const releaseDateInput = document.getElementById('expectedReleaseDate');
+                    const releaseDateHelp = document.getElementById('releaseDateHelp');
+                    const saveReleaseDate = document.getElementById('saveReleaseDate');
+                    releaseDateInput.value = app.expected_release_date || '';
+                    releaseDateInput.disabled = !hasOfficialId;
+                    saveReleaseDate.disabled = !hasOfficialId;
+                    releaseDateHelp.textContent = hasOfficialId
+                        ? 'Choose today or a later date. You can change it if the schedule changes.'
+                        : 'Scheduling is locked until an official Senior Citizen ID is assigned.';
                     document.getElementById('releaseScheduleCurrent').textContent = app.expected_release_date
                         ? new Date(app.expected_release_date + 'T00:00:00').toLocaleDateString('en-PH', { year:'numeric', month:'long', day:'numeric' })
                         : 'No date set yet';

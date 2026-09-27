@@ -34,7 +34,7 @@ if (!$clear) {
 
 try {
     $conn->beginTransaction();
-    $stmt = $conn->prepare('SELECT full_name, workflow_state, is_archived, expected_release_date FROM applications WHERE id_number = ? FOR UPDATE');
+    $stmt = $conn->prepare('SELECT full_name, workflow_state, is_archived, expected_release_date, senior_id_no FROM applications WHERE id_number = ? FOR UPDATE');
     $stmt->execute([$appId]);
     $app = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$app) {
@@ -47,6 +47,12 @@ try {
         $conn->rollBack();
         http_response_code(409);
         echo json_encode(['success' => false, 'message' => 'Only active, verified applications can be scheduled. Refresh the record and try again.']);
+        exit;
+    }
+    if (!$clear && trim((string)($app['senior_id_no'] ?? '')) === '') {
+        $conn->rollBack();
+        http_response_code(409);
+        echo json_encode(['success' => false, 'message' => 'Assign the official Senior Citizen ID before scheduling an expected release date.']);
         exit;
     }
     $newDate = $clear ? null : $dateText;
