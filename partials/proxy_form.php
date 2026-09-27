@@ -433,8 +433,18 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
 
     .form-row-names {
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr 0.5fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(110px, 0.5fr);
         gap: 16px;
+    }
+
+    .form-row-names > .form-group,
+    .proxy-form .form-row > .form-group {
+        min-width: 0;
+    }
+
+    .form-row-names label,
+    .proxy-form .form-row label {
+        overflow-wrap: anywhere;
     }
 
     .form-subheading {
@@ -582,6 +592,12 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
     .public-selected-benefit strong { display:block; color:#172033; }
     .public-selected-benefit span { color:#64748b; font-size:.8rem; }
     .public-selected-benefit button { margin-left:auto; padding:8px 11px; border:1px solid #93c5fd; border-radius:8px; background:#fff; color:#1d4ed8; font-weight:700; cursor:pointer; }
+    @media (max-width: 900px) {
+        .form-row-names,
+        .proxy-form .form-row {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
     @media (max-width: 600px) {
         .public-benefit-modal { align-items:flex-end; padding:0; }
         .public-benefit-dialog { width:100%; height:min(88dvh,820px); border-width:1px 0 0; border-radius:18px 18px 0 0; padding-bottom:env(safe-area-inset-bottom); }
@@ -598,7 +614,8 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
         .benefit-choice-arrow { grid-column:3; grid-row:1 / span 3; position:static; align-self:center; transform:none; }
         .benefit-choice-check { top:10px; right:10px; }
         .benefit-access-grid { grid-template-columns: 1fr; }
-        .form-row-names {
+        .form-row-names,
+        .proxy-form .form-row {
             grid-template-columns: 1fr;
         }
         .proxy-form :is(input, select, textarea, button, .btn) { min-height: 48px; font-size: 16px; }
