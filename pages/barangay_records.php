@@ -23,9 +23,11 @@ $recordsPerPage = 25;
 $baseQuery    = "FROM applications WHERE barangay = :barangay AND (is_archived = 0 OR is_archived IS NULL) AND (workflow_state IN ('Verified', 'Approved', 'Released') OR status IN ('verified', 'approved'))";
 $params       = [':barangay' => $_SESSION['barangay']];
 if ($search !== '') {
-    $baseQuery .= ' AND (full_name LIKE :search_name OR id_number LIKE :search_id)';
+    $baseQuery .= ' AND (full_name LIKE :search_name OR id_number LIKE :search_id OR senior_id_no LIKE :search_senior_id OR EXISTS (SELECT 1 FROM applications senior_profile WHERE senior_profile.id_number = applications.parent_senior_id AND senior_profile.senior_id_no LIKE :search_parent_senior_id))';
     $params[':search_name'] = '%' . $search . '%';
     $params[':search_id'] = '%' . $search . '%';
+    $params[':search_senior_id'] = '%' . $search . '%';
+    $params[':search_parent_senior_id'] = '%' . $search . '%';
 }
 if ($typeFilter !== 'all' && array_key_exists($typeFilter, getApplicationTypeOptions())) {
     $baseQuery .= ' AND application_type = :type';
@@ -45,7 +47,7 @@ $recordPage = fetchApplicationRecordPage(
     $conn,
     $baseQuery,
     $params,
-    "id_number as id, full_name, birth_date, application_type, requested_benefit, id_purpose, date_submitted, CASE WHEN COALESCE(workflow_state, status) IN ('Approved','Released') THEN 'Verified' ELSE COALESCE(workflow_state, status) END as status",
+    "id_number as id, full_name, birth_date, application_type, requested_benefit, id_purpose, date_submitted, COALESCE(NULLIF(senior_id_no, ''), (SELECT NULLIF(TRIM(senior_profile.senior_id_no), '') FROM applications senior_profile WHERE senior_profile.id_number = applications.parent_senior_id LIMIT 1)) as official_senior_id, CASE WHEN COALESCE(workflow_state, status) IN ('Approved','Released') THEN 'Verified' ELSE COALESCE(workflow_state, status) END as status",
     $recordsPage,
     $recordsPerPage
 );
@@ -297,6 +299,9 @@ function getStatusClass($status) {
         /* Name cell */
         .name-cell .full-name { font-weight: 700; color: var(--primary); }
         .name-cell .app-id    { font-size: 0.75rem; color: var(--gray); margin-top: 2px; }
+        .person-senior-id { display:block; margin-top:4px; color:#1d4ed8; font-size:.73rem; font-weight:800; overflow-wrap:anywhere; }
+        .person-senior-id.is-pending { color:#64748b; font-weight:650; }
+        .person-birth-date { display:block; margin-top:3px; color:#64748b; font-size:.73rem; }
 
         /* Status badge */
         .badge {
@@ -720,12 +725,18 @@ function getStatusClass($status) {
                                 $typeLabel = applicationRecordTypeLabel($application['application_type'], $application['id_purpose'] ?? null);
                                 if (!in_array($typeLabel, $typeLabels, true)) $typeLabels[] = $typeLabel;
                             }
+                            $officialSeniorId = '';
+                            foreach ($personApplications as $application) {
+                                $candidateSeniorId = trim((string)($application['official_senior_id'] ?? ''));
+                                if ($candidateSeniorId !== '') { $officialSeniorId = $candidateSeniorId; break; }
+                            }
                             $detailsId = 'person-applications-' . $person['key'];
                         ?>
                         <tr class="person-row">
                             <td>
                                 <div class="name-cell">
                                     <div class="full-name"><?php echo htmlspecialchars($person['full_name']); ?></div>
+                                    <span class="person-senior-id<?php echo $officialSeniorId === '' ? ' is-pending' : ''; ?>">ID Number: <?php echo $officialSeniorId !== '' ? htmlspecialchars($officialSeniorId) : 'Not yet assigned'; ?></span>
                                     <span class="person-birth-date">Born <?php echo date('M d, Y', strtotime($person['birth_date'])); ?></span>
                                 </div>
                             </td>

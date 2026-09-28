@@ -250,10 +250,11 @@ try {
         /* Settings Grid */
         .settings-grid {
             display: grid;
-            grid-template-columns: minmax(0, 1fr);
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 24px;
             margin-bottom: 24px;
-            max-width: 780px;
+            width: 100%;
+            align-items: start;
         }
 
         .card {
@@ -281,6 +282,15 @@ try {
         .backup-summary strong { display:block; margin-bottom:4px; color:#172033; }
         .backup-summary p { margin:0; font-size:.84rem; line-height:1.55; }
         .backup-warning { margin-top:12px; color:#92400e; font-size:.78rem; font-weight:650; }
+        .logo-editor { display:grid; grid-template-columns:112px minmax(0,1fr); gap:20px; align-items:start; }
+        .logo-preview { text-align:center; }
+        .logo-preview span { display:block; margin-bottom:8px; color:var(--gray); font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+        .logo-preview img { display:block; width:96px; height:96px; margin:auto; object-fit:contain; border:1px solid #dbe4ef; border-radius:14px; background:#fff; box-shadow:0 5px 14px rgba(15,23,42,.08); }
+        .logo-upload-panel { min-width:0; }
+        .logo-upload-panel label { display:block; margin-bottom:7px; color:var(--primary); font-size:.88rem; font-weight:750; }
+        .logo-upload-panel small { display:block; margin-top:8px; color:var(--gray); font-size:.78rem; line-height:1.5; }
+        .logo-upload-panel input[type="file"] { width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:9px; background:#f8fafc; color:var(--primary); }
+        .logo-upload-panel input[type="file"]::file-selector-button { margin-right:10px; padding:8px 12px; border:0; border-radius:7px; background:#1e3a5f; color:#fff; font:inherit; font-weight:700; cursor:pointer; }
 
         .form-group {
             margin-bottom: 18px;
@@ -381,6 +391,10 @@ try {
         }
 
         @media (max-width: 768px) {
+            .settings-grid { grid-template-columns:minmax(0,1fr); }
+            .logo-editor { grid-template-columns:minmax(0,1fr); }
+            .logo-preview { text-align:left; }
+            .logo-preview img { margin:0; }
             .header {
                 flex-direction: column;
                 align-items: flex-start;
@@ -456,13 +470,13 @@ try {
         <!-- Settings Grid -->
         <div class="settings-grid">
             <div class="card">
-                <h3><i class="fas fa-image"></i> System and Report Logo</h3>
+                <h3><i class="fas fa-image"></i> Change System Logo</h3>
                 <form id="systemLogoForm" action="" method="POST" enctype="multipart/form-data">
-                    <div class="form-group" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-                        <img src="<?php echo htmlspecialchars(systemLogoUrl($conn)); ?>?v=<?php echo urlencode(systemLogoFilename($conn)); ?>" alt="Current system logo" style="width:76px;height:76px;object-fit:contain;border:1px solid #dbe4ef;border-radius:12px;background:#fff;">
-                        <div style="flex:1;min-width:220px;"><label for="systemLogo">Current System Logo</label><input type="file" id="systemLogo" name="systemLogo" accept="image/png,image/jpeg,.png,.jpg,.jpeg" required><small>PNG or JPEG, up to 5 MB. The logo appears throughout the system and on new PDF and Excel reports.</small></div>
+                    <div class="logo-editor">
+                        <div class="logo-preview"><span>Current Logo</span><img id="systemLogoPreview" src="<?php echo htmlspecialchars(systemLogoUrl($conn)); ?>?v=<?php echo urlencode(systemLogoFilename($conn)); ?>" alt="Current system logo"></div>
+                        <div class="logo-upload-panel"><label for="systemLogo">Choose a new logo</label><input type="file" id="systemLogo" name="systemLogo" accept="image/png,image/jpeg,.png,.jpg,.jpeg" required><small>PNG or JPEG, up to 5 MB. Your selected image will be previewed before saving and will appear throughout the system and on future PDF and Excel reports.</small></div>
                     </div>
-                    <div class="actions"><button type="submit" name="updateSystemLogo" class="btn btn-success btn-small"><i class="fas fa-upload"></i> Upload New Logo</button></div>
+                    <div class="actions"><button type="submit" name="updateSystemLogo" class="btn btn-success"><i class="fas fa-floppy-disk"></i> Save Changes</button></div>
                 </form>
             </div>
             <?php if (in_array($_SESSION['role'] ?? '', ['department_admin', 'super_admin'], true)): ?>
@@ -489,6 +503,16 @@ try {
 <script src="../assets/js/sidebar-toggle.js?v=3"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        const logoInput = document.getElementById('systemLogo');
+        const logoPreview = document.getElementById('systemLogoPreview');
+        let selectedLogoUrl = '';
+        logoInput?.addEventListener('change', function() {
+            const file = this.files?.[0];
+            if (!file || !logoPreview) return;
+            if (selectedLogoUrl) URL.revokeObjectURL(selectedLogoUrl);
+            selectedLogoUrl = URL.createObjectURL(file);
+            logoPreview.src = selectedLogoUrl;
+        });
         // Dynamic greeting message update
         const welcomeMessage = document.querySelector('.welcome-message');
         if (welcomeMessage) {

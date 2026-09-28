@@ -179,6 +179,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $applicationId = trim((string)($_POST['application_id'] ?? ''));
             $app = fetchScopedApplication($conn, $applicationId, $isDepartment, $barangay);
             if (!$app) operationsRedirect('Application not found.', false);
+            if (($app['home_visit_status'] ?? '') === 'Completed') {
+                operationsRedirect('This SHDO evaluation has already been submitted and is now read-only.', false);
+            }
             $status = (string)($_POST['visit_status'] ?? '');
             $allowed = ['Scheduled', 'In Progress', 'Completed', 'Rejected'];
             if (!in_array($status, $allowed, true)) operationsRedirect('Invalid visit status.', false);
@@ -533,7 +536,8 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
                                 <?php $visitStatus = ($visit['home_visit_status'] ?? '') === 'Cancelled' ? 'Rejected' : ($visit['home_visit_status'] ?: 'Waiting for Home Visit'); ?>
                                 <td><span class="badge visit-status-badge <?= strtolower(str_replace(' ', '-', $visitStatus)) ?>"><?= htmlspecialchars($visitStatus) ?></span></td>
                                 <?php $hasEvaluation = in_array($visitStatus, ['In Progress', 'Completed'], true) || !empty($visit['visit_summary']) || !empty($visit['living_arrangement']); ?>
-                                <td><button class="btn btn-primary visit-editor-button" type="button" onclick='openVisit(<?= json_encode($visit, JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'><?= $isDepartment ? ($hasEvaluation ? 'View Evaluation' : 'Assign / Schedule') : ($hasEvaluation ? 'View / Update Evaluation' : 'Update / Evaluate') ?></button> <a class="btn btn-muted" href="../api/export_application_pdf.php?id=<?= rawurlencode($visit['id_number']) ?>&amp;form=f8" target="_blank" rel="noopener"><i class="fas fa-download"></i> Download F8</a></td>
+                                <?php $evaluationSubmitted = $visitStatus === 'Completed'; ?>
+                                <td><button class="btn btn-primary visit-editor-button" type="button" onclick='openVisit(<?= json_encode($visit, JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'><?= $isDepartment ? ($hasEvaluation ? 'View Evaluation' : 'Assign / Schedule') : ($evaluationSubmitted ? 'View Evaluation' : ($hasEvaluation ? 'Update Evaluation' : 'Evaluate')) ?></button> <a class="btn btn-muted" href="../api/export_application_pdf.php?id=<?= rawurlencode($visit['id_number']) ?>&amp;form=f8" target="_blank" rel="noopener"><i class="fas fa-download"></i> Download F8</a></td>
                             </tr>
                         <?php endforeach; ?>
                         </tbody>
@@ -613,6 +617,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
 <script src="../assets/js/sidebar-toggle.js?v=3"></script>
 <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 <script>
+    const isDepartmentUser = <?= $isDepartment ? 'true' : 'false' ?>;
     const visitFilterForm = document.querySelector('.visit-filters');
     const visitSearchInput = document.getElementById('visitSearch');
     let visitSearchTimer;
@@ -662,9 +667,26 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
         return value.slice(0, 10);
     }
 
+    function setEvaluationReadOnly(readOnly) {
+        const form = document.getElementById('visitStatusForm');
+        if (!form) return;
+        form.classList.toggle('evaluation-readonly', readOnly);
+        form.querySelectorAll('input:not([type="hidden"]), select, textarea').forEach(field => {
+            field.disabled = readOnly;
+        });
+        const saveButton = document.getElementById('saveEvaluation');
+        if (saveButton) saveButton.hidden = readOnly;
+        const closeButton = document.querySelector('.evaluation-modal-actions [data-close-evaluation]');
+        if (closeButton) closeButton.textContent = readOnly ? 'Close' : 'Cancel';
+    }
+
     function openVisit(visit) {
         const assignmentEditor = document.getElementById('visitEditor');
-        if (assignmentEditor) {
+        const visitStatus = visit.home_visit_status || 'Waiting for Home Visit';
+        const hasEvaluation = ['In Progress', 'Completed'].includes(visitStatus)
+            || Boolean(visit.visit_summary)
+            || Boolean(visit.living_arrangement);
+        if (assignmentEditor && !hasEvaluation) {
             document.getElementById('visitApplicationId').value = visit.id_number;
             document.getElementById('visitEditorName').textContent = visit.full_name + ' (' + visit.id_number + ')';
             if (document.getElementById('visitReason')) document.getElementById('visitReason').value = visit.home_visit_eligibility_reason || '';
@@ -680,6 +702,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
         const modal = document.getElementById('evaluationModal');
         const form = document.getElementById('visitStatusForm');
         if (!modal || !form) return;
+        setEvaluationReadOnly(false);
         form.reset();
         document.getElementById('statusApplicationId').value = visit.id_number;
         document.getElementById('evaluationSenior').textContent = visit.full_name || '—';
@@ -705,6 +728,9 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
         });
         setHealthConditionSelections(visit.health_condition || '');
         updateEvaluationDependencies();
+        const evaluationSubmitted = (visit.home_visit_status || '') === 'Completed';
+        const evaluationReadOnly = isDepartmentUser || evaluationSubmitted;
+        setEvaluationReadOnly(evaluationReadOnly);
         const message = document.getElementById('evaluationMessage');
         message.hidden = true;
         message.className = 'evaluation-message full';
@@ -712,7 +738,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
         modal.classList.add('open');
         modal.setAttribute('aria-hidden', 'false');
         document.body.classList.add('evaluation-open');
-        modal.querySelector('select[name="visit_status"]')?.focus();
+        (evaluationReadOnly ? modal.querySelector('[data-close-evaluation]') : modal.querySelector('select[name="visit_status"]'))?.focus();
     }
 
     const evaluationModal = document.getElementById('evaluationModal');
@@ -853,7 +879,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
                 }
                 const button = row.querySelector('.visit-editor-button');
                 if (button) {
-                    button.textContent = 'View / Update Evaluation';
+                    button.textContent = status === 'Completed' ? 'View Evaluation' : 'Update Evaluation';
                     const updatedVisit = {...(evaluationModal.currentVisit || {})};
                     const fieldMap = {
                         visit_status:'home_visit_status', living_arrangement:'living_arrangement', is_pensioner:'is_pensioner',
