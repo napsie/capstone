@@ -487,7 +487,7 @@ function getStatusBadge($status) {
         /* Footer */
         .page-footer { text-align:center; padding:24px; font-size:0.78rem; color:var(--gray); }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=21">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=22">
     <link rel="stylesheet" href="../assets/css/metric-cards.css?v=1">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
@@ -563,7 +563,7 @@ function getStatusBadge($status) {
             <div class="records-card-header">
                 <h2><i class="fas fa-folder-open"></i> All Verified Records – Pasig City</h2>
                 <div class="header-actions">
-                    <button type="button" class="btn btn-ghost report-action-btn" onclick="exportDepartmentRecords()">
+                    <button type="button" class="btn report-action-btn" onclick="exportDepartmentRecords()">
                         <i class="fas fa-file-excel"></i> Generate Report
                     </button>
                 </div>
@@ -919,7 +919,7 @@ function getStatusBadge($status) {
                 </div>
                 <div class="export-actions">
                     <button type="button" class="btn btn-ghost" id="cancelExportBtn">Cancel</button>
-                    <button type="submit" class="btn btn-primary report-action-btn"><i class="fas fa-download"></i> Generate Report</button>
+                    <button type="submit" class="btn report-action-btn"><i class="fas fa-file-excel"></i> Generate Report</button>
                 </div>
             </div>
         </form>

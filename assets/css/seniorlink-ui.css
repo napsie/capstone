@@ -1871,14 +1871,20 @@ input:disabled, select:disabled, textarea:disabled {
     align-items: center;
     justify-content: center;
     gap: 9px;
+    width: auto;
+    min-width: 174px;
     min-height: 44px;
     padding: 10px 17px !important;
     border: 1px solid rgba(255,255,255,.28) !important;
     border-radius: 11px !important;
     background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
     color: #fff !important;
+    font-family: inherit;
+    font-size: .84rem !important;
     font-weight: 800 !important;
     line-height: 1.2;
+    letter-spacing: .01em;
+    white-space: nowrap;
     box-shadow: 0 7px 16px rgba(37,99,235,.25) !important;
     cursor: pointer;
     transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
@@ -1897,7 +1903,8 @@ input:disabled, select:disabled, textarea:disabled {
     filter: brightness(1.06);
     box-shadow: 0 10px 22px rgba(37,99,235,.32) !important;
 }
+.report-action-btn:active { transform: translateY(0); }
 .report-action-btn:focus-visible { outline: 3px solid #93c5fd; outline-offset: 3px; }
 @media (max-width: 600px) {
-    .report-action-btn { width: 100%; min-height: 48px; }
+    .report-action-btn { width: 100%; min-width: 0; min-height: 48px; }
 }

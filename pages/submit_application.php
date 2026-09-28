@@ -364,7 +364,7 @@ unset($_SESSION['application_submission_notice']);
         /* Footer */
         .page-footer { text-align:center; padding:24px; font-size:0.78rem; color:var(--gray); }
     </style>
-    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=21">
+    <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=22">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
     <script src="../assets/js/table-pagination.js?v=2" defer></script>
@@ -411,7 +411,7 @@ unset($_SESSION['application_submission_notice']);
         <div class="queue-card">
             <div class="queue-card-header">
                 <h2><i class="fas fa-clipboard-list"></i> Applications Queue</h2>
-                <button type="button" class="btn btn-small queue-export-btn report-action-btn" onclick="openExportModal()">
+                <button type="button" class="btn report-action-btn" onclick="openExportModal()">
                     <i class="fas fa-file-excel"></i> Generate Report
                 </button>
             </div>
@@ -682,7 +682,7 @@ unset($_SESSION['application_submission_notice']);
                 </div>
                 <div class="export-actions">
                     <button type="button" class="btn btn-ghost" id="cancelExportBtn">Cancel</button>
-                    <button type="submit" class="btn btn-primary report-action-btn"><i class="fas fa-download"></i> Generate Report</button>
+                    <button type="submit" class="btn report-action-btn"><i class="fas fa-file-excel"></i> Generate Report</button>
                 </div>
             </div>
         </form>
