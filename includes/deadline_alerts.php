@@ -1,8 +1,6 @@
 <?php
 require_once __DIR__ . '/filing_deadline.php';
 
-const REVIEW_WARNING_DAYS = 2;
-const REVIEW_OVERDUE_DAYS = 3;
 const CORRECTION_WARNING_DAYS = 5;
 const CORRECTION_EXPIRY_DAYS = 7;
 const BENEFIT_RELEASE_WARNING_DAYS = 3;
@@ -38,15 +36,6 @@ function applicationDeadlineAlerts(array $application, ?DateTimeImmutable $now =
                 'detail' => "Filed {$filingDays} of 30 working days after the date of passing.",
             ];
         }
-    }
-
-    if ($state === 'For Review' && $ageDays !== null && $ageDays >= REVIEW_WARNING_DAYS) {
-        $overdue = $ageDays >= REVIEW_OVERDUE_DAYS;
-        $alerts[] = [
-            'type' => 'review', 'level' => $overdue ? 'danger' : 'warning',
-            'label' => $overdue ? "Review overdue by " . ($ageDays - REVIEW_OVERDUE_DAYS + 1) . ' day(s)' : 'Review due soon',
-            'detail' => "Waiting for department review for {$ageDays} day(s).",
-        ];
     }
 
     $visitStatus = trim((string)($application['home_visit_status'] ?? ''));
