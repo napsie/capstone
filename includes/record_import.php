@@ -59,6 +59,38 @@ function isValidImportContactNumber(?string $value): bool {
     return preg_match('/^[0-9]{7,15}$/', $digits) === 1;
 }
 
+function validateImportFieldLengths(array $record): array {
+    $limits = [
+        'requested_benefit' => 150, 'senior_id_no' => 50, 'full_name' => 255,
+        'first_name' => 255, 'middle_name' => 255, 'last_name' => 255, 'suffix' => 255,
+        'gender' => 20, 'civil_status' => 50, 'place_of_birth' => 255,
+        'contact_number' => 20, 'email_address' => 255, 'house_no' => 50,
+        'street' => 255, 'barangay' => 100, 'city' => 100, 'province' => 100,
+        'zip_code' => 10, 'landmark' => 255, 'mothers_maiden_name' => 255,
+        'health_status' => 100, 'health_condition' => 255,
+        'emergency_contact_name' => 255, 'emergency_contact' => 20,
+        'emergency_contact_relationship' => 100, 'id_purpose' => 20,
+    ];
+    $errors = [];
+    foreach ($limits as $field => $limit) {
+        if (mb_strlen(trim((string)($record[$field] ?? ''))) > $limit) {
+            $errors[] = str_replace('_', ' ', ucfirst($field)) . " must not exceed {$limit} characters";
+        }
+    }
+    return $errors;
+}
+
+function normalizeImportIdPurpose(?string $value): string {
+    $value = strtolower(normalizeWhitespace((string)$value));
+    if ($value === '') return '';
+    if (in_array($value, ['new', 'change', 'transfer', 'lost'], true)) return $value;
+    if (str_contains($value, 'transfer')) return 'transfer';
+    if (str_contains($value, 'lost') || str_contains($value, 'damage') || str_contains($value, 'replace')) return 'lost';
+    if (str_contains($value, 'renew') || str_contains($value, 'update') || str_contains($value, 'change')) return 'change';
+    if (str_contains($value, 'new') || str_contains($value, 'first')) return 'new';
+    return $value;
+}
+
 function parseCsvRecords(string $path): array {
     $handle = fopen($path, 'rb');
     if (!$handle) throw new RuntimeException('Unable to read the CSV file.');
@@ -213,24 +245,57 @@ function generateImportToken(PDO $conn): string {
     return $token;
 }
 
+function encodeImportJson(array $value): string {
+    try {
+        return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+    } catch (JsonException $error) {
+        throw new RuntimeException('One or more spreadsheet values contain unsupported text encoding.', 0, $error);
+    }
+}
+
 function createImportJob(PDO $conn, string $filename, string $checksum, array $rows, array $actor): string {
-    $token = sprintf('%08x-%04x-%04x-%04x-%012x', random_int(0, 0xffffffff), random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffffffffffff));
+    $bytes = random_bytes(16);
+    $bytes[6] = chr((ord($bytes[6]) & 0x0f) | 0x40);
+    $bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80);
+    $hex = bin2hex($bytes);
+    $token = substr($hex, 0, 8) . '-' . substr($hex, 8, 4) . '-' . substr($hex, 12, 4)
+        . '-' . substr($hex, 16, 4) . '-' . substr($hex, 20, 12);
     $valid = count(array_filter($rows, static fn($row) => empty($row['errors'])));
     $duplicates = count(array_filter($rows, static fn($row) => count(array_filter($row['errors'] ?? [], static fn($error) => stripos($error, 'duplicate') !== false || stripos($error, 'exists') !== false)) > 0));
-    $stmt = $conn->prepare('INSERT INTO import_jobs (job_token,original_filename,file_checksum,status,total_rows,valid_rows,error_rows,duplicate_rows,created_by,created_by_username) VALUES (?,?,?,\'ready\',?,?,?,?,?,?)');
-    $stmt->execute([$token, $filename, $checksum, count($rows), $valid, count($rows) - $valid, $duplicates, $actor['id'] ?? null, $actor['username'] ?? 'Department Admin']);
-    $jobId = (int)$conn->lastInsertId();
-    $rowStmt = $conn->prepare('INSERT INTO import_job_rows (import_job_id,`row_number`,normalized_payload,validation_errors,duplicate_matches,status) VALUES (?,?,?,?,?,?)');
-    foreach ($rows as $row) {
-        $errors = $row['errors'] ?? [];
-        $duplicateErrors = array_values(array_filter($errors, static fn($error) => stripos($error, 'duplicate') !== false || stripos($error, 'exists') !== false));
-        $rowStmt->execute([$jobId, $row['row'], json_encode($row, JSON_UNESCAPED_UNICODE), $errors ? json_encode($errors) : null, $duplicateErrors ? json_encode($duplicateErrors) : null, $errors ? 'invalid' : 'pending']);
+    $ownsTransaction = !$conn->inTransaction();
+    $savepoint = 'record_import_job';
+    if ($ownsTransaction) $conn->beginTransaction();
+    else $conn->exec("SAVEPOINT {$savepoint}");
+    try {
+        $stmt = $conn->prepare('INSERT INTO import_jobs (job_token,original_filename,file_checksum,status,total_rows,valid_rows,error_rows,duplicate_rows,created_by,created_by_username) VALUES (?,?,?,\'ready\',?,?,?,?,?,?)');
+        $stmt->execute([$token, mb_substr(basename($filename), 0, 255), $checksum, count($rows), $valid, count($rows) - $valid, $duplicates, $actor['id'] ?? null, $actor['username'] ?? 'Department Admin']);
+        $jobId = (int)$conn->lastInsertId();
+        $rowStmt = $conn->prepare('INSERT INTO import_job_rows (import_job_id,`row_number`,normalized_payload,validation_errors,duplicate_matches,status) VALUES (?,?,?,?,?,?)');
+        foreach ($rows as $row) {
+            $errors = $row['errors'] ?? [];
+            $duplicateErrors = array_values(array_filter($errors, static fn($error) => stripos($error, 'duplicate') !== false || stripos($error, 'exists') !== false));
+            $rowStmt->execute([$jobId, $row['row'], encodeImportJson($row), $errors ? encodeImportJson($errors) : null, $duplicateErrors ? encodeImportJson($duplicateErrors) : null, $errors ? 'invalid' : 'pending']);
+        }
+        if ($ownsTransaction) $conn->commit();
+        else $conn->exec("RELEASE SAVEPOINT {$savepoint}");
+    } catch (Throwable $error) {
+        if ($ownsTransaction && $conn->inTransaction()) $conn->rollBack();
+        elseif ($conn->inTransaction()) $conn->exec("ROLLBACK TO SAVEPOINT {$savepoint}");
+        throw $error;
     }
     return $token;
 }
 
-function loadImportJobRows(PDO $conn, string $token): array {
-    $stmt = $conn->prepare('SELECT r.normalized_payload FROM import_job_rows r INNER JOIN import_jobs j ON j.id=r.import_job_id WHERE j.job_token=? ORDER BY r.`row_number`');
-    $stmt->execute([$token]);
+function loadImportJobRows(PDO $conn, string $token, ?int $createdBy = null, string $createdByUsername = ''): array {
+    $sql = 'SELECT r.normalized_payload FROM import_job_rows r INNER JOIN import_jobs j ON j.id=r.import_job_id WHERE j.job_token=?';
+    $parameters = [$token];
+    if ($createdBy !== null || $createdByUsername !== '') {
+        $sql .= ' AND (j.created_by=? OR j.created_by_username=?)';
+        $parameters[] = $createdBy ?? 0;
+        $parameters[] = $createdByUsername;
+    }
+    $sql .= ' ORDER BY r.`row_number`';
+    $stmt = $conn->prepare($sql);
+    $stmt->execute($parameters);
     return array_values(array_filter(array_map(static fn($json) => json_decode($json, true), $stmt->fetchAll(PDO::FETCH_COLUMN))));
 }

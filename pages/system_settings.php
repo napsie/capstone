@@ -481,18 +481,18 @@ try {
             </div>
             <?php if (in_array($_SESSION['role'] ?? '', ['department_admin', 'super_admin'], true)): ?>
             <div class="card">
-                <h3><i class="fas fa-database"></i> Applicant Records Backup</h3>
+                <h3><i class="fas fa-database"></i> Full Applicant Backup</h3>
                 <div class="backup-summary">
                     <i class="fas fa-file-shield" aria-hidden="true"></i>
                     <div>
-                        <strong>Download a portable records backup</strong>
-                        <p>Creates a JSON backup of all applicant fields, workflow history, and uploaded-document metadata. The uploaded image and PDF contents remain in secure storage and are not duplicated in this file.</p>
+                        <strong>Download a portable ZIP backup</strong>
+                        <p>Creates one ZIP containing applicant fields, workflow history, document metadata, uploaded images and PDFs, a manifest, and SHA-256 integrity checksums.</p>
                     </div>
                 </div>
                 <p class="backup-warning"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> This file contains sensitive personal information. Store it securely and limit access to authorized personnel.</p>
                 <form id="applicantBackupForm" method="POST" action="../api/backup_applicant_records.php" style="margin-top:16px;">
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
-                    <div class="actions"><button type="submit" class="btn btn-success btn-small"><i class="fas fa-download"></i> Download Applicant Backup</button></div>
+                    <div class="actions"><button type="submit" class="btn btn-success btn-small"><i class="fas fa-file-zipper"></i> Download Full ZIP Backup</button></div>
                 </form>
             </div>
             <?php endif; ?>

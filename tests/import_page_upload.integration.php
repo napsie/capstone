@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/db_connect.php';
+require_once __DIR__ . '/../includes/record_import.php';
 
 $workbook = 'D:/Downloads/Group_3_Pasig_Senior_Citizen_Data_With_Numeric_ID_and_Benefits.xlsx';
 if (!is_file($workbook)) {
@@ -26,6 +27,19 @@ session_write_close();
 $originalDirectory = getcwd();
 try {
     $conn->beginTransaction();
+    // Keep this validation test repeatable even when the same fixture was
+    // previously imported into the developer database. The rollback restores
+    // every matching record after the page has been exercised.
+    $fixtureRows = importRowsToAssociative(parseXlsxRecords($workbook));
+    $fixtureIds = array_values(array_unique(array_filter(array_map(
+        static fn(array $row): string => normalizeSeniorId($row['senior_id_no'] ?? ''),
+        $fixtureRows
+    ))));
+    if ($fixtureIds) {
+        $placeholders = implode(',', array_fill(0, count($fixtureIds), '?'));
+        $removeFixtureRecords = $conn->prepare("DELETE FROM applications WHERE application_type='senior' AND senior_id_no IN ({$placeholders})");
+        $removeFixtureRecords->execute($fixtureIds);
+    }
     $_SERVER['REQUEST_METHOD'] = 'POST';
     $_SERVER['HTTP_HOST'] = 'localhost';
     $_POST = [];

@@ -12,18 +12,20 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'] ?? '', ['departm
 }
 
 $errors = []; $preview = []; $notice = '';
+$actorId = (int)($_SESSION['user_id'] ?? 0);
+$actorUsername = (string)($_SESSION['username'] ?? '');
 $importToken = trim((string)($_GET['resume'] ?? $_POST['import_token'] ?? $_SESSION['record_import_token'] ?? ''));
 if (isset($_GET['error_report']) && $importToken !== '') {
     header('Content-Type: text/csv; charset=UTF-8');
     header('Content-Disposition: attachment; filename="seniorlink_import_errors.csv"');
-    $report = $conn->prepare('SELECT r.`row_number`,r.normalized_payload,r.validation_errors FROM import_job_rows r INNER JOIN import_jobs j ON j.id=r.import_job_id WHERE j.job_token=? AND r.validation_errors IS NOT NULL ORDER BY r.`row_number`');
-    $report->execute([$importToken]);
+    $report = $conn->prepare('SELECT r.`row_number`,r.normalized_payload,r.validation_errors FROM import_job_rows r INNER JOIN import_jobs j ON j.id=r.import_job_id WHERE j.job_token=? AND (j.created_by=? OR j.created_by_username=?) AND r.validation_errors IS NOT NULL ORDER BY r.`row_number`');
+    $report->execute([$importToken, $actorId, $actorUsername]);
     $out = fopen('php://output', 'wb'); fputcsv($out, ['row','senior_id','name','errors']);
     foreach ($report as $item) { $payload=json_decode($item['normalized_payload'],true) ?: []; $rowErrors=json_decode($item['validation_errors'],true) ?: []; fputcsv($out, [$item['row_number'],$payload['senior_id_no']??'',$payload['full_name']??'',implode('; ',$rowErrors)]); }
     fclose($out); exit;
 }
 if ($importToken !== '' && $_SERVER['REQUEST_METHOD'] === 'GET') {
-    $preview = loadImportJobRows($conn, $importToken);
+    $preview = loadImportJobRows($conn, $importToken, $actorId, $actorUsername);
     if ($preview) $_SESSION['record_import_token'] = $importToken;
 }
 if (isset($_GET['template'])) {
@@ -38,18 +40,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     requireSameOriginMutation();
     if (isset($_POST['commit_import'])) {
         if ($importToken !== '') {
-            $jobState = $conn->prepare('SELECT status FROM import_jobs WHERE job_token=?');
-            $jobState->execute([$importToken]);
+            $jobState = $conn->prepare('SELECT status FROM import_jobs WHERE job_token=? AND (created_by=? OR created_by_username=?)');
+            $jobState->execute([$importToken, $actorId, $actorUsername]);
             if ($jobState->fetchColumn() === 'completed') $errors[] = 'This import job has already been completed.';
         }
         $preview = $_SESSION['record_import_preview'] ?? [];
-        if (!$preview && $importToken !== '') $preview = loadImportJobRows($conn, $importToken);
+        if (!$preview && $importToken !== '') $preview = loadImportJobRows($conn, $importToken, $actorId, $actorUsername);
         if (!$preview) $errors[] = 'The import preview expired. Upload the file again.';
         elseif ($errors) { /* Do not run an already completed job. */ }
         else {
             $inserted = 0; $skipped = 0;
             try {
                 $conn->beginTransaction();
+                if ($importToken !== '') {
+                    $jobLock = $conn->prepare('SELECT id,status FROM import_jobs WHERE job_token=? AND (created_by=? OR created_by_username=?) FOR UPDATE');
+                    $jobLock->execute([$importToken, $actorId, $actorUsername]);
+                    $lockedJob = $jobLock->fetch(PDO::FETCH_ASSOC);
+                    if (!$lockedJob) throw new RuntimeException('The import job is unavailable.');
+                    if ($lockedJob['status'] === 'completed') throw new RuntimeException('This import job has already been completed.');
+                    $importJobId = (int)$lockedJob['id'];
+                }
                 $insert = $conn->prepare("INSERT INTO applications (
                     id_number, full_name, application_type, requested_benefit,
                     lastName, firstName, middleName, suffix, birth_date, gender, civil_status, place_of_birth,
@@ -58,12 +68,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     id_purpose, date_submitted, status, workflow_state, senior_id_no, additional_notes
                 ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'approved','Verified',?,?)");
                 $history = $conn->prepare("INSERT INTO application_history (application_id, previous_state, new_state, changed_by, comments) VALUES (?, 'Historical Record', 'Verified', ?, 'Imported from a validated previous-record spreadsheet.')");
+                $rowUpdate = $conn->prepare("UPDATE import_job_rows SET status=?,application_id=?,processed_at=NOW() WHERE import_job_id=? AND `row_number`=?");
                 foreach ($preview as $row) {
                     if (!empty($row['errors'])) { $skipped++; continue; }
                     if ($row['application_type'] === 'senior') {
                         $duplicate = $conn->prepare("SELECT 1 FROM applications WHERE application_type = 'senior' AND senior_id_no = ? AND senior_id_no IS NOT NULL AND senior_id_no <> ? LIMIT 1");
                         $duplicate->execute([$row['senior_id_no'], '']);
-                        if ($duplicate->fetchColumn()) { $skipped++; continue; }
+                        if ($duplicate->fetchColumn()) {
+                            $skipped++;
+                            if ($importToken !== '') $rowUpdate->execute(['skipped', null, $importJobId, $row['row']]);
+                            continue;
+                        }
                     }
                     $trackingToken = generateImportToken($conn);
                     $insert->execute([
@@ -74,11 +89,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $row['street'] ?: null, $row['barangay'], $row['city'] ?: 'Pasig City', $row['province'] ?: 'Metro Manila',
                         $row['zip_code'] ?: null, $row['landmark'] ?: null, $row['mothers_maiden_name'] ?: null,
                         $row['health_status'] ?: null, $row['health_condition'] ?: null, $row['emergency_contact_name'] ?: null,
-                        $row['emergency_contact'], $row['emergency_contact_relationship'] ?: null, $row['id_purpose'] ?: null,
+                        $row['emergency_contact'], $row['emergency_contact_relationship'] ?: null,
+                        normalizeImportIdPurpose($row['id_purpose'] ?? '') ?: null,
                         $row['date_submitted'], $row['senior_id_no'] ?: null,
                         $row['additional_notes'] ?: 'Imported historical information-only record',
                     ]);
                     $history->execute([$trackingToken, $_SESSION['username'] ?? 'Department Admin']);
+                    if ($importToken !== '') $rowUpdate->execute(['imported', $trackingToken, $importJobId, $row['row']]);
                     $inserted++;
                 }
                 logAudit($conn, 'IMPORT_RECORDS', "Imported {$inserted} historical record(s); skipped {$skipped} row(s).");
@@ -116,6 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $completeAddress = buildImportAddress($record);
                     $birth = normalizeImportDate($record['birth_date'] ?? '');
                     $submitted = normalizeImportDate($record['date_submitted'] ?? '') ?: date('Y-m-d');
+                    $idPurpose = normalizeImportIdPurpose($record['id_purpose'] ?? '');
                     if (!in_array($type, $allowedTypes, true)) $rowErrors[] = 'Invalid application type';
                     if ($fullName === '') $rowErrors[] = 'Full name or first and last name is required';
                     if (!$birth || $birth > date('Y-m-d')) $rowErrors[] = 'Valid birth date is required';
@@ -132,6 +150,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         if ($existingId->fetchColumn()) $rowErrors[] = 'Senior ID already exists in the system';
                     }
                     if (($record['email_address'] ?? '') !== '' && !filter_var($record['email_address'], FILTER_VALIDATE_EMAIL)) $rowErrors[] = 'Invalid email';
+                    $rowErrors = array_merge($rowErrors, validateImportFieldLengths(array_merge($record, [
+                        'full_name' => $fullName,
+                        'senior_id_no' => $seniorId,
+                        'id_purpose' => $idPurpose,
+                    ])));
                     $preview[] = [
                         'row' => (int)$record['_row'], 'application_type' => $type,
                         'requested_benefit' => normalizeWhitespace($record['requested_benefit'] ?? ''),
@@ -151,7 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'emergency_contact_name' => normalizePersonName($record['emergency_contact_name'] ?? ''),
                         'emergency_contact' => normalizePhoneNumber($record['emergency_contact'] ?? ''),
                         'emergency_contact_relationship' => normalizeWhitespace($record['emergency_contact_relationship'] ?? ''),
-                        'id_purpose' => strtolower(normalizeWhitespace($record['id_purpose'] ?? '')), 'date_submitted' => $submitted,
+                        'id_purpose' => $idPurpose, 'date_submitted' => $submitted,
                         'additional_notes' => normalizeWhitespace($record['additional_notes'] ?? ''), 'errors' => $rowErrors,
                     ];
                 }
@@ -164,7 +187,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 $validCount = count(array_filter($preview, fn($row) => empty($row['errors'])));
 $historyStmt = $conn->prepare('SELECT job_token,original_filename,status,total_rows,valid_rows,error_rows,duplicate_rows,processed_rows,created_at FROM import_jobs WHERE created_by=? OR created_by_username=? ORDER BY created_at DESC LIMIT 10');
-$historyStmt->execute([$_SESSION['user_id'] ?? 0, $_SESSION['username'] ?? '']);
+$historyStmt->execute([$actorId, $actorUsername]);
 $importHistory = $historyStmt->fetchAll(PDO::FETCH_ASSOC);
 ob_start(static fn(string $html): string => str_replace(
     [
@@ -177,7 +200,7 @@ ob_start(static fn(string $html): string => str_replace(
         'Upload information-only records',
         'Select a CSV or Excel file based on the Senior Application form. Photos and document files are not required.',
         '<strong>Required:</strong> application_type, birth_date, barangay, a name (full_name or first_name and last_name), and an address (complete_address or address components). Senior ID, contact details, photos, and document files are optional.',
-        '<form method="post" class="actions"><input type="hidden" name="commit_import" value="1">',
+        '<form method="post" class="actions"><input type="hidden" name="commit_import" value="1"><input type="hidden" name="import_token" value="' . htmlspecialchars($importToken, ENT_QUOTES) . '">',
     ],
     $html
 ));

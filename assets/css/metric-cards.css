@@ -159,6 +159,24 @@
     white-space: nowrap;
 }
 
+/* Department Records: keep descriptive coverage text readable at narrower
+   desktop widths instead of replacing meaningful words with an ellipsis. */
+#departmentRecordsStats .stat-card {
+    gap: 14px;
+    padding-inline: 22px;
+}
+
+#departmentRecordsStats .stat-value--text,
+#departmentRecordsStats .stat-meta {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+}
+
+#departmentRecordsStats .stat-value--text {
+    font-size: clamp(1.05rem, 1.35vw, 1.35rem) !important;
+}
+
 :is(.stats-strip, .stats-container) :is(.stat-meta, .stat-info small) {
     order: 3;
     display: block;

@@ -30,6 +30,11 @@ expectImportValue(
 expectImportValue(buildImportAddress([]), '', 'missing address is not filled with defaults');
 expectImportValue(normalizeImportDate('02/29/2024'), '2024-02-29', 'valid leap-day date');
 expectImportValue(normalizeImportDate('02/30/2024'), null, 'impossible date rejected');
+expectImportValue(normalizeImportIdPurpose('New ID Application'), 'new', 'new ID purpose normalized');
+expectImportValue(normalizeImportIdPurpose('ID Renewal'), 'change', 'renewal purpose normalized');
+expectImportValue(normalizeImportIdPurpose('Replacement of Lost ID'), 'lost', 'lost replacement purpose normalized');
+expectImportValue(normalizeImportIdPurpose('Damaged ID Replacement'), 'lost', 'damaged replacement purpose normalized');
+expectImportValue(normalizeImportIdPurpose('Update of Personal Information'), 'change', 'information update purpose normalized');
 
 $temporaryWorkbook = tempnam(sys_get_temp_dir(), 'seniorlink-xlsx-');
 $zip = new ZipArchive();

@@ -19,6 +19,8 @@ $values = [
 ];
 
 try {
+    $originalSqlMode = (string)$conn->query('SELECT @@SESSION.sql_mode')->fetchColumn();
+    $conn->exec("SET SESSION sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,NO_ENGINE_SUBSTITUTION'");
     $conn->beginTransaction();
     $statement = $conn->prepare($sql);
     $statement->execute($values);
@@ -62,7 +64,7 @@ try {
                 normalizePersonName($record['mothers_maiden_name'] ?? '') ?: null, normalizeWhitespace($record['health_status'] ?? '') ?: null,
                 normalizeWhitespace($record['health_condition'] ?? '') ?: null, normalizePersonName($record['emergency_contact_name'] ?? '') ?: null,
                 normalizePhoneNumber($record['emergency_contact'] ?? ''), normalizeWhitespace($record['emergency_contact_relationship'] ?? '') ?: null,
-                strtolower(normalizeWhitespace($record['id_purpose'] ?? '')) ?: null, date('Y-m-d'),
+                normalizeImportIdPurpose($record['id_purpose'] ?? '') ?: null, date('Y-m-d'),
                 $numericSeniorId !== '' ? 'TEST-' . $numericSeniorId : null, 'Information-only workbook import test',
             ]);
             $imported++;
@@ -70,9 +72,11 @@ try {
         if ($imported !== 50) throw new RuntimeException("Expected 50 workbook records, inserted {$imported}.");
     }
     $conn->rollBack();
+    $conn->exec('SET SESSION sql_mode=' . $conn->quote($originalSqlMode));
     echo "PASS: information-only database insert, import job, and 50-row workbook\n";
 } catch (Throwable $error) {
     if ($conn->inTransaction()) $conn->rollBack();
+    if (isset($originalSqlMode)) $conn->exec('SET SESSION sql_mode=' . $conn->quote($originalSqlMode));
     fwrite(STDERR, "FAIL: {$error->getMessage()}\n");
     exit(1);
 }
