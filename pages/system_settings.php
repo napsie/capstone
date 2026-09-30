@@ -14,10 +14,6 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = $_SESSION['user_id'];
 $message = '';
 $error = '';
-if (empty($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-}
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['updateSystemLogo'])) {
     requireSameOriginMutation();
     if (!in_array($_SESSION['role'] ?? '', ['department_admin', 'super_admin'], true)) {
@@ -277,11 +273,6 @@ try {
             border-radius: 8px;
         }
 
-        .backup-summary { display:flex; gap:15px; align-items:flex-start; padding:16px; border:1px solid #bfdbfe; border-radius:10px; background:#eff6ff; color:#1e3a5f; }
-        .backup-summary > i { display:grid; place-items:center; flex:0 0 42px; width:42px; height:42px; border-radius:10px; background:#2563eb; color:#fff; }
-        .backup-summary strong { display:block; margin-bottom:4px; color:#172033; }
-        .backup-summary p { margin:0; font-size:.84rem; line-height:1.55; }
-        .backup-warning { margin-top:12px; color:#92400e; font-size:.78rem; font-weight:650; }
         .logo-editor { display:grid; grid-template-columns:112px minmax(0,1fr); gap:20px; align-items:start; }
         .logo-preview { text-align:center; }
         .logo-preview span { display:block; margin-bottom:8px; color:var(--gray); font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
@@ -479,23 +470,6 @@ try {
                     <div class="actions"><button type="submit" name="updateSystemLogo" class="btn btn-success"><i class="fas fa-floppy-disk"></i> Save Changes</button></div>
                 </form>
             </div>
-            <?php if (in_array($_SESSION['role'] ?? '', ['department_admin', 'super_admin'], true)): ?>
-            <div class="card">
-                <h3><i class="fas fa-database"></i> Full Applicant Backup</h3>
-                <div class="backup-summary">
-                    <i class="fas fa-file-shield" aria-hidden="true"></i>
-                    <div>
-                        <strong>Download a portable ZIP backup</strong>
-                        <p>Creates one ZIP containing applicant fields, workflow history, document metadata, uploaded images and PDFs, a manifest, and SHA-256 integrity checksums.</p>
-                    </div>
-                </div>
-                <p class="backup-warning"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> This file contains sensitive personal information. Store it securely and limit access to authorized personnel.</p>
-                <form id="applicantBackupForm" method="POST" action="../api/backup_applicant_records.php" style="margin-top:16px;">
-                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
-                    <div class="actions"><button type="submit" class="btn btn-success btn-small"><i class="fas fa-file-zipper"></i> Download Full ZIP Backup</button></div>
-                </form>
-            </div>
-            <?php endif; ?>
         </div>
     </div>
 </div>
@@ -536,17 +510,6 @@ try {
         event.preventDefault();
         window.showCarelinkConfirm(
             'Replace the system logo? The new logo will appear throughout the system and in future reports.',
-            () => {
-                this.dataset.confirmed = 'true';
-                this.requestSubmit();
-            }
-        );
-    });
-    document.getElementById('applicantBackupForm')?.addEventListener('submit', function(event) {
-        if (this.dataset.confirmed === 'true') return;
-        event.preventDefault();
-        window.showCarelinkConfirm(
-            'Download a backup containing sensitive applicant records? Keep the downloaded file in secure, authorized storage.',
             () => {
                 this.dataset.confirmed = 'true';
                 this.requestSubmit();

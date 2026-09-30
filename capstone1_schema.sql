@@ -393,14 +393,12 @@ CREATE TABLE `system_settings` (
   `id`                 int(11)     NOT NULL DEFAULT 1,
   `session_timeout`    int(11)     NOT NULL DEFAULT 30,
   `max_login_attempts` int(11)     NOT NULL DEFAULT 5,
-  `backup_frequency`   varchar(50) NOT NULL DEFAULT 'weekly',
-  `auto_backup`        tinyint(1)  NOT NULL DEFAULT 1,
   `system_logo_filename` varchar(255) NULL,
   `system_logo_mime`     varchar(50) NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Seed default system settings
-INSERT INTO `system_settings` (`id`, `session_timeout`, `max_login_attempts`, `backup_frequency`, `auto_backup`)
-VALUES (1, 30, 5, 'weekly', 1)
+INSERT INTO `system_settings` (`id`, `session_timeout`, `max_login_attempts`)
+VALUES (1, 30, 5)
 ON DUPLICATE KEY UPDATE `id` = `id`;
