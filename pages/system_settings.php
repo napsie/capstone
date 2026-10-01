@@ -11,6 +11,12 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+if (empty($_SESSION['backup_csrf_token'])) {
+    $_SESSION['backup_csrf_token'] = bin2hex(random_bytes(32));
+}
+$backupNotice = $_SESSION['backup_notice'] ?? null;
+unset($_SESSION['backup_notice']);
+
 $user_id = $_SESSION['user_id'];
 $message = '';
 $error = '';
@@ -283,6 +289,24 @@ try {
         .logo-upload-panel input[type="file"] { width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:9px; background:#f8fafc; color:var(--primary); }
         .logo-upload-panel input[type="file"]::file-selector-button { margin-right:10px; padding:8px 12px; border:0; border-radius:7px; background:#1e3a5f; color:#fff; font:inherit; font-weight:700; cursor:pointer; }
 
+        .backup-card { grid-column: 1 / -1; }
+        .backup-layout { display:grid; grid-template-columns:minmax(0, .8fr) minmax(320px, 1.2fr); gap:28px; align-items:start; }
+        .backup-summary { padding:18px; border:1px solid #bfdbfe; border-radius:12px; background:#eff6ff; }
+        .backup-summary strong { display:block; margin-bottom:8px; color:#1e3a5f; }
+        .backup-summary p { margin:0 0 14px; color:#475569; font-size:.86rem; line-height:1.6; }
+        .backup-summary ul { display:grid; gap:8px; margin:0; padding-left:20px; color:#334155; font-size:.82rem; }
+        .backup-form { padding:20px; border:1px solid #e2e8f0; border-radius:12px; background:#f8fafc; }
+        .backup-form .form-group:last-of-type { margin-bottom:8px; }
+        .backup-help { display:block; margin-top:7px; color:#64748b; font-size:.76rem; line-height:1.45; }
+        .backup-warning { display:flex; align-items:flex-start; gap:9px; margin:14px 0; padding:11px 12px; border-radius:9px; color:#854d0e; background:#fefce8; font-size:.78rem; line-height:1.45; }
+        .backup-notice { grid-column:1/-1; padding:13px 15px; border-radius:10px; font-size:.86rem; font-weight:650; }
+        .backup-notice.error { color:#991b1b; border:1px solid #fecaca; background:#fef2f2; }
+
+        @media (max-width: 780px) {
+            .backup-layout { grid-template-columns:1fr; }
+            .backup-form { padding:16px; }
+        }
+
         .form-group {
             margin-bottom: 18px;
         }
@@ -444,6 +468,11 @@ try {
         <?php if ($error): ?>
             <div class="error"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
+        <?php if (is_array($backupNotice)): ?>
+            <div class="backup-notice <?php echo !empty($backupNotice['success']) ? 'message' : 'error'; ?>">
+                <?php echo htmlspecialchars((string)($backupNotice['message'] ?? '')); ?>
+            </div>
+        <?php endif; ?>
 
         <!-- Profile Section Card -->
         <div class="profile-section">
@@ -470,6 +499,42 @@ try {
                     <div class="actions"><button type="submit" name="updateSystemLogo" class="btn btn-success"><i class="fas fa-floppy-disk"></i> Save Changes</button></div>
                 </form>
             </div>
+            <?php if (in_array($_SESSION['role'] ?? '', ['department_admin', 'super_admin'], true)): ?>
+            <div class="card backup-card" id="backup">
+                <h3><i class="fas fa-shield-halved"></i> Encrypted System Backup</h3>
+                <div class="backup-layout">
+                    <div class="backup-summary">
+                        <strong>One portable copy of essential system data</strong>
+                        <p>The downloaded ZIP is created only when requested and is removed from the server immediately after download.</p>
+                        <ul>
+                            <li>MySQL tables, records, and uploaded document data</li>
+                            <li>Profile pictures, system logos, and available upload folders</li>
+                            <li>Manifest with file checksums for later verification</li>
+                            <li>AES-256 encryption using the backup password you provide</li>
+                        </ul>
+                    </div>
+                    <form class="backup-form" id="systemBackupForm" action="download_backup.php" method="POST" autocomplete="off">
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['backup_csrf_token']); ?>">
+                        <div class="form-group">
+                            <label for="backupAccountPassword">Current account password</label>
+                            <input type="password" id="backupAccountPassword" name="account_password" required autocomplete="current-password">
+                            <small class="backup-help">Confirms that the signed-in administrator authorized this download.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="backupArchivePassword">Backup file password</label>
+                            <input type="password" id="backupArchivePassword" name="archive_password" required minlength="12" autocomplete="new-password">
+                            <small class="backup-help">Use at least 12 characters. This password is never saved by SENIORLINK.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="backupArchivePasswordConfirmation">Confirm backup file password</label>
+                            <input type="password" id="backupArchivePasswordConfirmation" name="archive_password_confirmation" required minlength="12" autocomplete="new-password">
+                        </div>
+                        <div class="backup-warning"><i class="fas fa-triangle-exclamation"></i><span>Keep the ZIP and its password in separate safe locations. A forgotten backup password cannot be recovered.</span></div>
+                        <div class="actions"><button type="submit" class="btn btn-success"><i class="fas fa-download"></i> Create and Download Backup</button></div>
+                    </form>
+                </div>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 </div>
@@ -515,6 +580,22 @@ try {
                 this.requestSubmit();
             }
         );
+    });
+    document.getElementById('systemBackupForm')?.addEventListener('submit', function(event) {
+        const password = document.getElementById('backupArchivePassword');
+        const confirmation = document.getElementById('backupArchivePasswordConfirmation');
+        if (password && confirmation && password.value !== confirmation.value) {
+            event.preventDefault();
+            confirmation.setCustomValidity('The backup file passwords must match.');
+            confirmation.reportValidity();
+            return;
+        }
+        confirmation?.setCustomValidity('');
+        const button = this.querySelector('button[type="submit"]');
+        if (button) {
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing secure backup...';
+        }
     });
 </script>
 </body>
