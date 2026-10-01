@@ -175,7 +175,7 @@ header('Expires: 0');
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/seniorlink-public.css?v=1">
-    <link rel="stylesheet" href="assets/css/landing.css?v=36">
+    <link rel="stylesheet" href="assets/css/landing.css?v=37">
     <link rel="stylesheet" href="assets/css/seniorlink-ui.css?v=23">
     <script src="assets/js/modal-hci.js?v=2" defer></script>
 </head>
