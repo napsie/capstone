@@ -3,6 +3,7 @@
 .codex
 database_backups
 database/backups
+config/local.env
 uploads/*
 !uploads/.gitkeep
 !uploads/.htaccess

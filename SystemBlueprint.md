@@ -176,16 +176,13 @@ This document provides a technical overview of the CARELINK system.
 
 ### Password-reset email configuration
 
-`api/forgot_password.php` reads mail credentials from the server environment. Never store an SMTP password in the repository. Configure these values in Apache or the deployment platform:
+`api/forgot_password.php` sends OTP messages through Brevo's HTTPS transactional-email API so it works on both XAMPP and Railway plans that block SMTP. Never store the API key in the repository.
 
-*   `APP_URL` (for example, `http://localhost/capstone`)
-*   `SMTP_HOST`
-*   `SMTP_PORT` (normally `587` for TLS or `465` for SMTPS)
-*   `SMTP_ENCRYPTION` (`tls` or `ssl`)
-*   `SMTP_USERNAME`
-*   `SMTP_PASSWORD`
-*   `MAIL_FROM_ADDRESS`
+*   `BREVO_API_KEY`
+*   `MAIL_FROM_ADDRESS` (a sender verified in Brevo)
 *   `MAIL_FROM_NAME` (optional; defaults to `SeniorLink`)
+
+For Railway, add these as service variables. For local XAMPP, copy `config/local.env.example` to `config/local.env` and add the real values. The local file is ignored by Git and blocked from HTTP access.
 
 ### `pages/submit_application.php`
 

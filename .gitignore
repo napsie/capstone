@@ -9,6 +9,9 @@ python_api/venv/
 .DS_Store
 Thumbs.db
 
+# Local-only secrets for XAMPP. Copy config/local.env.example to this file.
+config/local.env
+
 # Local database backups contain private application data
 database_backups/*.sql
 database_backups/*.zip
