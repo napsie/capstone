@@ -250,7 +250,7 @@ Render's free databases are temporary and are PostgreSQL. To keep using MySQL fo
 1.  **Choose a Provider:** Go to a site like [freemysqlhosting.net](https://www.freemysqlhosting.net/) or [db4free.net](https://www.db4free.net/).
 2.  **Create Database:** Sign up and create a new database.
 3.  **Note Credentials:** Carefully copy the **database name**, **username**, **password**, and **server hostname**.
-4.  **Import Data:** Use phpMyAdmin to import the `capstone1` SQL backup for the local deployment.
+4.  **Import Data:** Use phpMyAdmin to import `capstone1_schema.sql` for the local deployment.
 
 ### Step 3: Prepare the PHP App with Docker
 To run PHP on Render, you must provide a `Dockerfile`.
