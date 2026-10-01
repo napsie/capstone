@@ -135,10 +135,11 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
     <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
-    <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=6">
+    <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=7">
     <link rel="stylesheet" href="../assets/css/metric-cards.css?v=2">
     <link rel="stylesheet" href="../assets/css/dashboard-calendar.css?v=9">
 <script src="../assets/js/dashboard-chart-fallback.js?v=1"></script>
+<script src="../assets/js/gender-trend-chart.js?v=1"></script>
 <script src="../assets/js/dashboard-calendar.js?v=1" defer></script>
 </head>
 <body class="dashboard-page barangay-dashboard">
@@ -195,7 +196,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                         </div>
                         <div class="chart-card chart-card-half">
                             <h3><span><i class="fas fa-venus-mars"></i> Female and male senior trend</span><small>All registered senior profiles by month, regardless of application status</small></h3>
-                            <div class="chart-wrapper is-loading"><canvas id="genderChart" aria-label="Line chart comparing monthly female and male senior citizen records in the barangay" role="img">Monthly female and male senior citizen trend chart</canvas></div>
+                            <div class="chart-wrapper gender-trend-wrapper is-loading"><canvas id="genderChart" aria-label="Line chart comparing monthly female and male senior citizen records in the barangay" role="img">Monthly female and male senior citizen trend chart</canvas></div>
                         </div>
                         <div class="chart-card chart-card-wide">
                             <h3><span><i class="fas fa-chart-column"></i> Monthly applications</span><small>Submission volume during the last 12 months</small></h3>
@@ -592,99 +593,8 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
             });
         }
 
-        // --- Female and Male Seniors Chart ---
-        const genderCtx = document.getElementById('genderChart')?.getContext('2d');
-        if (genderCtx && data.gender_stats) {
-            const genderMonths = [];
-            for (let i = 11; i >= 0; i--) {
-                const date = new Date();
-                date.setDate(1);
-                date.setMonth(date.getMonth() - i);
-                genderMonths.push({
-                    label: date.toLocaleString('default', { month: 'short' }) + ' ' + date.getFullYear().toString().slice(2),
-                    month: date.getMonth() + 1,
-                    year: date.getFullYear()
-                });
-            }
-            const femaleData = Array(12).fill(0);
-            const maleData = Array(12).fill(0);
-            data.gender_stats.forEach(item => {
-                const index = genderMonths.findIndex(month => month.month == item.month_num && month.year == item.year);
-                if (index === -1) return;
-                if (item.gender === 'Female') femaleData[index] = parseInt(item.count, 10) || 0;
-                if (item.gender === 'Male') maleData[index] = parseInt(item.count, 10) || 0;
-            });
-
-            new Chart(genderCtx, {
-                type: 'line',
-                data: {
-                    labels: genderMonths.map(month => month.label),
-                    datasets: [
-                        {
-                            label: 'Female',
-                            data: femaleData,
-                            borderColor: '#ec4899',
-                            backgroundColor: 'rgba(236, 72, 153, 0.12)',
-                            pointBackgroundColor: '#ec4899',
-                            borderWidth: 3,
-                            pointRadius: 4,
-                            tension: 0.3,
-                            fill: false
-                        },
-                        {
-                            label: 'Male',
-                            data: maleData,
-                            borderColor: '#3b82f6',
-                            backgroundColor: 'rgba(59, 130, 246, 0.12)',
-                            pointBackgroundColor: '#3b82f6',
-                            borderWidth: 3,
-                            pointRadius: 4,
-                            tension: 0.3,
-                            fill: false
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: false,
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top',
-                            labels: {
-                                color: textColor,
-                                boxWidth: 12,
-                                padding: 14,
-                                usePointStyle: true
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: context => `${context.dataset.label}: ${context.raw}`
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { color: textColor, precision: 0 },
-                            grid: { color: gridColor },
-                            title: { display: true, text: 'Senior records', color: textColor }
-                        },
-                        x: {
-                            ticks: {
-                                color: textColor,
-                                autoSkip: true,
-                                maxTicksLimit: 6,
-                                maxRotation: 0
-                            },
-                            grid: { display: false }
-                        }
-                    }
-                }
-            });
-        }
+        // Shared component keeps the SHDO and Department trend charts consistent.
+        window.createGenderTrendChart?.(document.getElementById('genderChart'), data.gender_stats);
 
             // --- Monthly Chart ---
             const monthlyCtx = document.getElementById('monthlyChart')?.getContext('2d');

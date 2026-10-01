@@ -426,6 +426,14 @@
     padding: 14px 17px 17px;
 }
 
+.dashboard-page .gender-trend-wrapper {
+    background: linear-gradient(180deg, rgba(248, 250, 252, .72), #fff 34%);
+}
+
+.dashboard-page .gender-trend-wrapper canvas {
+    filter: saturate(.96);
+}
+
 .dashboard-page .calendar-card {
     padding: 0;
     height: 435px;

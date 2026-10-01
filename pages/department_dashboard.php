@@ -580,10 +580,11 @@ if (empty($_SESSION['login_audit_recorded'])) {
     <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
-    <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=5">
+    <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=7">
     <link rel="stylesheet" href="../assets/css/metric-cards.css?v=2">
     <link rel="stylesheet" href="../assets/css/dashboard-calendar.css?v=9">
 <script src="../assets/js/dashboard-chart-fallback.js?v=1"></script>
+<script src="../assets/js/gender-trend-chart.js?v=1"></script>
 <script src="../assets/js/dashboard-calendar.js?v=1" defer></script>
 </head>
 <body class="dashboard-page department-dashboard">
@@ -684,7 +685,7 @@ if (empty($_SESSION['login_audit_recorded'])) {
                                 </div>
                                 <div class="chart-card chart-card-half">
                                     <h3><span><i class="fas fa-venus-mars"></i> Female and male senior trend</span><small>All registered senior profiles by month, regardless of application status</small></h3>
-                                    <div class="chart-wrapper is-loading"><canvas id="genderMonthlyChart" aria-label="Line chart comparing monthly female and male senior citizen records across Pasig City" role="img">Monthly female and male senior citizen trend chart</canvas></div>
+                                    <div class="chart-wrapper gender-trend-wrapper is-loading"><canvas id="genderMonthlyChart" aria-label="Line chart comparing monthly female and male senior citizen records across Pasig City" role="img">Monthly female and male senior citizen trend chart</canvas></div>
                                 </div>
                             </div>
                         </div>
@@ -1066,83 +1067,8 @@ if (empty($_SESSION['login_audit_recorded'])) {
                 });
             }
 
-            // Female and Male Senior Records (two-line monthly trend)
-            const genderMonthlyCtx = document.getElementById('genderMonthlyChart')?.getContext('2d');
-            if (genderMonthlyCtx && gender_monthly_records) {
-                const genderMonths = [];
-                for (let i = 11; i >= 0; i--) {
-                    const date = new Date();
-                    date.setDate(1);
-                    date.setMonth(date.getMonth() - i);
-                    genderMonths.push({
-                        label: date.toLocaleString('default', { month: 'short' }) + ' ' + date.getFullYear().toString().slice(2),
-                        month: date.getMonth() + 1,
-                        year: date.getFullYear()
-                    });
-                }
-                const femaleData = Array(12).fill(0);
-                const maleData = Array(12).fill(0);
-                gender_monthly_records.forEach(record => {
-                    const index = genderMonths.findIndex(month => month.month == record.month_num && month.year == record.year);
-                    if (index === -1) return;
-                    if (record.gender === 'Female') femaleData[index] = parseInt(record.count, 10) || 0;
-                    if (record.gender === 'Male') maleData[index] = parseInt(record.count, 10) || 0;
-                });
-
-                new Chart(genderMonthlyCtx, {
-                    type: 'line',
-                    data: {
-                        labels: genderMonths.map(month => month.label),
-                        datasets: [
-                            {
-                                label: 'Female',
-                                data: femaleData,
-                                borderColor: '#ec4899',
-                                pointBackgroundColor: '#ec4899',
-                                borderWidth: 3,
-                                pointRadius: 4,
-                                tension: 0.3,
-                                fill: false
-                            },
-                            {
-                                label: 'Male',
-                                data: maleData,
-                                borderColor: '#3b82f6',
-                                pointBackgroundColor: '#3b82f6',
-                                borderWidth: 3,
-                                pointRadius: 4,
-                                tension: 0.3,
-                                fill: false
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        animation: false,
-                        plugins: {
-                            legend: {
-                                position: 'top',
-                                labels: { boxWidth: 12, padding: 14, usePointStyle: true }
-                            },
-                            tooltip: {
-                                callbacks: { label: context => `${context.dataset.label}: ${context.raw}` }
-                            }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: { precision: 0 },
-                                title: { display: true, text: 'Senior records' }
-                            },
-                            x: {
-                                ticks: { autoSkip: true, maxTicksLimit: 6, maxRotation: 0 },
-                                grid: { display: false }
-                            }
-                        }
-                    }
-                });
-            }
+            // Shared component keeps the Department and SHDO trend charts consistent.
+            window.createGenderTrendChart?.(document.getElementById('genderMonthlyChart'), gender_monthly_records);
             document.querySelectorAll('.chart-wrapper').forEach(el => el.classList.remove('is-loading'));
         }
     </script>
