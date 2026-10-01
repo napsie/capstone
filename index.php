@@ -543,6 +543,7 @@ header('Expires: 0');
                 if (!panel) return;
                 const otpSection = panel.querySelector('[data-otp-reset]');
                 panel.classList.remove('is-resetting');
+                document.documentElement.classList.toggle('password-reset-open', document.querySelector('.portal-login-view.is-resetting') !== null);
                 if (otpSection) {
                     otpSection.hidden = true;
                     otpSection.querySelectorAll('input').forEach(input => input.value = '');
@@ -646,6 +647,7 @@ header('Expires: 0');
                     if (response.ok && result.success) {
                         const otpSection = panel.querySelector('[data-otp-reset]');
                         panel.classList.add('is-resetting');
+                        document.documentElement.classList.add('password-reset-open');
                         otpSection.hidden = false;
                         otpSection.querySelectorAll('input, button').forEach(control => control.disabled = false);
                         otpSection.querySelector('[data-reset-otp]')?.focus();

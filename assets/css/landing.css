@@ -571,6 +571,16 @@ button.portal-card {
 .portal-login-view.is-resetting .portal-login-form > .form-group,
 .portal-login-view.is-resetting .portal-login-options,
 .portal-login-view.is-resetting .portal-login-form > .portal-login-submit { display: none; }
+.portal-login-view.is-resetting .portal-signup-note { display: none; }
+.portal-login-view.is-resetting .portal-login-form,
+.portal-login-view.is-resetting .portal-otp-reset { gap: 10px; }
+.password-reset-open .portal-panel {
+    max-height: calc(100dvh - 32px);
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-gutter: stable;
+}
 .portal-login-view.is-resetting .forgot-password-message {
     min-height: 0;
     padding: 10px 12px;
@@ -1032,6 +1042,7 @@ button.portal-card {
     html.login-view-open .hero-content { display: none; }
     html.login-view-open .landing-main { align-content: start; gap: 0; padding-top: 16px; }
     html.login-view-open .portal-panel { justify-self: stretch; }
+    html.password-reset-open .portal-panel { max-height: none; overflow: visible; }
     .portal-login-form .form-control { font-size: 16px; }
 }
 
