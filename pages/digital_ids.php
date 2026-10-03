@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../includes/db_connect.php';
+require_once '../includes/digital_id_search.php';
 
 $role = $_SESSION['role'] ?? '';
 if (!isset($_SESSION['user_id']) || !in_array($role, ['barangay_staff', 'department_admin', 'super_admin'], true)) {
@@ -8,8 +9,7 @@ if (!isset($_SESSION['user_id']) || !in_array($role, ['barangay_staff', 'departm
     exit;
 }
 
-$search = trim((string)($_GET['search'] ?? ''));
-if (mb_strlen($search) > 100) $search = mb_substr($search, 0, 100);
+$search = normalizeDigitalIdSearch((string)($_GET['search'] ?? ''));
 $idStatus = (string)($_GET['id_status'] ?? 'all');
 if (!in_array($idStatus, ['all', 'pending', 'generated'], true)) $idStatus = 'all';
 $page = max(1, filter_input(INPUT_GET, 'page', FILTER_VALIDATE_INT) ?: 1);
@@ -23,9 +23,9 @@ if ($role === 'barangay_staff') {
     $params[] = $_SESSION['barangay'] ?? '';
 }
 if ($search !== '') {
-    // LOWER() keeps name/ID searches case-insensitive on both MySQL and PostgreSQL.
-    $where[] = '(LOWER(full_name) LIKE LOWER(?) OR LOWER(COALESCE(senior_id_no, \'\')) LIKE LOWER(?) OR LOWER(id_number) LIKE LOWER(?))';
-    array_push($params, "%{$search}%", "%{$search}%", "%{$search}%");
+    $searchFilter = buildDigitalIdSearch($search);
+    $where[] = $searchFilter['sql'];
+    array_push($params, ...$searchFilter['params']);
 }
 
 // Railway may use PostgreSQL while the local XAMPP database uses MySQL.
@@ -86,9 +86,9 @@ function hasOfficialSeniorId(array $record): bool {
 <main class="main-content">
     <header class="page-header"><div class="page-header-left"><div class="greeting" id="greetingMsg"></div><h1>Digital <span>IDs</span></h1></div><div class="header-user"><?php $profilePicPath='../images/profile_pictures/'.($_SESSION['profile_picture']??'default.jpg'); if(!file_exists($profilePicPath)||is_dir($profilePicPath))$profilePicPath='../images/profile_pictures/default.jpg'; ?><img src="<?= htmlspecialchars($profilePicPath) ?>" alt="Profile"><div class="header-user-info"><h3><?= htmlspecialchars(trim(($_SESSION['first_name']??'').' '.($_SESSION['last_name']??''))) ?></h3><p><?= htmlspecialchars(ucwords(str_replace('_',' ',$role))) ?> · <?= $isDepartment?'Pasig City':htmlspecialchars($_SESSION['barangay']??'') ?></p></div></div></header>
 <div class="page-shell">
-    <div class="page-tools"><div class="records-summary"><h2>Issued Senior Citizen IDs</h2><p><span class="record-count"><?= number_format($total) ?></span> approved <?= $total === 1 ? 'record' : 'records' ?> available</p></div><form class="search" method="get"><select name="id_status" aria-label="Filter digital IDs" onchange="this.form.submit()"><option value="all" <?= $idStatus === 'all' ? 'selected' : '' ?>>All IDs</option><option value="pending" <?= $idStatus === 'pending' ? 'selected' : '' ?>>Not yet generated</option><option value="generated" <?= $idStatus === 'generated' ? 'selected' : '' ?>>Generated IDs</option></select><input name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Search name, ID, or application…" maxlength="100" aria-label="Search digital IDs"><button type="submit"><i class="fas fa-search"></i> Search</button><?php if ($search !== '' || $idStatus !== 'all'): ?><a class="clear-search" href="digital_ids.php">Clear</a><?php endif; ?></form></div>
+    <div class="page-tools"><div class="records-summary"><h2>Issued Senior Citizen IDs</h2><p><span class="record-count"><?= number_format($total) ?></span> approved <?= $total === 1 ? 'record' : 'records' ?> available<?php if ($search !== ''): ?> for “<?= htmlspecialchars($search) ?>”<?php endif; ?></p></div><form class="search" method="get" action="digital_ids.php" role="search"><select name="id_status" aria-label="Filter digital IDs" onchange="this.form.submit()"><option value="all" <?= $idStatus === 'all' ? 'selected' : '' ?>>All IDs</option><option value="pending" <?= $idStatus === 'pending' ? 'selected' : '' ?>>Not yet generated</option><option value="generated" <?= $idStatus === 'generated' ? 'selected' : '' ?>>Generated IDs</option></select><input type="search" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Search name, ID, or application…" maxlength="100" aria-label="Search digital IDs"><button type="submit"><i class="fas fa-search"></i> Search</button><?php if ($search !== '' || $idStatus !== 'all'): ?><a class="clear-search" href="digital_ids.php">Clear</a><?php endif; ?></form></div>
     <section class="card">
-        <?php if (!$records): ?><div class="empty"><i class="fas fa-id-card fa-2x"></i><p>No approved digital IDs found.</p></div>
+        <?php if (!$records): ?><div class="empty"><i class="fas fa-id-card fa-2x"></i><p><?= $search !== '' ? 'No Digital IDs matched “' . htmlspecialchars($search) . '”.' : 'No approved digital IDs found.' ?></p><?php if ($search !== ''): ?><a class="clear-search" href="digital_ids.php<?= $idStatus !== 'all' ? '?id_status=' . rawurlencode($idStatus) : '' ?>">Clear search</a><?php endif; ?></div>
         <?php else: ?><table><thead><tr><th>Senior Citizen ID No.</th><th>Application Token</th><th>Applicant</th><th>Barangay</th><th>Birth Date</th><th class="action-cell">Action</th></tr></thead><tbody>
         <?php foreach ($records as $record): $hasOfficialId = hasOfficialSeniorId($record); ?><tr data-record-id="<?= htmlspecialchars($record['id_number']) ?>"><td class="id-number"><?= $hasOfficialId ? htmlspecialchars($record['senior_id_no']) : '<span style="color:#b45309">Not yet generated</span>' ?></td><td><strong><?= htmlspecialchars($record['id_number']) ?></strong><br><small>Use for application tracking</small></td><td><strong><?= htmlspecialchars($record['full_name']) ?></strong></td><td><?= htmlspecialchars($record['barangay']) ?></td><td><?= htmlspecialchars(date('F j, Y', strtotime($record['birth_date']))) ?></td><td class="action-cell"><div class="row-actions"><?php if ($hasOfficialId): ?><button class="view" type="button" data-digital-id="<?= htmlspecialchars($record['id_number']) ?>" data-applicant="<?= htmlspecialchars($record['full_name']) ?>"><i class="fas fa-eye"></i> View Digital ID</button><?php elseif ($isDepartment): ?><button class="view generate" type="button" data-generate-id="<?= htmlspecialchars($record['id_number']) ?>" data-applicant="<?= htmlspecialchars($record['full_name']) ?>"><i class="fas fa-id-card"></i> Generate Senior ID</button><?php else: ?><small>Awaiting OSCA generation</small><?php endif; ?></div><small class="assign-status" aria-live="polite"></small></td></tr><?php endforeach; ?>
         </tbody></table><?php endif; ?>
@@ -118,16 +118,6 @@ function hasOfficialSeniorId(array $record): bool {
 <script src="../assets/js/sidebar-toggle.js?v=3"></script>
 <script>
 (() => {
-    const digitalIdSearchForm = document.querySelector('.search');
-    const digitalIdSearchInput = digitalIdSearchForm?.querySelector('input[name="search"]');
-    let digitalIdSearchTimer;
-    digitalIdSearchInput?.addEventListener('input', () => {
-        window.clearTimeout(digitalIdSearchTimer);
-        digitalIdSearchTimer = window.setTimeout(() => {
-            // A normal submit keeps the selected ID-status filter in the URL.
-            digitalIdSearchForm.requestSubmit();
-        }, 350);
-    });
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
     document.getElementById('greetingMsg').innerHTML = greeting + ', <strong><?= htmlspecialchars(trim(($_SESSION['first_name'] ?? '') . ' ' . ($_SESSION['last_name'] ?? '')), ENT_QUOTES) ?></strong>!';
