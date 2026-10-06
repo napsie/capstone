@@ -1221,7 +1221,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                     </div>
                     <div class="form-row">
                         <div class="form-group"><label for="seniorIdNo">Deceased Senior ID Number <span style="color:#b91c1c;">*</span></label><input type="text" id="seniorIdNo" name="seniorIdNo" class="form-control" inputmode="numeric" pattern="[0-9]+" maxlength="50" title="Enter numbers only." data-digits-only value="<?php echo $old('seniorIdNo'); ?>" data-benefit-required></div>
-                        <div class="form-group"><label for="landbankCardNo">Landbank Cash Card Number <span style="color:#b91c1c;">*</span></label><input type="text" id="landbankCardNo" name="landbankCardNo" class="form-control" inputmode="numeric" pattern="[0-9]+" maxlength="50" title="Enter numbers only." data-digits-only value="<?php echo $old('landbankCardNo'); ?>" data-benefit-required></div>
+                        <div class="form-group"><label for="landbankCardNo">Landbank Cash Card Number <span style="color:#b91c1c;">*</span></label><input type="text" id="landbankCardNo" name="landbankCardNo" class="form-control" inputmode="numeric" pattern="[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{4}" maxlength="19" placeholder="1111-2222-3333-4444" title="Enter exactly 16 digits. Hyphens are added automatically." data-landbank-card value="<?php echo $old('landbankCardNo'); ?>" data-benefit-required><small class="field-help">Enter the 16-digit number. It will be formatted automatically.</small></div>
                     </div>
                     <div class="form-row">
                         <div class="form-group"><label for="burialClaimantName">Name of Applicant / Claimant <span style="color:#b91c1c;">*</span></label><input type="text" id="burialClaimantName" name="claimantName" class="form-control" pattern="[\p{L}\p{M} .]+" title="Use letters, spaces, and periods only." data-claimant-name-only value="<?php echo $old('claimantName'); ?>" data-benefit-required></div>
@@ -2188,6 +2188,15 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             input.addEventListener('input', () => {
                 input.value = input.value.replace(/\D/g, '').slice(0, Number(input.maxLength) || 50);
             });
+        });
+
+        document.querySelectorAll('[data-landbank-card]').forEach(input => {
+            const formatLandbankCard = () => {
+                const digits = input.value.replace(/\D/g, '').slice(0, 16);
+                input.value = digits.match(/.{1,4}/g)?.join('-') || '';
+            };
+            input.addEventListener('input', formatLandbankCard);
+            formatLandbankCard();
         });
 
         document.querySelectorAll('[data-claimant-name-only]').forEach(input => {

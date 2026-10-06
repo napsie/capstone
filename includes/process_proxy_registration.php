@@ -196,7 +196,8 @@ function processProxyRegistration(): array
         $suffix = trim($_POST['suffix'] ?? '');
         $fullName = trim($firstName . ' ' . $middleName . ' ' . $lastName . ' ' . $suffix);
         $birthDate = trim($_POST['birthDate'] ?? '');
-        $contactNumber = trim($_POST['contactNumber'] ?? '');
+        $contactNumber = normalizePhoneNumber($_POST['contactNumber'] ?? '');
+        $postedContactNumber = $contactNumber;
         $placeOfBirth = trim($_POST['placeOfBirth'] ?? '');
         $gender = trim($_POST['gender'] ?? '');
         $civilStatus = trim($_POST['civilStatus'] ?? '');
@@ -262,7 +263,8 @@ function processProxyRegistration(): array
         $dateOfDeath = trim($_POST['dateOfDeath'] ?? '');
         $deathRegistrationDate = trim($_POST['deathRegistrationDate'] ?? '');
         $relationshipToDeceased = trim($_POST['relationshipToDeceased'] ?? '');
-        $landbankCardNo = trim($_POST['landbankCardNo'] ?? '');
+        $landbankCardDigits = preg_replace('/\D+/', '', (string)($_POST['landbankCardNo'] ?? '')) ?? '';
+        $landbankCardNo = $landbankCardDigits === '' ? '' : implode('-', str_split(substr($landbankCardDigits, 0, 16), 4));
         $deceasedSeniorIdNo = trim($_POST['seniorIdNo'] ?? '');
         
         // Representative intake is intentionally disabled for the public form.
@@ -287,7 +289,13 @@ function processProxyRegistration(): array
             $suffix = (string)($verifiedSenior['suffix'] ?? '');
             $fullName = (string)($verifiedSenior['full_name'] ?? '');
             $birthDate = (string)($verifiedSenior['birth_date'] ?? '');
-            $contactNumber = (string)($verifiedSenior['contact_number'] ?? '');
+            $verifiedContactNumber = normalizePhoneNumber($verifiedSenior['contact_number'] ?? '');
+            // Preserve the verified profile value when valid. Older imported
+            // profiles sometimes contain an incomplete or legacy format; in
+            // that case accept the current number entered by the applicant.
+            $contactNumber = isValidPhilippineMobileNumber($verifiedContactNumber)
+                ? $verifiedContactNumber
+                : $postedContactNumber;
             $placeOfBirth = (string)($verifiedSenior['place_of_birth'] ?? '');
             $gender = (string)($verifiedSenior['gender'] ?? '');
             $civilStatus = (string)($verifiedSenior['civil_status'] ?? '');
@@ -541,8 +549,12 @@ function processProxyRegistration(): array
                     $result['message'] = 'Please select a valid relationship to the deceased.';
                     return $result;
                 }
-                if (preg_match('/^\d+$/', $deceasedSeniorIdNo) !== 1 || preg_match('/^\d+$/', $landbankCardNo) !== 1) {
-                    $result['message'] = 'Deceased Senior ID and Landbank Cash Card numbers must contain numbers only.';
+                if (preg_match('/^\d+$/', $deceasedSeniorIdNo) !== 1) {
+                    $result['message'] = 'The Deceased Senior ID number must contain numbers only.';
+                    return $result;
+                }
+                if (strlen($landbankCardDigits) !== 16) {
+                    $result['message'] = 'Landbank Cash Card Number must contain exactly 16 digits in the format 1111-2222-3333-4444.';
                     return $result;
                 }
                 if (preg_match('/^[\p{L}\p{M}]+(?:[ .][\p{L}\p{M}]+)*$/u', $claimantName) !== 1) {

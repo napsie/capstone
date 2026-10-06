@@ -136,7 +136,7 @@ if ($verifiedSenior) {
         'permanentToken' => $_SESSION['senior_benefit_access']['token'] ?? '',
         'lastName' => $verifiedSenior['lastName'] ?? '', 'firstName' => $verifiedSenior['firstName'] ?? '',
         'middleName' => $verifiedSenior['middleName'] ?? '', 'suffix' => $verifiedSenior['suffix'] ?? '',
-        'birthDate' => $verifiedSenior['birth_date'] ?? '', 'contactNumber' => $verifiedSenior['contact_number'] ?? '',
+        'birthDate' => $verifiedSenior['birth_date'] ?? '', 'contactNumber' => normalizePhoneNumber($verifiedSenior['contact_number'] ?? ''),
         'placeOfBirth' => $verifiedSenior['place_of_birth'] ?? '', 'mothersMaidenName' => $verifiedSenior['mothers_maiden_name'] ?? '',
         'gender' => $verifiedSenior['gender'] ?? '', 'civilStatus' => $verifiedSenior['civil_status'] ?? '',
         'houseNo' => $verifiedSenior['house_no'] ?? '', 'street' => $verifiedSenior['street'] ?? '',

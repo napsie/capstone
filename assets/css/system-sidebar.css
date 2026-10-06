@@ -1,6 +1,6 @@
 /* Authoritative sidebar layout shared by Barangay and Department pages. */
 :root {
-    --system-sidebar-expanded: 220px;
+    --system-sidebar-expanded: 252px;
     --system-sidebar-collapsed: 80px;
     --system-sidebar-font: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
@@ -187,9 +187,25 @@
 
 .system-sidebar .link-text {
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    overflow: visible;
+    text-overflow: clip;
     white-space: nowrap;
+}
+
+/* Keep every desktop page aligned to the authoritative sidebar width. Several
+   older pages still declare a 220px offset in their local styles. */
+@media (min-width: 769px) {
+    .system-sidebar ~ .main-content,
+    .system-sidebar ~ main.main-content {
+        width: calc(100% - var(--system-sidebar-expanded)) !important;
+        margin-left: var(--system-sidebar-expanded) !important;
+    }
+
+    .system-sidebar.collapsed ~ .main-content,
+    .system-sidebar.collapsed ~ main.main-content {
+        width: calc(100% - var(--system-sidebar-collapsed)) !important;
+        margin-left: var(--system-sidebar-collapsed) !important;
+    }
 }
 
 /* Keep sidebar typography independent from page-level font declarations. */

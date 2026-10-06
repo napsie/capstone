@@ -4,7 +4,7 @@ $barangayName = $barangayName ?? ($_SESSION['barangay'] ?? '');
 $barangayLogoLabel = $barangayName !== '' ? 'Barangay ' . $barangayName . ' Logo' : 'SENIORLINK Logo';
 require_once __DIR__ . '/../includes/system_branding.php';
 ?>
-<link rel="stylesheet" href="../assets/css/system-sidebar.css?v=10">
+<link rel="stylesheet" href="../assets/css/system-sidebar.css?v=11">
 <link rel="stylesheet" href="../assets/css/barangay-mobile-navigation.css?v=5">
 <div class="sidebar system-sidebar">
     <div class="mobile-nav-bar">

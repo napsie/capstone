@@ -3,7 +3,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 require_once __DIR__ . '/../includes/system_branding.php';
 ?>
 <!-- Loaded here so mobile-only overrides follow each page's inline styles. -->
-<link rel="stylesheet" href="../assets/css/system-sidebar.css?v=10">
+<link rel="stylesheet" href="../assets/css/system-sidebar.css?v=11">
 <link rel="stylesheet" href="../assets/css/department-mobile.css?v=8">
 <div class="sidebar system-sidebar">
     <div class="mobile-nav-bar">
