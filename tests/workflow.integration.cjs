@@ -280,6 +280,17 @@ async function main() {
         'Verified Information Change updates the linked Senior ID profile');
     check((await request('/api/get_application_details.php?id=BURIAL30', admin)).data.burial_filing_days === 30, 'Exact 30-weekday filing boundary');
     check((await action(admin, 'BURIAL30', 'next')).data.success, 'Timely burial accepted even when reviewed months later');
+    const deceasedSenior = await request('/api/get_application_details.php?id=DECEASED-LINK', admin);
+    check(deceasedSenior.data.workflow_state === 'Deceased' && deceasedSenior.data.status === 'deceased'
+        && deceasedSenior.data.deceased_source_application_id === 'BURIAL30',
+        'Approved burial moves the exact linked senior to Deceased Records');
+    const barangayDeceased = await request('/pages/deceased_records.php?search=DECEASED-LINK', staff, undefined, true);
+    check(barangayDeceased.status === 200 && barangayDeceased.data.includes('Linked Deceased Senior')
+        && barangayDeceased.data.includes('Synthetic Claimant'),
+        'Barangay staff can view its linked deceased record and burial claimant');
+    const otherBarangayDeceased = await request('/pages/deceased_records.php?search=DECEASED-LINK', other, undefined, true);
+    check(!otherBarangayDeceased.data.includes('Linked Deceased Senior'),
+        'Deceased Records remain restricted to the staff member’s barangay');
     check(!(await action(admin, 'BURIAL31', 'next')).data.success, '31-weekday burial filing rejected');
     check(!(await action(admin, 'BURIALBAD', 'next')).data.success, 'Death date after filing rejected');
     check(!(await action(admin, 'BURIALMISSING', 'next')).data.success, 'Missing burial date rejected');

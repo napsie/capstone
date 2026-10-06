@@ -177,6 +177,8 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                 </nav>
             </section>
 
+            <?php $announcementSurface = 'staff'; include '../partials/announcement_feed.php'; ?>
+
             <!-- Summary Stats Strip -->
             <div class="stats-strip" id="statsStrip">
                 <a class="stat-card stat-card-link stat-blue" href="submit_application.php" aria-label="Open applications"><div class="stat-icon"><i class="fas fa-file-lines" aria-hidden="true"></i></div><div class="stat-info"><div class="stat-label">Total applications</div><div class="stat-value dashboard-loading" id="statTotal" aria-live="polite" aria-label="Loading total applications">0</div><small>All local applications</small></div><i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i></a>

@@ -65,6 +65,7 @@ $rows = [
     ['CORRECT', 'Correction Workflow', 'senior', 'Bagong Ilog', 'For Review', '2026-08-01', null, 'Correction', null, null, 0, null],
     ['VALID', 'Verified Senior', 'senior', 'Bagong Ilog', 'Verified', '2026-07-01', null, 'Valid', 'OSCA-TEST-VALID', null, 0, null],
     ['PRX-BENE', 'Benefits Portal Senior', 'senior', 'Bagong Ilog', 'Verified', '2026-07-01', null, 'Benefits', 'OSCA-TEST-BENEFITS', null, 0, null],
+    ['DECEASED-LINK', 'Linked Deceased Senior', 'senior', 'Bagong Ilog', 'Verified', '2026-07-01', null, 'Deceased', 'OSCA-TEST-DECEASED', null, 0, null],
     ['OTHER', 'Other Barangay Senior', 'senior', 'Ugong', 'Verified', '2026-07-01', null, 'Other', 'OSCA-TEST-OTHER', null, 0, null],
     ['ARCHIVED', 'Archived Senior', 'senior', 'Bagong Ilog', 'Verified', '2026-07-01', null, 'Archived', 'OSCA-TEST-ARCHIVED', null, 1, null],
     ['BURIAL30', 'Timely Burial', 'burial', 'Bagong Ilog', 'For Review', '2026-02-16', '2026-01-05', 'Timely', null, null, 0, null],
@@ -83,6 +84,7 @@ $conn->exec("UPDATE applications SET birth_date = DATE_SUB(CURDATE(), INTERVAL 6
 $conn->exec("UPDATE applications SET health_status = 'Physically Fit', emergency_contact_name = 'Test Contact', emergency_contact = '09171234567', claimant_relationship = 'Child' WHERE id_number = 'PRX-BENE'");
 $conn->exec("UPDATE applications SET parent_senior_id = 'PRX-BENE', senior_id_no = 'OSCA-TEST-BENEFITS', id_purpose = 'change', contact_number = '09179999999', health_status = 'Frail/Sickly', health_condition = 'Arthritis / Joint condition', emergency_contact_name = 'Updated Contact', emergency_contact = '09178888888', claimant_relationship = 'Spouse' WHERE id_number = 'CHANGE-REQUEST'");
 $conn->exec("UPDATE applications SET parent_senior_id = 'PRX-BENE' WHERE id_number = 'PEN-LBANK'");
+$conn->exec("UPDATE applications SET parent_senior_id = 'DECEASED-LINK', deceased_first_name = 'Test', deceased_last_name = 'Deceased', deceased_birth_date = '1940-01-01', claimant_name = 'Synthetic Claimant', relationship_to_deceased = 'Child' WHERE id_number = 'BURIAL30'");
 $insert->execute(['ARCHIVED-2', 'Second Archived Senior', 'senior', 'Bagong Ilog', 'Verified', '2026-08-01', null, 'Second', 'OSCA-TEST-SECOND', null, 1, null]);
 foreach (['senior', 'pension', 'national_pension', 'landbank', 'milestone_gift', 'burial', 'home_visit'] as $type) {
     $insert->execute(['FORM-' . $type, 'Sample ' . $type . ' Applicant', $type, 'Bagong Ilog', 'Verified', '2026-08-25', $type === 'burial' ? '2026-08-20' : null, 'Form', null, 'Completed', 0, null]);

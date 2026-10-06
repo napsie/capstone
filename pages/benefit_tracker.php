@@ -290,6 +290,7 @@ if ($application && $seniorBirthDateValue !== '') {
             <p>Enter your permanent PRX Token ID, scan your QR code, or upload a QR image to check your application status.</p>
         </header>
         <div class="tracker-body">
+            <?php $announcementSurface = 'public'; $announcementVariant = 'compact'; include '../partials/announcement_feed.php'; ?>
             <form method="get" class="lookup">
                 <label for="token" class="sr-only">Application token</label>
                 <input id="token" name="token" value="<?php echo htmlspecialchars($token ?: 'PRX-'); ?>" aria-describedby="tokenFormatHelp" maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" required>

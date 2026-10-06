@@ -23,6 +23,7 @@ DROP TABLE IF EXISTS `hardcopy_batches`;
 DROP TABLE IF EXISTS `home_visit_personnel`;
 DROP TABLE IF EXISTS `login_history`;
 DROP TABLE IF EXISTS `remember_tokens`;
+DROP TABLE IF EXISTS `announcements`;
 DROP TABLE IF EXISTS `settings`;
 DROP TABLE IF EXISTS `applications`;
 DROP TABLE IF EXISTS `notifications`;
@@ -57,6 +58,27 @@ CREATE TABLE `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ============================================================
+-- Table: announcements (central public/staff communications)
+-- ============================================================
+CREATE TABLE `announcements` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `title` varchar(140) NOT NULL,
+  `message` text NOT NULL,
+  `category` enum('announcement','benefit') NOT NULL DEFAULT 'announcement',
+  `audience` enum('all','public','staff') NOT NULL DEFAULT 'all',
+  `starts_at` datetime DEFAULT NULL,
+  `ends_at` datetime DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_announcements_active_window` (`is_active`,`starts_at`,`ends_at`),
+  KEY `idx_announcements_audience` (`audience`),
+  CONSTRAINT `fk_announcements_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ============================================================
 -- Table: applications
 -- Complete schema including all extended columns
 -- ============================================================
@@ -81,7 +103,7 @@ CREATE TABLE `applications` (
   -- Metadata
   `barangay`                   varchar(100) NOT NULL,
   `date_submitted`             timestamp    NOT NULL DEFAULT current_timestamp(),
-  `status`                     enum('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  `status`                     enum('pending','approved','rejected','deceased') NOT NULL DEFAULT 'pending',
 
   -- Rule-based workflow status
   `workflow_state`             varchar(50)  DEFAULT 'Received',
@@ -162,6 +184,8 @@ CREATE TABLE `applications` (
   `deceased_suffix`            varchar(50)  DEFAULT NULL,
   `deceased_birth_date`        date         DEFAULT NULL,
   `death_registration_date`    date         DEFAULT NULL,
+  `deceased_at`                datetime     DEFAULT NULL,
+  `deceased_source_application_id` varchar(50) DEFAULT NULL,
   `landbank_card_no`           varchar(50)  DEFAULT NULL,
   `applicant_name`             varchar(255) DEFAULT NULL,
   `visit_purpose`              varchar(255) DEFAULT NULL,
@@ -223,6 +247,7 @@ CREATE TABLE `applications` (
   KEY `idx_priority`           (`priority_level`),
   KEY `idx_date_submitted`     (`date_submitted`),
   KEY `idx_dashboard_barangay_workflow` (`barangay`, `is_archived`, `workflow_state`),
+  KEY `idx_deceased_records` (`workflow_state`, `deceased_at`, `barangay`),
   KEY `idx_dashboard_barangay_date` (`barangay`, `is_archived`, `date_submitted`),
   KEY `idx_dashboard_priority_date` (`is_archived`, `priority_level`, `date_submitted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

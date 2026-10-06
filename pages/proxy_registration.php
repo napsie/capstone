@@ -240,6 +240,7 @@ $resetUrl = 'proxy_registration.php';
     <div class="page-bg page-bg--pages" aria-hidden="true"></div>
 
     <div class="landing-wrapper" style="padding-top: 80px;">
+        <?php $announcementSurface = 'public'; $announcementVariant = 'compact'; include '../partials/announcement_feed.php'; ?>
         <section class="proxy-section" aria-labelledby="proxy-heading">
             <div class="proxy-panel">
                 <div class="proxy-panel-header">

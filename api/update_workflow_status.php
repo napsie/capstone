@@ -331,30 +331,52 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Final-verification side effects
         // ──────────────────────────────────────────────────────────────────────
 
-        // (B) BURIAL ASSISTANCE VERIFICATION → Mark deceased senior's status + log Landbank freeze
-        if ($applicationType === 'burial' && $nextStatus === 'Verified') {
-            // Update the deceased senior's record to 'deceased' status
-            // Match by deceased name fields in the burial application
+        // (B) BURIAL ASSISTANCE APPROVAL → move the linked Senior ID profile
+        // into the dedicated Deceased Records registry. Prefer the permanent
+        // parent link; name/date matching is retained only for legacy claims.
+        if ($applicationType === 'burial' && in_array($nextStatus, ['Verified', 'Approved'], true)) {
             $deceasedLastName  = $app['deceased_last_name']  ?? $app['lastName']  ?? '';
             $deceasedFirstName = $app['deceased_first_name'] ?? $app['firstName'] ?? '';
             $deceasedBirthDate = $app['deceased_birth_date'] ?? $app['birth_date'] ?? '';
+            $deceasedProfileUpdated = false;
 
-            if (!empty($deceasedLastName) && !empty($deceasedFirstName)) {
+            if (!empty($app['parent_senior_id'])) {
                 $stmtDeceased = $conn->prepare(
-                    "UPDATE applications SET status = 'deceased', workflow_state = 'Deceased'
+                    "UPDATE applications
+                     SET status = 'deceased', workflow_state = 'Deceased',
+                         deceased_at = COALESCE(?, date_of_death, NOW()),
+                         deceased_source_application_id = ?
+                     WHERE id_number = ? AND application_type = 'senior'
+                       AND COALESCE(is_archived, 0) = 0"
+                );
+                $stmtDeceased->execute([$app['date_of_death'] ?? null, $appId, $app['parent_senior_id']]);
+                $deceasedProfileUpdated = $stmtDeceased->rowCount() > 0;
+            }
+
+            if (!$deceasedProfileUpdated && !empty($deceasedLastName) && !empty($deceasedFirstName)) {
+                $stmtDeceased = $conn->prepare(
+                    "UPDATE applications
+                     SET status = 'deceased', workflow_state = 'Deceased',
+                         deceased_at = COALESCE(?, date_of_death, NOW()),
+                         deceased_source_application_id = ?
                      WHERE lastName = ? AND firstName = ?
                      AND (birth_date = ? OR ? = '')
                      AND application_type = 'senior'
-                     AND workflow_state NOT IN ('Deceased')"
+                     AND COALESCE(is_archived, 0) = 0"
                 );
                 $stmtDeceased->execute([
+                    $app['date_of_death'] ?? null,
+                    $appId,
                     $deceasedLastName,
                     $deceasedFirstName,
                     $deceasedBirthDate,
                     $deceasedBirthDate,
                 ]);
 
-                // Log a Landbank card freeze simulation in history
+                $deceasedProfileUpdated = $stmtDeceased->rowCount() > 0;
+            }
+
+            if ($deceasedProfileUpdated) {
                 $stmtFreeze = $conn->prepare(
                     "INSERT INTO application_history (application_id, previous_state, new_state, changed_by, comments)
                      VALUES (?, ?, ?, ?, ?)"
@@ -366,6 +388,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $operator,
                     "SYSTEM ACTION: Deceased senior '{$deceasedFirstName} {$deceasedLastName}' profile updated to status=deceased. Landbank Blue Cash Card scheduled for deactivation to prevent unauthorized pension withdrawals post-mortem. (Pasig Ordinance 3-2026 §7c)"
                 ]);
+            } else {
+                throw new RuntimeException('The linked Senior ID profile could not be moved to Deceased Records.');
             }
         }
 
@@ -399,7 +423,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $responseData['message'] .= " | OSCA ID assigned: {$oscaIdNo}";
         }
 
-        if ($applicationType === 'burial' && $nextStatus === 'Verified') {
+        if ($applicationType === 'burial' && in_array($nextStatus, ['Verified', 'Approved'], true)) {
             $responseData['message'] .= " | Deceased senior profile updated and Landbank card freeze logged.";
         }
 

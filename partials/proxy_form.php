@@ -650,6 +650,45 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
     .mobile-form-progress[data-step="1"] .mobile-form-progress__track span:nth-child(1),
     .mobile-form-progress[data-step="2"] .mobile-form-progress__track span:nth-child(-n+2),
     .mobile-form-progress[data-step="3"] .mobile-form-progress__track span { background:#2563eb; }
+    .mobile-step-summary,
+    .mobile-step-next,
+    .mobile-step-back { display:none; }
+    .mobile-info-segment { display:contents; }
+    .mobile-info-pagination { display:none; }
+    @media (max-width: 600px) {
+        .mobile-form-step { display:none; }
+        .mobile-form-step.is-active,
+        .mobile-form-step.is-complete { display:block; }
+        .mobile-form-step.is-complete > :not(.mobile-step-summary) { display:none !important; }
+        .mobile-form-step.is-complete { margin-bottom:12px; }
+        .mobile-step-summary { width:100%; min-height:68px; padding:12px 14px; border:1px solid #86efac; border-radius:12px; background:#f0fdf4; color:#166534; align-items:center; gap:11px; text-align:left; cursor:pointer; }
+        .mobile-form-step.is-complete > .mobile-step-summary { display:flex; }
+        .mobile-step-summary__icon { display:grid; place-items:center; width:34px; height:34px; flex:0 0 34px; border-radius:50%; background:#22c55e; color:#fff; }
+        .mobile-step-summary strong,
+        .mobile-step-summary small { display:block; }
+        .mobile-step-summary strong { font-size:.9rem; }
+        .mobile-step-summary small { margin-top:2px; color:#4b7359; font-size:.75rem; font-weight:500; }
+        .mobile-step-summary__edit { margin-left:auto; color:#166534; font-size:.78rem; font-weight:800; }
+        .mobile-step-next,
+        .mobile-step-back { display:inline-flex; }
+        .mobile-form-step > .mobile-step-next { margin-top:8px; }
+        .mobile-step-actions { display:grid; grid-template-columns:minmax(0,.72fr) minmax(0,1.28fr); gap:10px; margin-top:18px; }
+        .mobile-step-actions .btn { width:100%; padding-inline:10px; }
+        .mobile-review-back { width:100%; margin-top:8px; }
+        .mobile-form-step .step-heading { scroll-margin-top:88px; }
+        .mobile-info-segment { display:none; }
+        .mobile-info-segment.is-active { display:block; }
+        .mobile-info-pagination { display:block; margin-top:16px; padding-top:14px; border-top:1px solid #e2e8f0; }
+        .mobile-info-pagination__status { display:flex; justify-content:space-between; gap:10px; margin-bottom:10px; color:#64748b; font-size:.74rem; font-weight:800; }
+        .mobile-info-pagination__status strong { color:#1d4ed8; }
+        .mobile-info-pagination__track { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-bottom:14px; }
+        .mobile-info-pagination__track span { height:5px; border-radius:999px; background:#dbe4ef; }
+        .mobile-info-pagination__track span.is-complete { background:#2563eb; }
+        .mobile-info-pagination__actions { display:grid; grid-template-columns:.7fr 1.3fr; gap:10px; }
+        .mobile-info-pagination__actions .btn { width:100%; padding-inline:10px; }
+        .mobile-info-pagination__back[disabled] { visibility:hidden; }
+        .mobile-form-step[data-mobile-form-step="1"] > .mobile-step-next.is-info-hidden { display:none; }
+    }
 </style>
 
 <?php if (!$proxySuccess): ?>
@@ -796,11 +835,17 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 </div>
             </div>
 
+            <section class="mobile-form-step is-active" data-mobile-form-step="1" aria-labelledby="mobileStep1Title">
+            <button type="button" class="mobile-step-summary" data-mobile-step-edit="1" aria-label="Edit completed information">
+                <span class="mobile-step-summary__icon"><i class="fas fa-check" aria-hidden="true"></i></span>
+                <span><strong>Information complete</strong><small>Your application details have been filled in.</small></span>
+                <span class="mobile-step-summary__edit">Edit</span>
+            </button>
             <!-- Step 1 Heading -->
             <div class="step-heading">
                 <div class="step-number">1</div>
                 <div>
-                    <h3>Application and Senior Citizen Information</h3>
+                    <h3 id="mobileStep1Title">Application and Senior Citizen Information</h3>
                     <p>Select the requested benefit, then enter the senior's details exactly as they appear in official records.</p>
                 </div>
             </div>
@@ -1211,11 +1256,28 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
 
             </div>
 
+            <div class="mobile-info-pagination" id="mobileInfoPagination" aria-live="polite">
+                <div class="mobile-info-pagination__status"><span id="mobileInfoSectionName">Basic details</span><strong id="mobileInfoPageCount">1 of 4</strong></div>
+                <div class="mobile-info-pagination__track" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+                <div class="mobile-info-pagination__actions">
+                    <button type="button" class="btn btn-muted mobile-info-pagination__back" id="mobileInfoBack"><i class="fas fa-arrow-left" aria-hidden="true"></i> Back</button>
+                    <button type="button" class="btn btn-accent" id="mobileInfoNext">Next <i class="fas fa-arrow-right" aria-hidden="true"></i></button>
+                </div>
+            </div>
+            <button type="button" class="btn btn-accent btn-block mobile-step-next" data-mobile-step-next="2">Continue to Documents <i class="fas fa-arrow-right" aria-hidden="true"></i></button>
+            </section>
+
             <!-- Step 2 Heading (Dynamic Uploads) -->
+            <section class="mobile-form-step" data-mobile-form-step="2" aria-labelledby="mobileStep2Title">
+            <button type="button" class="mobile-step-summary" data-mobile-step-edit="2" aria-label="Edit completed documents">
+                <span class="mobile-step-summary__icon"><i class="fas fa-check" aria-hidden="true"></i></span>
+                <span><strong>Documents complete</strong><small>All required documents have been added.</small></span>
+                <span class="mobile-step-summary__edit">Edit</span>
+            </button>
             <div class="step-heading" style="margin-top: 25px;">
                 <div class="step-number">2</div>
                 <div>
-                    <h3>Required Documents</h3>
+                    <h3 id="mobileStep2Title">Required Documents</h3>
                     <p>Upload the file types listed for each requirement below. Enabled upon senior age eligibility verification.</p>
                 </div>
             </div>
@@ -1278,11 +1340,18 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 
             </div>
 
+            <div class="mobile-step-actions">
+                <button type="button" class="btn btn-muted mobile-step-back" data-mobile-step-back="1"><i class="fas fa-arrow-left" aria-hidden="true"></i> Back</button>
+                <button type="button" class="btn btn-accent mobile-step-next" data-mobile-step-next="3">Continue to Review <i class="fas fa-arrow-right" aria-hidden="true"></i></button>
+            </div>
+            </section>
+
             <!-- Step 3 Heading -->
+            <section class="mobile-form-step" data-mobile-form-step="3" aria-labelledby="mobileStep3Title">
             <div class="step-heading" style="margin-top: 25px;">
                 <div class="step-number">3</div>
                 <div>
-                    <h3>Review and Consent</h3>
+                    <h3 id="mobileStep3Title">Review and Consent</h3>
                     <p>Confirm that the senior applicant's information is complete and accurate before submission.</p>
                 </div>
             </div>
@@ -1298,9 +1367,11 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
 
             <!-- Submit Button -->
             <div id="newSeniorValidationSummary" class="alert-banner alert-banner-error" role="alert" aria-live="assertive" hidden style="margin-top:25px;"></div>
+            <button type="button" class="btn btn-muted mobile-step-back mobile-review-back" data-mobile-step-back="2"><i class="fas fa-arrow-left" aria-hidden="true"></i> Back to Documents</button>
             <button type="submit" class="btn btn-accent btn-block" id="btnSubmitNew" style="margin-top: 25px; padding: 14px; font-size: 1rem; background: #10b981; border-color: #10b981;">
                 <i class="fas fa-qrcode"></i> <?php echo $benefitPortalMode ? 'Submit Application' : 'Submit Pre-Registration'; ?>
             </button>
+            </section>
             </div><!-- /#publicApplicationBody -->
         </form>
     </div>
@@ -1566,6 +1637,129 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             updateNewSeniorProgress();
         }
 
+        let activeMobileFormStep = 1;
+        const mobileFormQuery = window.matchMedia('(max-width: 600px)');
+        let activeMobileInfoPage = 0;
+        let mobileInfoSegments = [];
+        const mobileInfoLabels = ['Basic details', 'Personal identity', 'Home address', 'Benefit questions'];
+
+        function initializeMobileInformationPages() {
+            if (mobileInfoSegments.length) return;
+            const informationSection = document.querySelector('[data-mobile-form-step="1"] > .form-section');
+            if (!informationSection) return;
+            const originalNodes = Array.from(informationSection.children);
+            let segment = document.createElement('div');
+            segment.className = 'mobile-info-segment';
+            informationSection.appendChild(segment);
+            mobileInfoSegments.push(segment);
+            originalNodes.forEach(node => {
+                if (node.classList?.contains('form-subheading')) {
+                    segment = document.createElement('div');
+                    segment.className = 'mobile-info-segment';
+                    informationSection.appendChild(segment);
+                    mobileInfoSegments.push(segment);
+                }
+                segment.appendChild(node);
+            });
+            // The support block belongs with the address screen; the final
+            // screen contains only the selected benefit's questions.
+            mobileInfoSegments = mobileInfoSegments.slice(0, 4);
+            showMobileInfoPage(0, { scroll: false });
+        }
+
+        function mobileInfoPageControls(page) {
+            const segment = mobileInfoSegments[page];
+            if (!segment) return [];
+            return Array.from(segment.querySelectorAll('input, select, textarea'))
+                .filter(control => !control.disabled && !control.closest('[hidden]'));
+        }
+
+        function validateMobileInfoPage(page) {
+            const invalid = mobileInfoPageControls(page).find(control => !control.checkValidity());
+            if (!invalid) return true;
+            invalid.reportValidity();
+            invalid.closest('.form-group')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            invalid.focus({ preventScroll: true });
+            return false;
+        }
+
+        function showMobileInfoPage(page, options = {}) {
+            if (!mobileInfoSegments.length) return;
+            activeMobileInfoPage = Math.max(0, Math.min(mobileInfoSegments.length - 1, Number(page) || 0));
+            mobileInfoSegments.forEach((item, index) => item.classList.toggle('is-active', index === activeMobileInfoPage));
+            const count = document.getElementById('mobileInfoPageCount');
+            const name = document.getElementById('mobileInfoSectionName');
+            if (count) count.textContent = `${activeMobileInfoPage + 1} of ${mobileInfoSegments.length}`;
+            if (name) name.textContent = mobileInfoLabels[activeMobileInfoPage] || 'Application information';
+            document.querySelectorAll('#mobileInfoPagination .mobile-info-pagination__track span').forEach((bar, index) => {
+                bar.classList.toggle('is-complete', index <= activeMobileInfoPage);
+            });
+            const back = document.getElementById('mobileInfoBack');
+            if (back) back.disabled = activeMobileInfoPage === 0;
+            const next = document.getElementById('mobileInfoNext');
+            if (next) next.hidden = activeMobileInfoPage === mobileInfoSegments.length - 1;
+            const continueButton = document.querySelector('[data-mobile-form-step="1"] > [data-mobile-step-next="2"]');
+            continueButton?.classList.toggle('is-info-hidden', activeMobileInfoPage !== mobileInfoSegments.length - 1);
+            if (mobileFormQuery.matches && options.scroll !== false) {
+                document.getElementById('mobileStep1Title')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        function revealMobileInfoControl(control) {
+            const segmentIndex = mobileInfoSegments.findIndex(segment => segment.contains(control));
+            if (segmentIndex >= 0) showMobileInfoPage(segmentIndex, { scroll: false });
+        }
+
+        document.getElementById('mobileInfoNext')?.addEventListener('click', () => {
+            if (validateMobileInfoPage(activeMobileInfoPage)) showMobileInfoPage(activeMobileInfoPage + 1);
+        });
+        document.getElementById('mobileInfoBack')?.addEventListener('click', () => showMobileInfoPage(activeMobileInfoPage - 1));
+
+        function showMobileFormStep(step, options = {}) {
+            const requestedStep = Math.max(1, Math.min(3, Number(step) || 1));
+            activeMobileFormStep = requestedStep;
+            document.querySelectorAll('[data-mobile-form-step]').forEach(section => {
+                const sectionStep = Number(section.dataset.mobileFormStep);
+                section.classList.toggle('is-active', sectionStep === requestedStep);
+                section.classList.toggle('is-complete', sectionStep < requestedStep);
+                section.setAttribute('aria-hidden', mobileFormQuery.matches && sectionStep > requestedStep ? 'true' : 'false');
+            });
+            updateNewSeniorProgress();
+            if (mobileFormQuery.matches && options.scroll !== false) {
+                const heading = document.querySelector(`[data-mobile-form-step="${requestedStep}"] .step-heading`);
+                window.setTimeout(() => heading?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 40);
+            }
+        }
+
+        function mobileStepControls(step) {
+            const section = document.querySelector(`[data-mobile-form-step="${step}"]`);
+            if (!section) return [];
+            return Array.from(section.querySelectorAll('input, select, textarea'))
+                .filter(control => !control.disabled && !control.closest('[hidden]'));
+        }
+
+        function validateMobileFormStep(step) {
+            const controls = mobileStepControls(step);
+            const invalid = controls.find(control => !control.checkValidity());
+            if (invalid) {
+                invalid.reportValidity();
+                invalid.closest('.form-group, .upload-slot, .checkbox-row')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                invalid.focus({ preventScroll: true });
+                return false;
+            }
+            if (step === 2) {
+                const pairInput = Array.from(document.querySelectorAll('#newSeniorForm input[data-id-pair-enabled="true"]:not(:disabled)'))
+                    .find(input => !governmentIdUploads.get(input)?.files.every(Boolean));
+                if (pairInput) {
+                    showGovernmentIdError(pairInput, idPairMissingMessage(pairInput));
+                    pairInput.closest('.upload-slot')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    pairInput.focus({ preventScroll: true });
+                    return false;
+                }
+            }
+            return true;
+        }
+
         function updateNewSeniorProgress() {
             const form = document.getElementById('newSeniorForm');
             const progress = document.getElementById('newSeniorProgress');
@@ -1579,7 +1773,8 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 .filter(control => !control.disabled);
             const documentsComplete = requiredFiles.every(control => control.files?.length > 0);
 
-            const step = !detailsComplete ? 1 : (documentsComplete ? 3 : 2);
+            const calculatedStep = !detailsComplete ? 1 : (documentsComplete ? 3 : 2);
+            const step = mobileFormQuery.matches ? activeMobileFormStep : calculatedStep;
             const labels = {
                 1: 'Step 1 of 3 · Details',
                 2: 'Step 2 of 3 · Documents',
@@ -1589,6 +1784,19 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             const label = progress.querySelector('.mobile-form-progress__label');
             if (label) label.textContent = labels[step];
         }
+
+        document.querySelectorAll('[data-mobile-step-next]').forEach(button => button.addEventListener('click', () => {
+            if (!mobileFormQuery.matches) return;
+            const currentStep = Number(button.closest('[data-mobile-form-step]')?.dataset.mobileFormStep);
+            if (validateMobileFormStep(currentStep)) showMobileFormStep(button.dataset.mobileStepNext);
+        }));
+        document.querySelectorAll('[data-mobile-step-back]').forEach(button => button.addEventListener('click', () => {
+            if (mobileFormQuery.matches) showMobileFormStep(button.dataset.mobileStepBack);
+        }));
+        document.querySelectorAll('[data-mobile-step-edit]').forEach(button => button.addEventListener('click', () => {
+            if (mobileFormQuery.matches) showMobileFormStep(button.dataset.mobileStepEdit);
+        }));
+        mobileFormQuery.addEventListener?.('change', () => showMobileFormStep(activeMobileFormStep, { scroll: false }));
 
         function selectRequestedBenefit(value, selectedCard) {
             const select = document.getElementById('requestedBenefit');
@@ -1881,8 +2089,12 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             }
             if (!event.currentTarget.checkValidity()) {
                 event.preventDefault();
-                const visibleInvalidControls = Array.from(event.currentTarget.querySelectorAll(':invalid'))
-                    .filter(control => !control.disabled && !control.closest('[hidden]') && control.offsetParent !== null);
+                const allInvalidControls = Array.from(event.currentTarget.querySelectorAll(':invalid'))
+                    .filter(control => !control.disabled && !control.closest('[hidden]'));
+                const invalidStep = Number(allInvalidControls[0]?.closest('[data-mobile-form-step]')?.dataset.mobileFormStep);
+                if (mobileFormQuery.matches && invalidStep) showMobileFormStep(invalidStep, { scroll: false });
+                if (mobileFormQuery.matches && invalidStep === 1 && allInvalidControls[0]) revealMobileInfoControl(allInvalidControls[0]);
+                const visibleInvalidControls = allInvalidControls.filter(control => control.offsetParent !== null);
                 const firstInvalid = visibleInvalidControls[0];
                 const invalidFields = visibleInvalidControls
                     .map(control => {
@@ -1998,6 +2210,8 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
         });
         updateBenefitSpecificFields();
         updateBurialOtherFields();
+        initializeMobileInformationPages();
+        showMobileFormStep(1, { scroll: false });
         updateNewSeniorProgress();
 
         if (document.getElementById('birthDate')?.value) calculateProxyAge2026();
