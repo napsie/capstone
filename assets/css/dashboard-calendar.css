@@ -363,4 +363,26 @@
     .department-dashboard .calendar-card .calendar-day { width: 26px; height: 26px; font-size: .74rem; }
     .department-dashboard .calendar-card .calendar-selection { margin-top: 5px; padding: 5px 8px; font-size: .7rem; }
     .department-dashboard .calendar-card .calendar-selection:empty { display: none; }
+
+    /* Match Recent Applications to the complete graph column, including the
+       second graph row. Its list scrolls internally within that exact height. */
+    .dashboard-page .dashboard-panels { align-items: start; }
+    .dashboard-page .dashboard-panels > .right-panel {
+        min-height: 0;
+        align-self: start;
+        overflow: visible;
+    }
+    .dashboard-page .dashboard-panels > .right-panel > .recent-apps-card {
+        min-height: 0;
+        height: var(--notification-panel-height, 360px);
+        max-height: var(--notification-panel-height, 360px);
+        flex: 0 0 auto;
+        overflow: hidden;
+    }
+    .dashboard-page .recent-apps-card .notifications-list {
+        min-height: 0;
+        max-height: none;
+        flex: 1 1 auto;
+        overflow-y: auto;
+    }
 }

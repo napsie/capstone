@@ -156,6 +156,8 @@ try {
             color: #2563eb;
         }
 
+        .page-subtitle { margin:7px 0 0; color:#64748b; font-size:.84rem; line-height:1.45; }
+
         .header-actions {
             display: flex;
             align-items: center;
@@ -197,100 +199,66 @@ try {
             font-size: 12px;
         }
 
-        /* Profile Banner Section */
-        .profile-section {
-            background: var(--card-bg);
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-            padding: 20px 24px;
-            margin-bottom: 24px;
-            position: relative;
-            border: 1px solid #e2e8f0;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .profile-header {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .profile-avatar {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: var(--secondary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 24px;
-            font-weight: bold;
-            overflow: hidden;
-            border: 2px solid var(--accent);
-        }
-
-        .profile-avatar img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .profile-info h2 {
-            color: var(--primary);
-            font-size: 1.15rem;
-            margin-bottom: 2px;
-        }
-
-        .profile-info p {
-            color: var(--gray);
-            font-size: 13px;
-        }
-
         /* Settings Grid */
         .settings-grid {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 24px;
-            margin-bottom: 24px;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 20px;
+            max-width: 1240px;
+            margin: 0 auto 24px;
             width: 100%;
             align-items: start;
         }
 
+        .header,
+        .main-content > .message,
+        .main-content > .error,
+        .main-content > .backup-notice {
+            width: 100%;
+            max-width: 1240px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
         .card {
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+            padding: 26px;
             border: 1px solid #e2e8f0;
         }
 
         .card h3 {
             font-size: 1.05rem;
-            margin-bottom: 20px;
-            color: white;
-            background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+            margin-bottom: 8px;
+            color: var(--primary);
+            background: transparent;
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 14px 18px;
-            border-radius: 8px;
+            gap: 12px;
+            padding: 0;
+            border-radius: 0;
         }
 
-        .logo-editor { display:grid; grid-template-columns:112px minmax(0,1fr); gap:20px; align-items:start; }
+        .card h3 i { width:40px; height:40px; display:grid; place-items:center; flex:0 0 40px; border-radius:11px; color:#1d4ed8; background:#dbeafe; }
+        .section-description { margin:0 0 22px 52px; color:#64748b; font-size:.82rem; line-height:1.5; }
+
+        .logo-editor { display:grid; grid-template-columns:150px minmax(0,1fr); gap:26px; align-items:center; padding:20px; border:1px solid #e2e8f0; border-radius:13px; background:#f8fafc; }
         .logo-preview { text-align:center; }
         .logo-preview span { display:block; margin-bottom:8px; color:var(--gray); font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
-        .logo-preview img { display:block; width:96px; height:96px; margin:auto; object-fit:contain; border:1px solid #dbe4ef; border-radius:14px; background:#fff; box-shadow:0 5px 14px rgba(15,23,42,.08); }
+        .logo-preview img { display:block; width:112px; height:112px; margin:auto; object-fit:contain; border:1px solid #dbe4ef; border-radius:16px; background:#fff; box-shadow:0 5px 14px rgba(15,23,42,.08); }
         .logo-upload-panel { min-width:0; }
         .logo-upload-panel label { display:block; margin-bottom:7px; color:var(--primary); font-size:.88rem; font-weight:750; }
         .logo-upload-panel small { display:block; margin-top:8px; color:var(--gray); font-size:.78rem; line-height:1.5; }
         .logo-upload-panel input[type="file"] { width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:9px; background:#f8fafc; color:var(--primary); }
         .logo-upload-panel input[type="file"]::file-selector-button { margin-right:10px; padding:8px 12px; border:0; border-radius:7px; background:#1e3a5f; color:#fff; font:inherit; font-weight:700; cursor:pointer; }
+        .selection-status { display:flex; align-items:center; gap:7px; margin-top:10px; color:#64748b; font-size:.77rem; }
+        .selection-status.ready { color:#047857; font-weight:700; }
+        .selection-status.invalid { color:#b91c1c; font-weight:700; }
 
         .backup-card { grid-column: 1 / -1; }
-        .backup-layout { display:grid; grid-template-columns:minmax(0, .8fr) minmax(320px, 1.2fr); gap:28px; align-items:start; }
+        .backup-card h3 i { color:#047857; background:#d1fae5; }
+        .backup-layout { display:grid; grid-template-columns:minmax(280px, .8fr) minmax(360px, 1.2fr); gap:22px; align-items:stretch; }
         .backup-summary { padding:18px; border:1px solid #bfdbfe; border-radius:12px; background:#eff6ff; }
         .backup-summary strong { display:block; margin-bottom:8px; color:#1e3a5f; }
         .backup-summary p { margin:0 0 14px; color:#475569; font-size:.86rem; line-height:1.6; }
@@ -299,6 +267,12 @@ try {
         .backup-form .form-group:last-of-type { margin-bottom:8px; }
         .backup-help { display:block; margin-top:7px; color:#64748b; font-size:.76rem; line-height:1.45; }
         .backup-warning { display:flex; align-items:flex-start; gap:9px; margin:14px 0; padding:11px 12px; border-radius:9px; color:#854d0e; background:#fefce8; font-size:.78rem; line-height:1.45; }
+        .password-field { position:relative; }
+        .password-field input { padding-right:48px; }
+        .password-toggle { position:absolute; top:50%; right:7px; width:36px; height:36px; transform:translateY(-50%); border:0; border-radius:7px; color:#475569; background:transparent; cursor:pointer; }
+        .password-toggle:hover { color:#1d4ed8; background:#eaf2ff; }
+        .password-status { min-height:20px; margin-top:6px; color:#64748b; font-size:.74rem; }
+        .password-status.valid { color:#047857; }.password-status.invalid { color:#b91c1c; }
         .backup-notice { grid-column:1/-1; padding:13px 15px; border-radius:10px; font-size:.86rem; font-weight:650; }
         .backup-notice.error { color:#991b1b; border:1px solid #fecaca; background:#fef2f2; }
 
@@ -365,6 +339,8 @@ try {
         .btn:hover {
             background: #1d4ed8;
         }
+        .btn:focus-visible,.password-toggle:focus-visible { outline:3px solid rgba(37,99,235,.25); outline-offset:2px; }
+        .btn:disabled { cursor:not-allowed; opacity:.55; transform:none; }
 
         .btn-success {
             background: #10b981;
@@ -418,11 +394,8 @@ try {
             .header-actions {
                 align-self: flex-end;
             }
-            .profile-section {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 15px;
-            }
+            .card { padding:18px; }
+            .section-description { margin-left:0; }
         }
     </style>
     <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
@@ -441,6 +414,7 @@ try {
             <div class="header-content">
                 <div class="welcome-message" data-first-name="<?php echo htmlspecialchars($user['first_name'] ?? ''); ?>" data-last-name="<?php echo htmlspecialchars($user['last_name'] ?? ''); ?>" data-role="<?php echo htmlspecialchars($user['role'] ?? ''); ?>"></div>
                 <h1>System <span>Settings</span></h1>
+                <p class="page-subtitle">Manage system-wide branding and create secure administrative backups.</p>
             </div>
             <div class="header-actions">
                 <div class="user-info">
@@ -463,10 +437,10 @@ try {
         </div>
 
         <?php if ($message): ?>
-            <div class="message"><?php echo htmlspecialchars($message); ?></div>
+            <div class="message" role="status"><i class="fas fa-circle-check" aria-hidden="true"></i> <?php echo htmlspecialchars($message); ?></div>
         <?php endif; ?>
         <?php if ($error): ?>
-            <div class="error"><?php echo htmlspecialchars($error); ?></div>
+            <div class="error" role="alert"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> <?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
         <?php if (is_array($backupNotice)): ?>
             <div class="backup-notice <?php echo !empty($backupNotice['success']) ? 'message' : 'error'; ?>">
@@ -474,34 +448,23 @@ try {
             </div>
         <?php endif; ?>
 
-        <!-- Profile Section Card -->
-        <div class="profile-section">
-            <div class="profile-header">
-                <div class="profile-avatar">
-                    <img src="<?php echo $profilePicPath; ?>" alt="Profile Picture">
-                </div>
-                <div class="profile-info">
-                    <h2><?php echo htmlspecialchars(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? '')); ?></h2>
-                    <p><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', ($user['role'] ?? '')))); ?><?php if (($user['role'] ?? '') !== 'department_admin' && ($user['barangay'] ?? '') !== ''): ?> • <?php echo htmlspecialchars($user['barangay']); ?><?php else: ?> • Pasig City<?php endif; ?></p>
-                </div>
-            </div>
-        </div>
-
         <!-- Settings Grid -->
         <div class="settings-grid">
-            <div class="card">
-                <h3><i class="fas fa-image"></i> Change System Logo</h3>
+            <section class="card" aria-labelledby="logoSettingsTitle">
+                <h3 id="logoSettingsTitle"><i class="fas fa-image"></i> System Logo</h3>
+                <p class="section-description">Update the official logo used across SENIORLINK and generated reports.</p>
                 <form id="systemLogoForm" action="" method="POST" enctype="multipart/form-data">
                     <div class="logo-editor">
                         <div class="logo-preview"><span>Current Logo</span><img id="systemLogoPreview" src="<?php echo htmlspecialchars(systemLogoUrl($conn)); ?>?v=<?php echo urlencode(systemLogoFilename($conn)); ?>" alt="Current system logo"></div>
-                        <div class="logo-upload-panel"><label for="systemLogo">Choose a new logo</label><input type="file" id="systemLogo" name="systemLogo" accept="image/png,image/jpeg,.png,.jpg,.jpeg" required><small>PNG or JPEG, up to 5 MB. Your selected image will be previewed before saving and will appear throughout the system and on future PDF and Excel reports.</small></div>
+                        <div class="logo-upload-panel"><label for="systemLogo">Choose a new logo</label><input type="file" id="systemLogo" name="systemLogo" accept="image/png,image/jpeg,.png,.jpg,.jpeg" aria-describedby="logoRequirements logoSelectionStatus" required><small id="logoRequirements">PNG or JPEG, up to 5 MB and at least 100 × 100 pixels. Preview the image before saving; it will appear throughout the system and in future PDF and Excel reports.</small><div id="logoSelectionStatus" class="selection-status" aria-live="polite"><i class="fas fa-circle-info" aria-hidden="true"></i><span>No new logo selected.</span></div></div>
                     </div>
-                    <div class="actions"><button type="submit" name="updateSystemLogo" class="btn btn-success"><i class="fas fa-floppy-disk"></i> Save Changes</button></div>
+                    <div class="actions"><button type="submit" id="logoSaveButton" name="updateSystemLogo" class="btn" disabled><i class="fas fa-floppy-disk"></i> Update System Logo</button></div>
                 </form>
-            </div>
+            </section>
             <?php if (in_array($_SESSION['role'] ?? '', ['department_admin', 'super_admin'], true)): ?>
-            <div class="card backup-card" id="backup">
-                <h3><i class="fas fa-shield-halved"></i> Encrypted System Backup</h3>
+            <section class="card backup-card" id="backup" aria-labelledby="backupSettingsTitle">
+                <h3 id="backupSettingsTitle"><i class="fas fa-shield-halved"></i> Encrypted System Backup</h3>
+                <p class="section-description">Create a password-protected administrative backup for secure offline storage.</p>
                 <div class="backup-layout">
                     <div class="backup-summary">
                         <strong>One portable copy of essential system data</strong>
@@ -517,23 +480,25 @@ try {
                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['backup_csrf_token']); ?>">
                         <div class="form-group">
                             <label for="backupAccountPassword">Current account password</label>
-                            <input type="password" id="backupAccountPassword" name="account_password" required autocomplete="current-password">
+                            <div class="password-field"><input type="password" id="backupAccountPassword" name="account_password" required autocomplete="current-password"><button class="password-toggle" type="button" aria-label="Show current account password" aria-pressed="false" data-password-toggle="backupAccountPassword"><i class="fas fa-eye" aria-hidden="true"></i></button></div>
                             <small class="backup-help">Confirms that the signed-in administrator authorized this download.</small>
                         </div>
                         <div class="form-group">
                             <label for="backupArchivePassword">Backup file password</label>
-                            <input type="password" id="backupArchivePassword" name="archive_password" required minlength="12" autocomplete="new-password">
+                            <div class="password-field"><input type="password" id="backupArchivePassword" name="archive_password" required minlength="12" autocomplete="new-password" aria-describedby="backupPasswordStatus"><button class="password-toggle" type="button" aria-label="Show backup file password" aria-pressed="false" data-password-toggle="backupArchivePassword"><i class="fas fa-eye" aria-hidden="true"></i></button></div>
                             <small class="backup-help">Use at least 12 characters. This password is never saved by SENIORLINK.</small>
+                            <div id="backupPasswordStatus" class="password-status" aria-live="polite">Enter at least 12 characters.</div>
                         </div>
                         <div class="form-group">
                             <label for="backupArchivePasswordConfirmation">Confirm backup file password</label>
-                            <input type="password" id="backupArchivePasswordConfirmation" name="archive_password_confirmation" required minlength="12" autocomplete="new-password">
+                            <div class="password-field"><input type="password" id="backupArchivePasswordConfirmation" name="archive_password_confirmation" required minlength="12" autocomplete="new-password" aria-describedby="backupPasswordMatch"><button class="password-toggle" type="button" aria-label="Show password confirmation" aria-pressed="false" data-password-toggle="backupArchivePasswordConfirmation"><i class="fas fa-eye" aria-hidden="true"></i></button></div>
+                            <div id="backupPasswordMatch" class="password-status" aria-live="polite">Re-enter the backup password.</div>
                         </div>
                         <div class="backup-warning"><i class="fas fa-triangle-exclamation"></i><span>Keep the ZIP and its password in separate safe locations. A forgotten backup password cannot be recovered.</span></div>
-                        <div class="actions"><button type="submit" class="btn btn-success"><i class="fas fa-download"></i> Create and Download Backup</button></div>
+                        <div class="actions"><button type="submit" class="btn"><i class="fas fa-download"></i> Create and Download Backup</button></div>
                     </form>
                 </div>
-            </div>
+            </section>
             <?php endif; ?>
         </div>
     </div>
@@ -544,14 +509,70 @@ try {
     document.addEventListener('DOMContentLoaded', function() {
         const logoInput = document.getElementById('systemLogo');
         const logoPreview = document.getElementById('systemLogoPreview');
+        const logoStatus = document.getElementById('logoSelectionStatus');
+        const logoSaveButton = document.getElementById('logoSaveButton');
         let selectedLogoUrl = '';
         logoInput?.addEventListener('change', function() {
             const file = this.files?.[0];
-            if (!file || !logoPreview) return;
+            logoStatus?.classList.remove('ready', 'invalid');
+            if (!file || !logoPreview) {
+                if (logoStatus) logoStatus.innerHTML = '<i class="fas fa-circle-info" aria-hidden="true"></i><span>No new logo selected.</span>';
+                if (logoSaveButton) logoSaveButton.disabled = true;
+                return;
+            }
+            const validType = ['image/png', 'image/jpeg'].includes(file.type);
+            const validSize = file.size <= 5 * 1024 * 1024;
+            if (!validType || !validSize) {
+                this.value = '';
+                if (logoSaveButton) logoSaveButton.disabled = true;
+                logoStatus?.classList.add('invalid');
+                if (logoStatus) logoStatus.innerHTML = '<i class="fas fa-circle-exclamation" aria-hidden="true"></i><span>Select a PNG or JPEG image no larger than 5 MB.</span>';
+                return;
+            }
             if (selectedLogoUrl) URL.revokeObjectURL(selectedLogoUrl);
             selectedLogoUrl = URL.createObjectURL(file);
             logoPreview.src = selectedLogoUrl;
+            if (logoSaveButton) logoSaveButton.disabled = false;
+            logoStatus?.classList.add('ready');
+            if (logoStatus) {
+                logoStatus.innerHTML = '<i class="fas fa-circle-check" aria-hidden="true"></i><span></span>';
+                logoStatus.querySelector('span').textContent = `${file.name} is ready to preview and save.`;
+            }
         });
+
+        document.querySelectorAll('[data-password-toggle]').forEach(button => {
+            button.addEventListener('click', () => {
+                const input = document.getElementById(button.dataset.passwordToggle);
+                if (!input) return;
+                const showing = input.type === 'text';
+                input.type = showing ? 'password' : 'text';
+                button.setAttribute('aria-pressed', showing ? 'false' : 'true');
+                button.setAttribute('aria-label', `${showing ? 'Show' : 'Hide'} ${button.getAttribute('aria-label').replace(/^(Show|Hide)\s+/, '')}`);
+                const icon = button.querySelector('i');
+                if (icon) icon.className = showing ? 'fas fa-eye' : 'fas fa-eye-slash';
+            });
+        });
+
+        const archivePassword = document.getElementById('backupArchivePassword');
+        const archiveConfirmation = document.getElementById('backupArchivePasswordConfirmation');
+        const passwordStatus = document.getElementById('backupPasswordStatus');
+        const passwordMatch = document.getElementById('backupPasswordMatch');
+        const updatePasswordFeedback = () => {
+            if (passwordStatus && archivePassword) {
+                const valid = archivePassword.value.length >= 12;
+                passwordStatus.className = `password-status${archivePassword.value ? (valid ? ' valid' : ' invalid') : ''}`;
+                passwordStatus.textContent = valid ? 'Password length requirement met.' : 'Enter at least 12 characters.';
+            }
+            if (passwordMatch && archiveConfirmation && archivePassword) {
+                const hasConfirmation = archiveConfirmation.value.length > 0;
+                const matches = hasConfirmation && archiveConfirmation.value === archivePassword.value;
+                archiveConfirmation.setCustomValidity(hasConfirmation && !matches ? 'The backup file passwords must match.' : '');
+                passwordMatch.className = `password-status${hasConfirmation ? (matches ? ' valid' : ' invalid') : ''}`;
+                passwordMatch.textContent = hasConfirmation ? (matches ? 'Passwords match.' : 'Passwords do not match.') : 'Re-enter the backup password.';
+            }
+        };
+        archivePassword?.addEventListener('input', updatePasswordFeedback);
+        archiveConfirmation?.addEventListener('input', updatePasswordFeedback);
         // Dynamic greeting message update
         const welcomeMessage = document.querySelector('.welcome-message');
         if (welcomeMessage) {

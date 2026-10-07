@@ -1,0 +1,17 @@
+.quick-action.calendar-launch { font: inherit; text-align: left; cursor: pointer; }
+.barangay-dashboard .dashboard-quick-actions { grid-template-columns: repeat(2, minmax(180px, 200px)); }
+.dashboard-calendar-backdrop { position:fixed; inset:0; z-index:1085; background:rgba(15,23,42,.48); }
+.dashboard-calendar-drawer { position:fixed; z-index:1090; inset:0 0 0 auto; width:min(440px,100vw); height:100dvh; display:flex; flex-direction:column; visibility:hidden; background:#f8fafc; box-shadow:-18px 0 45px rgba(15,23,42,.24); transform:translateX(105%); transition:transform .22s ease,visibility .22s; }
+.dashboard-calendar-drawer.is-open { visibility:visible; transform:translateX(0); }
+.dashboard-calendar-drawer__header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:22px; color:#fff; background:linear-gradient(135deg,#0f4c81,#0f766e); }
+.dashboard-calendar-drawer__header span { color:#bfdbfe; font-size:.68rem; font-weight:800; letter-spacing:.09em; text-transform:uppercase; }
+.dashboard-calendar-drawer__header h2 { display:flex; align-items:center; gap:9px; margin:3px 0; color:#fff; font-size:1.3rem; }
+.dashboard-calendar-drawer__header p { margin:0; color:rgba(255,255,255,.76); font-size:.78rem; }
+.dashboard-calendar-drawer__header button { width:44px; height:44px; flex:0 0 44px; display:grid; place-items:center; border:0; border-radius:11px; color:#fff; background:rgba(255,255,255,.12); cursor:pointer; font-size:1.05rem; }
+.dashboard-calendar-drawer__header button:hover { background:rgba(255,255,255,.22); }
+.dashboard-calendar-drawer__header button:focus-visible,.calendar-launch:focus-visible { outline:3px solid #f8ca61; outline-offset:2px; }
+.dashboard-calendar-drawer__body { flex:1; overflow-y:auto; padding:20px; }
+.dashboard-calendar-drawer .calendar-card { width:100%; padding:18px; border:1px solid #dbe5ee; border-radius:15px; background:#fff; box-shadow:0 8px 24px rgba(15,23,42,.07); }
+body.dashboard-calendar-open { overflow:hidden; }
+@media(max-width:760px){.barangay-dashboard .dashboard-quick-actions{grid-template-columns:1fr 1fr!important}.dashboard-calendar-drawer{width:100vw}.dashboard-calendar-drawer__body{padding:14px}.dashboard-calendar-drawer .calendar-card{padding:14px}}
+@media(max-width:420px){.quick-action.calendar-launch{min-width:0}.dashboard-calendar-drawer__header{padding:18px 16px}.dashboard-calendar-drawer__body{padding:10px}}

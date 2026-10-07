@@ -592,10 +592,11 @@ $publishedAnnouncementCount = activeAnnouncementCount($conn);
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
     <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=7">
     <link rel="stylesheet" href="../assets/css/metric-cards.css?v=3">
-    <link rel="stylesheet" href="../assets/css/dashboard-calendar.css?v=9">
+    <link rel="stylesheet" href="../assets/css/dashboard-calendar.css?v=12">
 <script src="../assets/js/dashboard-chart-fallback.js?v=1"></script>
 <script src="../assets/js/gender-trend-chart.js?v=1"></script>
 <script src="../assets/js/dashboard-calendar.js?v=1" defer></script>
+<script src="../assets/js/dashboard-panel-alignment.js?v=2" defer></script>
 </head>
 <body class="dashboard-page department-dashboard">
     <div class="container">
@@ -637,6 +638,7 @@ $publishedAnnouncementCount = activeAnnouncementCount($conn);
                 <nav class="dashboard-quick-actions" aria-label="Department quick actions">
                     <a class="quick-action primary" href="verify_document.php"><i class="fas fa-file-circle-check" aria-hidden="true"></i><span><strong>Verify documents</strong><small>Open review workspace</small></span></a>
                     <a class="quick-action" href="department_records.php"><i class="fas fa-database" aria-hidden="true"></i><span><strong>Citywide records</strong><small>Browse all barangays</small></span></a>
+                    <button class="quick-action calendar-launch" type="button" data-calendar-open aria-controls="dashboardCalendarDrawer" aria-expanded="false"><i class="fas fa-calendar-days" aria-hidden="true"></i><span><strong>Calendar</strong><small>Check dates quickly</small></span></button>
                 </nav>
             </section>
 
@@ -705,22 +707,6 @@ $publishedAnnouncementCount = activeAnnouncementCount($conn);
                         </div>
         
                         <div class="right-panel">
-                            <div class="calendar-card">
-                                <h3><span><i class="fas fa-calendar-alt"></i> Calendar</span><small>Navigate dates and schedules</small></h3>
-                                <div class="calendar-body">
-                                    <div class="calendar-header">
-                                        <button class="calendar-nav" id="prev-month" type="button" aria-label="Show previous month"><i class="fas fa-chevron-left" aria-hidden="true"></i></button>
-                                        <span class="month-year" id="month-year" aria-live="polite"></span>
-                                        <button class="calendar-nav" id="next-month" type="button" aria-label="Show next month"><i class="fas fa-chevron-right" aria-hidden="true"></i></button>
-                                    </div>
-                                    <div class="calendar-toolbar"><button class="calendar-today-button" id="calendar-today" type="button"><i class="fas fa-location-crosshairs" aria-hidden="true"></i> Today</button><span class="calendar-clock" id="current-time" aria-live="polite"></span></div>
-                                    <table class="calendar-table">
-                                        <thead><tr><th scope="col">Sun</th><th scope="col">Mon</th><th scope="col">Tue</th><th scope="col">Wed</th><th scope="col">Thu</th><th scope="col">Fri</th><th scope="col">Sat</th></tr></thead>
-                                        <tbody id="calendar-days"></tbody>
-                                    </table>
-                                    <p class="calendar-selection" id="calendar-selection" aria-live="polite"></p>
-                                </div>
-                            </div>
                             <div class="notifications-card recent-apps-card">
                                 <h3><span class="notification-heading"><span><i class="fas fa-bell"></i> Recent applications</span><b class="important-label"><i class="fas fa-circle" aria-hidden="true"></i> Important updates</b></span><small>Latest activity from all barangays — review new items promptly</small></h3>
                                 <div class="notifications-list" id="realtime-notifications-list" aria-live="polite">
@@ -806,6 +792,7 @@ $publishedAnnouncementCount = activeAnnouncementCount($conn);
                     <div class="footer">                <p>Centralized Profiling and Record Authentication System | Department Admin &copy; <?php echo date('Y'); ?></p>
             </div>
         </div>
+    <?php include '../partials/dashboard_calendar_drawer.php'; ?>
     <script src="../assets/js/sidebar-toggle.js?v=3"></script>
     <script>
         let dashboardChartData = null;
