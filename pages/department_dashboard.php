@@ -591,7 +591,7 @@ $publishedAnnouncementCount = activeAnnouncementCount($conn);
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
     <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=7">
-    <link rel="stylesheet" href="../assets/css/metric-cards.css?v=2">
+    <link rel="stylesheet" href="../assets/css/metric-cards.css?v=3">
     <link rel="stylesheet" href="../assets/css/dashboard-calendar.css?v=9">
 <script src="../assets/js/dashboard-chart-fallback.js?v=1"></script>
 <script src="../assets/js/gender-trend-chart.js?v=1"></script>

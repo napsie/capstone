@@ -218,17 +218,17 @@
     }
 }
 
-/* Centralized dashboard: eight equal compact cards in two desktop rows. */
+/* Centralized dashboard: ten equal compact cards in two desktop rows. */
 #departmentSummaryCards {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 10px;
     margin-bottom: 20px;
 }
 
 #departmentSummaryCards .stat-card {
     min-height: 92px;
-    gap: 11px;
-    padding: 14px 15px;
+    gap: 9px;
+    padding: 13px 12px;
     border-radius: 12px;
 }
 
@@ -236,11 +236,15 @@
 
 #departmentSummaryCards .stat-icon,
 #departmentSummaryCards .stat-card :is(.bg-primary, .bg-success, .bg-danger) {
-    width: 42px;
-    height: 42px;
-    flex-basis: 42px;
+    width: 40px;
+    height: 40px;
+    flex-basis: 40px;
     border-radius: 11px;
     font-size: 1rem;
+}
+
+@media (max-width: 1050px) and (min-width: 761px) {
+    #departmentSummaryCards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 #departmentSummaryCards :is(.stat-label, .stat-info p) {

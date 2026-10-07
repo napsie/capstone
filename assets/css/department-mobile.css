@@ -23,6 +23,29 @@
     .header-user-info h3, .header-user-info p, .user-details h2, .user-details p { overflow-wrap: anywhere; }
     .card, .panel, .queue-card, .chart-card { max-width: 100%; min-width: 0; padding: 16px !important; }
     .stats-strip, .stats-container, .report-grid, .dashboard-panels, .settings-grid { grid-template-columns: minmax(0, 1fr) !important; }
+    #departmentSummaryCards { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 9px !important; }
+    #departmentSummaryCards .stat-card {
+        min-width: 0 !important;
+        min-height: 118px !important;
+        display: grid !important;
+        grid-template-columns: 36px minmax(0, 1fr) !important;
+        align-content: center !important;
+        gap: 9px !important;
+        padding: 12px 10px !important;
+    }
+    #departmentSummaryCards .stat-icon {
+        width: 36px !important;
+        height: 36px !important;
+        min-width: 36px !important;
+        flex-basis: 36px !important;
+        border-radius: 10px !important;
+        font-size: .9rem !important;
+    }
+    #departmentSummaryCards .stat-info { min-width: 0; }
+    #departmentSummaryCards .stat-info h3 { font-size: 1.2rem !important; }
+    #departmentSummaryCards .stat-info p { font-size: .61rem !important; line-height: 1.2 !important; overflow-wrap: anywhere; }
+    #departmentSummaryCards .stat-info small { font-size: .59rem !important; line-height: 1.25 !important; overflow-wrap: anywhere; }
+    #departmentSummaryCards .stat-arrow { display: none !important; }
     .dashboard-command-bar, .dashboard-quick-actions { align-items: stretch !important; flex-direction: column !important; }
     .quick-action { width: 100%; }
     .filter-bar { display: flex !important; grid-template-columns: 1fr !important; align-items: stretch; flex-direction: column !important; }
@@ -64,6 +87,17 @@
     .system-sidebar.collapsed .sidebar-menu a { width:100% !important; min-width:0 !important; min-height:48px !important; display:flex !important; flex-direction:row !important; align-items:center !important; justify-content:flex-start !important; gap:12px !important; padding:10px 13px !important; text-align:left !important; }
     .system-sidebar .sidebar-menu a i { width:24px !important; flex:0 0 24px !important; text-align:center !important; }
     .system-sidebar .sidebar-menu .link-text { display:block !important; width:auto; max-width:none; font-size:.82rem; white-space:normal; }
+    .system-sidebar .sidebar-group-toggle { width:100% !important; min-height:48px; padding:10px 13px; gap:12px; }
+    .system-sidebar .sidebar-group-toggle .link-text { flex:1; text-align:left; }
+    .system-sidebar .sidebar-group-toggle > i:first-child { width:24px; flex:0 0 24px; }
+    .system-sidebar .sidebar-nav-group > .sidebar-submenu {
+        width:calc(100% - 18px) !important;
+        margin:2px 0 6px 18px !important;
+        padding:2px 0 2px 8px !important;
+        border-left:1px solid rgba(255,255,255,.2);
+    }
+    .system-sidebar .sidebar-submenu > li > a,
+    .system-sidebar.collapsed .sidebar-submenu > li > a { min-height:42px !important; padding:8px 10px !important; }
     .system-sidebar .sidebar-menu li.logout-item { margin-top:10px !important; padding-top:10px !important; border-top:1px solid rgba(255,255,255,.14) !important; }
 }
 
