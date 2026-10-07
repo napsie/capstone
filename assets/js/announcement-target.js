@@ -1,7 +1,13 @@
 document.addEventListener('DOMContentLoaded', function () {
     const audience = document.getElementById('audience');
+    const category = document.getElementById('category');
     const config = window.announcementTargetConfig || {};
     if (!audience || !Array.isArray(config.barangays)) return;
+
+    if (category && !Array.from(category.options).some(function (item) { return item.value === 'other'; })) {
+        category.appendChild(new Option('Other', 'other'));
+        category.value = config.category || 'announcement';
+    }
 
     const conciseAudienceLabels = {
         all: 'Everywhere',
@@ -58,6 +64,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 function setupPublishedUpdateModal() {
     const updates = Array.from(document.querySelectorAll('.items .item'));
+    const auditConfig = window.announcementAuditConfig || {};
     if (!updates.length) return;
 
     const modal = document.createElement('div');
@@ -105,6 +112,12 @@ function setupPublishedUpdateModal() {
     }
 
     updates.forEach(function (update) {
+        const idInput = update.querySelector('input[name="id"]');
+        const audit = idInput ? auditConfig[idInput.value] : null;
+        const rowMeta = update.querySelector(':scope > .meta');
+        if (audit && audit.author && rowMeta) {
+            rowMeta.textContent += ' · Published by ' + audit.author;
+        }
         update.tabIndex = 0;
         update.setAttribute('role', 'button');
         const updateTitle = update.querySelector('h3');

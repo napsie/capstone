@@ -64,7 +64,7 @@ CREATE TABLE `announcements` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `title` varchar(140) NOT NULL,
   `message` text NOT NULL,
-  `category` enum('announcement','benefit') NOT NULL DEFAULT 'announcement',
+  `category` enum('announcement','benefit','other') NOT NULL DEFAULT 'announcement',
   `audience` enum('all','public','staff','barangay') NOT NULL DEFAULT 'all',
   `target_barangay` varchar(100) DEFAULT NULL,
   `starts_at` datetime DEFAULT NULL,

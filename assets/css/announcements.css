@@ -3,15 +3,40 @@
     overflow: hidden;
 }
 
+/* Match the system's navy section-header treatment. */
+.grid > .card:last-child {
+    padding: 0 !important;
+    border-color: #cfdae7 !important;
+    background: linear-gradient(to bottom, #153a5d 0, #153a5d 96px, #eef6ff 96px) !important;
+    box-shadow: 0 10px 28px rgba(15, 41, 66, .10) !important;
+}
+
+.grid > .card:last-child > h2 {
+    margin: 0 !important;
+    padding: 20px 22px 4px;
+    color: #ffffff !important;
+    font-size: 1.08rem;
+}
+
+.grid > .card:last-child > p {
+    margin: 0 !important;
+    padding: 0 22px 20px;
+    color: #cbdcf0 !important;
+}
+
+.grid > .card:last-child > .items {
+    margin: 18px 20px 20px;
+}
+
 .items {
     display: block !important;
     max-height: 620px;
     padding: 0 !important;
     overflow-x: hidden !important;
     overflow-y: auto !important;
-    border: 1px solid #dbe4ef;
-    border-radius: 12px;
-    background: #fff;
+    border: 0 !important;
+    border-radius: 0;
+    background: transparent !important;
 }
 
 .item {
@@ -20,21 +45,25 @@
     gap: 9px !important;
     min-width: 0;
     padding: 16px !important;
-    border: 0 !important;
-    border-bottom: 1px solid #e5eaf1 !important;
-    border-radius: 0 !important;
-    background: #fff !important;
+    border: 1px solid #d5e1ee !important;
+    border-left: 5px solid #2f75ff !important;
+    border-radius: 14px !important;
+    background: #f8fbff !important;
     cursor: pointer;
     transition: background .15s, box-shadow .15s;
 }
 
 .item:last-child {
-    border-bottom: 0 !important;
+    border-bottom: 1px solid #d5e1ee !important;
+}
+
+.item + .item {
+    margin-top: 12px;
 }
 
 .item:hover,
 .item:focus-visible {
-    background: #f8fbff !important;
+    background: #eef6ff !important;
     box-shadow: inset 4px 0 #2563eb;
     outline: 0;
 }
@@ -45,7 +74,7 @@
 }
 
 .item.off {
-    background: #f8fafc !important;
+    background: #edf5ff !important;
     opacity: .78 !important;
 }
 
@@ -69,6 +98,11 @@
     justify-self: start;
     margin: 0;
     white-space: nowrap;
+}
+
+.badge.other {
+    background: #ede9fe !important;
+    color: #6d28d9 !important;
 }
 
 .item h3 {
@@ -215,6 +249,18 @@
 }
 
 @media (max-width: 620px) {
+    .grid > .card:last-child > h2 {
+        padding: 18px 16px 4px;
+    }
+
+    .grid > .card:last-child > p {
+        padding: 0 16px 17px;
+    }
+
+    .grid > .card:last-child > .items {
+        margin: 14px;
+    }
+
     .item {
         padding: 14px !important;
     }

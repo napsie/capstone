@@ -18,11 +18,49 @@ $announcementTargetConfig = json_encode([
     'barangays' => $barangays_list,
     'audience' => (string)($_POST['audience'] ?? 'all'),
     'barangay' => (string)($_POST['target_barangay'] ?? ''),
+    'category' => (string)($_POST['category'] ?? 'announcement'),
 ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
-ob_start(static function (string $html) use ($announcementTargetConfig): string {
-    $scripts = '<script>window.announcementTargetConfig=' . $announcementTargetConfig . ';</script>'
-        . '<script src="../assets/js/announcement-target.js?v=3"></script>';
-    $html = str_replace('announcements.css?v=1', 'announcements.css?v=3', $html);
+$announcementAuditConfig = '{}';
+$announcementProfilePicture = basename((string)($_SESSION['profile_picture'] ?? 'default.jpg'));
+$announcementProfilePath = '../images/profile_pictures/' . $announcementProfilePicture;
+if (!file_exists($announcementProfilePath) || is_dir($announcementProfilePath)) {
+    $announcementProfilePath = '../images/profile_pictures/default.jpg';
+}
+$announcementAdminName = trim((string)(($_SESSION['first_name'] ?? '') . ' ' . ($_SESSION['last_name'] ?? '')));
+if ($announcementAdminName === '') $announcementAdminName = (string)($_SESSION['username'] ?? 'Administrator');
+$announcementAdminRole = ($_SESSION['role'] ?? '') === 'super_admin'
+    ? 'System Admin - Pasig City'
+    : 'Department Admin - Pasig City';
+$announcementHeader = '<header class="page-header">'
+    . '<div class="page-header-left"><div class="greeting">Official centralized updates and benefit information</div>'
+    . '<h1>Announcements <span>&amp; Benefits</span></h1></div>'
+    . '<div class="header-actions"><div class="header-user">'
+    . '<img src="' . htmlspecialchars($announcementProfilePath, ENT_QUOTES) . '" alt="Profile picture">'
+    . '<div class="header-user-info"><h3>' . htmlspecialchars($announcementAdminName) . '</h3>'
+    . '<p>' . htmlspecialchars($announcementAdminRole) . '</p></div></div></div></header>';
+ob_start(static function (string $html) use ($announcementTargetConfig, $announcementHeader, &$announcementAuditConfig): string {
+    $scripts = '<script>window.announcementTargetConfig=' . $announcementTargetConfig
+        . ';window.announcementAuditConfig=' . $announcementAuditConfig . ';</script>'
+        . '<script src="../assets/js/announcement-target.js?v=5"></script>';
+    $html = str_replace('announcements.css?v=1', 'announcements.css?v=7', $html);
+    $html = str_replace(
+        'Choose where it appears and optionally schedule its visibility.',
+        'Choose where this update will appear.',
+        $html
+    );
+    $html = str_replace('</head>', '<link rel="stylesheet" href="../assets/css/system-header.css?v=1"></head>', $html);
+    $html = preg_replace(
+        '/<main class="main-content"><div class="shell"><header class="page-head">.*?<\/header>/s',
+        '<main class="main-content">' . $announcementHeader . '<div class="shell">',
+        $html,
+        1
+    );
+    $html = preg_replace(
+        '/<div class="two"><div class="field"><label for="starts_at">.*?<\/div><\/div><button class="publish"/s',
+        '<button class="publish"',
+        $html,
+        1
+    );
     return str_replace('</body>', $scripts . '</body>', $html);
 });
 
@@ -40,27 +78,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (($_POST['action'] ?? '') === 'publish') {
         $title = trim((string)($_POST['title'] ?? ''));
         $body = trim((string)($_POST['message'] ?? ''));
-        $category = in_array($_POST['category'] ?? '', ['announcement', 'benefit'], true) ? $_POST['category'] : 'announcement';
+        $category = in_array($_POST['category'] ?? '', ['announcement', 'benefit', 'other'], true) ? $_POST['category'] : 'announcement';
         $audience = in_array($_POST['audience'] ?? '', ['all', 'public', 'staff', 'barangay'], true) ? $_POST['audience'] : 'all';
         $targetBarangay = $audience === 'barangay' ? trim((string)($_POST['target_barangay'] ?? '')) : null;
-        $normalizeDate = static function (string $value): ?string {
-            $value = trim($value);
-            if ($value === '') return null;
-            $timestamp = strtotime($value);
-            return $timestamp === false ? null : date('Y-m-d H:i:s', $timestamp);
-        };
-        $rawStart = (string)($_POST['starts_at'] ?? '');
-        $rawEnd = (string)($_POST['ends_at'] ?? '');
-        $startsAt = $normalizeDate($rawStart);
-        $endsAt = $normalizeDate($rawEnd);
+        $startsAt = null;
+        $endsAt = null;
         if ($title === '' || mb_strlen($title) > 140 || $body === '' || mb_strlen($body) > 2000) {
             $error = 'Enter a title up to 140 characters and a message up to 2,000 characters.';
         } elseif ($audience === 'barangay' && !in_array($targetBarangay, $barangays_list, true)) {
             $error = 'Select a valid barangay for this update.';
-        } elseif (($rawStart !== '' && !$startsAt) || ($rawEnd !== '' && !$endsAt)) {
-            $error = 'Enter a valid publishing date and time.';
-        } elseif ($startsAt && $endsAt && strtotime($endsAt) <= strtotime($startsAt)) {
-            $error = 'The end date must be later than the start date.';
         } else {
             try {
                 $stmt = $conn->prepare('INSERT INTO announcements (title, message, category, audience, target_barangay, starts_at, ends_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
@@ -109,7 +135,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$items = $conn->query('SELECT a.*, CONCAT(COALESCE(u.first_name, ""), " ", COALESCE(u.last_name, "")) author FROM announcements a LEFT JOIN users u ON u.id = a.created_by ORDER BY a.created_at DESC')->fetchAll();
+$items = $conn->query('SELECT a.*, TRIM(CONCAT(COALESCE(u.first_name, ""), " ", COALESCE(u.last_name, ""))) author, u.username author_username FROM announcements a LEFT JOIN users u ON u.id = a.created_by ORDER BY a.created_at DESC')->fetchAll();
+$announcementAuditRows = [];
+foreach ($items as $announcementItem) {
+    $authorName = trim((string)($announcementItem['author'] ?? ''));
+    if ($authorName === '') $authorName = trim((string)($announcementItem['author_username'] ?? ''));
+    if ($authorName === '') $authorName = 'System administrator';
+    $announcementAuditRows[(string)$announcementItem['id']] = ['author' => $authorName];
+}
+$announcementAuditConfig = json_encode(
+    $announcementAuditRows,
+    JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+) ?: '{}';
 $audienceLabels = ['all' => 'Public portal and all barangay dashboards', 'public' => 'Public portal only', 'staff' => 'Department and all barangay dashboards', 'barangay' => 'Specific barangay'];
 ?>
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Centralized Announcements &amp; Benefit Updates — SENIORLINK</title><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"><link rel="stylesheet" href="../assets/css/department-sidebar.css?v=6"><link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=23"><link rel="stylesheet" href="../assets/css/announcements.css?v=1"><style>

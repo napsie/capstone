@@ -16,7 +16,7 @@ $announcementItems = activeAnnouncements($conn, $announcementSurface, 5, $announ
     <div class="central-announcements__list">
         <?php foreach ($announcementItems as $item): ?>
         <article class="central-announcement central-announcement--<?php echo htmlspecialchars($item['category']); ?>">
-            <span class="central-announcement__badge"><?php echo $item['category'] === 'benefit' ? 'Benefit' : 'Notice'; ?></span>
+            <span class="central-announcement__badge"><?php echo $item['category'] === 'benefit' ? 'Benefit' : ($item['category'] === 'other' ? 'Other' : 'Notice'); ?></span>
             <div><h3><?php echo htmlspecialchars($item['title']); ?></h3><p><?php echo nl2br(htmlspecialchars($item['message'])); ?></p></div>
         </article>
         <?php endforeach; ?>
@@ -31,7 +31,7 @@ $announcementItems = activeAnnouncements($conn, $announcementSurface, 5, $announ
     <div class="central-announcements__list">
         <?php foreach ($announcementItems as $item): ?>
         <article class="central-announcement central-announcement--<?php echo htmlspecialchars($item['category']); ?>">
-            <span class="central-announcement__badge"><?php echo $item['category'] === 'benefit' ? 'Benefit' : 'Announcement'; ?></span>
+            <span class="central-announcement__badge"><?php echo $item['category'] === 'benefit' ? 'Benefit' : ($item['category'] === 'other' ? 'Other' : 'Announcement'); ?></span>
             <div><h3><?php echo htmlspecialchars($item['title']); ?></h3><p><?php echo nl2br(htmlspecialchars($item['message'])); ?></p></div>
         </article>
         <?php endforeach; ?>

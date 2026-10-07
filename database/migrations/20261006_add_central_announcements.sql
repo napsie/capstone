@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS announcements (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     title VARCHAR(140) NOT NULL,
     message TEXT NOT NULL,
-    category ENUM('announcement', 'benefit') NOT NULL DEFAULT 'announcement',
+    category ENUM('announcement', 'benefit', 'other') NOT NULL DEFAULT 'announcement',
     audience ENUM('all', 'public', 'staff', 'barangay') NOT NULL DEFAULT 'all',
     target_barangay VARCHAR(100) NULL,
     starts_at DATETIME NULL,
