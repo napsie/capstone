@@ -271,8 +271,11 @@ async function main() {
     check((await action(admin, 'PEN-LBANK', 'next')).data.current_status === 'Verified', 'Land Bank enrollment verifies for forwarding');
     const landbankTracker = await request('/pages/benefit_tracker.php?token=PRX-BENE&service=landbank', '', undefined, true);
     check(landbankTracker.data.includes('being forwarded to <strong>LANDBANK</strong>'), 'Verified Land Bank tracker shows forwarding notice');
-    const legacyPenTracker = await request('/pages/benefit_tracker.php?token=PEN-LBANK', '', undefined, true);
-    check(legacyPenTracker.data.includes('Enter a valid permanent PRX Token ID'), 'Public tracker rejects legacy PEN codes');
+    const penTracker = await request('/pages/benefit_tracker.php?token=PEN-LBANK', '', undefined, true);
+    check(penTracker.status === 200
+        && penTracker.data.includes('PEN-LBANK')
+        && !penTracker.data.includes('Enter a valid permanent PRX or PEN Token ID'),
+        'Public tracker accepts permanent PEN codes');
     check((await action(admin, 'CHANGE-REQUEST', 'next')).data.current_status === 'Verified', 'Information Change request verifies');
     const updatedSenior = await request('/api/get_application_details.php?id=PRX-BENE', admin);
     check(updatedSenior.data.contact_number === '09179999999' && updatedSenior.data.emergency_contact_name === 'Updated Contact'
@@ -302,6 +305,7 @@ async function main() {
             idPurpose: 'new', healthStatus: 'Physically Fit', lastName: 'Upload', firstName: 'Pair',
             birthDate: '1940-01-01', contactNumber: '09170000123', placeOfBirth: 'Pasig City',
             gender: 'Female', civilStatus: 'Single', houseNo: '1', street: 'Synthetic Street',
+            mothersMaidenName: 'Synthetic Maiden',
             barangay: 'Bagong Ilog', confirmPrivacy: 'on', emergencyContactName: 'Test Contact',
             emergencyContact: '09170000456', emergencyContactRelationship: 'Child',
         }).forEach(([key, value]) => data.set(key, value));

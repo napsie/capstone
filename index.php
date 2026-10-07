@@ -175,7 +175,7 @@ header('Expires: 0');
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/seniorlink-public.css?v=1">
-    <link rel="stylesheet" href="assets/css/landing.css?v=38">
+    <link rel="stylesheet" href="assets/css/landing.css?v=40">
     <link rel="stylesheet" href="assets/css/seniorlink-ui.css?v=23">
     <script src="assets/js/modal-hci.js?v=2" defer></script>
 </head>
@@ -370,6 +370,7 @@ header('Expires: 0');
                 </div>
                 <button class="close-btn" type="button" aria-label="Close application tracker">&times;</button>
             </div>
+            <div class="track-modal-body">
             <p class="track-intro">Enter your permanent PRX or PEN Token ID, scan your QR code, or upload a QR image to check your application status.</p>
             <form class="portal-tracker track-modal-form" action="pages/benefit_tracker.php" method="get">
                 <label for="landingTrackerToken">Permanent Token ID</label>
@@ -378,7 +379,7 @@ header('Expires: 0');
                            maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
                     <button type="submit"><span>Check Status</span><i class="fas fa-arrow-right" aria-hidden="true"></i></button>
                 </div>
-                <small id="landingTokenHint" class="track-format-help">Use the complete PRX or PEN token shown on your confirmation.</small>
+                <small id="landingTokenHint" class="track-format-help">PRX is selected by default. To enter a PEN token, press Backspace once to clear PRX-, then type PEN. The dash is added automatically.</small>
                 <div class="tracking-qr-actions" aria-label="QR tracking options">
                     <button type="button" id="landingScanQr"><i class="fas fa-camera" aria-hidden="true"></i> Scan QR Code</button>
                     <button type="button" id="landingUploadQr"><i class="fas fa-image" aria-hidden="true"></i> Upload QR Image</button>
@@ -389,11 +390,12 @@ header('Expires: 0');
                 <small id="landingQrStatus" class="landing-qr-status" role="status" aria-live="polite"></small>
                 <small class="track-help"><i class="fas fa-shield-halved" aria-hidden="true"></i> Your code is used only to retrieve the application status.</small>
             </form>
+            </div>
         </div>
     </div>
 
     <script src="assets/js/vendor/html5-qrcode.min.js"></script>
-    <script src="assets/js/prx-token-input.js"></script>
+    <script src="assets/js/prx-token-input.js?v=4"></script>
     <script>
         (() => {
             const trigger = document.getElementById('trackLink');
@@ -422,6 +424,7 @@ header('Expires: 0');
                 .replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, '-')
                 .replace(/\s+/g, '').toUpperCase()
                 .replace(/^(PRX|PEN)(?=[A-Z0-9]{4,12}$)/, '$1-');
+            window.initPermanentTokenInput?.(input);
             form?.addEventListener('submit', event => {
                 input.value = normalizeTrackerToken(input.value);
                 if (!/^(?:PRX|PEN)-[A-Z0-9]{4,12}$/.test(input.value)) {

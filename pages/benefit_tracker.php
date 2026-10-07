@@ -138,25 +138,6 @@ foreach (array_reverse($history) as $event) {
         break;
     }
 }
-$digitalSeniorId = trim((string)($application['senior_id_no'] ?? ''));
-$showDigitalId = $application
-    && ($application['application_type'] ?? '') === 'senior'
-    && in_array($rawStatus, ['Verified', 'Approved', 'Released'], true)
-    && $digitalSeniorId !== ''
-    && !preg_match('/^OSCA-[0-9]{4}-[0-9A-F]{6}$/i', $digitalSeniorId);
-$digitalIdIssuedAt = (string)($application['date_submitted'] ?? '');
-if ($showDigitalId) {
-    $_SESSION['tracker_photo_access'] = [
-        'id' => (string)$application['id_number'],
-        'expires' => time() + 600,
-    ];
-    foreach (array_reverse($history) as $event) {
-        if (in_array((string)($event['new_state'] ?? ''), ['Verified', 'Approved', 'Released'], true)) {
-            $digitalIdIssuedAt = (string)($event['changed_at'] ?? $digitalIdIssuedAt);
-            break;
-        }
-    }
-}
 $isTransferredSenior = isset($root) && strtolower(trim((string)($root['id_purpose'] ?? ''))) === 'transfer';
 $benefitEligibleAt = $isTransferredSenior
     ? date('Y-m-d', strtotime((string)$root['date_submitted'] . ' +2 years'))
@@ -295,7 +276,7 @@ if ($application && $seniorBirthDateValue !== '') {
                 <label for="token" class="sr-only">Application token</label>
                 <input id="token" name="token" value="<?php echo htmlspecialchars($token); ?>" placeholder="PRX-7K2M or PEN-74ST" aria-describedby="tokenFormatHelp" maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
                 <button type="submit"><i class="fas fa-magnifying-glass" aria-hidden="true"></i> Check Status</button>
-                <small id="tokenFormatHelp" class="token-format-help">Enter the complete PRX or PEN token shown on your confirmation.</small>
+                <small id="tokenFormatHelp" class="token-format-help">PRX is selected by default. To enter PEN, press Backspace once to clear PRX-, then type PEN. The dash is added automatically.</small>
             </form>
             <details class="qr-tools">
                 <summary><i class="fas fa-camera" aria-hidden="true"></i> Scan QR Code <span aria-hidden="true">|</span> <i class="fas fa-image" aria-hidden="true"></i> Upload QR Image</summary>
@@ -368,34 +349,6 @@ if ($application && $seniorBirthDateValue !== '') {
                     <?php endif; ?>
                 </div>
 
-                <?php if ($showDigitalId): ?>
-                    <section class="digital-id-section" aria-labelledby="digitalIdHeading">
-                        <div class="digital-id-heading">
-                            <div><h2 id="digitalIdHeading">Temporary Digital Senior Citizen ID</h2><p>Available while waiting for the physical OSCA card.</p></div>
-                            <span class="temporary-badge">TEMPORARY</span>
-                        </div>
-                        <div class="digital-id">
-                            <div class="digital-id-head">
-                                <img class="digital-id-logo" src="<?php echo htmlspecialchars(systemLogoUrl($conn)); ?>" alt="SENIORLINK logo">
-                                <div class="digital-id-agency"><small>Republic of the Philippines</small><strong>City Government of Pasig</strong><span>Office for Senior Citizens Affairs</span></div>
-                            </div>
-                            <div class="digital-id-body">
-                                <div class="digital-id-fields">
-                                    <div class="digital-id-number"><span>ID NO.</span><?php echo htmlspecialchars($digitalSeniorId); ?></div>
-                                    <div class="digital-field"><span>NAME</span><strong><?php echo htmlspecialchars((string)$application['full_name']); ?></strong></div>
-                                    <div class="digital-field digital-field--address"><span>ADDRESS</span><strong><?php echo htmlspecialchars((string)($application['complete_address'] ?? '—')); ?></strong></div>
-                                    <div class="digital-field"><span>BARANGAY</span><strong><?php echo htmlspecialchars((string)($application['barangay'] ?? '—')); ?>, PASIG CITY</strong></div>
-                                </div>
-                                <div class="digital-photo-wrap"><i class="fas fa-user" aria-hidden="true"></i><img class="digital-id-photo" src="../api/tracker_id_photo.php?id=<?php echo rawurlencode((string)$application['id_number']); ?>" alt="Applicant ID photo" onerror="this.remove()"></div>
-                                <div class="digital-id-footer">
-                                    <div><?php echo !empty($application['birth_date']) ? htmlspecialchars(date('m/d/Y', strtotime((string)$application['birth_date']))) : '—'; ?><span>DATE OF BIRTH</span></div>
-                                    <div><?php echo $digitalIdIssuedAt !== '' ? htmlspecialchars(date('m/d/Y', strtotime($digitalIdIssuedAt))) : '—'; ?><span>DATE ISSUED</span></div>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-                <?php endif; ?>
-
                 <h2>Status History</h2>
                 <div class="timeline">
                     <?php if (!$history && !$serviceNotApplied): ?>
@@ -416,9 +369,10 @@ if ($application && $seniorBirthDateValue !== '') {
     </section>
 </main>
 <script src="../assets/js/vendor/html5-qrcode.min.js"></script>
-<script src="../assets/js/prx-token-input.js"></script>
+<script src="../assets/js/prx-token-input.js?v=4"></script>
 <script>
 (() => {
+    window.initPermanentTokenInput?.(document.getElementById('token'));
     const reader = document.getElementById('trackingQrReader');
     if (!reader || typeof Html5QrcodeScanner === 'undefined') return;
     const useResult = decoded => {

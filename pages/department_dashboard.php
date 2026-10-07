@@ -634,7 +634,6 @@ try {
                     <p>Monitor all barangays, verify submitted documents, and resolve records that require department action.</p>
                 </div>
                 <nav class="dashboard-quick-actions" aria-label="Department quick actions">
-                    <button class="quick-action primary announcement-launch" type="button" data-announcement-open aria-controls="dashboardAnnouncementDrawer" aria-expanded="false"><i class="fas fa-bullhorn" aria-hidden="true"></i><span><strong>Announcements</strong><small>View official updates</small></span></button>
                     <a class="quick-action" href="department_records.php"><i class="fas fa-database" aria-hidden="true"></i><span><strong>Citywide records</strong><small>Browse all barangays</small></span></a>
                     <button class="quick-action calendar-launch" type="button" data-calendar-open aria-controls="dashboardCalendarDrawer" aria-expanded="false"><i class="fas fa-calendar-days" aria-hidden="true"></i><span><strong>Calendar</strong><small>Check dates quickly</small></span></button>
                 </nav>
@@ -788,7 +787,6 @@ try {
             </div>
         </div>
     <?php include '../partials/dashboard_calendar_drawer.php'; ?>
-    <?php include '../partials/dashboard_announcement_drawer.php'; ?>
     <script src="../assets/js/sidebar-toggle.js?v=3"></script>
     <script>
         let dashboardChartData = null;

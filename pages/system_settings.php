@@ -451,7 +451,7 @@ try {
         <!-- Settings Grid -->
         <div class="settings-grid">
             <section class="card" aria-labelledby="logoSettingsTitle">
-                <h3 id="logoSettingsTitle"><i class="fas fa-image"></i> System Logo</h3>
+                <h3 id="logoSettingsTitle"><i class="fas fa-image"></i> System and Report Logo</h3>
                 <p class="section-description">Update the official logo used across SENIORLINK and generated reports.</p>
                 <form id="systemLogoForm" action="" method="POST" enctype="multipart/form-data">
                     <div class="logo-editor">

@@ -726,7 +726,7 @@ button.portal-card {
 .track-content { width:min(92vw, 650px); max-width:650px; overflow:auto; overscroll-behavior:contain; }
 .track-content .about-header { margin-bottom: 12px; }
 .track-content .portal-eyebrow { margin-bottom: 5px; }
-.track-intro { margin:0 0 18px; max-width:58ch; color:var(--text-body); font-size:.9rem; line-height:1.55; }
+.track-intro { margin:18px 0 20px; max-width:58ch; color:var(--text-body); font-size:.9rem; line-height:1.55; }
 .track-modal-form { margin:24px 0 0; padding:20px; border:1px solid #d8e4ec; border-radius:16px; background:#f5f9fc; }
 .track-modal-form > label { display:block; margin-bottom:8px; color:var(--text-dark); font-size:.78rem; font-weight:800; }
 .track-help { display: flex; align-items: center; gap: 7px; margin-top: 11px; color: var(--text-light); font-size: .68rem; line-height: 1.4; }
@@ -843,6 +843,25 @@ button.portal-card {
     color: var(--primary);
     font-size: 1.25rem;
     font-weight: 750;
+}
+
+#trackModal .track-content {
+    max-width: 650px;
+    padding: 0;
+}
+
+#trackModal .track-content .about-header {
+    margin: 0;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid #d8e4ec;
+}
+
+#trackModal .track-modal-body {
+    padding: 18px 24px 24px;
+}
+
+#trackModal .track-intro {
+    margin: 0 0 20px;
 }
 
 .close-btn {
@@ -1087,6 +1106,12 @@ button.portal-card {
     #trackModal .about-header { margin-bottom:8px; }
     #trackModal .track-intro { margin-bottom:10px; }
     #trackModal .track-modal-form { padding:12px; }
+}
+
+@media (max-width: 600px) {
+    #trackModal .track-content { padding:0; }
+    #trackModal .track-content .about-header { padding:18px 16px 14px; }
+    #trackModal .track-modal-body { padding:16px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

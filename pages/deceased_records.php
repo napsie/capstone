@@ -16,8 +16,11 @@ $perPage = 12;
 $where = ["senior.application_type = 'senior'", "senior.workflow_state = 'Deceased'", 'COALESCE(senior.is_archived, 0) = 0'];
 $params = [];
 if ($search !== '') {
-    $where[] = '(senior.full_name LIKE :search OR senior.senior_id_no LIKE :search OR senior.id_number LIKE :search)';
-    $params[':search'] = '%' . $search . '%';
+    $where[] = '(senior.full_name LIKE :search_name OR senior.senior_id_no LIKE :search_senior_id OR senior.id_number LIKE :search_token)';
+    $searchValue = '%' . $search . '%';
+    $params[':search_name'] = $searchValue;
+    $params[':search_senior_id'] = $searchValue;
+    $params[':search_token'] = $searchValue;
 }
 if ($barangay !== '' && $barangay !== 'all') {
     $where[] = 'senior.barangay = :barangay';
