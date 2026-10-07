@@ -42,7 +42,7 @@ ob_start(static function (string $html) use ($announcementTargetConfig, $announc
     $scripts = '<script>window.announcementTargetConfig=' . $announcementTargetConfig
         . ';window.announcementAuditConfig=' . $announcementAuditConfig . ';</script>'
         . '<script src="../assets/js/announcement-target.js?v=5"></script>';
-    $html = str_replace('announcements.css?v=1', 'announcements.css?v=7', $html);
+    $html = str_replace('announcements.css?v=1', 'announcements.css?v=8', $html);
     $html = str_replace(
         'Choose where it appears and optionally schedule its visibility.',
         'Choose where this update will appear.',

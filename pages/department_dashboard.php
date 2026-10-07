@@ -2,7 +2,6 @@
 session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/audit_logger.php';
-require_once '../includes/announcements.php';
 
 if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'department_admin') {
     header('Location: ../index.php');
@@ -23,7 +22,6 @@ try {
 } catch (PDOException $e) {
     error_log('Dashboard user summary failed: ' . $e->getMessage());
 }
-$publishedAnnouncementCount = activeAnnouncementCount($conn);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -677,7 +675,6 @@ $publishedAnnouncementCount = activeAnnouncementCount($conn);
                     <i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i>
                 </a>
                 <a class="stat-card stat-card-link stat-blue" href="user_management.php" aria-label="Open active system users"><div class="stat-icon"><i class="fas fa-users-gear"></i></div><div class="stat-info"><h3><?php echo number_format($systemUserCount); ?></h3><p>Active system users</p><small><?php echo number_format($barangayStaffCount); ?> barangay staff accounts</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>
-                <a class="stat-card stat-card-link stat-green" href="announcements.php" aria-label="Manage active announcements and benefit updates"><div class="stat-icon"><i class="fas fa-bullhorn"></i></div><div class="stat-info"><h3><?php echo number_format($publishedAnnouncementCount); ?></h3><p>Published updates</p><small>Announcements and benefits</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>
                 <a class="stat-card stat-card-link stat-amber" href="verify_document.php?type=senior" aria-label="Open pending Senior ID applications"><div class="stat-icon"><i class="fas fa-id-card"></i></div><div class="stat-info"><h3 class="dashboard-loading" id="pendingSeniorId">0</h3><p>Pending Senior ID</p><small>Awaiting completion</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>
                 <a class="stat-card stat-card-link stat-blue" href="verify_document.php?type=landbank" aria-label="Open Landbank applications"><div class="stat-icon"><i class="fas fa-building-columns"></i></div><div class="stat-info"><h3 class="dashboard-loading" id="pendingLandbank">0</h3><p>Landbank</p><small>Awaiting completion</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>
                 <a class="stat-card stat-card-link stat-green" href="verify_document.php?type=pension" aria-label="Open pending Local Senior Pension applications"><div class="stat-icon"><i class="fas fa-wallet"></i></div><div class="stat-info"><h3 class="dashboard-loading" id="pendingLocalPension">0</h3><p>Local Senior Pension</p><small>Pending Local Senior Pension</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>

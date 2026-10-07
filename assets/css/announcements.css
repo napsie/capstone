@@ -5,6 +5,10 @@
 
 /* Match the system's navy section-header treatment. */
 .grid > .card:last-child {
+    height: min(620px, calc(100dvh - 250px));
+    min-height: 360px;
+    display: flex;
+    flex-direction: column;
     padding: 0 !important;
     border-color: #cfdae7 !important;
     background: linear-gradient(to bottom, #153a5d 0, #153a5d 96px, #eef6ff 96px) !important;
@@ -25,12 +29,14 @@
 }
 
 .grid > .card:last-child > .items {
+    min-height: 0;
+    flex: 1 1 auto;
     margin: 18px 20px 20px;
 }
 
 .items {
     display: block !important;
-    max-height: 620px;
+    max-height: none;
     padding: 0 !important;
     overflow-x: hidden !important;
     overflow-y: auto !important;
@@ -249,6 +255,10 @@
 }
 
 @media (max-width: 620px) {
+    .grid > .card:last-child {
+        height: min(620px, calc(100dvh - 110px));
+        min-height: 340px;
+    }
     .grid > .card:last-child > h2 {
         padding: 18px 16px 4px;
     }
