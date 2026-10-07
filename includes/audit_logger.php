@@ -68,6 +68,8 @@ if (!function_exists('auditActionPresentation')) {
         if ($normalized === 'LOGIN') return ['label' => 'Signed in', 'icon' => 'fa-right-to-bracket', 'tone' => 'success'];
         if ($normalized === 'LOGOUT') return ['label' => 'Signed out', 'icon' => 'fa-right-from-bracket', 'tone' => 'neutral'];
         if ($normalized === 'FAILED_LOGIN') return ['label' => 'Failed sign-in', 'icon' => 'fa-triangle-exclamation', 'tone' => 'danger'];
+        if ($normalized === 'PUBLISH_ANNOUNCEMENT') return ['label' => 'Published announcement', 'icon' => 'fa-bullhorn', 'tone' => 'success'];
+        if ($normalized === 'TOGGLE_ANNOUNCEMENT') return ['label' => 'Changed announcement visibility', 'icon' => 'fa-eye', 'tone' => 'info'];
         if (str_starts_with($normalized, 'ARCHIVE_')) return ['label' => $label, 'icon' => 'fa-box-archive', 'tone' => 'warning'];
         if (str_starts_with($normalized, 'RESTORE_')) return ['label' => $label, 'icon' => 'fa-rotate-left', 'tone' => 'success'];
         if (str_contains($normalized, 'DELETE')) return ['label' => 'Permanent removal', 'icon' => 'fa-circle-minus', 'tone' => 'danger'];

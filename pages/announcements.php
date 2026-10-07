@@ -3,6 +3,7 @@ session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/request_security.php';
 require_once '../includes/audit_logger.php';
+require_once '../includes/barangays_list.php';
 
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'] ?? '', ['department_admin', 'super_admin'], true)) {
     header('Location: ../index.php');
@@ -13,6 +14,25 @@ $message = (string)($_SESSION['announcement_notice']['message'] ?? '');
 $error = (string)($_SESSION['announcement_notice']['error'] ?? '');
 unset($_SESSION['announcement_notice']);
 
+$announcementTargetConfig = json_encode([
+    'barangays' => $barangays_list,
+    'audience' => (string)($_POST['audience'] ?? 'all'),
+    'barangay' => (string)($_POST['target_barangay'] ?? ''),
+], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+ob_start(static function (string $html) use ($announcementTargetConfig): string {
+    $scripts = '<script>window.announcementTargetConfig=' . $announcementTargetConfig . ';</script>'
+        . '<script src="../assets/js/announcement-target.js?v=3"></script>';
+    $html = str_replace('announcements.css?v=1', 'announcements.css?v=3', $html);
+    return str_replace('</body>', $scripts . '</body>', $html);
+});
+
+$announcementDestination = static function (string $audience, ?string $targetBarangay = null): string {
+    if ($audience === 'barangay') return 'Barangay ' . ($targetBarangay ?: 'not specified');
+    if ($audience === 'public') return 'Public portal only';
+    if ($audience === 'staff') return 'Department and all barangay dashboards';
+    return 'Public portal, Department, and all barangay dashboards';
+};
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     requireSameOriginMutation();
     if (!hash_equals($_SESSION['announcement_csrf'], (string)($_POST['csrf_token'] ?? ''))) {
@@ -21,7 +41,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $title = trim((string)($_POST['title'] ?? ''));
         $body = trim((string)($_POST['message'] ?? ''));
         $category = in_array($_POST['category'] ?? '', ['announcement', 'benefit'], true) ? $_POST['category'] : 'announcement';
-        $audience = in_array($_POST['audience'] ?? '', ['all', 'public', 'staff'], true) ? $_POST['audience'] : 'all';
+        $audience = in_array($_POST['audience'] ?? '', ['all', 'public', 'staff', 'barangay'], true) ? $_POST['audience'] : 'all';
+        $targetBarangay = $audience === 'barangay' ? trim((string)($_POST['target_barangay'] ?? '')) : null;
         $normalizeDate = static function (string $value): ?string {
             $value = trim($value);
             if ($value === '') return null;
@@ -34,15 +55,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $endsAt = $normalizeDate($rawEnd);
         if ($title === '' || mb_strlen($title) > 140 || $body === '' || mb_strlen($body) > 2000) {
             $error = 'Enter a title up to 140 characters and a message up to 2,000 characters.';
+        } elseif ($audience === 'barangay' && !in_array($targetBarangay, $barangays_list, true)) {
+            $error = 'Select a valid barangay for this update.';
         } elseif (($rawStart !== '' && !$startsAt) || ($rawEnd !== '' && !$endsAt)) {
             $error = 'Enter a valid publishing date and time.';
         } elseif ($startsAt && $endsAt && strtotime($endsAt) <= strtotime($startsAt)) {
             $error = 'The end date must be later than the start date.';
         } else {
             try {
-                $stmt = $conn->prepare('INSERT INTO announcements (title, message, category, audience, starts_at, ends_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)');
-                $stmt->execute([$title, $body, $category, $audience, $startsAt, $endsAt, (int)$_SESSION['user_id']]);
-                logAudit($conn, 'PUBLISH_ANNOUNCEMENT', "Published {$category}: {$title}");
+                $stmt = $conn->prepare('INSERT INTO announcements (title, message, category, audience, target_barangay, starts_at, ends_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+                $stmt->execute([$title, $body, $category, $audience, $targetBarangay, $startsAt, $endsAt, (int)$_SESSION['user_id']]);
+                $destination = $announcementDestination($audience, $targetBarangay);
+                logAudit(
+                    $conn,
+                    'PUBLISH_ANNOUNCEMENT',
+                    "Published {$category} update '{$title}' to {$destination}. Status: active."
+                );
                 $_SESSION['announcement_notice'] = ['message' => 'Published successfully. The update is now visible in the selected locations.'];
                 header('Location: announcements.php');
                 exit;
@@ -56,13 +84,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$id) $error = 'Invalid announcement.';
         else {
             try {
-                $stmt = $conn->prepare('UPDATE announcements SET is_active = IF(is_active = 1, 0, 1) WHERE id = ?');
-                $stmt->execute([$id]);
-                logAudit($conn, 'TOGGLE_ANNOUNCEMENT', 'Changed announcement visibility: #' . $id);
+                $lookup = $conn->prepare('SELECT title, category, audience, target_barangay, is_active FROM announcements WHERE id = ? LIMIT 1');
+                $lookup->execute([$id]);
+                $announcement = $lookup->fetch(PDO::FETCH_ASSOC);
+                if (!$announcement) throw new RuntimeException('Announcement not found.');
+                $newActiveState = (int)!((bool)$announcement['is_active']);
+                $stmt = $conn->prepare('UPDATE announcements SET is_active = ? WHERE id = ?');
+                $stmt->execute([$newActiveState, $id]);
+                $destination = $announcementDestination((string)$announcement['audience'], $announcement['target_barangay'] ?? null);
+                $stateLabel = $newActiveState === 1 ? 'active (republished)' : 'unpublished';
+                logAudit(
+                    $conn,
+                    'TOGGLE_ANNOUNCEMENT',
+                    "Changed {$announcement['category']} update '{$announcement['title']}' for {$destination}. Status: {$stateLabel}."
+                );
                 $_SESSION['announcement_notice'] = ['message' => 'Announcement visibility updated.'];
                 header('Location: announcements.php');
                 exit;
-            } catch (PDOException $e) {
+            } catch (Throwable $e) {
                 error_log('Announcement toggle failed: ' . $e->getMessage());
                 $error = 'The announcement could not be updated.';
             }
@@ -71,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $items = $conn->query('SELECT a.*, CONCAT(COALESCE(u.first_name, ""), " ", COALESCE(u.last_name, "")) author FROM announcements a LEFT JOIN users u ON u.id = a.created_by ORDER BY a.created_at DESC')->fetchAll();
-$audienceLabels = ['all' => 'Public portal and all barangay dashboards', 'public' => 'Public portal only', 'staff' => 'Department and all barangay dashboards'];
+$audienceLabels = ['all' => 'Public portal and all barangay dashboards', 'public' => 'Public portal only', 'staff' => 'Department and all barangay dashboards', 'barangay' => 'Specific barangay'];
 ?>
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Centralized Announcements &amp; Benefit Updates — SENIORLINK</title><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"><link rel="stylesheet" href="../assets/css/department-sidebar.css?v=6"><link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=23"><link rel="stylesheet" href="../assets/css/announcements.css?v=1"><style>
 *{box-sizing:border-box}body{margin:0;background:#f1f5f9;color:#172033;font-family:Inter,"Segoe UI",Arial,sans-serif}.main-content{width:calc(100% - 252px);margin-left:252px;padding:24px clamp(18px,2vw,30px);min-height:100vh}.shell{width:100%;max-width:1500px;margin:auto}.page-head{display:flex;justify-content:space-between;gap:16px;align-items:end;margin-bottom:16px}.eyebrow{color:#2563eb;font-size:.72rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase}.page-head h1{margin:3px 0 0;font-size:clamp(1.55rem,2vw,2rem)}.page-head p{margin:0;color:#64748b}.delivery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px}.delivery-card{display:flex;align-items:flex-start;gap:11px;padding:13px 14px;border:1px solid #dbe5f1;border-radius:13px;background:#fff;box-shadow:0 4px 15px rgba(15,23,42,.04)}.delivery-card>i{display:grid;place-items:center;width:36px;height:36px;flex:0 0 36px;border-radius:10px;background:#eff6ff;color:#2563eb}.delivery-card strong,.delivery-card small{display:block}.delivery-card strong{font-size:.86rem}.delivery-card small{margin-top:2px;color:#64748b;font-size:.73rem;line-height:1.35}.grid{display:grid;grid-template-columns:minmax(420px,.82fr) minmax(480px,1.18fr);gap:18px;align-items:start}.card{min-width:0;padding:20px;border:1px solid #d9e3ee;border-radius:15px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.06)}.card h2{margin:0 0 4px;font-size:1.08rem}.card>p{margin:0 0 14px;color:#64748b;font-size:.84rem}.field{min-width:0;margin-bottom:11px}.field label{display:block;margin-bottom:5px;color:#475569;font-size:.73rem;font-weight:900;text-transform:uppercase}.field input,.field select,.field textarea{width:100%;min-width:0;min-height:46px;padding:10px 12px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;font:inherit}.field input:focus,.field select:focus,.field textarea:focus{outline:3px solid rgba(37,99,235,.14);border-color:#2563eb}.field textarea{min-height:104px;resize:vertical}.field-help{display:block;margin-top:5px;color:#64748b;font-size:.7rem;line-height:1.35}.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}.publish{width:100%;min-height:46px;padding:11px;border:0;border-radius:9px;background:#2563eb;color:#fff;font-weight:800;cursor:pointer}.publish:hover{background:#1d4ed8}.notice{margin-bottom:14px;padding:12px 14px;border-radius:9px}.notice.ok{background:#ecfdf5;color:#166534}.notice.error{background:#fef2f2;color:#991b1b}.items{display:grid;gap:11px;max-height:620px;overflow:auto;padding-right:3px}.empty{padding:34px 24px;text-align:center;border:1px dashed #cbd5e1;border-radius:11px;color:#64748b;background:#f8fafc}.item{padding:14px;border:1px solid #dbe4ef;border-radius:11px;background:#f8fafc}.item.off{opacity:.62}.item-top{display:flex;justify-content:space-between;gap:12px}.item h3{margin:7px 0 5px;font-size:.95rem}.item p{margin:0;color:#526178;font-size:.82rem;line-height:1.5}.meta{margin-top:9px;color:#64748b;font-size:.71rem}.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:.66rem;font-weight:900;text-transform:uppercase}.badge.benefit{background:#dcfce7;color:#166534}.toggle{border:1px solid #cbd5e1;border-radius:7px;background:#fff;color:#334155;padding:7px 9px;font-weight:700;cursor:pointer}@media(max-width:1120px){.grid{grid-template-columns:1fr}.items{max-height:none}}@media(max-width:900px){.main-content{width:100%;margin:0;padding:80px 12px 24px}.delivery{grid-template-columns:1fr}.page-head{align-items:flex-start;flex-direction:column}}@media(max-width:560px){.two{grid-template-columns:1fr}.card{padding:17px}.page-head p{font-size:.82rem}}

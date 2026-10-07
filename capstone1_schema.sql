@@ -65,7 +65,8 @@ CREATE TABLE `announcements` (
   `title` varchar(140) NOT NULL,
   `message` text NOT NULL,
   `category` enum('announcement','benefit') NOT NULL DEFAULT 'announcement',
-  `audience` enum('all','public','staff') NOT NULL DEFAULT 'all',
+  `audience` enum('all','public','staff','barangay') NOT NULL DEFAULT 'all',
+  `target_barangay` varchar(100) DEFAULT NULL,
   `starts_at` datetime DEFAULT NULL,
   `ends_at` datetime DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
@@ -75,6 +76,7 @@ CREATE TABLE `announcements` (
   PRIMARY KEY (`id`),
   KEY `idx_announcements_active_window` (`is_active`,`starts_at`,`ends_at`),
   KEY `idx_announcements_audience` (`audience`),
+  KEY `idx_announcements_target_barangay` (`target_barangay`),
   CONSTRAINT `fk_announcements_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 

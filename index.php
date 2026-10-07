@@ -200,6 +200,7 @@ header('Expires: 0');
                     <small>Pasig City Senior Services</small>
                 </span>
             </div>
+            <?php $announcementSurface = 'public'; $announcementVariant = 'header'; include 'partials/announcement_feed.php'; ?>
         </div>
     </header>
 
@@ -244,7 +245,6 @@ header('Expires: 0');
                     Secure
                 </span>
             </div>
-            <?php $announcementSurface = 'public'; $announcementVariant = 'compact'; include 'partials/announcement_feed.php'; ?>
             <div class="portal-cards<?php echo $loginView !== '' ? ' is-hidden' : ''; ?>" id="portalRoleChoices">
                 <a href="pages/proxy_registration.php" class="portal-card portal-card-primary" id="proxyCard"
                    aria-label="Open senior citizen application services">

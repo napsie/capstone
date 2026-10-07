@@ -23,7 +23,7 @@ $auditEventFilter = trim($_GET['event'] ?? 'all');
 $activeTab = trim($_GET['tab'] ?? 'applications');
 $auditPage = max(1, (int)($_GET['audit_page'] ?? 1));
 $auditPerPage = 10;
-$allowedAuditEventFilters = ['all', 'login', 'logout', 'failed', 'archive', 'restore'];
+$allowedAuditEventFilters = ['all', 'login', 'logout', 'failed', 'archive', 'restore', 'announcement'];
 if (!in_array($auditEventFilter, $allowedAuditEventFilters, true)) $auditEventFilter = 'all';
 
 // Resolve legacy archived_by usernames to staff full names.
@@ -147,6 +147,7 @@ $auditEventConditions = [
     'failed' => "action = 'FAILED_LOGIN'",
     'archive' => "action LIKE 'ARCHIVE_%'",
     'restore' => "action LIKE 'RESTORE_%'",
+    'announcement' => "action IN ('PUBLISH_ANNOUNCEMENT', 'TOGGLE_ANNOUNCEMENT')",
 ];
 if (isset($auditEventConditions[$auditEventFilter])) {
     $auditWhere[] = $auditEventConditions[$auditEventFilter];
@@ -535,6 +536,7 @@ $auditHasFilters = $search !== '' || $barangayFilter !== 'all' || $auditEventFil
                                 <option value="failed" <?php echo $auditEventFilter === 'failed' ? 'selected' : ''; ?>>Failed sign-ins</option>
                                 <option value="archive" <?php echo $auditEventFilter === 'archive' ? 'selected' : ''; ?>>Archived items</option>
                                 <option value="restore" <?php echo $auditEventFilter === 'restore' ? 'selected' : ''; ?>>Restored items</option>
+                                <option value="announcement" <?php echo $auditEventFilter === 'announcement' ? 'selected' : ''; ?>>Announcements</option>
                             </select>
                         </div>
                         <a href="department_archive.php?tab=audit" class="audit-filter-clear" <?php echo $auditHasFilters ? '' : 'hidden'; ?>><i class="fas fa-rotate-left" aria-hidden="true"></i> Clear</a>
