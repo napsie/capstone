@@ -10,8 +10,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const conciseAudienceLabels = {
-        all: 'Everywhere',
-        public: 'Public portal only',
+        all: 'Everyone',
+        public: 'Senior Portal Public',
         staff: 'All staff dashboards'
     };
     Array.from(audience.options).forEach(function (audienceOption) {

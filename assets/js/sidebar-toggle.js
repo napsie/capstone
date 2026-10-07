@@ -45,6 +45,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (desktopQuery.matches) closeMobileNavigation();
         });
 
+        // mobile-navigation.js is the authoritative drawer controller on pages
+        // using the shared system sidebar. Avoid registering a second set of
+        // open/close and backdrop handlers here.
+        if (window.__seniorlinkMobileNavigationReady) return;
+
         const mobileToggle = sidebar.querySelector('.mobile-nav-toggle');
         const mobileClose = sidebar.querySelector('.mobile-nav-close');
         const currentLabel = sidebar.querySelector('.mobile-nav-current');

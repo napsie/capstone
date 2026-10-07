@@ -174,12 +174,10 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                     <p>Review the local queue and monitor recent activity.</p>
                 </div>
                 <nav class="dashboard-quick-actions" aria-label="Barangay quick actions">
-                    <a class="quick-action primary" href="submit_application.php"><i class="fas fa-clipboard-list" aria-hidden="true"></i><span><strong>Open queue</strong><small>Continue processing</small></span></a>
+                    <button class="quick-action primary announcement-launch" type="button" data-announcement-open aria-controls="dashboardAnnouncementDrawer" aria-expanded="false"><i class="fas fa-bullhorn" aria-hidden="true"></i><span><strong>Announcements</strong><small>View official updates</small></span></button>
                     <button class="quick-action calendar-launch" type="button" data-calendar-open aria-controls="dashboardCalendarDrawer" aria-expanded="false"><i class="fas fa-calendar-days" aria-hidden="true"></i><span><strong>Calendar</strong><small>Check dates quickly</small></span></button>
                 </nav>
             </section>
-
-            <?php $announcementSurface = 'staff'; include '../partials/announcement_feed.php'; ?>
 
             <!-- Summary Stats Strip -->
             <div class="stats-strip" id="statsStrip">
@@ -333,6 +331,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
     </div>
 
     <?php include '../partials/dashboard_calendar_drawer.php'; ?>
+    <?php include '../partials/dashboard_announcement_drawer.php'; ?>
 
     <script src="../assets/js/sidebar-toggle.js?v=3"></script>
     <script>

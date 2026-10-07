@@ -4,8 +4,8 @@ $barangayName = $barangayName ?? ($_SESSION['barangay'] ?? '');
 $barangayLogoLabel = $barangayName !== '' ? 'Barangay ' . $barangayName . ' Logo' : 'SENIORLINK Logo';
 require_once __DIR__ . '/../includes/system_branding.php';
 ?>
-<link rel="stylesheet" href="../assets/css/system-sidebar.css?v=11">
-<link rel="stylesheet" href="../assets/css/barangay-mobile-navigation.css?v=5">
+<link rel="stylesheet" href="../assets/css/barangay-mobile-navigation.css?v=6">
+<link rel="stylesheet" href="../assets/css/system-sidebar.css?v=14">
 <div class="sidebar system-sidebar">
     <div class="mobile-nav-bar">
         <button class="mobile-nav-toggle" type="button" aria-expanded="false" aria-controls="mobileBarangayNavigation"><i class="fas fa-bars" aria-hidden="true"></i><span>Menu</span></button>
@@ -34,8 +34,8 @@ require_once __DIR__ . '/../includes/system_branding.php';
         <li class="logout-item"><a href="../index.php?logout=true" data-logout-confirm data-tooltip="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i> <span class="link-text">Logout</span></a></li>
     </ul>
 </div>
-<script src="../assets/js/mobile-navigation.js?v=1"></script>
-<script src="../assets/js/sidebar-toggle.js?v=5"></script>
+<script src="../assets/js/mobile-navigation.js?v=2"></script>
+<script src="../assets/js/sidebar-toggle.js?v=6"></script>
 <script src="../assets/js/session-timeout.js?v=6"></script>
 <script src="../assets/js/form-language.js?v=2" defer></script>
 <?php include_once __DIR__ . '/legal_quick_access.php'; ?>
