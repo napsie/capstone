@@ -636,14 +636,12 @@ $publishedAnnouncementCount = activeAnnouncementCount($conn);
                     <p>Monitor all barangays, verify submitted documents, and resolve records that require department action.</p>
                 </div>
                 <nav class="dashboard-quick-actions" aria-label="Department quick actions">
-                    <a class="quick-action primary" href="verify_document.php"><i class="fas fa-file-circle-check" aria-hidden="true"></i><span><strong>Verify documents</strong><small>Open review workspace</small></span></a>
+                    <button class="quick-action primary announcement-launch" type="button" data-announcement-open aria-controls="dashboardAnnouncementDrawer" aria-expanded="false"><i class="fas fa-bullhorn" aria-hidden="true"></i><span><strong>Announcements</strong><small>View official updates</small></span></button>
                     <a class="quick-action" href="department_records.php"><i class="fas fa-database" aria-hidden="true"></i><span><strong>Citywide records</strong><small>Browse all barangays</small></span></a>
                     <button class="quick-action calendar-launch" type="button" data-calendar-open aria-controls="dashboardCalendarDrawer" aria-expanded="false"><i class="fas fa-calendar-days" aria-hidden="true"></i><span><strong>Calendar</strong><small>Check dates quickly</small></span></button>
                 </nav>
             </section>
 
-            <?php $announcementSurface = 'staff'; include '../partials/announcement_feed.php'; ?>
-            
             <!-- Stats Cards -->
             <div class="stats-container" id="departmentSummaryCards">
                 <a class="stat-card stat-card-link stat-blue" href="department_records.php" aria-label="Open verified application records">
@@ -681,7 +679,7 @@ $publishedAnnouncementCount = activeAnnouncementCount($conn);
                 <a class="stat-card stat-card-link stat-blue" href="user_management.php" aria-label="Open active system users"><div class="stat-icon"><i class="fas fa-users-gear"></i></div><div class="stat-info"><h3><?php echo number_format($systemUserCount); ?></h3><p>Active system users</p><small><?php echo number_format($barangayStaffCount); ?> barangay staff accounts</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>
                 <a class="stat-card stat-card-link stat-green" href="announcements.php" aria-label="Manage active announcements and benefit updates"><div class="stat-icon"><i class="fas fa-bullhorn"></i></div><div class="stat-info"><h3><?php echo number_format($publishedAnnouncementCount); ?></h3><p>Published updates</p><small>Announcements and benefits</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>
                 <a class="stat-card stat-card-link stat-amber" href="verify_document.php?type=senior" aria-label="Open pending Senior ID applications"><div class="stat-icon"><i class="fas fa-id-card"></i></div><div class="stat-info"><h3 class="dashboard-loading" id="pendingSeniorId">0</h3><p>Pending Senior ID</p><small>Awaiting completion</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>
-                <a class="stat-card stat-card-link stat-blue" href="verify_document.php?type=landbank" aria-label="Open pending Landbank applications"><div class="stat-icon"><i class="fas fa-building-columns"></i></div><div class="stat-info"><h3 class="dashboard-loading" id="pendingLandbank">0</h3><p>Pending Landbank</p><small>Awaiting completion</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>
+                <a class="stat-card stat-card-link stat-blue" href="verify_document.php?type=landbank" aria-label="Open Landbank applications"><div class="stat-icon"><i class="fas fa-building-columns"></i></div><div class="stat-info"><h3 class="dashboard-loading" id="pendingLandbank">0</h3><p>Landbank</p><small>Awaiting completion</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>
                 <a class="stat-card stat-card-link stat-green" href="verify_document.php?type=pension" aria-label="Open pending Local Senior Pension applications"><div class="stat-icon"><i class="fas fa-wallet"></i></div><div class="stat-info"><h3 class="dashboard-loading" id="pendingLocalPension">0</h3><p>Local Senior Pension</p><small>Pending Local Senior Pension</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>
                 <a class="stat-card stat-card-link stat-violet" href="verify_document.php?type=milestone_gift" aria-label="Open pending Octogenarian Benefit applications"><div class="stat-icon"><i class="fas fa-gift"></i></div><div class="stat-info"><h3 class="dashboard-loading" id="pendingOctogenarian">0</h3><p>Octogenarian Benefits</p><small>Pending Octogenarian Benefit</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>
                 <a class="stat-card stat-card-link stat-amber" href="verify_document.php?type=burial" aria-label="Open pending Burial Assistance applications"><div class="stat-icon"><i class="fas fa-ribbon"></i></div><div class="stat-info"><h3 class="dashboard-loading" id="pendingBurial">0</h3><p>Burial Assistance</p><small>Pending Burial Assistance</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>
@@ -793,6 +791,7 @@ $publishedAnnouncementCount = activeAnnouncementCount($conn);
             </div>
         </div>
     <?php include '../partials/dashboard_calendar_drawer.php'; ?>
+    <?php include '../partials/dashboard_announcement_drawer.php'; ?>
     <script src="../assets/js/sidebar-toggle.js?v=3"></script>
     <script>
         let dashboardChartData = null;

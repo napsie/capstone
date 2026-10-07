@@ -27,6 +27,13 @@ document.addEventListener('DOMContentLoaded', () => {
     launchers.forEach(button => button.addEventListener('click', () => open(button)));
     closeButton.addEventListener('click', close);
     backdrop.addEventListener('click', close);
+    document.querySelectorAll('[data-announcement-detail]').forEach(button => {
+        const dialog = document.getElementById(button.dataset.announcementDetail);
+        if (!dialog) return;
+        button.addEventListener('click', () => dialog.showModal());
+        dialog.querySelectorAll('[data-announcement-detail-close]').forEach(control => control.addEventListener('click', () => dialog.close()));
+        dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
+    });
     document.addEventListener('keydown', event => {
         if (!drawer.classList.contains('is-open')) return;
         if (event.key === 'Escape') { event.preventDefault(); close(); return; }
