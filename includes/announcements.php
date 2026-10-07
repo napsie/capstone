@@ -4,14 +4,25 @@ function activeAnnouncements(PDO $conn, string $surface = 'public', int $limit =
 {
     if (!in_array($surface, ['public', 'staff'], true)) $surface = 'public';
     try {
+        // Some long-lived Railway databases predate barangay targeting. Keep the
+        // general feed visible while the deployment migration repairs that drift.
+        $hasTargetBarangay = false;
+        if ($conn->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql') {
+            $hasTargetBarangay = (bool)$conn->query(
+                "SELECT 1 FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'announcements'
+                   AND COLUMN_NAME = 'target_barangay' LIMIT 1"
+            )->fetchColumn();
+        }
         $audienceSql = "audience IN ('all', ?)";
         $params = [$surface];
-        if ($surface === 'staff' && $barangay !== '') {
+        if ($surface === 'staff' && $barangay !== '' && $hasTargetBarangay) {
             $audienceSql = "(audience IN ('all', 'staff') OR (audience = 'barangay' AND target_barangay = ?))";
             $params = [$barangay];
         }
+        $targetSelect = $hasTargetBarangay ? 'target_barangay' : 'NULL AS target_barangay';
         $stmt = $conn->prepare(
-            "SELECT id, title, message, category, audience, target_barangay, starts_at, ends_at, created_at
+            "SELECT id, title, message, category, audience, {$targetSelect}, starts_at, ends_at, created_at
              FROM announcements
              WHERE is_active = 1
                AND {$audienceSql}
@@ -24,7 +35,7 @@ function activeAnnouncements(PDO $conn, string $surface = 'public', int $limit =
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
         // Keep public pages usable before the migration is applied.
-        if ((string)$e->getCode() !== '42S02') error_log('Announcement lookup failed: ' . $e->getMessage());
+        error_log('Announcement lookup failed: ' . $e->getMessage());
         return [];
     }
 }
