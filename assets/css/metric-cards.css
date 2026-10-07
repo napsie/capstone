@@ -162,8 +162,18 @@
 /* Department Records: keep descriptive coverage text readable at narrower
    desktop widths instead of replacing meaningful words with an ellipsis. */
 #departmentRecordsStats .stat-card {
-    gap: 14px;
-    padding-inline: 22px;
+    min-height: 98px;
+    gap: 11px;
+    padding: 15px 16px;
+    border-radius: 14px;
+}
+
+#departmentRecordsStats .stat-icon {
+    width: 48px;
+    height: 48px;
+    flex-basis: 48px;
+    border-radius: 13px;
+    font-size: 1.15rem;
 }
 
 #departmentRecordsStats .stat-value--text,
@@ -174,7 +184,22 @@
 }
 
 #departmentRecordsStats .stat-value--text {
-    font-size: clamp(1.05rem, 1.35vw, 1.35rem) !important;
+    font-size: clamp(.9rem, 1.15vw, 1.15rem) !important;
+    white-space: nowrap;
+}
+
+#departmentRecordsStats :is(.stat-value, .stat-info h3) {
+    font-size: 1.45rem !important;
+}
+
+#departmentRecordsStats :is(.stat-label, .stat-info p) {
+    margin-bottom: 4px;
+    font-size: .69rem;
+}
+
+#departmentRecordsStats :is(.stat-meta, .stat-info small) {
+    margin-top: 5px;
+    font-size: .67rem;
 }
 
 :is(.stats-strip, .stats-container) :is(.stat-meta, .stat-info small) {

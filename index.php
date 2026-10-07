@@ -175,7 +175,7 @@ header('Expires: 0');
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/seniorlink-public.css?v=1">
-    <link rel="stylesheet" href="assets/css/landing.css?v=37">
+    <link rel="stylesheet" href="assets/css/landing.css?v=38">
     <link rel="stylesheet" href="assets/css/seniorlink-ui.css?v=23">
     <script src="assets/js/modal-hci.js?v=2" defer></script>
 </head>
@@ -370,15 +370,15 @@ header('Expires: 0');
                 </div>
                 <button class="close-btn" type="button" aria-label="Close application tracker">&times;</button>
             </div>
-            <p class="track-intro">Enter your permanent PRX Token ID, scan your QR code, or upload a QR image to check your application status.</p>
+            <p class="track-intro">Enter your permanent PRX or PEN Token ID, scan your QR code, or upload a QR image to check your application status.</p>
             <form class="portal-tracker track-modal-form" action="pages/benefit_tracker.php" method="get">
-                <label for="landingTrackerToken">Permanent PRX Token ID</label>
+                <label for="landingTrackerToken">Permanent Token ID</label>
                 <div class="portal-tracker-controls">
-                    <input id="landingTrackerToken" name="token" type="text" value="PRX-" aria-describedby="landingTokenHint"
+                    <input id="landingTrackerToken" name="token" type="text" value="" placeholder="PRX-7K2M or PEN-74ST" aria-describedby="landingTokenHint"
                            maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
                     <button type="submit"><span>Check Status</span><i class="fas fa-arrow-right" aria-hidden="true"></i></button>
                 </div>
-                <small id="landingTokenHint" class="track-format-help">PRX- is added for you. Enter the remaining 4–12 letters or numbers.</small>
+                <small id="landingTokenHint" class="track-format-help">Use the complete PRX or PEN token shown on your confirmation.</small>
                 <div class="tracking-qr-actions" aria-label="QR tracking options">
                     <button type="button" id="landingScanQr"><i class="fas fa-camera" aria-hidden="true"></i> Scan QR Code</button>
                     <button type="button" id="landingUploadQr"><i class="fas fa-image" aria-hidden="true"></i> Upload QR Image</button>
@@ -400,7 +400,6 @@ header('Expires: 0');
             const modal = document.getElementById('trackModal');
             const closeButton = modal?.querySelector('.close-btn');
             const input = document.getElementById('landingTrackerToken');
-            window.initPrxTokenInput(input);
             const form = modal?.querySelector('.track-modal-form');
             const scanButton = document.getElementById('landingScanQr');
             const uploadButton = document.getElementById('landingUploadQr');
@@ -418,16 +417,16 @@ header('Expires: 0');
                 scannerStatus.dataset.type = type;
             };
 
-            const extractPrx = decoded => String(decoded || '').toUpperCase().match(/PRX-[A-Z0-9]{4,12}/)?.[0] || '';
+            const extractPrx = decoded => String(decoded || '').toUpperCase().match(/(?:PRX|PEN)-[A-Z0-9]{4,12}/)?.[0] || '';
             const normalizeTrackerToken = value => String(value || '').normalize('NFKC')
                 .replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, '-')
                 .replace(/\s+/g, '').toUpperCase()
-                .replace(/^PRX(?=[A-Z0-9]{4,12}$)/, 'PRX-');
+                .replace(/^(PRX|PEN)(?=[A-Z0-9]{4,12}$)/, '$1-');
             form?.addEventListener('submit', event => {
                 input.value = normalizeTrackerToken(input.value);
-                if (!/^PRX-[A-Z0-9]{4,12}$/.test(input.value)) {
+                if (!/^(?:PRX|PEN)-[A-Z0-9]{4,12}$/.test(input.value)) {
                     event.preventDefault();
-                    setScannerStatus('Enter the full PRX Token ID, such as PRX-7K2M.', 'error');
+                    setScannerStatus('Enter a complete token, such as PRX-7K2M or PEN-74ST.', 'error');
                     input.focus();
                 }
             });
@@ -447,12 +446,12 @@ header('Expires: 0');
             const useQrResult = async decoded => {
                 const token = extractPrx(decoded);
                 if (!token) {
-                    setScannerStatus('This QR image does not contain a valid permanent PRX Token ID.', 'error');
+                    setScannerStatus('This QR image does not contain a valid PRX or PEN Token ID.', 'error');
                     return;
                 }
                 input.value = token;
                 await stopScanner();
-                setScannerStatus('PRX Token ID detected. Retrieving tracking information…', 'success');
+                setScannerStatus('Token ID detected. Retrieving tracking information…', 'success');
                 form?.requestSubmit();
             };
 

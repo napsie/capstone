@@ -4,7 +4,7 @@ $dashboardAnnouncementBarangay = trim((string)($_SESSION['barangay'] ?? ''));
 $dashboardAnnouncementItems = activeAnnouncements($conn, 'staff', 10, $dashboardAnnouncementBarangay);
 $dashboardAnnouncementIsDepartment = in_array((string)($_SESSION['role'] ?? ''), ['department_admin', 'super_admin'], true);
 ?>
-<link rel="stylesheet" href="../assets/css/dashboard-announcement-drawer.css?v=1">
+<link rel="stylesheet" href="../assets/css/dashboard-announcement-drawer.css?v=2">
 <div class="dashboard-announcement-backdrop" id="dashboardAnnouncementBackdrop" hidden></div>
 <aside class="dashboard-announcement-drawer" id="dashboardAnnouncementDrawer" role="dialog" aria-modal="true" aria-labelledby="dashboardAnnouncementTitle" aria-hidden="true">
     <header class="dashboard-announcement-drawer__header">

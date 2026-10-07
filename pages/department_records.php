@@ -488,7 +488,7 @@ function getStatusBadge($status) {
         .page-footer { text-align:center; padding:24px; font-size:0.78rem; color:var(--gray); }
     </style>
     <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=22">
-    <link rel="stylesheet" href="../assets/css/metric-cards.css?v=2">
+    <link rel="stylesheet" href="../assets/css/metric-cards.css?v=3">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">

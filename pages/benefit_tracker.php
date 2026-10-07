@@ -10,7 +10,7 @@ $token = strtoupper(preg_replace('/\s+/u', '', str_replace(
     ['‐', '‑', '‒', '–', '—', '―', '−', '﹘', '﹣', '－'],
     '-', trim((string)($_GET['token'] ?? ''))
 )) ?? '');
-$token = preg_replace('/^PRX(?=[A-Z0-9]{4,12}$)/', 'PRX-', $token) ?? $token;
+$token = preg_replace('/^(PRX|PEN)(?=[A-Z0-9]{4,12}$)/', '$1-', $token) ?? $token;
 $application = null;
 $applications = [];
 $permanentToken = $token;
@@ -29,8 +29,8 @@ $history = [];
 $error = '';
 
 if ($token !== '') {
-    if (!preg_match('/^PRX-[A-Z0-9]{4,12}$/', $token)) {
-        $error = 'Enter a valid permanent PRX Token ID, such as PRX-7K2M.';
+    if (!preg_match('/^(?:PRX|PEN)-[A-Z0-9]{4,12}$/', $token)) {
+        $error = 'Enter a valid PRX or PEN Token ID, such as PRX-7K2M or PEN-74ST.';
     } else {
         $stmt = $conn->prepare("SELECT id_number, parent_senior_id, proxy_token, full_name, application_type, requested_benefit, workflow_state, status, home_visit_status, date_submitted, id_purpose,
                                        senior_id_no, birth_date, complete_address, barangay, contact_number
@@ -47,7 +47,7 @@ if ($token !== '') {
             $rootStmt->execute([$rootId]);
             $root = $rootStmt->fetch(PDO::FETCH_ASSOC) ?: $matchedApplication;
             $rootToken = strtoupper(trim((string)($root['proxy_token'] ?? '')));
-            $permanentToken = preg_match('/^PRX-[A-Z0-9]{4,12}$/', $rootToken)
+            $permanentToken = preg_match('/^(?:PRX|PEN)-[A-Z0-9]{4,12}$/', $rootToken)
                 ? $rootToken
                 : $token;
             $applicantName = trim((string)($root['full_name'] ?? $matchedApplication['full_name'] ?? ''));
@@ -287,15 +287,15 @@ if ($application && $seniorBirthDateValue !== '') {
     <section class="tracker-card">
         <header class="tracker-head">
             <h1>Track Your Application</h1>
-            <p>Enter your permanent PRX Token ID, scan your QR code, or upload a QR image to check your application status.</p>
+            <p>Enter your permanent PRX or PEN Token ID, scan your QR code, or upload a QR image to check your application status.</p>
         </header>
         <div class="tracker-body">
             <?php $announcementSurface = 'public'; $announcementVariant = 'compact'; include '../partials/announcement_feed.php'; ?>
             <form method="get" class="lookup">
                 <label for="token" class="sr-only">Application token</label>
-                <input id="token" name="token" value="<?php echo htmlspecialchars($token ?: 'PRX-'); ?>" aria-describedby="tokenFormatHelp" maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
+                <input id="token" name="token" value="<?php echo htmlspecialchars($token); ?>" placeholder="PRX-7K2M or PEN-74ST" aria-describedby="tokenFormatHelp" maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
                 <button type="submit"><i class="fas fa-magnifying-glass" aria-hidden="true"></i> Check Status</button>
-                <small id="tokenFormatHelp" class="token-format-help">PRX- is added for you. Enter the remaining 4–12 letters or numbers.</small>
+                <small id="tokenFormatHelp" class="token-format-help">Enter the complete PRX or PEN token shown on your confirmation.</small>
             </form>
             <details class="qr-tools">
                 <summary><i class="fas fa-camera" aria-hidden="true"></i> Scan QR Code <span aria-hidden="true">|</span> <i class="fas fa-image" aria-hidden="true"></i> Upload QR Image</summary>
@@ -419,11 +419,10 @@ if ($application && $seniorBirthDateValue !== '') {
 <script src="../assets/js/prx-token-input.js"></script>
 <script>
 (() => {
-    window.initPrxTokenInput(document.getElementById('token'));
     const reader = document.getElementById('trackingQrReader');
     if (!reader || typeof Html5QrcodeScanner === 'undefined') return;
     const useResult = decoded => {
-        const match = String(decoded || '').toUpperCase().match(/PRX-[A-Z0-9]{4,12}/);
+        const match = String(decoded || '').toUpperCase().match(/(?:PRX|PEN)-[A-Z0-9]{4,12}/);
         if (!match) return;
         document.getElementById('token').value = match[0];
         window.location.href = `benefit_tracker.php?token=${encodeURIComponent(match[0])}`;

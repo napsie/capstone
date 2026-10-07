@@ -727,7 +727,7 @@ button.portal-card {
 .track-content .about-header { margin-bottom: 12px; }
 .track-content .portal-eyebrow { margin-bottom: 5px; }
 .track-intro { margin:0 0 18px; max-width:58ch; color:var(--text-body); font-size:.9rem; line-height:1.55; }
-.track-modal-form { margin:0; padding:20px; border:1px solid #d8e4ec; border-radius:16px; background:#f5f9fc; }
+.track-modal-form { margin:24px 0 0; padding:20px; border:1px solid #d8e4ec; border-radius:16px; background:#f5f9fc; }
 .track-modal-form > label { display:block; margin-bottom:8px; color:var(--text-dark); font-size:.78rem; font-weight:800; }
 .track-help { display: flex; align-items: center; gap: 7px; margin-top: 11px; color: var(--text-light); font-size: .68rem; line-height: 1.4; }
 .track-format-help { display:block; margin-top:7px; color:#475569; font-size:.72rem; line-height:1.4; }
