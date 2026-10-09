@@ -174,7 +174,6 @@ if ($verifiedSenior) {
 <div class="page-bg page-bg--pages" aria-hidden="true"></div>
 <?php if (!$verifiedSenior && !$proxySuccess): ?>
 <main class="landing-wrapper benefit-portal">
-    <?php $announcementSurface = 'public'; $announcementVariant = 'compact'; include '../partials/announcement_feed.php'; ?>
     <section class="proxy-section" aria-labelledby="benefit-portal-heading">
         <div class="proxy-panel">
             <div class="proxy-panel-header">
@@ -203,7 +202,7 @@ if ($verifiedSenior) {
 </main>
 <?php else: ?>
 <div class="verified-banner"><div><strong><i class="fas fa-circle-check"></i> Identity verified</strong><br><?php echo htmlspecialchars($verifiedSenior['full_name'] ?? 'Senior citizen'); ?> · <?php echo htmlspecialchars($verifiedSenior['senior_id_no'] ?? ''); ?></div><a href="?reset=1">Use another ID</a></div>
-<div class="landing-wrapper benefit-mode"><?php $announcementSurface = 'public'; $announcementVariant = 'compact'; include '../partials/announcement_feed.php'; ?><section class="proxy-section"><div class="proxy-panel"><div class="proxy-panel-body">
+<div class="landing-wrapper benefit-mode"><section class="proxy-section"><div class="proxy-panel"><div class="proxy-panel-body">
     <?php if ($transferBenefitsLocked && $transferResidencyStart && $transferBenefitEligibleAt): ?>
     <aside class="transfer-residency-notice" role="status" aria-labelledby="transfer-residency-heading">
         <span class="transfer-residency-notice__icon"><i class="fas fa-lock" aria-hidden="true"></i></span>
