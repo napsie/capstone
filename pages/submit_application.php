@@ -693,12 +693,12 @@ unset($_SESSION['application_submission_notice']);
 <div id="proxyModal" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="proxyModalTitle">
     <div class="modal-box" style="max-width:500px; margin: 10% auto;">
         <div class="modal-head">
-            <h2 id="proxyModalTitle"><i class="fas fa-qrcode"></i> Scan Representative QR Token</h2>
+            <h2 id="proxyModalTitle"><i class="fas fa-qrcode"></i> Scan QR Code</h2>
             <button type="button" class="modal-close" onclick="closeProxyModal()" aria-label="Close QR scanner dialog">&times;</button>
         </div>
         <div class="modal-scroller" style="padding:20px;">
             <p style="font-size:0.82rem; color:var(--gray); margin-bottom:14px;">
-                Paste the encrypted QR token link or type the representative transaction token (e.g. PRX-XXXXXX) to load the profile.
+                Paste the encrypted QR token link or enter the permanent PRX token (e.g. PRX-XXXXXX) to load the profile.
             </p>
             <div class="form-group" style="margin-bottom:14px;">
                 <label style="font-weight:700; font-size:0.75rem;">Token Payload</label>
