@@ -102,7 +102,7 @@ function deceasedRecordsUrl(array $changes = []): string {
 .record-dialog,.record-dialog *{box-sizing:border-box}.record-dialog{overscroll-behavior:contain}.dialog-body:focus-visible{outline:none}.dialog-footer{width:100%;min-width:0;align-items:center}.dialog-done{min-width:120px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px 20px;border:0;border-radius:9px;background:#1769aa;color:#fff;font:800 .82rem/1 Inter,"Segoe UI",sans-serif;cursor:pointer;white-space:nowrap}.dialog-done:hover{background:#125b94}.dialog-done:focus-visible{outline:3px solid rgba(23,105,170,.28);outline-offset:2px}@media(max-width:600px){.dialog-footer{padding:12px 14px 14px}.dialog-done{width:100%;min-width:0}}
 .transaction-history{padding:16px;background:#fff;border:1px solid #dce6ee;border-radius:14px;box-shadow:0 4px 14px rgba(18,50,75,.04)}.transaction-history h3{display:flex;align-items:center;gap:8px;margin:0 0 12px;color:#24465f;font-size:.76rem;font-weight:850;letter-spacing:.035em;text-transform:uppercase}.transaction-history h3 i{color:#1769aa}.transaction-list{display:grid;gap:8px}.transaction-row{display:grid;gap:7px;padding:11px 12px;background:#f8fbfd;border:1px solid #e2e8f0;border-radius:9px}.transaction-row strong,.transaction-row span,.transaction-row small{display:block}.transaction-row strong{font-size:.78rem;color:#172d40}.transaction-row span{margin-top:2px;color:#1769aa;font:750 .68rem/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}.transaction-row small{color:#64748b;font-size:.68rem}.transaction-status{justify-self:start;padding:5px 8px;border-radius:999px;background:#e2e8f0;color:#475569!important;font:800 .63rem/1 sans-serif!important;text-transform:uppercase}
 .person-row.is-expanded{background:#f5f9ff}.person-senior-id{display:block;margin-top:4px;color:#1d4ed8;font-size:.73rem;font-weight:800;overflow-wrap:anywhere}.person-senior-id.is-pending{color:#64748b}.person-transaction-id{display:block;margin-top:2px;color:#475569;font:650 .7rem/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}.person-birth-date{display:block;margin-top:3px;color:#64748b;font-size:.73rem}.application-summary{display:flex;flex-direction:column;gap:4px}.application-summary strong{font-size:.86rem}.application-summary small{color:#64748b;font-size:.73rem}.type-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:3px}.type-chip{display:inline-flex;max-width:100%;padding:3px 8px;color:#334155;background:#eef2f7;border-radius:999px;font-size:.68rem;font-weight:650;line-height:1.35}.group-toggle .toggle-icon{transition:transform .2s ease}.group-toggle[aria-expanded="true"] .toggle-icon{transform:rotate(180deg)}.application-detail-row[hidden]{display:none}.application-detail-row>td{padding:0 18px 16px;background:#f5f9ff;border-bottom:1px solid #dbe7f3}.application-list{display:grid;gap:8px;padding:13px;background:#fff;border:1px solid #dbe7f3;border-radius:10px}.application-list-item{display:grid;grid-template-columns:minmax(240px,1.4fr) minmax(135px,.75fr) minmax(115px,.65fr) minmax(105px,.55fr) auto;align-items:center;gap:14px;padding:10px 12px;border:1px solid #e7edf4;border-radius:8px}.application-list-item strong{display:block;color:#0f172a;font-size:.82rem}.application-list-item small{display:block;margin-top:3px;color:#475569;font-size:.71rem}.application-list-label{margin-bottom:2px;color:#64748b;font-size:.66rem;font-weight:750;letter-spacing:.05em;text-transform:uppercase}.transaction-token{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-weight:750}.transaction-view{justify-self:end}@media(max-width:1050px){.application-list-item{grid-template-columns:1fr 1fr}.transaction-view{justify-self:start}}@media(max-width:720px){.records-tbl th:nth-child(2),.records-tbl td:nth-child(2){min-width:220px}}
-</style></head><body>
+</style><link rel="stylesheet" href="../assets/css/applicant-modal.css?v=1"></head><body>
 <?php if($isDepartment) include '../partials/department_sidebar.php'; else include '../partials/barangay_sidebar.php'; ?>
 <main class="main-content">
 <header class="page-header">
@@ -128,7 +128,7 @@ function deceasedRecordsUrl(array $changes = []): string {
     }
 ?>
 <tr class="person-row"><td><div class="name-cell"><strong><?= htmlspecialchars($record['full_name']) ?></strong><span class="person-senior-id<?= $record['senior_id_no'] ? '' : ' is-pending' ?>">ID Number: <?= htmlspecialchars($record['senior_id_no'] ?: 'Not assigned') ?></span><span class="person-transaction-id">Transaction ID: <?= htmlspecialchars($record['id_number']) ?></span><span class="person-birth-date">Born <?= $record['birth_date'] ? htmlspecialchars(date('M d, Y', strtotime($record['birth_date']))) : 'Not recorded' ?></span></div></td><td><div class="application-summary"><strong><?= $transactionCount ?> linked transaction<?= $transactionCount === 1 ? '' : 's' ?></strong><small>Complete record history</small><div class="type-chips"><?php foreach(array_slice($typeLabels,0,3) as $typeLabel): ?><span class="type-chip"><?= htmlspecialchars($typeLabel) ?></span><?php endforeach; ?><?php if(count($typeLabels)>3): ?><span class="type-chip">+<?= count($typeLabels)-3 ?> more</span><?php endif; ?></div></div></td><td><?= htmlspecialchars($record['barangay'] ?: 'Not recorded') ?></td><td><div class="date-cell"><strong><?= $record['date_of_death'] ? htmlspecialchars(date('M d, Y', strtotime($record['date_of_death']))) : 'Not recorded' ?></strong><span>Burial record</span></div></td><td><span class="status-badge"><i class="fas fa-ribbon"></i> Deceased</span></td><td><button type="button" class="view-record group-toggle" aria-expanded="false" aria-controls="<?= $historyId ?>"><i class="fas fa-layer-group"></i><span class="toggle-label">Show <?= $transactionCount ?></span><i class="fas fa-chevron-down toggle-icon" aria-hidden="true"></i></button></td></tr>
-<tr class="application-detail-row" id="<?= $historyId ?>" hidden><td colspan="6"><div class="application-list" role="region" aria-label="Transactions for <?= htmlspecialchars($record['full_name']) ?>"><?php foreach($transactions as $transaction): $transactionState=(string)($transaction['workflow_state'] ?: $transaction['status'] ?: 'Recorded'); ?><div class="application-list-item"><div><div class="application-list-label">Application</div><strong><?= htmlspecialchars(applicationRecordTypeLabel((string)$transaction['application_type'],$transaction['id_purpose'] ?? null)) ?></strong><small>Transaction ID: <span class="transaction-token"><?= htmlspecialchars($transaction['id_number']) ?></span></small></div><div><div class="application-list-label">Barangay</div><strong><?= htmlspecialchars($transaction['barangay'] ?: $record['barangay'] ?: 'Not recorded') ?></strong></div><div><div class="application-list-label">Submitted</div><strong><?= $transaction['date_submitted'] ? htmlspecialchars(date('M d, Y',strtotime($transaction['date_submitted']))) : 'Not recorded' ?></strong></div><div><div class="application-list-label">Status</div><span class="status-badge"><?= htmlspecialchars($transactionState) ?></span></div><button type="button" class="view-record transaction-view" aria-haspopup="dialog" aria-controls="<?= $detailsId ?>"><i class="fas fa-eye"></i> View record</button></div><?php endforeach; ?></div></td></tr>
+<tr class="application-detail-row" id="<?= $historyId ?>" hidden><td colspan="6"><div class="application-list" role="region" aria-label="Transactions for <?= htmlspecialchars($record['full_name']) ?>"><?php foreach($transactions as $transaction): $transactionState=(string)($transaction['workflow_state'] ?: $transaction['status'] ?: 'Recorded'); ?><div class="application-list-item"><div><div class="application-list-label">Application</div><strong><?= htmlspecialchars(applicationRecordTypeLabel((string)$transaction['application_type'],$transaction['id_purpose'] ?? null)) ?></strong><small>Transaction ID: <span class="transaction-token"><?= htmlspecialchars($transaction['id_number']) ?></span></small></div><div><div class="application-list-label">Barangay</div><strong><?= htmlspecialchars($transaction['barangay'] ?: $record['barangay'] ?: 'Not recorded') ?></strong></div><div><div class="application-list-label">Submitted</div><strong><?= $transaction['date_submitted'] ? htmlspecialchars(date('M d, Y',strtotime($transaction['date_submitted']))) : 'Not recorded' ?></strong></div><div><div class="application-list-label">Status</div><span class="status-badge"><?= htmlspecialchars($transactionState) ?></span></div><button type="button" class="view-record transaction-view view-application-record" data-id="<?= htmlspecialchars($transaction['id_number']) ?>"><i class="fas fa-eye"></i> View record</button></div><?php endforeach; ?></div></td></tr>
 <?php endforeach; ?>
 </tbody></table></div>
 <?php endif; ?>
@@ -155,12 +155,61 @@ function deceasedRecordsUrl(array $changes = []): string {
 </div></div></dialog>
 <?php endforeach; ?>
 </div></main>
-<script src="../assets/js/sidebar-toggle.js?v=3"></script><script>
-document.querySelectorAll('.view-record:not(.group-toggle)').forEach(function(button){
-    var dialog=document.getElementById(button.getAttribute('aria-controls'));
-    var open=function(){if(dialog&&typeof dialog.showModal==='function'){dialog._returnFocus=button;dialog.showModal();window.setTimeout(function(){dialog.querySelector('.dialog-close')?.focus();},0);}};
-    button.addEventListener('click',open);
-});
+<div id="applicationModal" class="modal-overlay applicant-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modalAppTitle">
+    <div class="modal-box applicant-modal-dialog" role="document">
+        <div class="modal-head"><div class="applicant-modal-heading"><span class="applicant-modal-eyebrow">Applicant record</span><h2><i class="fas fa-file-shield"></i> <span id="modalAppTitle">Application Details</span></h2><p>View submitted information, uploaded documents, and complete processing history.</p></div><button type="button" class="modal-close" id="closeApplicationModal" aria-label="Close application details"><i class="fas fa-xmark"></i></button></div>
+        <div class="modal-scroller applicant-modal-body">
+            <div class="stepper"><div class="step" id="step-Received"><div class="step-circle">1</div><div class="step-label">Received</div></div><div class="step" id="step-For-Review"><div class="step-circle">2</div><div class="step-label">For Review</div></div><div class="step" id="step-Verified"><div class="step-circle">3</div><div class="step-label">Verified</div></div></div>
+            <div class="modal-grid applicant-modal-layout"><div>
+                <div class="section-title"><i class="fas fa-user"></i> Applicant Information</div><div class="info-grid"><div class="info-item wide"><label>Full Name</label><span id="infoName">—</span></div><div class="info-item"><label>Date of Birth</label><span id="infoBirth">—</span></div><div class="info-item"><label>Contact Number</label><span id="infoContact">—</span></div><div class="info-item"><label>Barangay</label><span id="infoBarangay">—</span></div><div class="info-item wide"><label>Complete Address</label><span id="infoAddress">—</span></div><div class="info-item wide"><label>Additional Notes</label><span id="infoNotes">—</span></div></div>
+                <div id="dynamicDetailsSection"></div><div id="allDocumentsSection"><span>Loading submitted documents…</span></div>
+            </div><div><div class="section-title"><i class="fas fa-clock-rotate-left"></i> Audit History</div><div class="timeline" id="timelineList"><p>Loading history…</p></div></div></div>
+        </div>
+    </div>
+</div>
+<script src="../assets/js/sidebar-toggle.js?v=3"></script><script src="../assets/js/application-documents.js?v=10"></script><script src="../assets/js/application-details.js?v=16"></script><script src="../assets/js/application-modal-data.js?v=1"></script><script>
+function closeApplicationRecordModal(){
+    var modal=document.getElementById('applicationModal');
+    modal.style.display='none';
+    modal.setAttribute('aria-hidden','true');
+    modal._returnFocus?.focus();
+}
+window.openApplicationModal=function(applicationId){
+    var modal=document.getElementById('applicationModal');
+    modal._returnFocus=document.activeElement;
+    modal.style.display='flex';
+    modal.setAttribute('aria-hidden','false');
+    document.getElementById('modalAppTitle').textContent='Loading application…';
+    document.getElementById('dynamicDetailsSection').innerHTML='';
+    document.getElementById('allDocumentsSection').innerHTML='<span>Loading submitted documents…</span>';
+    document.getElementById('timelineList').innerHTML='<p>Loading history…</p>';
+    ['step-Received','step-For-Review','step-Verified'].forEach(function(id){var step=document.getElementById(id);if(step)step.className='step';});
+    document.querySelector('#applicationModal .modal-scroller').scrollTop=0;
+    document.getElementById('closeApplicationModal').focus();
+    window.loadApplicationModalData(applicationId).then(function(app){
+        if(!app)return;
+        var typeLabel=window.getApplicationRecordTypeLabel(app.application_type,app.id_purpose);
+        document.getElementById('modalAppTitle').textContent=(app.full_name||'Applicant')+' - '+typeLabel;
+        document.getElementById('infoName').textContent=app.full_name||[app.firstName,app.middleName,app.lastName,app.suffix].filter(Boolean).join(' ')||'Not provided';
+        document.getElementById('infoBirth').textContent=app.birth_date||'Not provided';
+        document.getElementById('infoContact').textContent=app.contact_number||'Not provided';
+        document.getElementById('infoBarangay').textContent=app.barangay||'Not provided';
+        document.getElementById('infoAddress').textContent=app.complete_address||'Not provided';
+        document.getElementById('infoNotes').textContent=app.additional_notes||'Not provided';
+        var states=['Received','For Review','Verified'];
+        var current=app.workflow_state||app.status||'Received';
+        if(['Approved','Released','Deceased'].includes(current))current='Verified';
+        var currentIndex=Math.max(0,states.indexOf(current));
+        states.forEach(function(state,index){var step=document.getElementById('step-'+state.replace(' ','-'));if(!step)return;if(index<currentIndex)step.classList.add('completed');else if(index===currentIndex)step.classList.add('active');});
+        document.getElementById('dynamicDetailsSection').innerHTML=window.renderApplicationRecordDetails(app);
+        document.getElementById('allDocumentsSection').innerHTML=typeof window.renderApplicationDocuments==='function'?window.renderApplicationDocuments(app,applicationId):'<p>No submitted documents were found.</p>';
+        window.renderApplicationAuditHistory(app.history,'timelineList',{pageSize:5});
+    }).catch(function(error){window.showApplicationModalError('applicationModal',error);});
+};
+document.querySelectorAll('.view-application-record').forEach(function(button){button.addEventListener('click',function(){window.openApplicationModal(button.dataset.id);});});
+document.getElementById('closeApplicationModal').addEventListener('click',closeApplicationRecordModal);
+document.getElementById('applicationModal').addEventListener('click',function(event){if(event.target===event.currentTarget)closeApplicationRecordModal();});
+document.addEventListener('keydown',function(event){if(event.key==='Escape'&&document.getElementById('applicationModal').getAttribute('aria-hidden')==='false')closeApplicationRecordModal();});
 document.querySelectorAll('.group-toggle').forEach(function(toggle){
     toggle.addEventListener('click',function(){
         var details=document.getElementById(toggle.getAttribute('aria-controls'));
