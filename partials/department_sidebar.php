@@ -13,7 +13,7 @@ require_once __DIR__ . '/../includes/system_branding.php';
 })();
 </script>
 <link rel="stylesheet" href="../assets/css/department-mobile.css?v=10">
-<link rel="stylesheet" href="../assets/css/system-sidebar.css?v=15">
+<link rel="stylesheet" href="../assets/css/system-sidebar.css?v=16">
 <div class="sidebar system-sidebar">
     <div class="mobile-nav-bar">
         <button class="mobile-nav-toggle" type="button" aria-expanded="false" aria-controls="mobileSystemNavigation"><i class="fas fa-bars" aria-hidden="true"></i><span>Menu</span></button>

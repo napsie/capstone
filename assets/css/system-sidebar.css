@@ -22,7 +22,7 @@
     box-shadow: 4px 0 18px rgba(2, 12, 27, .2);
     scrollbar-color: rgba(255,255,255,.25) transparent;
     scrollbar-width: thin;
-    transition: width .18s ease-out, padding .18s ease-out;
+    transition: none;
     z-index: 1000;
 }
 
@@ -320,6 +320,23 @@
 /* Apply the saved desktop state before DOMContentLoaded so navigation does not
    flash at full width and then shift the logo and page content. */
 @media (min-width: 769px) {
+    .system-sidebar,
+    .system-sidebar *,
+    .system-sidebar ~ .main-content,
+    .system-sidebar ~ main.main-content {
+        animation: none !important;
+    }
+
+    .system-sidebar,
+    .system-sidebar ~ .main-content,
+    .system-sidebar ~ main.main-content,
+    .system-sidebar .logo,
+    .system-sidebar .logo img,
+    .system-sidebar .logo-text,
+    .system-sidebar .link-text {
+        transition: none !important;
+    }
+
     html.sidebar-preparing .system-sidebar,
     html.sidebar-preparing .system-sidebar * {
         transition: none !important;

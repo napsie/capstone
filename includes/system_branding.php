@@ -19,7 +19,13 @@ function systemLogoPath(PDO $conn): string {
 }
 
 function systemLogoUrl(PDO $conn, string $prefix = '..'): string {
-    $path = systemLogoPath($conn);
+    $filename = systemLogoFilename($conn);
+    $path = $filename !== ''
+        ? dirname(__DIR__) . '/images/system_logos/' . $filename
+        : dirname(__DIR__) . '/images/logo.jpg';
     $version = is_file($path) ? (string)filemtime($path) : 'default';
-    return rtrim($prefix, '/') . '/api/system_logo.php?v=' . rawurlencode($version);
+    $relativePath = $filename !== ''
+        ? '/images/system_logos/' . rawurlencode($filename)
+        : '/images/logo.jpg';
+    return rtrim($prefix, '/') . $relativePath . '?v=' . rawurlencode($version);
 }
