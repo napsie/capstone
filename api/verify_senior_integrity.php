@@ -22,8 +22,8 @@ if (empty($seniorId)) {
 }
 
 try {
-    // Benefit forms must use the official Senior Citizen ID. PRX/PEN values
-    // are tracking tokens and are intentionally not accepted here.
+    // Benefit forms must use the official Senior Citizen ID. The permanent
+    // PRX tracking token is intentionally not accepted in this field.
     $scope = $_SESSION['role'] === 'barangay_staff' ? ' AND barangay = ?' : '';
     $params = [$seniorId];
     if ($scope !== '') $params[] = $_SESSION['barangay'];

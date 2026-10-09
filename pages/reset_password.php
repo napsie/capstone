@@ -244,6 +244,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['resetPassword'])) {
             });
         });
     </script>
-<script src="../assets/js/form-language.js?v=2" defer></script>
+<script src="../assets/js/form-language.js?v=4" defer></script>
 </body>
 </html>

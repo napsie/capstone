@@ -3,8 +3,17 @@ $current_page = basename($_SERVER['PHP_SELF']);
 require_once __DIR__ . '/../includes/system_branding.php';
 ?>
 <!-- Loaded here so mobile-only overrides follow each page's inline styles. -->
+<script>
+(() => {
+    try {
+        const collapsed = matchMedia('(min-width: 769px)').matches && localStorage.getItem('seniorlinkSidebarCollapsed') === 'true';
+        document.documentElement.classList.toggle('sidebar-pref-collapsed', collapsed);
+        document.documentElement.classList.add('sidebar-preparing');
+    } catch (error) { document.documentElement.classList.add('sidebar-preparing'); }
+})();
+</script>
 <link rel="stylesheet" href="../assets/css/department-mobile.css?v=10">
-<link rel="stylesheet" href="../assets/css/system-sidebar.css?v=14">
+<link rel="stylesheet" href="../assets/css/system-sidebar.css?v=15">
 <div class="sidebar system-sidebar">
     <div class="mobile-nav-bar">
         <button class="mobile-nav-toggle" type="button" aria-expanded="false" aria-controls="mobileSystemNavigation"><i class="fas fa-bars" aria-hidden="true"></i><span>Menu</span></button>
@@ -12,7 +21,7 @@ require_once __DIR__ . '/../includes/system_branding.php';
     </div>
     <div class="sidebar-header">
         <div class="logo">
-            <img src="<?php echo htmlspecialchars(systemLogoUrl($conn)); ?>" alt="SENIORLINK system logo" class="logo-image">
+            <img src="<?php echo htmlspecialchars(systemLogoUrl($conn)); ?>" alt="SENIORLINK system logo" class="logo-image" width="42" height="42" decoding="async">
             <h1 class="logo-text"><span style="color: #00B050;">SENIOR</span><span>LINK</span></h1>
         </div>
     </div>
@@ -68,10 +77,10 @@ require_once __DIR__ . '/../includes/system_branding.php';
     </div>
 </div>
 <script src="../assets/js/mobile-navigation.js?v=2"></script>
-<script src="../assets/js/sidebar-toggle.js?v=6"></script>
+<script src="../assets/js/sidebar-toggle.js?v=7"></script>
 <script src="../assets/js/sidebar-groups.js?v=1"></script>
 <script src="../assets/js/session-timeout.js?v=6"></script>
-<script src="../assets/js/form-language.js?v=2" defer></script>
+<script src="../assets/js/form-language.js?v=4" defer></script>
 <?php if ($current_page === 'import_records.php'): ?>
 <link rel="stylesheet" href="../assets/css/table-pagination.css?v=1">
 <script src="../assets/js/table-pagination.js?v=2" defer></script>

@@ -749,7 +749,10 @@ function processProxyRegistration(): array
             return $result;
         }
 
-        $transactionId = generateCompactApplicationToken($conn, $portalOption === 'verified_benefits' ? 'PEN' : 'PRX');
+        // A person receives one permanent PRX token on the root Senior ID
+        // application. Later service requests use internal APP references and
+        // repeat the root PRX in proxy_token for unified public tracking.
+        $transactionId = generateCompactApplicationToken($conn, $portalOption === 'verified_benefits' ? 'APP' : 'PRX');
         $priorityLevel = 'normal';
 
         // Handle File Uploads
@@ -968,10 +971,10 @@ function processProxyRegistration(): array
 
         try {
             // The benefit request must reference the official Senior Citizen ID;
-            // PRX/PEN application tokens are only for status tracking.
+            // The permanent PRX token is only for status tracking.
             $stmtVerify = $conn->prepare("SELECT id_number, full_name, lastName, firstName, middleName, suffix,
                                                  birth_date, contact_number, complete_address, barangay,
-                                                 senior_id_no, id_image FROM applications
+                                                 senior_id_no, proxy_token, id_image FROM applications
                                           WHERE application_type = 'senior'
                                             AND senior_id_no = ?
                                             AND workflow_state IN ('Verified', 'Approved', 'Released')
@@ -985,8 +988,10 @@ function processProxyRegistration(): array
                 return $result;
             }
 
-            // Generate Pension Tracking ID
-            $pensionTransactionId = generateCompactApplicationToken($conn, 'PEN');
+            // Generate an internal application reference. Public tracking
+            // continues to use the senior's original permanent PRX token.
+            $pensionTransactionId = generateCompactApplicationToken($conn, 'APP');
+            $permanentPrxToken = trim((string)($senior['proxy_token'] ?? '')) ?: (string)$senior['id_number'];
 
             // Handle uploads
             $homeVisitationForm = saveUploadedProxyFile('home_visitation_form_file', $pensionTransactionId, 'home_visitation_form');
@@ -1015,7 +1020,7 @@ function processProxyRegistration(): array
                 $pensionTransactionId, $senior['full_name'], $senior['lastName'], $senior['firstName'], $senior['middleName'], $senior['suffix'],
                 $senior['birth_date'], $senior['contact_number'], $senior['complete_address'], $senior['barangay'],
                 'pending', 'For Review', 'Local Senior Pension Benefit', 0, null,
-                null, null, $pensionTransactionId, 'normal', 'pension',
+                null, null, $permanentPrxToken, 'normal', 'pension',
                 $senior['senior_id_no'], $senior['id_number'], $homeVisitationForm, $landbankForm,
                 null, null, null, null, null,
                 'Waiting for Home Visit', $senior['id_image'] ?? null
@@ -1040,10 +1045,11 @@ function processProxyRegistration(): array
             if (basename($scriptDir) !== 'pages') {
                 $scriptDir = rtrim($scriptDir, '/') . '/pages';
             }
-            $trackerUrl = $protocol . $host . $scriptDir . '/benefit_tracker.php?token=' . urlencode($pensionTransactionId);
+            $trackerUrl = $protocol . $host . $scriptDir . '/benefit_tracker.php?token=' . urlencode($permanentPrxToken);
 
             $result['success'] = true;
-            $result['transactionId'] = $pensionTransactionId;
+            $result['transactionId'] = $permanentPrxToken;
+            $result['applicationId'] = $pensionTransactionId;
             $result['qrCodeUrl'] = 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&ecc=M&qzone=4&data=' . urlencode($trackerUrl);
             $result['option'] = 'existing_benefits';
             $result['applicationType'] = 'pension';

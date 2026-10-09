@@ -371,15 +371,15 @@ header('Expires: 0');
                 <button class="close-btn" type="button" aria-label="Close application tracker">&times;</button>
             </div>
             <div class="track-modal-body">
-            <p class="track-intro">Enter your permanent PRX or PEN Token ID, scan your QR code, or upload a QR image to check your application status.</p>
+            <p class="track-intro">Enter your permanent PRX Token ID, scan your QR code, or upload a QR image to check all applications linked to the senior.</p>
             <form class="portal-tracker track-modal-form" action="pages/benefit_tracker.php" method="get">
                 <label for="landingTrackerToken">Permanent Token ID</label>
                 <div class="portal-tracker-controls">
-                    <input id="landingTrackerToken" name="token" type="text" value="" placeholder="PRX-7K2M or PEN-74ST" aria-describedby="landingTokenHint"
+                    <input id="landingTrackerToken" name="token" type="text" value="" placeholder="PRX-7K2M" aria-describedby="landingTokenHint"
                            maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
                     <button type="submit"><span>Check Status</span><i class="fas fa-arrow-right" aria-hidden="true"></i></button>
                 </div>
-                <small id="landingTokenHint" class="track-format-help">PRX is selected by default. To enter a PEN token, press Backspace once to clear PRX-, then type PEN. The dash is added automatically.</small>
+                <small id="landingTokenHint" class="track-format-help">Use the senior's one permanent PRX token. The PRX- prefix and dash are formatted automatically.</small>
                 <div class="tracking-qr-actions" aria-label="QR tracking options">
                     <button type="button" id="landingScanQr"><i class="fas fa-camera" aria-hidden="true"></i> Scan QR Code</button>
                     <button type="button" id="landingUploadQr"><i class="fas fa-image" aria-hidden="true"></i> Upload QR Image</button>
@@ -395,7 +395,7 @@ header('Expires: 0');
     </div>
 
     <script src="assets/js/vendor/html5-qrcode.min.js"></script>
-    <script src="assets/js/prx-token-input.js?v=4"></script>
+    <script src="assets/js/prx-token-input.js?v=5"></script>
     <script>
         (() => {
             const trigger = document.getElementById('trackLink');
@@ -419,17 +419,17 @@ header('Expires: 0');
                 scannerStatus.dataset.type = type;
             };
 
-            const extractPrx = decoded => String(decoded || '').toUpperCase().match(/(?:PRX|PEN)-[A-Z0-9]{4,12}/)?.[0] || '';
+            const extractPrx = decoded => String(decoded || '').toUpperCase().match(/PRX-[A-Z0-9]{4,12}/)?.[0] || '';
             const normalizeTrackerToken = value => String(value || '').normalize('NFKC')
                 .replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, '-')
                 .replace(/\s+/g, '').toUpperCase()
-                .replace(/^(PRX|PEN)(?=[A-Z0-9]{4,12}$)/, '$1-');
+                .replace(/^PRX(?=[A-Z0-9]{4,12}$)/, 'PRX-');
             window.initPermanentTokenInput?.(input);
             form?.addEventListener('submit', event => {
                 input.value = normalizeTrackerToken(input.value);
-                if (!/^(?:PRX|PEN)-[A-Z0-9]{4,12}$/.test(input.value)) {
+                if (!/^PRX-[A-Z0-9]{4,12}$/.test(input.value)) {
                     event.preventDefault();
-                    setScannerStatus('Enter a complete token, such as PRX-7K2M or PEN-74ST.', 'error');
+                    setScannerStatus('Enter the complete permanent token, such as PRX-7K2M.', 'error');
                     input.focus();
                 }
             });
@@ -449,7 +449,7 @@ header('Expires: 0');
             const useQrResult = async decoded => {
                 const token = extractPrx(decoded);
                 if (!token) {
-                    setScannerStatus('This QR image does not contain a valid PRX or PEN Token ID.', 'error');
+                    setScannerStatus('This QR image does not contain a valid PRX Token ID.', 'error');
                     return;
                 }
                 input.value = token;
@@ -719,6 +719,6 @@ header('Expires: 0');
         })();
     </script>
 
-<script src="assets/js/form-language.js?v=2" defer></script>
+<script src="assets/js/form-language.js?v=4" defer></script>
 </body>
 </html>

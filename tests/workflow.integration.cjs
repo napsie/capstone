@@ -273,9 +273,8 @@ async function main() {
     check(landbankTracker.data.includes('being forwarded to <strong>LANDBANK</strong>'), 'Verified Land Bank tracker shows forwarding notice');
     const penTracker = await request('/pages/benefit_tracker.php?token=PEN-LBANK', '', undefined, true);
     check(penTracker.status === 200
-        && penTracker.data.includes('PEN-LBANK')
-        && !penTracker.data.includes('Enter a valid permanent PRX or PEN Token ID'),
-        'Public tracker accepts permanent PEN codes');
+        && penTracker.data.includes('Enter a valid permanent PRX Token ID'),
+        'Public tracker rejects legacy PEN application IDs');
     check((await action(admin, 'CHANGE-REQUEST', 'next')).data.current_status === 'Verified', 'Information Change request verifies');
     const updatedSenior = await request('/api/get_application_details.php?id=PRX-BENE', admin);
     check(updatedSenior.data.contact_number === '09179999999' && updatedSenior.data.emergency_contact_name === 'Updated Contact'
@@ -360,6 +359,8 @@ async function main() {
     check(pensionPair.data.includes('Benefit Application Submitted'), 'Senior Pension accepts two ID images without an optional pension record');
     const pensionId = fixture('latest-pension-id');
     const pensionDetails = await request('/api/get_application_details.php?id=' + pensionId, admin);
+    check(/^APP-[A-Z0-9]+$/.test(pensionId) && pensionDetails.data.proxy_token === 'PRX-BENE',
+        'New benefit applications use an internal APP reference and reuse the person’s permanent PRX token');
     check(pensionDetails.data.health_condition === 'Healthy',
         'Senior Pension stores the current condition submitted on its assessment form');
     check(Boolean(pensionDetails.data.government_id_front) && Boolean(pensionDetails.data.government_id_back),

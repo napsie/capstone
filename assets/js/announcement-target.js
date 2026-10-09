@@ -1,6 +1,8 @@
 document.addEventListener('DOMContentLoaded', function () {
     const audience = document.getElementById('audience');
     const category = document.getElementById('category');
+    const customTypeField = document.getElementById('customTypeField');
+    const customTypeInput = document.getElementById('custom_type');
     const config = window.announcementTargetConfig || {};
     if (!audience || !Array.isArray(config.barangays)) return;
 
@@ -56,8 +58,18 @@ document.addEventListener('DOMContentLoaded', function () {
         select.required = targeted;
     }
 
+    function syncCustomTypeField() {
+        if (!category || !customTypeField || !customTypeInput) return;
+        const isOther = category.value === 'other';
+        customTypeField.hidden = !isOther;
+        customTypeInput.required = isOther;
+        if (!isOther) customTypeInput.value = '';
+    }
+
     audience.addEventListener('change', syncTargetField);
+    category?.addEventListener('change', syncCustomTypeField);
     syncTargetField();
+    syncCustomTypeField();
 
     setupPublishedUpdateModal();
 });

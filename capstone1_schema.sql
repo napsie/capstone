@@ -65,6 +65,7 @@ CREATE TABLE `announcements` (
   `title` varchar(140) NOT NULL,
   `message` text NOT NULL,
   `category` enum('announcement','benefit','other') NOT NULL DEFAULT 'announcement',
+  `custom_type` varchar(60) DEFAULT NULL,
   `audience` enum('all','public','staff','barangay') NOT NULL DEFAULT 'all',
   `target_barangay` varchar(100) DEFAULT NULL,
   `starts_at` datetime DEFAULT NULL,

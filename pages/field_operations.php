@@ -333,10 +333,9 @@ if ($isDepartment && $visitBarangayFilter !== 'all') {
     $visitParams[] = $visitBarangayFilter;
 }
 if ($visitSearch !== '') {
-    $visitTokenSearch = preg_replace('/^TOKEN-/i', 'PEN-', $visitSearch) ?? $visitSearch;
     $visitSql .= ' AND (a.full_name LIKE ? OR a.id_number LIKE ?)';
     $visitParams[] = "%{$visitSearch}%";
-    $visitParams[] = "%{$visitTokenSearch}%";
+    $visitParams[] = "%{$visitSearch}%";
 }
 if ($visitStatusFilter === 'Waiting for Home Visit') {
     $visitSql .= " AND COALESCE(NULLIF(a.home_visit_status, ''), 'Waiting for Home Visit') = 'Waiting for Home Visit'";
@@ -523,7 +522,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
                         <?php foreach ($visits as $visit): ?>
                             <?php
                                 $visitDeadlineAlerts = applicationDeadlineAlerts($visit);
-                                $displayVisitToken = preg_replace('/^PEN-/i', 'TOKEN-', (string)$visit['id_number']) ?? (string)$visit['id_number'];
+                                $displayVisitToken = (string)$visit['id_number'];
                             ?>
                             <tr id="visit-row-<?= htmlspecialchars($visit['id_number']) ?>">
                                 <td><strong><?= htmlspecialchars($visit['full_name']) ?></strong><br><span class="muted"><?= htmlspecialchars($displayVisitToken) ?></span></td>
@@ -620,11 +619,8 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
     const isDepartmentUser = <?= $isDepartment ? 'true' : 'false' ?>;
     const visitFilterForm = document.querySelector('.visit-filters');
     const visitSearchInput = document.getElementById('visitSearch');
-    let visitSearchTimer;
-
     visitSearchInput?.addEventListener('input', () => {
-        window.clearTimeout(visitSearchTimer);
-        visitSearchTimer = window.setTimeout(() => visitFilterForm?.requestSubmit(), 350);
+        visitSearchInput.setAttribute('aria-description', 'Press Enter to search home visits');
     });
     visitFilterForm?.querySelectorAll('select, input[type="date"]').forEach((control) => {
         control.addEventListener('change', () => visitFilterForm.requestSubmit());

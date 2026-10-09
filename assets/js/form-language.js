@@ -1,6 +1,9 @@
 (function () {
     'use strict';
 
+    // SENIORLINK now uses concise English-only interface labels.
+    return;
+
     const translations = {
         'apply for senior id': 'Mag-apply para sa Senior ID',
         'apply for senior benefits': 'Mag-apply para sa Benepisyo ng Senior',
@@ -55,7 +58,7 @@
         'change benefit': 'Palitan ang Benepisyo', 'go to editable information': 'Pumunta sa Impormasyong Maaaring Baguhin',
         'proceed with application': 'Magpatuloy sa Aplikasyon', 'what you get': 'Mga Matatanggap',
         'requirements to apply': 'Mga Kinakailangan sa Pag-apply', 'documents needed': 'Mga Dokumentong Kailangan',
-        'continue': 'Magpatuloy', 'back': 'Bumalik', 'next': 'Susunod', 'previous': 'Nakaraan', 'cancel': 'Kanselahin',
+        'continue': 'Magpatuloy', 'back': 'Bumalik', 'next': 'Susunod', 'previous': 'Nakaraan',
         'save': 'I-save', 'update': 'I-update', 'search': 'Maghanap', 'filter': 'Salain', 'clear': 'Linisin',
         'yes': 'Oo', 'no': 'Hindi', 'select': 'Pumili', 'select purpose': 'Pumili ng layunin', 'select condition': 'Pumili ng kondisyon',
         '— select sex —': '— Pumili ng Kasarian —', '— select civil status —': '— Pumili ng Katayuang Sibil —',

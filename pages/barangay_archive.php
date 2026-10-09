@@ -390,7 +390,7 @@ $auditHasFilters = ($activeTab === 'audit' && $search !== '') || $auditEventFilt
                         </select>
                     </div>
                     <a href="barangay_archive.php?tab=audit" class="audit-filter-clear" <?php echo $auditHasFilters ? '' : 'hidden'; ?>><i class="fas fa-rotate-left" aria-hidden="true"></i> Clear</a>
-                    <div class="audit-filter-help" aria-live="polite"><i class="fas fa-circle-info" aria-hidden="true"></i> Filters update automatically. Showing <?php echo number_format($auditFrom); ?>&ndash;<?php echo number_format($auditTo); ?> of <?php echo number_format($auditTotal); ?> matching events.</div>
+                    <div class="audit-filter-help" aria-live="polite"><i class="fas fa-circle-info" aria-hidden="true"></i> Press Enter to search; selections update automatically. Showing <?php echo number_format($auditFrom); ?>&ndash;<?php echo number_format($auditTo); ?> of <?php echo number_format($auditTotal); ?> matching events.</div>
                 </form>
 
                 <?php if (empty($auditLogs)): ?>
@@ -496,32 +496,15 @@ $auditHasFilters = ($activeTab === 'audit' && $search !== '') || $auditEventFilt
         document.addEventListener('DOMContentLoaded', function() {
             const auditForm = document.getElementById('barangayAuditFilterForm');
             if (auditForm) {
-                let auditSearchTimer;
                 document.getElementById('barangayAuditSearch')?.addEventListener('input', function() {
-                    window.clearTimeout(auditSearchTimer);
-                    auditSearchTimer = window.setTimeout(() => auditForm.requestSubmit(), 350);
+                    this.setAttribute('aria-description', 'Press Enter to search activity');
                 });
                 document.getElementById('barangayAuditEvent')?.addEventListener('change', () => auditForm.requestSubmit());
             }
 
             const searchInput = document.getElementById('searchArchiveInput');
             const filterForm = document.getElementById('barangayArchiveFilterForm');
-            if (searchInput && filterForm) {
-                let searchTimeout;
-                searchInput.addEventListener('input', () => {
-                    clearTimeout(searchTimeout);
-                    searchTimeout = setTimeout(() => {
-                        filterForm.submit();
-                    }, 400); // 400ms debounce
-                });
-
-                // Keep cursor at the end on load
-                if (searchInput.value.length > 0) {
-                    const len = searchInput.value.length;
-                    searchInput.focus();
-                    searchInput.setSelectionRange(len, len);
-                }
-            }
+            if (searchInput && filterForm) searchInput.setAttribute('aria-description', 'Press Enter to search archived records');
 
         });
     </script>

@@ -588,7 +588,7 @@ try {
     <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
-    <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=7">
+    <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=8">
     <link rel="stylesheet" href="../assets/css/metric-cards.css?v=3">
     <link rel="stylesheet" href="../assets/css/dashboard-calendar.css?v=12">
 <script src="../assets/js/dashboard-chart-fallback.js?v=1"></script>

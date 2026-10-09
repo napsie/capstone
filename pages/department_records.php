@@ -609,7 +609,7 @@ function getStatusBadge($status) {
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <span id="searchFilterHint" class="filter-auto-hint" aria-live="polite"><i class="fas fa-bolt" aria-hidden="true"></i> Filters update automatically</span>
+                    <span id="searchFilterHint" class="filter-auto-hint" aria-live="polite"><i class="fas fa-keyboard" aria-hidden="true"></i> Press Enter to search; selections update automatically</span>
                     <?php if (!empty($search) || $barangayFilter !== 'all' || $typeFilter !== 'all'): ?>
                         <a href="department_records.php" class="btn-apply" style="background:#64748b;text-decoration:none;"><i class="fas fa-times"></i> Clear</a>
                     <?php endif; ?>
@@ -967,23 +967,14 @@ function getStatusBadge($status) {
         const liveFilterForm = document.querySelector('[data-live-record-filters]');
         const liveSearch = document.getElementById('searchInput');
         const liveFilterHint = document.getElementById('searchFilterHint');
-        let liveFilterTimer;
         const submitLiveFilters = () => {
             if (liveFilterHint) liveFilterHint.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Updating results…';
-            sessionStorage.setItem('focusDepartmentRecordSearch', document.activeElement === liveSearch ? '1' : '0');
             liveFilterForm.requestSubmit();
         };
         liveSearch?.addEventListener('input', () => {
-            clearTimeout(liveFilterTimer);
-            if (liveFilterHint) liveFilterHint.innerHTML = '<i class="fas fa-clock" aria-hidden="true"></i> Waiting for you to finish typing…';
-            liveFilterTimer = setTimeout(submitLiveFilters, 550);
+            if (liveFilterHint) liveFilterHint.innerHTML = '<i class="fas fa-keyboard" aria-hidden="true"></i> Press Enter to search';
         });
         ['barangayFilter', 'typeFilter'].forEach(id => document.getElementById(id)?.addEventListener('change', submitLiveFilters));
-        if (sessionStorage.getItem('focusDepartmentRecordSearch') === '1') {
-            sessionStorage.removeItem('focusDepartmentRecordSearch');
-            liveSearch?.focus();
-            liveSearch?.setSelectionRange(liveSearch.value.length, liveSearch.value.length);
-        }
 
         const tableWrap = document.querySelector('.table-wrap');
         tableWrap.addEventListener('click', function(e) {
@@ -1323,25 +1314,6 @@ function getStatusBadge($status) {
         return html;
     }
 
-    // Debounce search input submission
-    document.addEventListener('DOMContentLoaded', function() {
-        const searchInput = document.getElementById('searchInput');
-        const filterForm = document.getElementById('recordsFilterForm');
-        if (searchInput && filterForm) {
-            let searchTimeout;
-            searchInput.addEventListener('input', () => {
-                clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(() => {
-                    filterForm.submit();
-                }, 400); // 400ms debounce
-            });
-
-            // Keep cursor at the end of input
-            const len = searchInput.value.length;
-            searchInput.focus();
-            searchInput.setSelectionRange(len, len);
-        }
-    });
 </script>
 </body>
 </html>

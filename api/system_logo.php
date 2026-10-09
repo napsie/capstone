@@ -9,7 +9,13 @@ if (is_file($path)) {
     if (in_array($detected, ['image/jpeg', 'image/png', 'image/gif'], true)) $mime = $detected;
 }
 header('Content-Type: ' . $mime);
-// A newly uploaded logo must appear on every page as soon as it is saved.
-header('Cache-Control: no-cache, must-revalidate');
+$requestedVersion = trim((string)($_GET['v'] ?? ''));
+if ($requestedVersion !== '') {
+    // The URL changes with the logo file timestamp, so this exact image can be
+    // reused across page navigation without blinking or becoming stale.
+    header('Cache-Control: public, max-age=31536000, immutable');
+} else {
+    header('Cache-Control: no-cache, must-revalidate');
+}
 header('X-Content-Type-Options: nosniff');
 readfile($path);

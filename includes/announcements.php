@@ -7,11 +7,17 @@ function activeAnnouncements(PDO $conn, string $surface = 'public', int $limit =
         // Some long-lived Railway databases predate barangay targeting. Keep the
         // general feed visible while the deployment migration repairs that drift.
         $hasTargetBarangay = false;
+        $hasCustomType = false;
         if ($conn->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql') {
             $hasTargetBarangay = (bool)$conn->query(
                 "SELECT 1 FROM information_schema.COLUMNS
                  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'announcements'
                    AND COLUMN_NAME = 'target_barangay' LIMIT 1"
+            )->fetchColumn();
+            $hasCustomType = (bool)$conn->query(
+                "SELECT 1 FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'announcements'
+                   AND COLUMN_NAME = 'custom_type' LIMIT 1"
             )->fetchColumn();
         }
         $audienceSql = "audience IN ('all', ?)";
@@ -21,8 +27,9 @@ function activeAnnouncements(PDO $conn, string $surface = 'public', int $limit =
             $params = [$barangay];
         }
         $targetSelect = $hasTargetBarangay ? 'target_barangay' : 'NULL AS target_barangay';
+        $customTypeSelect = $hasCustomType ? 'custom_type' : 'NULL AS custom_type';
         $stmt = $conn->prepare(
-            "SELECT id, title, message, category, audience, {$targetSelect}, starts_at, ends_at, created_at
+            "SELECT id, title, message, category, {$customTypeSelect}, audience, {$targetSelect}, starts_at, ends_at, created_at
              FROM announcements
              WHERE is_active = 1
                AND {$audienceSql}

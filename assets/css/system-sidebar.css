@@ -317,6 +317,49 @@
     padding-inline: 8px;
 }
 
+/* Apply the saved desktop state before DOMContentLoaded so navigation does not
+   flash at full width and then shift the logo and page content. */
+@media (min-width: 769px) {
+    html.sidebar-preparing .system-sidebar,
+    html.sidebar-preparing .system-sidebar * {
+        transition: none !important;
+        animation: none !important;
+    }
+
+    html.sidebar-pref-collapsed .system-sidebar {
+        width: var(--system-sidebar-collapsed);
+        padding-inline: 10px;
+    }
+
+    html.sidebar-pref-collapsed .system-sidebar ~ .main-content,
+    html.sidebar-pref-collapsed .system-sidebar ~ main.main-content {
+        width: calc(100% - var(--system-sidebar-collapsed)) !important;
+        margin-left: var(--system-sidebar-collapsed) !important;
+    }
+
+    html.sidebar-pref-collapsed .system-sidebar .logo {
+        justify-content: center;
+        padding-inline: 0;
+    }
+
+    html.sidebar-pref-collapsed .system-sidebar :is(.logo-text, .link-text, .toggle-label),
+    html.sidebar-pref-collapsed .system-sidebar .sidebar-group-chevron,
+    html.sidebar-pref-collapsed .system-sidebar .sidebar-submenu {
+        display: none !important;
+    }
+
+    html.sidebar-pref-collapsed .system-sidebar .sidebar-toggle-control i {
+        transform: rotate(180deg);
+    }
+
+    html.sidebar-pref-collapsed .system-sidebar :is(.nav-links, .sidebar-menu) a,
+    html.sidebar-pref-collapsed .system-sidebar .sidebar-group-toggle {
+        justify-content: center;
+        gap: 0;
+        padding-inline: 8px;
+    }
+}
+
 .mobile-nav-bar,
 .mobile-nav-heading,
 .mobile-nav-backdrop { display:none; }

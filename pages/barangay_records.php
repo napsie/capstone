@@ -700,7 +700,7 @@ function getStatusClass($status) {
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <span id="searchFilterHint" class="filter-auto-hint" aria-live="polite"><i class="fas fa-bolt" aria-hidden="true"></i> Filters update automatically</span>
+                <span id="searchFilterHint" class="filter-auto-hint" aria-live="polite"><i class="fas fa-keyboard" aria-hidden="true"></i> Press Enter to search; selections update automatically</span>
                 <?php if ($search !== '' || $yearFilter !== 'all' || $typeFilter !== 'all'): ?><a class="btn-view" href="barangay_records.php">Clear</a><?php endif; ?>
             </form>
 
@@ -984,23 +984,14 @@ function getStatusClass($status) {
         const liveFilterForm = document.querySelector('[data-live-record-filters]');
         const liveSearch = document.getElementById('search-input');
         const liveFilterHint = document.getElementById('searchFilterHint');
-        let liveFilterTimer;
         const submitLiveFilters = () => {
             if (liveFilterHint) liveFilterHint.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Updating results…';
-            sessionStorage.setItem('focusBarangayRecordSearch', document.activeElement === liveSearch ? '1' : '0');
             liveFilterForm.requestSubmit();
         };
         liveSearch?.addEventListener('input', () => {
-            clearTimeout(liveFilterTimer);
-            if (liveFilterHint) liveFilterHint.innerHTML = '<i class="fas fa-clock" aria-hidden="true"></i> Waiting for you to finish typing…';
-            liveFilterTimer = setTimeout(submitLiveFilters, 550);
+            if (liveFilterHint) liveFilterHint.innerHTML = '<i class="fas fa-keyboard" aria-hidden="true"></i> Press Enter to search';
         });
         ['year-filter', 'type-filter'].forEach(id => document.getElementById(id)?.addEventListener('change', submitLiveFilters));
-        if (sessionStorage.getItem('focusBarangayRecordSearch') === '1') {
-            sessionStorage.removeItem('focusBarangayRecordSearch');
-            liveSearch?.focus();
-            liveSearch?.setSelectionRange(liveSearch.value.length, liveSearch.value.length);
-        }
 
         const tableWrap = document.querySelector('.table-wrap');
         tableWrap.addEventListener('click', function(e) {

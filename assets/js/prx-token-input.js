@@ -46,31 +46,14 @@
         });
     };
 
-    function formatPermanentToken(value) {
-        const text = String(value || '').normalize('NFKC').toUpperCase()
-            .replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, '-')
-            .replace(/\s+/g, '')
-            .replace(/[^A-Z0-9-]/g, '');
-        if (text === '') return '';
-
-        const compact = text.replace(/-/g, '');
-        if (compact.length < 3 && ('PRX'.startsWith(compact) || 'PEN'.startsWith(compact))) {
-            return compact;
-        }
-
-        const match = compact.match(/^(PRX|PEN)([A-Z0-9]*)$/);
-        if (!match) return 'PRX-' + compact.replace(/[^A-Z0-9]/g, '').slice(0, 12);
-        return match[1] + '-' + match[2].slice(0, 12);
-    }
-
     window.initPermanentTokenInput = function (input) {
         if (!input) return;
         if (input.value.trim() === '') input.value = 'PRX-';
         const update = () => {
             const caret = input.selectionStart;
             const beforeCaret = caret === null ? input.value : input.value.slice(0, caret);
-            const value = formatPermanentToken(input.value);
-            const nextCaret = Math.min(value.length, formatPermanentToken(beforeCaret).length);
+            const value = format(input.value);
+            const nextCaret = Math.min(value.length, format(beforeCaret).length);
             input.value = value;
             if (document.activeElement === input) input.setSelectionRange(nextCaret, nextCaret);
         };
@@ -83,13 +66,8 @@
             }
         });
         input.addEventListener('keydown', event => {
-            if (event.key === 'Backspace'
-                && /^(?:PRX|PEN)-$/.test(input.value)
-                && input.selectionStart === input.value.length
-                && input.selectionEnd === input.value.length) {
-                event.preventDefault();
-                input.value = '';
-            }
+            if ((event.key === 'Backspace' || event.key === 'Delete')
+                && input.selectionStart <= prefix.length && input.selectionEnd <= prefix.length) event.preventDefault();
         });
     };
 })();

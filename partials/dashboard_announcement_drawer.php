@@ -16,9 +16,9 @@ $dashboardAnnouncementIsDepartment = in_array((string)($_SESSION['role'] ?? ''),
             <div class="announcement-drawer-empty"><i class="fas fa-bell-slash" aria-hidden="true"></i><strong>No active announcements</strong><p>New official updates will appear here.</p></div>
         <?php else: ?>
             <div class="announcement-drawer-list">
-            <?php foreach ($dashboardAnnouncementItems as $item): $announcementDialogId = 'announcementDetail' . (int)$item['id']; ?>
+            <?php foreach ($dashboardAnnouncementItems as $item): $announcementDialogId = 'announcementDetail' . (int)$item['id']; $announcementTypeLabel = $item['category'] === 'other' && !empty($item['custom_type']) ? $item['custom_type'] : ($item['category'] === 'benefit' ? 'Benefit' : ($item['category'] === 'other' ? 'Other' : 'Announcement')); ?>
                 <button type="button" class="announcement-drawer-item announcement-drawer-item--<?= htmlspecialchars($item['category']) ?>" data-announcement-detail="<?= $announcementDialogId ?>" aria-haspopup="dialog">
-                    <span class="announcement-drawer-badge"><?= $item['category'] === 'benefit' ? 'Benefit' : ($item['category'] === 'other' ? 'Other' : 'Announcement') ?></span>
+                    <span class="announcement-drawer-badge"><?= htmlspecialchars($announcementTypeLabel) ?></span>
                     <h3><?= htmlspecialchars($item['title']) ?></h3>
                     <p><?= htmlspecialchars($item['message']) ?></p>
                     <small><i class="far fa-clock" aria-hidden="true"></i> Published <?= htmlspecialchars(date('M j, Y g:i A', strtotime($item['created_at']))) ?></small>
@@ -29,9 +29,9 @@ $dashboardAnnouncementIsDepartment = in_array((string)($_SESSION['role'] ?? ''),
         <?php endif; ?>
     </div>
 </aside>
-<?php foreach ($dashboardAnnouncementItems as $item): $announcementDialogId = 'announcementDetail' . (int)$item['id']; ?>
+<?php foreach ($dashboardAnnouncementItems as $item): $announcementDialogId = 'announcementDetail' . (int)$item['id']; $announcementTypeLabel = $item['category'] === 'other' && !empty($item['custom_type']) ? $item['custom_type'] : ($item['category'] === 'benefit' ? 'Benefit update' : ($item['category'] === 'other' ? 'Official update' : 'Official announcement')); ?>
 <dialog class="announcement-detail-dialog" id="<?= $announcementDialogId ?>">
-    <div class="announcement-detail-header"><div><span><?= $item['category'] === 'benefit' ? 'Benefit update' : ($item['category'] === 'other' ? 'Official update' : 'Official announcement') ?></span><h2><?= htmlspecialchars($item['title']) ?></h2></div><button type="button" data-announcement-detail-close aria-label="Close announcement"><i class="fas fa-xmark" aria-hidden="true"></i></button></div>
+    <div class="announcement-detail-header"><div><span><?= htmlspecialchars($announcementTypeLabel) ?></span><h2><?= htmlspecialchars($item['title']) ?></h2></div><button type="button" data-announcement-detail-close aria-label="Close announcement"><i class="fas fa-xmark" aria-hidden="true"></i></button></div>
     <div class="announcement-detail-body"><p><?= nl2br(htmlspecialchars($item['message'])) ?></p><small><i class="far fa-clock" aria-hidden="true"></i> Published <?= htmlspecialchars(date('F j, Y g:i A', strtotime($item['created_at']))) ?></small></div>
     <div class="announcement-detail-footer"><button type="button" data-announcement-detail-close>Close</button></div>
 </dialog>

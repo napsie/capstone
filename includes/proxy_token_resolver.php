@@ -2,16 +2,16 @@
 require_once __DIR__ . '/crypto.php';
 
 /**
- * Resolve either a legacy encrypted representative token or a short PRX/PEN
- * reference. Short references contain no personal data; the current record is
- * read only after the caller has enforced authentication.
+ * Resolve either a legacy encrypted representative token or an application
+ * reference. New records use PRX for the permanent person token and APP for
+ * internal service applications; PEN is accepted only for existing legacy rows.
  */
 function resolveProxyToken(PDO $conn, string $token): ?array
 {
     $token = trim($token);
     if ($token === '') return null;
 
-    if (preg_match('/^(?:PRX|PEN)-[A-Z0-9]+$/i', $token)) {
+    if (preg_match('/^(?:PRX|APP|PEN)-[A-Z0-9]+$/i', $token)) {
         $data = ['transactionId' => strtoupper($token)];
     } else {
         $data = ProxyCrypto::decrypt($token);

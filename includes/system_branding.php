@@ -19,5 +19,7 @@ function systemLogoPath(PDO $conn): string {
 }
 
 function systemLogoUrl(PDO $conn, string $prefix = '..'): string {
-    return rtrim($prefix, '/') . '/api/system_logo.php';
+    $path = systemLogoPath($conn);
+    $version = is_file($path) ? (string)filemtime($path) : 'default';
+    return rtrim($prefix, '/') . '/api/system_logo.php?v=' . rawurlencode($version);
 }

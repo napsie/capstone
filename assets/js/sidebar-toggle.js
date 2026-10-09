@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         function setCollapsed(collapsed, savePreference = false) {
             const useCollapsed = desktopQuery.matches && collapsed;
+            document.documentElement.classList.toggle('sidebar-pref-collapsed', useCollapsed);
             sidebar.classList.toggle('collapsed', useCollapsed);
             mainContent.classList.toggle('collapsed', useCollapsed);
             sidebar.setAttribute('aria-expanded', useCollapsed ? 'false' : 'true');
@@ -35,6 +36,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         setCollapsed(savedCollapsedState());
+        document.documentElement.classList.remove('sidebar-preparing');
 
         toggleButton?.addEventListener('click', function() {
             setCollapsed(!sidebar.classList.contains('collapsed'), true);

@@ -26,7 +26,7 @@
         <input type="file" id="codeScannerFile" accept="image/*" capture="environment" hidden>
         <div id="${scannerId}" class="simple-code-scanner__reader" hidden></div>
         <p id="codeScannerStatus" class="simple-code-scanner__status" role="status" aria-live="polite">
-            Point the camera at the whole QR code, upload a saved QR photo, or enter the printed PRX/PEN token below.
+            Point the camera at the whole QR code, upload a saved QR photo, or enter the permanent PRX token below.
         </p>`;
 
     const tokenGroup = tokenField.closest('.form-group') || tokenField.parentElement;
