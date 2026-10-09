@@ -20,7 +20,17 @@ $recordsPerPage  = 10;
 
 // Build dynamic query
 $baseQuery    = "FROM applications";
-$whereClauses = ["(is_archived = 0 OR is_archived IS NULL)", "(workflow_state IN ('Verified', 'Approved', 'Released') OR status IN ('Verified', 'Approved'))"];
+$whereClauses = [
+    "(is_archived = 0 OR is_archived IS NULL)",
+    "(workflow_state IN ('Verified', 'Approved', 'Released') OR status IN ('Verified', 'Approved'))",
+    "NOT EXISTS (SELECT 1 FROM applications deceased_profile
+        WHERE deceased_profile.application_type = 'senior'
+          AND (deceased_profile.workflow_state = 'Deceased' OR LOWER(deceased_profile.status) = 'deceased')
+          AND (deceased_profile.id_number = applications.id_number
+            OR deceased_profile.id_number = applications.parent_senior_id
+            OR (NULLIF(TRIM(applications.senior_id_no), '') IS NOT NULL
+              AND deceased_profile.senior_id_no = applications.senior_id_no)))"
+];
 $params       = [];
 
 if (!empty($search)) {
@@ -290,6 +300,7 @@ function getStatusBadge($status) {
         .person-row.is-expanded { background: #f5f9ff; }
         .person-senior-id { display:block; margin-top:4px; color:#1d4ed8; font-size:.73rem; font-weight:800; overflow-wrap:anywhere; }
         .person-senior-id.is-pending { color:#64748b; font-weight:650; }
+        .person-transaction-id { display:block; margin-top:2px; color:#475569; font:650 .7rem/1.4 ui-monospace,SFMono-Regular,Consolas,monospace; overflow-wrap:anywhere; }
         .person-birth-date { display:block; margin-top:3px; color:#64748b; font-size:.73rem; }
         .application-summary { display:flex; flex-direction:column; gap:4px; }
         .application-summary strong { color:#0f172a; font-size:.86rem; }
@@ -302,11 +313,12 @@ function getStatusBadge($status) {
         .application-detail-row[hidden] { display:none; }
         .application-detail-row > td { padding:0 18px 16px; background:#f5f9ff; border-bottom:1px solid #dbe7f3; }
         .application-list { display:grid; gap:8px; padding:13px; background:#fff; border:1px solid #dbe7f3; border-radius:10px; }
-        .application-list-item { display:grid; grid-template-columns:minmax(220px,1.4fr) minmax(150px,.8fr) minmax(120px,.7fr) auto; align-items:center; gap:14px; padding:10px 12px; border:1px solid #e7edf4; border-radius:8px; }
+        .application-list-item { display:grid; grid-template-columns:minmax(240px,1.4fr) minmax(135px,.75fr) minmax(115px,.65fr) minmax(105px,.55fr) auto; align-items:center; gap:14px; padding:10px 12px; border:1px solid #e7edf4; border-radius:8px; }
         .application-list-item strong { display:block; color:#0f172a; font-size:.82rem; }
-        .application-list-item small { color:#64748b; font-size:.71rem; }
+        .application-list-item small { display:block; margin-top:3px; color:#475569; font-size:.71rem; }
+        .transaction-token { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-weight:750; }
         .application-list-label { margin-bottom:2px; color:#64748b; font-size:.66rem; font-weight:750; letter-spacing:.05em; text-transform:uppercase; }
-        @media (max-width: 820px) { .application-list-item { grid-template-columns:1fr 1fr; } .application-list-item .btn-view { justify-self:start; } }
+        @media (max-width: 1050px) { .application-list-item { grid-template-columns:1fr 1fr; } .application-list-item .btn-view { justify-self:start; } }
 
         .empty-state { text-align: center; padding: 60px 20px; color: var(--gray); }
         .empty-state i { font-size: 3rem; margin-bottom: 16px; opacity: 0.4; display: block; }
@@ -636,10 +648,15 @@ function getStatusBadge($status) {
                                 if (!in_array($typeLabel, $typeLabels, true)) $typeLabels[] = $typeLabel;
                             }
                             $officialSeniorId = '';
+                            $primaryTransactionId = '';
                             foreach ($personApplications as $application) {
                                 $candidateSeniorId = trim((string)($application['official_senior_id'] ?? ''));
                                 if ($candidateSeniorId !== '') { $officialSeniorId = $candidateSeniorId; break; }
                             }
+                            foreach ($personApplications as $application) {
+                                if (($application['application_type'] ?? '') === 'senior') { $primaryTransactionId = (string)$application['id']; break; }
+                            }
+                            if ($primaryTransactionId === '' && $personApplications) $primaryTransactionId = (string)$personApplications[0]['id'];
                             $detailsId = 'person-applications-' . $person['key'];
                         ?>
                         <tr class="person-row">
@@ -647,6 +664,7 @@ function getStatusBadge($status) {
                                 <div class="name-cell">
                                     <div class="full-name"><?php echo htmlspecialchars($person['full_name']); ?></div>
                                     <span class="person-senior-id<?php echo $officialSeniorId === '' ? ' is-pending' : ''; ?>">ID Number: <?php echo $officialSeniorId !== '' ? htmlspecialchars($officialSeniorId) : 'Not yet assigned'; ?></span>
+                                    <span class="person-transaction-id">Transaction ID: <?php echo htmlspecialchars($primaryTransactionId); ?></span>
                                     <span class="person-birth-date">Born <?php echo date('M d, Y', strtotime($person['birth_date'])); ?></span>
                                 </div>
                             </td>
@@ -676,9 +694,10 @@ function getStatusBadge($status) {
                                 <div class="application-list" role="region" aria-label="Applications for <?php echo htmlspecialchars($person['full_name']); ?>">
                                     <?php foreach ($personApplications as $app): ?>
                                     <div class="application-list-item">
-                                        <div><div class="application-list-label">Application</div><strong><?php echo htmlspecialchars(applicationRecordTypeLabel($app['application_type'], $app['id_purpose'] ?? null)); ?></strong><small><?php echo htmlspecialchars($app['id']); ?></small></div>
+                                        <div><div class="application-list-label">Application</div><strong><?php echo htmlspecialchars(applicationRecordTypeLabel($app['application_type'], $app['id_purpose'] ?? null)); ?></strong><small>Transaction ID: <span class="transaction-token"><?php echo htmlspecialchars($app['id']); ?></span></small></div>
                                         <div><div class="application-list-label">Barangay</div><strong><?php echo htmlspecialchars($app['barangay']); ?></strong></div>
                                         <div><div class="application-list-label">Submitted</div><strong><?php echo date('M d, Y', strtotime($app['date_submitted'])); ?></strong></div>
+                                        <div><div class="application-list-label">Status</div><span class="badge badge-approved"><i class="fas fa-circle-check"></i> <?php echo htmlspecialchars($app['status'] ?: 'Verified'); ?></span></div>
                                         <button type="button" class="btn-view view-details-btn" data-id="<?php echo htmlspecialchars($app['id']); ?>"><i class="fas fa-eye"></i> View record</button>
                                     </div>
                                     <?php endforeach; ?>

@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../includes/db_connect.php';
+require_once '../includes/application_types.php';
 
 $role = $_SESSION['role'] ?? '';
 if (!isset($_SESSION['user_id']) || !in_array($role, ['barangay_staff', 'department_admin', 'super_admin'], true)) {
@@ -16,11 +17,16 @@ $perPage = 12;
 $where = ["senior.application_type = 'senior'", "senior.workflow_state = 'Deceased'", 'COALESCE(senior.is_archived, 0) = 0'];
 $params = [];
 if ($search !== '') {
-    $where[] = '(senior.full_name LIKE :search_name OR senior.senior_id_no LIKE :search_senior_id OR senior.id_number LIKE :search_token)';
+    $where[] = '(senior.full_name LIKE :search_name OR senior.senior_id_no LIKE :search_senior_id OR senior.id_number LIKE :search_token
+        OR EXISTS (SELECT 1 FROM applications linked_search
+            WHERE linked_search.id_number LIKE :search_linked_token
+              AND (linked_search.parent_senior_id = senior.id_number
+                OR linked_search.id_number = senior.deceased_source_application_id)))';
     $searchValue = '%' . $search . '%';
     $params[':search_name'] = $searchValue;
     $params[':search_senior_id'] = $searchValue;
     $params[':search_token'] = $searchValue;
+    $params[':search_linked_token'] = $searchValue;
 }
 if ($barangay !== '' && $barangay !== 'all') {
     $where[] = 'senior.barangay = :barangay';
@@ -48,6 +54,30 @@ $sql = "SELECT senior.id_number, senior.senior_id_no, senior.full_name, senior.b
 $stmt = $conn->prepare($sql);
 $stmt->execute($params);
 $records = $stmt->fetchAll();
+$transactionsBySenior = [];
+if ($records) {
+    $seniorIds = array_values(array_filter(array_column($records, 'id_number')));
+    $placeholders = implode(',', array_fill(0, count($seniorIds), '?'));
+    $transactionSql = "SELECT DISTINCT senior.id_number deceased_profile_id,
+                              tx.id_number, tx.application_type, tx.requested_benefit,
+                              tx.id_purpose, tx.date_submitted, tx.workflow_state, tx.status,
+                              tx.barangay
+                       FROM applications senior
+                       JOIN applications tx ON (
+                           tx.id_number = senior.id_number
+                           OR tx.parent_senior_id = senior.id_number
+                           OR tx.id_number = senior.deceased_source_application_id
+                           OR (NULLIF(TRIM(senior.senior_id_no), '') IS NOT NULL
+                               AND tx.senior_id_no = senior.senior_id_no)
+                       )
+                       WHERE senior.id_number IN ({$placeholders})
+                       ORDER BY senior.id_number, tx.date_submitted DESC, tx.id_number DESC";
+    $transactionStmt = $conn->prepare($transactionSql);
+    $transactionStmt->execute($seniorIds);
+    foreach ($transactionStmt->fetchAll(PDO::FETCH_ASSOC) as $transaction) {
+        $transactionsBySenior[(string)$transaction['deceased_profile_id']][] = $transaction;
+    }
+}
 $barangays = $isDepartment ? $conn->query("SELECT DISTINCT barangay FROM applications WHERE workflow_state = 'Deceased' AND barangay IS NOT NULL AND barangay <> '' ORDER BY barangay")->fetchAll(PDO::FETCH_COLUMN) : [];
 
 $profilePicture = basename((string)($_SESSION['profile_picture'] ?? 'default.jpg'));
@@ -70,6 +100,7 @@ function deceasedRecordsUrl(array $changes = []): string {
 .record-dialog{width:min(820px,calc(100vw - 48px));height:min(720px,calc(100dvh - 48px));max-height:calc(100dvh - 48px);margin:auto;padding:0;overflow:hidden;color:#172d40;background:#f4f8fb;border:1px solid rgba(255,255,255,.8);border-radius:20px;box-shadow:0 30px 80px rgba(2,15,27,.38)}.record-dialog[open]{display:flex;flex-direction:column}.record-dialog::backdrop{background:rgba(9,25,40,.72)}.dialog-head{min-height:84px;display:flex;flex:0 0 auto;align-items:center;justify-content:space-between;gap:20px;padding:14px 18px 14px 24px;color:#fff;background:linear-gradient(120deg,#123c67,#1769aa 70%,#197769 140%);border:0;box-shadow:inset 0 -1px rgba(255,255,255,.12)}.dialog-title{min-width:0}.dialog-eyebrow{display:block;margin-bottom:3px;color:#b9def8;font-size:.61rem;font-weight:850;letter-spacing:.09em;text-transform:uppercase}.dialog-head h2{display:flex;align-items:center;gap:9px;margin:0;color:#fff;font-size:clamp(1.05rem,1.8vw,1.28rem);font-weight:800;line-height:1.25}.dialog-head h2 i{color:#8dd7ff}.dialog-head p{margin:3px 0 0;overflow:hidden;color:rgba(255,255,255,.76);font-size:.7rem;font-weight:550;text-overflow:ellipsis;white-space:nowrap}.dialog-close{width:44px;min-width:44px;height:44px;display:grid;place-items:center;color:#fff;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.24);border-radius:11px;font-size:1rem;cursor:pointer}.dialog-close:hover{background:rgba(255,255,255,.2)}.dialog-close:focus-visible{outline:3px solid rgba(141,215,255,.6);outline-offset:2px}.dialog-body{min-height:0;flex:1 1 auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;gap:12px;padding:20px;overflow-x:hidden;overflow-y:auto;scrollbar-gutter:stable;overscroll-behavior:contain;background:#f4f8fb}.detail-item{padding:13px 14px;background:#fff;border:1px solid #dce6ee;border-radius:11px;box-shadow:0 3px 10px rgba(18,50,75,.035)}.detail-item span{margin-bottom:4px;color:#687b8c;font-size:.65rem;font-weight:850;letter-spacing:.04em}.detail-item strong{color:#172d40;font-size:.84rem;font-weight:700;line-height:1.45}.dialog-footer{display:flex;flex:0 0 auto;justify-content:flex-end;padding:14px 20px 18px;background:#f4f8fb;border-top:1px solid #dce6ee}.dialog-footer .dialog-close{width:auto;height:auto;min-width:100px;padding:10px 18px;color:#fff;background:#1769aa;border:0;border-radius:9px}.dialog-footer .dialog-close:hover{background:#125b94}@media(max-width:600px){.record-dialog{width:100vw;height:100dvh;max-height:100dvh;border:0;border-radius:0}.dialog-head{min-height:76px;padding:12px 12px 12px 16px}.dialog-head p{max-width:calc(100vw - 92px)}.dialog-body{grid-template-columns:1fr;padding:14px}.detail-item.wide{grid-column:auto}.dialog-footer{padding:12px 14px 14px}.dialog-footer .dialog-close{width:100%}}
 </style><style>
 .record-dialog,.record-dialog *{box-sizing:border-box}.record-dialog{overscroll-behavior:contain}.dialog-body:focus-visible{outline:none}.dialog-footer{width:100%;min-width:0;align-items:center}.dialog-done{min-width:120px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px 20px;border:0;border-radius:9px;background:#1769aa;color:#fff;font:800 .82rem/1 Inter,"Segoe UI",sans-serif;cursor:pointer;white-space:nowrap}.dialog-done:hover{background:#125b94}.dialog-done:focus-visible{outline:3px solid rgba(23,105,170,.28);outline-offset:2px}@media(max-width:600px){.dialog-footer{padding:12px 14px 14px}.dialog-done{width:100%;min-width:0}}
+.transaction-history{grid-column:1/-1;padding:15px;background:#fff;border:1px solid #dce6ee;border-radius:11px}.transaction-history h3{display:flex;align-items:center;gap:8px;margin:0 0 11px;color:#172d40;font-size:.86rem}.transaction-history h3 i{color:#1769aa}.transaction-list{display:grid;gap:8px}.transaction-row{display:grid;grid-template-columns:minmax(190px,1.4fr) minmax(130px,.8fr) minmax(105px,.65fr);gap:12px;align-items:center;padding:10px 12px;background:#f4f8fb;border:1px solid #e2e8f0;border-radius:9px}.transaction-row strong,.transaction-row span,.transaction-row small{display:block}.transaction-row strong{font-size:.78rem;color:#172d40}.transaction-row span{margin-top:2px;color:#1769aa;font:750 .68rem/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}.transaction-row small{color:#64748b;font-size:.68rem}.transaction-status{justify-self:start;padding:5px 8px;border-radius:999px;background:#e2e8f0;color:#475569!important;font:800 .63rem/1 sans-serif!important;text-transform:uppercase}@media(max-width:600px){.transaction-history{grid-column:auto}.transaction-row{grid-template-columns:1fr}.transaction-status{margin-top:2px}}
 </style></head><body>
 <?php if($isDepartment) include '../partials/department_sidebar.php'; else include '../partials/barangay_sidebar.php'; ?>
 <main class="main-content">
@@ -100,6 +131,12 @@ function deceasedRecordsUrl(array $changes = []): string {
     <div class="detail-item"><span>Burial application</span><strong><?= htmlspecialchars($record['deceased_source_application_id'] ?: 'Legacy record') ?></strong></div><div class="detail-item"><span>Burial status</span><strong><?= htmlspecialchars($record['burial_status'] ?: 'Not recorded') ?></strong></div>
     <div class="detail-item"><span>Claimant</span><strong><?= htmlspecialchars($record['claimant_name'] ?: 'Not recorded') ?></strong></div><div class="detail-item"><span>Relationship</span><strong><?= htmlspecialchars($record['relationship_to_deceased'] ?: 'Not recorded') ?></strong></div>
     <div class="detail-item"><span>Claimant contact</span><strong><?= htmlspecialchars($record['claimant_contact'] ?: 'Not recorded') ?></strong></div><div class="detail-item"><span>Burial submitted</span><strong><?= $record['burial_submitted_at'] ? htmlspecialchars(date('F j, Y g:i A', strtotime($record['burial_submitted_at']))) : 'Not recorded' ?></strong></div>
+    <section class="transaction-history" aria-labelledby="transactionHistory<?= $index ?>"><h3 id="transactionHistory<?= $index ?>"><i class="fas fa-layer-group" aria-hidden="true"></i> Complete transaction history</h3><div class="transaction-list">
+        <?php foreach (($transactionsBySenior[(string)$record['id_number']] ?? []) as $transaction): ?>
+        <?php $transactionState = (string)($transaction['workflow_state'] ?: $transaction['status'] ?: 'Recorded'); ?>
+        <div class="transaction-row"><div><strong><?= htmlspecialchars(applicationRecordTypeLabel((string)$transaction['application_type'], $transaction['id_purpose'] ?? null)) ?></strong><span>Transaction ID: <?= htmlspecialchars($transaction['id_number']) ?></span></div><small><?= $transaction['date_submitted'] ? htmlspecialchars(date('F j, Y g:i A', strtotime($transaction['date_submitted']))) : 'Date not recorded' ?></small><span class="transaction-status"><?= htmlspecialchars($transactionState) ?></span></div>
+        <?php endforeach; ?>
+    </div></section>
 </div><div class="dialog-footer"><button type="button" class="dialog-done"><i class="fas fa-check" aria-hidden="true"></i> Close</button></div></dialog>
 <?php endforeach; ?>
 </div></main>
