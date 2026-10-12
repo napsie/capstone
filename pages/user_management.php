@@ -52,10 +52,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addUser'])) {
             $role = $_POST['role'];
             $barangay = isset($_POST['barangay']) ? $_POST['barangay'] : null;
             $password = $_POST['password'];
+            $confirmPassword = (string)($_POST['confirmPassword'] ?? '');
             $profilePicture = 'default.jpg'; // Default profile picture
 
             if (empty($firstName) || empty($lastName) || empty($email) || empty($phone) || empty($username) || empty($role) || empty($password)) {
                 $error = 'Please fill in all required fields.';
+            } elseif ($password !== $confirmPassword) {
+                $error = 'Passwords do not match.';
             } elseif (!isValidPhilippineMobileNumber($phone)) {
                 $error = 'Enter a valid 11-digit Philippine mobile number beginning with 09.';
             } else {
@@ -403,6 +406,7 @@ try {
                     <div class="modal-body">
                 <form id="addUserForm" method="post" action="" enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                    <input type="hidden" name="addUser" value="1">
                     <div class="modal-form-fields">
                     <div class="form-row">
                         <div class="form-group">
@@ -484,7 +488,7 @@ try {
                     <div class="modal-actions">
                         <button type="button" class="btn btn-secondary" data-close-add-user>Cancel</button>
                         <button type="reset" class="btn btn-secondary">Reset</button>
-                        <button type="submit" name="addUser" class="btn btn-success">Add User</button>
+                        <button type="submit" class="btn btn-success">Add User</button>
                     </div>
                 </form>
                     </div>
@@ -644,9 +648,17 @@ try {
         if (addUserForm) {
             const roleSelect = document.getElementById('role');
             const barangayGroup = document.getElementById('barangay-form-group');
+            const barangayField = document.getElementById('barangay');
+            const barangayError = document.getElementById('barangayError');
 
             function toggleAddBarangayField() {
-                barangayGroup.style.display = (roleSelect.value === 'barangay_staff') ? 'block' : 'none';
+                const requiresBarangay = roleSelect.value === 'barangay_staff';
+                barangayGroup.style.display = requiresBarangay ? 'block' : 'none';
+                barangayField.required = requiresBarangay;
+                if (!requiresBarangay) {
+                    barangayField.setCustomValidity('');
+                    barangayError.style.display = 'none';
+                }
             }
             roleSelect.addEventListener('change', toggleAddBarangayField);
             toggleAddBarangayField(); // Initial check
@@ -659,11 +671,9 @@ try {
             const usernameField = document.getElementById('username');
             const emailField = document.getElementById('email');
             const phoneField = document.getElementById('phone');
-            const barangayField = document.getElementById('barangay');
             const usernameError = document.getElementById('usernameError');
             const emailError = document.getElementById('emailError');
             const phoneError = document.getElementById('phoneError');
-            const barangayError = document.getElementById('barangayError');
             
             function validatePassword() {
                 const password = passwordField.value;
@@ -710,8 +720,10 @@ try {
             }
 
             async function checkAvailability(field, value, errorElement) {
+                const input = { username: usernameField, email: emailField, phone: phoneField, barangay: barangayField }[field];
                 if (!value) {
                     errorElement.style.display = 'none';
+                    input?.setCustomValidity('');
                     return;
                 }
                 try {
@@ -722,18 +734,23 @@ try {
                         if (data.count >= 2) {
                             errorElement.textContent = 'This barangay already has the maximum number of users.';
                             errorElement.style.display = 'block';
+                            input?.setCustomValidity(errorElement.textContent);
                         } else {
                             errorElement.style.display = 'none';
+                            input?.setCustomValidity('');
                         }
                     } else { // username or email
                         if (data.exists) {
                             errorElement.textContent = `This ${field} is already taken.`;
                             errorElement.style.display = 'block';
+                            input?.setCustomValidity(errorElement.textContent);
                         } else {
                             errorElement.style.display = 'none';
+                            input?.setCustomValidity('');
                         }
                     }
                 } catch (error) {
+                    input?.setCustomValidity('');
                     console.error('Validation check failed:', error);
                 }
             }
@@ -743,7 +760,10 @@ try {
             phoneField.addEventListener('input', debounce(e => {
                 e.target.value = e.target.value.replace(/\D/g, '').slice(0, 11);
                 if (/^09\d{9}$/.test(e.target.value)) checkAvailability('phone', e.target.value, phoneError);
-                else phoneError.style.display = 'none';
+                else {
+                    phoneField.setCustomValidity('');
+                    phoneError.style.display = 'none';
+                }
             }));
             barangayField.addEventListener('change', e => {
                 if (roleSelect.value === 'barangay_staff') {
@@ -788,8 +808,15 @@ try {
             let addUserConfirmationAccepted = false;
             addUserForm.addEventListener('submit', (event) => {
                 if (addUserConfirmationAccepted) return;
+                const passwordIsValid = validatePassword();
+                const confirmationIsValid = validateConfirmPassword();
                 if (!addUserForm.reportValidity()) {
                     event.preventDefault();
+                    return;
+                }
+                if (!passwordIsValid || !confirmationIsValid) {
+                    event.preventDefault();
+                    (!passwordIsValid ? passwordField : confirmPasswordField).focus();
                     return;
                 }
                 event.preventDefault();
