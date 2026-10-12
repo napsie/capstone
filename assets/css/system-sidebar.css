@@ -232,7 +232,7 @@
 .system-sidebar.collapsed .sidebar-group-chevron,
 .system-sidebar.collapsed .sidebar-submenu { display: none !important; }
 
-@media (min-width:961px) and (max-height:720px) {
+@media (min-width:1025px) and (max-height:720px) {
     .system-sidebar { gap:8px; padding-block:12px; }
     .system-sidebar .logo { min-height:50px; padding-bottom:9px; }
     .system-sidebar .sidebar-toggle-control { min-height:36px; flex-basis:36px; }
@@ -243,7 +243,7 @@
 
 /* Keep every desktop page aligned to the authoritative sidebar width. Several
    older pages still declare a 220px offset in their local styles. */
-@media (min-width: 961px) {
+@media (min-width: 1025px) {
     .system-sidebar ~ .main-content,
     .system-sidebar ~ main.main-content {
         width: calc(100% - var(--system-sidebar-expanded)) !important;
@@ -319,7 +319,7 @@
 
 /* Apply the saved desktop state before DOMContentLoaded so navigation does not
    flash at full width and then shift the logo and page content. */
-@media (min-width: 961px) {
+@media (min-width: 1025px) {
     .system-sidebar,
     .system-sidebar *,
     .system-sidebar ~ .main-content,
@@ -381,7 +381,7 @@
 .mobile-nav-heading,
 .mobile-nav-backdrop { display:none; }
 
-@media (max-width: 960px) {
+@media (max-width: 1024px) {
     .system-sidebar,
     .system-sidebar.collapsed {
         position: sticky;
@@ -657,7 +657,7 @@
 }
 
 /* Authoritative mobile drawer overrides. */
-@media (max-width: 960px) {
+@media (max-width: 1024px) {
     html, body { width:100%; max-width:100%; overflow-x:hidden; }
     .system-sidebar, .system-sidebar.collapsed {
         position:sticky !important; inset:0 0 auto 0 !important; z-index:2002 !important;
@@ -675,10 +675,12 @@
         background:linear-gradient(180deg,#0b1930 0%,#132f50 100%) !important;
         border-radius:0 14px 14px 0 !important; box-shadow:18px 0 45px rgba(2,12,27,.4) !important;
         transform:translate3d(-105%,0,0) !important; visibility:hidden;
+        pointer-events:none;
         transition:transform .22s ease,visibility 0s linear .22s !important;
     }
     .system-sidebar.mobile-nav-open > :is(.sidebar-menu,.nav-links) {
         transform:translate3d(0,0,0) !important; visibility:visible;
+        pointer-events:auto;
         transition:transform .22s ease,visibility 0s !important;
     }
     .system-sidebar .mobile-nav-heading {

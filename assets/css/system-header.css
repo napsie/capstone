@@ -101,7 +101,7 @@
     font: 500 0.72rem/1.25 'Inter', 'Segoe UI', sans-serif !important;
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1024px) {
     .main-content > :is(.header, .page-header) {
         align-items: flex-start !important;
         flex-wrap: wrap !important;

@@ -1012,7 +1012,7 @@ html, body { max-width: 100%; }
     }
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1024px) {
     html, body { width: 100%; overflow-x: hidden; }
 
     body > :where(.container, .page-container, .dashboard-container) {
@@ -1654,7 +1654,7 @@ html { -webkit-text-size-adjust: 100%; }
     max-width: 100%; overscroll-behavior-inline: contain; scrollbar-gutter: stable;
     -webkit-overflow-scrolling: touch;
 }
-@media (max-width: 960px) {
+@media (max-width: 1024px) {
     body { min-width: 0; overflow-x: hidden; }
     :where(.main-content, .main-content.collapsed) {
         width: 100% !important; max-width: 100% !important; margin-left: 0 !important;
@@ -1729,7 +1729,7 @@ html { -webkit-text-size-adjust: 100%; }
 }
 
 /* Desktop design-system pass: consistent rhythm without changing page behavior. */
-@media (min-width: 961px) {
+@media (min-width: 1025px) {
     :where(.main-content, .main-content.collapsed) {
         padding-top: 28px;
         padding-right: clamp(24px, 2.4vw, 42px);

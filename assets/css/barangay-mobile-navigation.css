@@ -1,4 +1,4 @@
-@media (max-width: 960px) {
+@media (max-width: 1024px) {
     .system-sidebar > .nav-links {
         position: fixed !important;
         z-index: 1402 !important;

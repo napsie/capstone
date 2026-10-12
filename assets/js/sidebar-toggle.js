@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const toggleButton = sidebar?.querySelector('.sidebar-toggle-control');
 
     if (sidebar && mainContent) {
-        const desktopQuery = window.matchMedia('(min-width: 961px)');
+        const desktopQuery = window.matchMedia('(min-width: 1025px)');
         const storageKey = 'seniorlinkSidebarCollapsed';
 
         function savedCollapsedState() {
