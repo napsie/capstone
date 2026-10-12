@@ -1290,21 +1290,21 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 <div class="upload-slot" data-document-slot="primary">
                     <label for="psa_birth_cert_file"><span data-document-label="primary">Birth Cert / Negative of Birth</span> <span class="req">*</span></label>
                     <p class="slot-desc" data-document-description="primary">Upload a birth certificate or, if unavailable, a Negative of Birth certification.</p>
-                    <input type="file" id="psa_birth_cert_file" name="psa_birth_cert_file" accept="image/jpeg,application/pdf" capture="environment" required>
+                    <input type="file" id="psa_birth_cert_file" name="psa_birth_cert_file" capture="environment" required>
                     <div class="id-pair-preview" data-id-pair-preview hidden></div><p class="id-pair-error" data-id-pair-error role="alert" hidden></p>
                 </div>
                 
                 <div class="upload-slot" data-document-slot="secondary">
                     <label for="barangay_residency_file"><span data-document-label="secondary">Barangay Residency Certificate</span> <span class="req">*</span></label>
                     <p class="slot-desc" data-document-description="secondary">Issued by the barangay within the last 6 months confirming Pasig residency.</p>
-                    <input type="file" id="barangay_residency_file" name="barangay_residency_file" accept="image/jpeg,application/pdf" capture="environment" required>
+                    <input type="file" id="barangay_residency_file" name="barangay_residency_file" capture="environment" required>
                     <div class="id-pair-preview" data-id-pair-preview hidden></div><p class="id-pair-error" data-id-pair-error role="alert" hidden></p>
                 </div>
 
                 <div class="upload-slot" data-document-slot="supporting">
                     <label for="comelec_cert_file"><span data-document-label="supporting">2-Year COMELEC Certification</span> <span class="req">*</span></label>
                     <p class="slot-desc" data-document-description="supporting">Official voter residency certification of the senior citizen applicant.</p>
-                    <input type="file" id="comelec_cert_file" name="comelec_cert_file" accept="image/jpeg,application/pdf" capture="environment" required>
+                    <input type="file" id="comelec_cert_file" name="comelec_cert_file" capture="environment" required>
                 </div>
 
                 <h5 id="identityDocumentsHeading" style="margin-top:20px; color:#475569; font-size:0.88rem; text-transform:uppercase; letter-spacing:0.5px;">Additional Required Documents</h5>
@@ -1312,7 +1312,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 <div class="upload-slot" id="idPhotoUploadSlot" data-extra-document-benefits="<?php echo htmlspecialchars(getApplicationBenefitDetails()['senior']['public_request']); ?>|Local Social Pension Assessment">
                     <label for="id_photo_file">Recent 1×1 ID Photo <span class="req">*</span></label>
                     <p class="slot-desc">Upload a clear, recent 1×1 portrait with a white background. Bring two printed 1×1 copies during counter verification. JPEG or PNG only.</p>
-                    <input type="file" id="id_photo_file" name="id_photo_file" accept="image/jpeg,image/png" capture="user">
+                    <input type="file" id="id_photo_file" name="id_photo_file" capture="user">
                 </div>
                 <div class="upload-slot" id="validIdUploadSlot" data-extra-document-benefits="<?php echo htmlspecialchars(getApplicationBenefitDetails()['senior']['public_request']); ?>">
                     <label for="valid_id_file">Valid Government ID <span class="req">*</span></label>
@@ -1324,18 +1324,18 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 <div class="upload-slot" data-extra-document-benefits="Burial Assistance">
                     <label for="deceased_landbank_card_file">Deceased Landbank Cash Card <span class="req">*</span></label>
                     <p class="slot-desc">Upload the front and back of the deceased senior citizen's Landbank cash card.</p>
-                    <input type="file" id="deceased_landbank_card_file" name="deceased_landbank_card_file" accept="image/jpeg,image/png,application/pdf">
+                    <input type="file" id="deceased_landbank_card_file" name="deceased_landbank_card_file">
                 </div>
 
                 <div class="upload-slot" data-extra-document-benefits="Burial Assistance">
                     <label for="proof_of_life_file">Proof of Relationship <span class="req">*</span></label>
                     <p class="slot-desc">Marriage contract, claimant birth certificate, or other accepted proof connecting the claimant and deceased.</p>
-                    <input type="file" id="proof_of_life_file" name="proof_of_life_file" accept="image/jpeg,image/png,application/pdf">
+                    <input type="file" id="proof_of_life_file" name="proof_of_life_file">
                 </div>
                 <div class="upload-slot" data-extra-document-benefits="Burial Assistance" id="burialAffidavitSlot" hidden>
                     <label for="auth_letter_file">Original Copy of Affidavit (if applicable) <span class="req">*</span></label>
                     <p class="slot-desc">Upload the selected affidavit and bring the original plus one photocopy for verification.</p>
-                    <input type="file" id="auth_letter_file" name="auth_letter_file" accept="image/jpeg,image/png,application/pdf">
+                    <input type="file" id="auth_letter_file" name="auth_letter_file">
                 </div>
                 
             </div>
@@ -1894,8 +1894,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             if (oldLink) { oldLink.classList.remove('is-visible'); oldLink.removeAttribute('href'); oldLink.replaceChildren(); }
             input.multiple = enabled;
             input.name = enabled ? `${input.id}[]` : input.id;
-            if (enabled) input.removeAttribute('accept');
-            else input.accept = 'image/jpeg,application/pdf';
+            input.removeAttribute('accept');
             if (enabled) input.removeAttribute('capture');
             else if (input.id === 'psa_birth_cert_file') input.setAttribute('capture', 'environment');
             const previous = governmentIdUploads.get(input);
@@ -1953,12 +1952,6 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 if (requiredMark) requiredMark.hidden = isOptional;
                 if (input) input.required = !isOptional;
             });
-            const supportingInput = document.getElementById('comelec_cert_file');
-            if (supportingInput) {
-                supportingInput.accept = selectedBenefit === 'Milestone Cash Gift'
-                    ? 'image/jpeg,image/png,image/gif'
-                    : 'image/jpeg,application/pdf';
-            }
             setGovernmentIdPairMode(document.getElementById('psa_birth_cert_file'),
                 ['Land Bank Cash Card Enrollment', 'Local Social Pension Assessment'].includes(selectedBenefit));
             setGovernmentIdPairMode(document.getElementById('barangay_residency_file'),
