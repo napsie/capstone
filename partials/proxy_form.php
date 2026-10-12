@@ -1317,7 +1317,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 <div class="upload-slot" id="validIdUploadSlot" data-extra-document-benefits="<?php echo htmlspecialchars(getApplicationBenefitDetails()['senior']['public_request']); ?>">
                     <label for="valid_id_file">Valid Government ID <span class="req">*</span></label>
                     <p class="slot-desc">Upload clear images of the front and back of one valid government-issued ID. PNG, JPG, or JPEG only. Maximum of 2 images.</p>
-                    <input type="file" id="valid_id_file" name="valid_id_file[]" accept=".png,.jpg,.jpeg,image/png,image/jpeg" multiple>
+                    <input type="file" id="valid_id_file" name="valid_id_file[]" multiple>
                     <div class="id-pair-preview" data-id-pair-preview hidden></div><p class="id-pair-error" data-id-pair-error role="alert" hidden></p>
                 </div>
 
@@ -1894,14 +1894,15 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             if (oldLink) { oldLink.classList.remove('is-visible'); oldLink.removeAttribute('href'); oldLink.replaceChildren(); }
             input.multiple = enabled;
             input.name = enabled ? `${input.id}[]` : input.id;
-            input.accept = enabled ? '.png,.jpg,.jpeg,image/png,image/jpeg' : 'image/jpeg,application/pdf';
+            if (enabled) input.removeAttribute('accept');
+            else input.accept = 'image/jpeg,application/pdf';
             if (enabled) input.removeAttribute('capture');
             else if (input.id === 'psa_birth_cert_file') input.setAttribute('capture', 'environment');
             const previous = governmentIdUploads.get(input);
             previous?.urls.forEach(url => URL.revokeObjectURL(url));
             if (enabled) {
                 const replacePicker = document.createElement('input');
-                replacePicker.type = 'file'; replacePicker.accept = '.png,.jpg,.jpeg,image/png,image/jpeg';
+                replacePicker.type = 'file';
                 replacePicker.hidden = true; document.body.append(replacePicker);
                 const state = { files: [null, null], urls: [], replacePicker, replaceIndex: null };
                 replacePicker.addEventListener('change', () => {
