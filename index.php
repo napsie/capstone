@@ -620,7 +620,6 @@ header('Expires: 0');
                     const visible = input.type === 'password';
                     input.type = visible ? 'text' : 'password';
                     button.setAttribute('aria-label', visible ? 'Hide password' : 'Show password');
-                    button.querySelector('i')?.classList.toggle('fa-eye-slash', visible);
                 });
             });
 

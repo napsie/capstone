@@ -697,7 +697,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             const visible = input.type === 'text';
             input.type = visible ? 'password' : 'text';
             button.setAttribute('aria-label', `${visible ? 'Show' : 'Hide'} ${button.dataset.target === 'masterPassword' ? 'master password' : 'password'}`);
-            button.querySelector('i').className = visible ? 'fas fa-eye' : 'fas fa-eye-slash';
         }));
 
         function validatePassword() {

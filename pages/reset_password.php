@@ -245,8 +245,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['resetPassword'])) {
                 input.type = isVisible ? 'password' : 'text';
                 button.setAttribute('aria-pressed', String(!isVisible));
                 button.setAttribute('aria-label', `${isVisible ? 'Show' : 'Hide'} ${input.id === 'confirmPassword' ? 'confirmed password' : 'new password'}`);
-                button.querySelector('i')?.classList.toggle('fa-eye', isVisible);
-                button.querySelector('i')?.classList.toggle('fa-eye-slash', !isVisible);
             });
         });
     </script>

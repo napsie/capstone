@@ -549,8 +549,6 @@ try {
                 input.type = showing ? 'password' : 'text';
                 button.setAttribute('aria-pressed', showing ? 'false' : 'true');
                 button.setAttribute('aria-label', `${showing ? 'Show' : 'Hide'} ${button.getAttribute('aria-label').replace(/^(Show|Hide)\s+/, '')}`);
-                const icon = button.querySelector('i');
-                if (icon) icon.className = showing ? 'fas fa-eye' : 'fas fa-eye-slash';
             });
         });
 

@@ -687,17 +687,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
         // Function to toggle password visibility
         window.togglePasswordVisibility = function(fieldId) {
             const passwordInput = document.getElementById(fieldId);
-            const icon = passwordInput.nextElementSibling.querySelector('i');
-
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                icon.classList.remove('fa-eye');
-                icon.classList.add('fa-eye-slash');
-            } else {
-                passwordInput.type = 'password';
-                icon.classList.remove('fa-eye-slash');
-                icon.classList.add('fa-eye');
-            }
+            passwordInput.type = passwordInput.type === 'password' ? 'text' : 'password';
         };
 
         document.addEventListener('DOMContentLoaded', function() {

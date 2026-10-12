@@ -635,18 +635,7 @@ try {
         window.togglePasswordVisibility = function(fieldId) {
             const passwordInput = document.getElementById(fieldId);
             if (passwordInput) {
-                const icon = passwordInput.closest('.password-input-container').querySelector('i');
-                if (icon) {
-                    if (passwordInput.type === 'password') {
-                        passwordInput.type = 'text';
-                        icon.classList.remove('fa-eye');
-                        icon.classList.add('fa-eye-slash');
-                    } else {
-                        passwordInput.type = 'password';
-                        icon.classList.remove('fa-eye-slash');
-                        icon.classList.add('fa-eye');
-                    }
-                }
+                passwordInput.type = passwordInput.type === 'password' ? 'text' : 'password';
             }
         };
 
@@ -768,7 +757,6 @@ try {
                     const passwordInput = this.previousElementSibling;
                     const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
                     passwordInput.setAttribute('type', type);
-                    this.querySelector('i').classList.toggle('fa-eye-slash');
                 });
             });
 
