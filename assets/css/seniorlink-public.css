@@ -499,6 +499,7 @@ textarea.form-control { resize: vertical; min-height: 88px; }
     border: 0;
     border-radius: 8px;
 }
+.toggle-password i { display: block; width: 18px; line-height: 1; text-align: center; }
 .toggle-password:hover { color: var(--accent); background: #eef5fb; }
 .toggle-password:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 

@@ -525,11 +525,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
 
         .password-input-container .toggle-password {
             position: absolute;
-            right: 10px;
+            right: 7px;
             top: 50%;
+            display: grid;
+            place-items: center;
+            width: 36px;
+            height: 36px;
             transform: translateY(-50%);
             cursor: pointer;
             color: var(--gray);
+            line-height: 1;
+        }
+
+        .password-input-container .toggle-password i {
+            display: block;
+            width: 18px;
+            line-height: 1;
+            text-align: center;
         }
 
         .password-input-container .toggle-password:hover {

@@ -155,6 +155,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['resetPassword'])) {
             color: #64748b;
             cursor: pointer;
         }
+        .password-toggle i {
+            display: block;
+            width: 18px;
+            line-height: 1;
+            text-align: center;
+        }
         .password-toggle:hover,
         .password-toggle:focus-visible {
             color: var(--secondary);

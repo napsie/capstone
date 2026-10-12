@@ -369,7 +369,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         .password-control { position: relative; }
         .password-control .form-control { padding-right: 44px; }
-        .password-toggle { position: absolute; top: 50%; right: 7px; width: 34px; height: 34px; transform: translateY(-50%); border: 0; border-radius: 7px; background: transparent; color: #526274; cursor: pointer; }
+        .password-toggle { position: absolute; top: 50%; right: 7px; display: grid; place-items: center; width: 34px; min-width: 34px; height: 34px; margin: 0; padding: 0; transform: translateY(-50%); border: 0; border-radius: 7px; background: transparent; color: #526274; line-height: 1; cursor: pointer; }
+        .password-toggle i { display: block; width: 18px; line-height: 1; text-align: center; }
         .password-toggle:hover, .password-toggle:focus-visible { background: #e8f0f8; color: #1769aa; outline: none; }
 
         .btn {
