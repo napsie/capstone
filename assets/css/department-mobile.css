@@ -1,5 +1,5 @@
 /* Final responsive overrides for all Department workspace pages. */
-@media (max-width: 768px) {
+@media (max-width: 960px) {
     html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
     body { min-width: 0; }
     .container { width: 100%; min-width: 0; flex-direction: column !important; }
@@ -68,7 +68,7 @@
     .workflow-buttons .btn { flex: 1 1 100%; justify-content: center; }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 960px) {
     .system-sidebar .mobile-nav-bar { display:flex !important; }
     .system-sidebar .sidebar-menu {
         position:fixed !important;

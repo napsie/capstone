@@ -8,7 +8,7 @@
     const toggle = sidebar.querySelector('.mobile-nav-toggle');
     const closeButton = sidebar.querySelector('.mobile-nav-close');
     const navigation = sidebar.querySelector(':scope > .sidebar-menu, :scope > .nav-links');
-    const mobileQuery = window.matchMedia('(max-width: 768px)');
+    const mobileQuery = window.matchMedia('(max-width: 960px)');
     const currentLabel = sidebar.querySelector('.mobile-nav-current');
     const activeLabel = sidebar.querySelector('li.active .link-text')?.textContent?.trim();
     if (currentLabel && activeLabel) currentLabel.textContent = activeLabel;

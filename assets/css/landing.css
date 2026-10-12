@@ -1176,6 +1176,34 @@ html.signup-view-open .portal-login-back {
 
 html.signup-view-open .site-footer { display: none; }
 
+/* Once the layout stacks (or the window becomes short), the hero and signup
+   card are taller than one viewport. Restore document scrolling so the whole
+   card can be reached instead of clipping it below the fold. */
+@media (max-width: 960px), (max-height: 699px) {
+    html.signup-view-open,
+    html.signup-view-open body {
+        height: auto;
+        min-height: 100%;
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
+    html.signup-view-open .landing-wrapper {
+        height: auto;
+        min-height: 100dvh;
+    }
+
+    html.signup-view-open .landing-main {
+        min-height: auto;
+        overflow: visible;
+    }
+
+    html.signup-view-open .portal-panel {
+        height: min(720px, calc(100dvh - 100px));
+        max-height: none;
+    }
+}
+
 @media (max-width: 600px) {
     html.signup-view-open .portal-panel {
         height: calc(100dvh - 100px);
