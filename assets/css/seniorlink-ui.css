@@ -1046,7 +1046,7 @@ html, body { max-width: 100%; }
         -webkit-overflow-scrolling: touch;
     }
     .sidebar :where(.nav-links, .sidebar-menu)::-webkit-scrollbar { display: none; }
-    .sidebar :where(.nav-links, .sidebar-menu ul) {
+    .sidebar :where(.nav-links, .sidebar-menu > ul) {
         display: flex !important;
         width: max-content !important;
         min-width: 100% !important;

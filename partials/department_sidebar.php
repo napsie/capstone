@@ -13,7 +13,7 @@ require_once __DIR__ . '/../includes/system_branding.php';
 })();
 </script>
 <link rel="stylesheet" href="../assets/css/department-mobile.css?v=12">
-<link rel="stylesheet" href="../assets/css/system-sidebar.css?v=18">
+<link rel="stylesheet" href="../assets/css/system-sidebar.css?v=20">
 <div class="sidebar system-sidebar">
     <div class="mobile-nav-bar">
         <button class="mobile-nav-toggle" type="button" aria-expanded="false" aria-controls="mobileSystemNavigation"><i class="fas fa-bars" aria-hidden="true"></i><span>Menu</span></button>
@@ -39,7 +39,7 @@ require_once __DIR__ . '/../includes/system_branding.php';
                 <button class="sidebar-group-toggle" type="button" aria-expanded="<?php echo $seniorRecordsOpen ? 'true' : 'false'; ?>" aria-controls="departmentSeniorRecordsMenu" data-tooltip="Senior Records">
                     <i class="fas fa-folder-open" aria-hidden="true"></i><span class="link-text">Senior Records</span><i class="fas fa-chevron-down sidebar-group-chevron" aria-hidden="true"></i>
                 </button>
-                <ul class="sidebar-submenu" id="departmentSeniorRecordsMenu">
+                <ul class="sidebar-submenu" id="departmentSeniorRecordsMenu"<?php echo $seniorRecordsOpen ? '' : ' hidden'; ?>>
                     <li class="<?php echo ($current_page == 'department_records.php') ? 'active' : ''; ?>"><a href="department_records.php"><i class="fas fa-database"></i><span class="link-text">Records</span></a></li>
                     <li class="<?php echo ($current_page == 'digital_ids.php' || $current_page == 'digital_id.php') ? 'active' : ''; ?>"><a href="digital_ids.php"><i class="fas fa-id-card"></i><span class="link-text">Digital IDs</span></a></li>
                     <li class="<?php echo ($current_page == 'deceased_records.php') ? 'active' : ''; ?>"><a href="deceased_records.php"><i class="fas fa-ribbon"></i><span class="link-text">Deceased Records</span></a></li>
@@ -52,7 +52,7 @@ require_once __DIR__ . '/../includes/system_branding.php';
                 <button class="sidebar-group-toggle" type="button" aria-expanded="<?php echo $applicationsOpen ? 'true' : 'false'; ?>" aria-controls="departmentApplicationsMenu" data-tooltip="Applications">
                     <i class="fas fa-file-circle-check" aria-hidden="true"></i><span class="link-text">Applications</span><i class="fas fa-chevron-down sidebar-group-chevron" aria-hidden="true"></i>
                 </button>
-                <ul class="sidebar-submenu" id="departmentApplicationsMenu">
+                <ul class="sidebar-submenu" id="departmentApplicationsMenu"<?php echo $applicationsOpen ? '' : ' hidden'; ?>>
                     <li class="<?php echo ($current_page == 'verify_document.php') ? 'active' : ''; ?>"><a href="verify_document.php"><i class="fas fa-check-circle"></i><span class="link-text">Verify Documents</span></a></li>
                     <li class="<?php echo ($current_page == 'import_records.php') ? 'active' : ''; ?>"><a href="import_records.php"><i class="fas fa-file-import"></i><span class="link-text">Import Records</span></a></li>
                 </ul>
@@ -66,7 +66,7 @@ require_once __DIR__ . '/../includes/system_branding.php';
                 <button class="sidebar-group-toggle" type="button" aria-expanded="<?php echo $administrationOpen ? 'true' : 'false'; ?>" aria-controls="departmentAdministrationMenu" data-tooltip="Settings">
                     <i class="fas fa-gear" aria-hidden="true"></i><span class="link-text">Settings</span><i class="fas fa-chevron-down sidebar-group-chevron" aria-hidden="true"></i>
                 </button>
-                <ul class="sidebar-submenu" id="departmentAdministrationMenu">
+                <ul class="sidebar-submenu" id="departmentAdministrationMenu"<?php echo $administrationOpen ? '' : ' hidden'; ?>>
                     <li class="<?php echo ($current_page == 'user_management.php' || $current_page == 'edit_user.php' || $current_page == 'signup.php') ? 'active' : ''; ?>"><a href="user_management.php"><i class="fas fa-user-cog"></i><span class="link-text">User Management</span></a></li>
                     <li class="<?php echo ($current_page == 'system_settings.php') ? 'active' : ''; ?>"><a href="system_settings.php"><i class="fas fa-cog"></i><span class="link-text">System Settings</span></a></li>
                 </ul>
@@ -78,7 +78,7 @@ require_once __DIR__ . '/../includes/system_branding.php';
 </div>
 <script src="../assets/js/mobile-navigation.js?v=4"></script>
 <script src="../assets/js/sidebar-toggle.js?v=9"></script>
-<script src="../assets/js/sidebar-groups.js?v=1"></script>
+<script src="../assets/js/sidebar-groups.js?v=2"></script>
 <script src="../assets/js/session-timeout.js?v=6"></script>
 <script src="../assets/js/form-language.js?v=4" defer></script>
 <?php if ($current_page === 'import_records.php'): ?>
