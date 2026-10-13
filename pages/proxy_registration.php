@@ -227,12 +227,20 @@ $resetUrl = 'proxy_registration.php';
         .step-heading p {
             margin: 0; font-size: 0.9rem; color: #475569;
         }
+
+        /* At split-screen/tablet widths, keep the page-level Back control out
+           of the form content while the user scrolls through the steps. */
+        @media (min-width: 601px) and (max-width: 1200px) {
+            body .proxy-registration-back {
+                position: absolute;
+            }
+        }
     </style>
     <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <link rel="stylesheet" href="../assets/css/benefit-information-modal.css?v=1">
 </head>
 <body>
-    <a href="../index.php" class="back-btn">
+    <a href="../index.php" class="back-btn proxy-registration-back">
         <i class="fas fa-arrow-left" aria-hidden="true"></i>
         Back to Home
     </a>
