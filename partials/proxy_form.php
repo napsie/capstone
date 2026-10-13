@@ -2266,12 +2266,12 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 </div>
             </div>
 
-            <!-- Appointment Notice -->
+            <!-- Application tracking notice -->
             <div class="appointment-box">
-                <i class="fas fa-calendar-alt"></i>
+                <i class="fas fa-qrcode"></i>
                 <div>
-                    <h5>Automated Appointment Notice</h5>
-                    <p>Please download and save this queue token, then bring the <strong>physical original documents</strong> to the selected barangay office for counter verification on the scheduled date.</p>
+                    <h5>Track Your Application Status</h5>
+                    <p>Download and save this token. Scan its QR code anytime to check the latest status of your application. Please also bring the <strong>physical original documents</strong> to the selected barangay office for verification.</p>
                 </div>
             </div>
 
