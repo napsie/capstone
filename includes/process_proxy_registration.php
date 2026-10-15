@@ -76,12 +76,18 @@ function persistProxyDocument(PDO $conn, string $applicationId, string $key, str
     if ($maximumDocumentPayload === null) {
         try {
             $packetLimit = (int)$conn->query('SELECT @@max_allowed_packet')->fetchColumn();
-            $maximumDocumentPayload = max(0, $packetLimit - 131072);
+            // A 1 MB packet limit is too small for reliable BLOB inserts once
+            // prepared-statement and protocol overhead are included. The file
+            // is already safely stored in private storage and referenced by the
+            // applications row, so omit only this optional history copy.
+            $maximumDocumentPayload = $packetLimit <= 4 * 1024 * 1024
+                ? 0
+                : max(0, $packetLimit - 1024 * 1024);
         } catch (Throwable $e) {
             $maximumDocumentPayload = 786432;
         }
     }
-    if ($fileSize === false || $fileSize > $maximumDocumentPayload) {
+    if ($fileSize === false || $maximumDocumentPayload === 0 || $fileSize > $maximumDocumentPayload) {
         error_log(sprintf(
             'Skipped oversized document-history copy for %s/%s (%s bytes); canonical upload retained.',
             $applicationId,
@@ -885,7 +891,7 @@ function processProxyRegistration(): array
                 static fn(array $document): string => (string)($document['label'] ?? ''),
                 $benefitDefinition['form_documents'] ?? []
             );
-            foreach ([
+            $documentHistoryCopies = [
                 ['psa_birth_cert',$requestedBenefit === 'Senior Citizen ID Registration' ? $seniorDocumentLabels[0] : ($benefitDocumentLabels[0] ?? 'PSA Birth Certificate'),$governmentIdPrimary ? null : $psaBirthCert],
                 ['barangay_residency',$requestedBenefit === 'Senior Citizen ID Registration' ? $seniorDocumentLabels[1] : ($benefitDocumentLabels[1] ?? 'Barangay Residency Certificate'),$governmentIdField === 'barangay_residency_file' ? null : $barangayResidency],
                 ['comelec_cert',$requestedBenefit === 'Senior Citizen ID Registration' ? $seniorDocumentLabels[2] : ($benefitDocumentLabels[2] ?? 'COMELEC Certificate'),$comelecCert],
@@ -895,9 +901,7 @@ function processProxyRegistration(): array
                 ['government_id_back',$requestedBenefit === 'Burial Assistance' ? 'Valid Claimant ID 2' : ($requestedBenefit === 'Milestone Cash Gift' ? 'Senior Citizen OSCA ID — Back' : 'Valid Government ID — Back of ID'),$governmentIdBack],
                 ['proof_of_life','Proof of Relationship',$proofOfLife],
                 ['auth_letter','Original Copy of Affidavit (if applicable)',$authLetter],
-            ] as [$key,$label,$path]) {
-                if ($label !== '' && $path !== null) persistProxyDocument($conn,$transactionId,$key,$label,$path);
-            }
+            ];
 
             // Add workflow history entry for the active counter queue.
             $stmtHist = $conn->prepare("INSERT INTO application_history (application_id, previous_state, new_state, changed_by, comments) VALUES (?, ?, ?, ?, ?)");
@@ -907,6 +911,24 @@ function processProxyRegistration(): array
             ]);
 
             $conn->commit();
+
+            // These are optional history copies. The canonical files are
+            // already stored privately and referenced by the application row,
+            // so a BLOB/packet limit must not cancel a valid registration.
+            foreach ($documentHistoryCopies as [$key,$label,$path]) {
+                if ($label === '' || $path === null) continue;
+                try {
+                    persistProxyDocument($conn,$transactionId,$key,$label,$path);
+                } catch (Throwable $documentError) {
+                    error_log(sprintf(
+                        'Optional document-history copy failed for %s/%s: %s',
+                        $transactionId,
+                        $key,
+                        $documentError->getMessage()
+                    ));
+                    break;
+                }
+            }
 
             $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443)
                 ? 'https://' : 'http://';
