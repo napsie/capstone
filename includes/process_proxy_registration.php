@@ -903,14 +903,25 @@ function processProxyRegistration(): array
                 ['auth_letter','Original Copy of Affidavit (if applicable)',$authLetter],
             ];
 
-            // Add workflow history entry for the active counter queue.
-            $stmtHist = $conn->prepare("INSERT INTO application_history (application_id, previous_state, new_state, changed_by, comments) VALUES (?, ?, ?, ?, ?)");
-            $stmtHist->execute([
-                $transactionId, 'Draft', 'For Review', 'Senior Applicant',
-                'Public senior application submitted directly to the Department Admin verification queue.'
-            ]);
-
             $conn->commit();
+
+            // The application itself is the authoritative record. Some older
+            // Railway databases have a legacy application_history table; a
+            // failure in this secondary audit write must not undo a valid
+            // public registration.
+            try {
+                $stmtHist = $conn->prepare("INSERT INTO application_history (application_id, previous_state, new_state, changed_by, comments) VALUES (?, ?, ?, ?, ?)");
+                $stmtHist->execute([
+                    $transactionId, 'Draft', 'For Review', 'Senior Applicant',
+                    'Public senior application submitted directly to the Department Admin verification queue.'
+                ]);
+            } catch (Throwable $historyError) {
+                error_log(sprintf(
+                    'Optional application-history entry failed for %s: %s',
+                    $transactionId,
+                    $historyError->getMessage()
+                ));
+            }
 
             // These are optional history copies. The canonical files are
             // already stored privately and referenced by the application row,
@@ -974,7 +985,11 @@ function processProxyRegistration(): array
                 $transactionId,
                 $e->getMessage()
             ));
-            $result['message'] = "We could not save the pre-registration. Please review the form and try again.";
+            $driverCode = $e instanceof PDOException
+                ? (string)($e->errorInfo[1] ?? $e->getCode())
+                : (string)$e->getCode();
+            $safeReference = preg_replace('/[^A-Za-z0-9_-]/', '', $driverCode) ?: 'SAVE';
+            $result['message'] = "We could not save the pre-registration. Please try again. Error reference: DB-{$safeReference}.";
         }
 
     } else if ($portalOption === 'existing_benefits') {
