@@ -1034,7 +1034,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                     <div class="form-row">
                         <div class="form-group">
                             <label for="emergencyContactName">Emergency Contact Name <span style="color:#b91c1c;">*</span></label>
-                            <input type="text" id="emergencyContactName" name="emergencyContactName" class="form-control" value="<?php echo $old('emergencyContactName'); ?>" pattern="[\p{L}\p{M} .'-]+" title="Use letters only. Spaces, periods, apostrophes, and hyphens are allowed." autocomplete="name" data-benefit-required>
+                            <input type="text" id="emergencyContactName" name="emergencyContactName" class="form-control" value="<?php echo $old('emergencyContactName'); ?>" pattern="[\p{L}\p{M} .'\-]+" title="Use letters only. Spaces, periods, apostrophes, and hyphens are allowed." autocomplete="name" data-benefit-required>
                         </div>
                         <div class="form-group">
                             <label for="emergencyContact">Emergency Contact Number <span style="color:#b91c1c;">*</span></label>
