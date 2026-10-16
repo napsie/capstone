@@ -65,42 +65,20 @@ function persistProxyDocument(PDO $conn, string $applicationId, string $key, str
     $path = privateUploadPath($storedPath);
     if ($path === null) return;
     if (!is_file($path)) return;
-    $fileSize = filesize($path);
 
-    // The applications table already stores the uploaded file path. The
-    // document-version table is a secondary copy. On installations with a
-    // small MySQL max_allowed_packet (commonly 1 MB), inserting a phone photo
-    // as a BLOB disconnects MySQL and prevents the whole form from submitting.
-    // Keep the canonical upload and omit only the oversized secondary copy.
-    static $maximumDocumentPayload = null;
-    if ($maximumDocumentPayload === null) {
-        try {
-            $packetLimit = (int)$conn->query('SELECT @@max_allowed_packet')->fetchColumn();
-            // A 1 MB packet limit is too small for reliable BLOB inserts once
-            // prepared-statement and protocol overhead are included. The file
-            // is already safely stored in private storage and referenced by the
-            // applications row, so omit only this optional history copy.
-            $maximumDocumentPayload = $packetLimit <= 4 * 1024 * 1024
-                ? 0
-                : max(0, $packetLimit - 1024 * 1024);
-        } catch (Throwable $e) {
-            $maximumDocumentPayload = 786432;
-        }
-    }
-    if ($fileSize === false || $maximumDocumentPayload === 0 || $fileSize > $maximumDocumentPayload) {
-        error_log(sprintf(
-            'Skipped oversized document-history copy for %s/%s (%s bytes); canonical upload retained.',
-            $applicationId,
-            $key,
-            $fileSize === false ? 'unknown' : (string)$fileSize
-        ));
-        return;
-    }
-
+    // Keep the metadata used by verification screens, but not a second copy
+    // of the file. The canonical upload is already stored privately and its
+    // path is referenced by applications. Duplicating phone photos as BLOBs
+    // can exhaust Railway's database allocation and cause MySQL error 1114.
     saveDocumentVersion($conn, [
-        'application_id'=>$applicationId, 'document_key'=>$key, 'document_label'=>$label,
-        'mime_type'=>(new finfo(FILEINFO_MIME_TYPE))->file($path), 'document_data'=>file_get_contents($path),
-        'uploaded_by'=>'Senior Applicant', 'original_filename'=>basename($storedPath), 'source'=>'public_application',
+        'application_id' => $applicationId,
+        'document_key' => $key,
+        'document_label' => $label,
+        'mime_type' => (new finfo(FILEINFO_MIME_TYPE))->file($path),
+        'document_data' => '',
+        'uploaded_by' => 'Senior Applicant',
+        'original_filename' => basename($storedPath),
+        'source' => 'public_application_reference',
     ]);
 }
 

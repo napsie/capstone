@@ -34,10 +34,10 @@ $documentId = isset($_GET['document_id']) ? (int)$_GET['document_id'] : 0;
 if ($documentId > 0) {
     try {
         if ($userRole === 'barangay_staff' && $userBarangay) {
-            $stmt = $conn->prepare('SELECT d.mime_type, d.document_data FROM application_documents d INNER JOIN applications a ON a.id_number = d.application_id WHERE d.id = ? AND d.application_id = ? AND a.barangay = ?');
+            $stmt = $conn->prepare('SELECT d.document_key, d.mime_type, d.file_size, d.source, d.document_data FROM application_documents d INNER JOIN applications a ON a.id_number = d.application_id WHERE d.id = ? AND d.application_id = ? AND a.barangay = ?');
             $stmt->execute([$documentId, $appId, $userBarangay]);
         } else {
-            $stmt = $conn->prepare('SELECT mime_type, document_data FROM application_documents WHERE id = ? AND application_id = ?');
+            $stmt = $conn->prepare('SELECT document_key, mime_type, file_size, source, document_data FROM application_documents WHERE id = ? AND application_id = ?');
             $stmt->execute([$documentId, $appId]);
         }
         $document = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -47,10 +47,15 @@ if ($documentId > 0) {
             echo 'Document not found or access denied.';
             exit();
         }
-        header('Content-Type: ' . $document['mime_type']);
-        header('Cache-Control: private, no-store');
-        echo $document['document_data'];
-        exit();
+        if (($document['source'] ?? '') !== 'public_application_reference' || (int)($document['file_size'] ?? 0) > 0) {
+            header('Content-Type: ' . $document['mime_type']);
+            header('Cache-Control: private, no-store');
+            echo $document['document_data'];
+            exit();
+        }
+        // A public-form metadata row intentionally has no duplicate BLOB.
+        // Continue through the legacy-column path to stream its private file.
+        $_GET['doc_type'] = (string)$document['document_key'];
     } catch (PDOException $e) {
         http_response_code(500);
         error_log('get_document.php template document error: ' . $e->getMessage());
@@ -96,7 +101,8 @@ try {
     // A correction of a legacy upload supersedes its original file.
     $replacementSql = 'SELECT d.mime_type, d.document_data FROM application_documents d
         INNER JOIN applications a ON a.id_number = d.application_id
-        WHERE d.application_id = ? AND d.document_key = ? AND d.is_current = 1';
+        WHERE d.application_id = ? AND d.document_key = ? AND d.is_current = 1
+          AND (d.source <> \'public_application_reference\' OR d.file_size > 0)';
     $replacementParams = [$appId, $docType];
     if ($userRole === 'barangay_staff') {
         $replacementSql .= ' AND a.barangay = ?';
