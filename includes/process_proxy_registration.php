@@ -83,6 +83,35 @@ function persistProxyDocument(PDO $conn, string $applicationId, string $key, str
 }
 
 /**
+ * Recover installations that reached their database quota before the cleanup
+ * migration could be recorded. The removed rows are redundant copies only;
+ * their canonical private files remain referenced by applications.
+ */
+function reclaimLegacyPublicDocumentStorage(PDO $conn): void
+{
+    try {
+        $exists = $conn->query(
+            "SELECT 1 FROM application_documents WHERE source = 'public_application' LIMIT 1"
+        );
+        if (!$exists || !$exists->fetchColumn()) return;
+
+        // Small autocommit batches avoid one large undo record on an already
+        // constrained database and allow subsequent inserts to reuse pages.
+        do {
+            $removed = $conn->exec(
+                "DELETE FROM application_documents WHERE source = 'public_application' LIMIT 100"
+            );
+        } while ($removed === 100);
+
+        error_log('Removed redundant legacy public document BLOBs to reclaim database capacity.');
+    } catch (Throwable $cleanupError) {
+        // Schema variants without the reporting columns can still attempt the
+        // normal save and expose their original, safely logged database code.
+        error_log('Legacy public document cleanup could not complete: ' . $cleanupError->getMessage());
+    }
+}
+
+/**
  * Generate a compact, non-sequential tracking code. Four characters provide
  * more than one million combinations; the code grows automatically when half
  * of the available space for the current length is in use.
@@ -140,6 +169,8 @@ function processProxyRegistration(): array
     if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['proxy_submit'])) {
         return $result;
     }
+
+    reclaimLegacyPublicDocumentStorage($conn);
 
     $_POST = normalizeApplicationInput($_POST, $barangays_list);
 
