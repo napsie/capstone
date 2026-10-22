@@ -14,7 +14,7 @@ $age = oscaAge($app['birth_date'] ?? null);
 <div class="form-page">
     <?php oscaPrintHeader('', 'LOCAL SENIOR PENSION FORM'); ?>
     <?php oscaFieldRow(['Last Name' => $app['lastName'] ?? '', 'Suffix' => $app['suffix'] ?? '', 'First Name' => $app['firstName'] ?? '', 'Middle Name' => $app['middleName'] ?? '']); ?>
-    <?php oscaFieldRow(['Address' => $app['complete_address'] ?? '', 'Control No.' => $app['control_no'] ?? $app['id_number'] ?? '']); ?>
+    <?php oscaFieldRow(['Address' => $app['complete_address'] ?? '']); ?>
     <?php oscaFieldRow(['Birthdate' => oscaFmtDate($app['birth_date'] ?? null), 'Age' => $age, 'Sex' => $app['gender'] ?? '', 'Contact No.' => $app['contact_number'] ?? '']); ?>
     <?php oscaFieldRow(['Senior ID No.' => oscaSeniorId($app), 'ATM/Temp Card Stub No.' => $app['atm_card_no'] ?? '', "Mother's Maiden Name" => $app['mothers_maiden_name'] ?? '']); ?>
     <div class="section-title">ECONOMIC STATUS</div>
@@ -26,7 +26,7 @@ $age = oscaAge($app['birth_date'] ?? null);
     <div class="sig-line">Signature/Thumbmark over printed name of the Senior Citizen</div>
     <?php oscaFieldRow(["OSCA Personnel's Name & Signature" => '', 'Date' => '']); ?>
     <?php oscaFieldRow(['Name of Encoder' => '', 'Date Encoded' => '']); ?>
-    <div class="stub"><strong>PASIG CITY LOCAL SENIOR PENSION</strong> — <?php echo oscaVal($app['full_name']); ?> | Control: <?php echo oscaVal($app['control_no'] ?? $app['id_number']); ?></div>
+    <div class="stub"><strong>PASIG CITY LOCAL SENIOR PENSION</strong> — <?php echo oscaVal($app['full_name']); ?> | Senior ID: <?php echo oscaVal(oscaSeniorId($app)); ?></div>
 </div>
 </body>
 </html>

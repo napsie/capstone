@@ -3,6 +3,26 @@
  * OSCA application type definitions and shared form field helpers.
  */
 
+/** A submitted Land Bank enrollment or an existing verified card unlocks pension. */
+function hasPensionLandbankPrerequisite(PDO $conn, array $senior): bool {
+    $stmt = $conn->prepare("SELECT COUNT(*) FROM applications
+        WHERE (parent_senior_id = ? OR (senior_id_no <> '' AND senior_id_no = ?) OR id_number = ?)
+          AND COALESCE(is_archived, 0) = 0
+          AND LOWER(COALESCE(status, '')) NOT IN ('rejected', 'deceased')
+          AND (
+            (application_type = 'landbank' AND workflow_state IN
+                ('Received','Submitted','For Review','Needs Correction','Verified','Approved','Released'))
+            OR (TRIM(COALESCE(landbank_card_no, '')) <> ''
+                AND workflow_state IN ('Verified','Approved','Released'))
+          )");
+    $stmt->execute([$senior['id_number'], $senior['senior_id_no'] ?? '', $senior['id_number']]);
+    return (int)$stmt->fetchColumn() > 0;
+}
+
+function isValidAtmOrStubNumber(string $value): bool {
+    return preg_match('/^[0-9]{1,16}$/D', $value) === 1;
+}
+
 function getApplicationTypeOptions(): array {
     $options = [];
     foreach (getApplicationBenefitDetails() as $type => $definition) {

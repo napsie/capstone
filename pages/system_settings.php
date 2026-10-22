@@ -269,7 +269,7 @@ try {
         .backup-warning { display:flex; align-items:flex-start; gap:9px; margin:14px 0; padding:11px 12px; border-radius:9px; color:#854d0e; background:#fefce8; font-size:.78rem; line-height:1.45; }
         .password-field { position:relative; }
         .password-field input { padding-right:48px; }
-        .password-toggle { position:absolute; top:50%; right:7px; display:grid; place-items:center; width:36px; min-width:36px; height:36px; margin:0; padding:0; transform:translateY(-50%); border:0; border-radius:7px; color:#475569; background:transparent; line-height:1; cursor:pointer; }
+        .password-toggle { position:absolute; top:0; bottom:0; right:7px; display:grid; place-items:center; width:36px; min-width:36px; height:36px; min-height:36px; margin:auto 0; padding:0; transform:none !important; transition:color .15s,background-color .15s; border:0; border-radius:7px; color:#475569; background:transparent; line-height:1; cursor:pointer; }
         .password-toggle i { display:block; width:18px; line-height:1; text-align:center; }
         .password-toggle:hover { color:#1d4ed8; background:#eaf2ff; }
         .password-status { min-height:20px; margin-top:6px; color:#64748b; font-size:.74rem; }

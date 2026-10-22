@@ -4,6 +4,7 @@ require_once '../includes/db_connect.php';
 require_once '../includes/application_types.php';
 require_once '../includes/barangays_list.php';
 require_once '../includes/deadline_alerts.php';
+require_once '../includes/verification_queue.php';
 
 // Check if user is logged in and authorized
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['department_admin', 'super_admin'])) {
@@ -11,9 +12,7 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['department_ad
     exit();
 }
 
-$totalQStmt = $conn->query("SELECT COUNT(*) FROM applications
-    WHERE COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') NOT IN ('Verified', 'Approved', 'Released')
-      AND (is_archived = 0 OR is_archived IS NULL)");
+$totalQStmt = $conn->query('SELECT COUNT(*) FROM applications WHERE ' . verificationQueueCondition());
 $totalQCount = (int)$totalQStmt->fetchColumn();
 
 // Verification queue filters
@@ -33,8 +32,7 @@ if ($queueFilters['barangay'] !== 'all' && !in_array($queueFilters['barangay'], 
 }
 
 $queueConditions = [
-    "COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') NOT IN ('Verified', 'Approved', 'Released')",
-    '(is_archived = 0 OR is_archived IS NULL)',
+    verificationQueueCondition(),
 ];
 $queueParams = [];
 

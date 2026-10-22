@@ -9,8 +9,8 @@ function standardPdfReportHeaderCommands(array $report, callable $escape, callab
         '0.04 0.14 0.28 rg 0 587 842 8 re f',
         '0.96 0.98 1 rg 35 496 72 72 re f',
         '0.77 0.83 0.90 RG 0.8 w 35 496 72 72 re S',
-        '0.96 0.98 1 rg 700 496 107 72 re f',
-        '0.77 0.83 0.90 RG 0.8 w 700 496 107 72 re S',
+        '0.96 0.98 1 rg 735 496 72 72 re f',
+        '0.77 0.83 0.90 RG 0.8 w 735 496 72 72 re S',
     ];
     if ($hasLogo) {
         $logoWidth = max(1.0, (float)($report['logo_width'] ?? 64));
@@ -22,7 +22,7 @@ function standardPdfReportHeaderCommands(array $report, callable $escape, callab
     if (!empty($report['has_osca_logo'])) {
         $sealWidth = max(1.0, (float)($report['osca_logo_width'] ?? 64));
         $sealHeight = max(1.0, (float)($report['osca_logo_height'] ?? 64));
-        $sealX = 753 + ((54 - $sealWidth) / 2);
+        $sealX = 739 + ((64 - $sealWidth) / 2);
         $sealY = 500 + ((64 - $sealHeight) / 2);
         $commands[] = sprintf('q %.2F 0 0 %.2F %.2F %.2F cm /OSCA Do Q', $sealWidth, $sealHeight, $sealX, $sealY);
     }

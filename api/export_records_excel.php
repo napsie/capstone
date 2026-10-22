@@ -5,6 +5,7 @@ require_once '../includes/application_types.php';
 require_once '../includes/barangays_list.php';
 require_once '../includes/system_branding.php';
 require_once '../includes/pdf_report_header.php';
+require_once '../includes/verification_queue.php';
 
 // Reports operate on Pasig City calendar dates. Using PHP's server timezone can
 // reject the user's local "today" as a future date shortly after midnight.
@@ -95,7 +96,7 @@ $statusExpr = "COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Receive
 
 if ($scope === 'department') {
     if ($reportMode === 'verification') {
-        $where[] = "{$statusExpr} NOT IN ('Verified', 'Approved', 'Released')";
+        $where[] = verificationQueueCondition();
     } elseif ($status === 'Verified') {
         $where[] = "{$statusExpr} IN ('Verified', 'Approved', 'Released')";
     } else {

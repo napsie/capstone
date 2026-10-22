@@ -191,7 +191,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             position: fixed;
             inset: 0;
             z-index: 0;
-            background-image: url('../images/landing-background-new3.png');
+            background-image: url('../images/landing-background-new4.png');
             background-size: cover;
             background-position: left bottom;
             opacity: 0.82;

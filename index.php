@@ -237,7 +237,7 @@ header('Expires: 0');
             <div class="portal-panel-header">
                 <div>
                     <span class="portal-eyebrow">Get started</span>
-                    <h3 id="portal-heading"><?php echo $loginView === 'staff' ? 'SHDO sign in' : ($loginView === 'admin' ? 'Administrator sign in' : 'What do you need?'); ?></h3>
+                    <h3 id="portal-heading"><?php echo $loginView === 'staff' ? 'SHDO sign in' : ($loginView === 'admin' ? 'OSCA Department sign in' : 'What do you need?'); ?></h3>
                     <p id="portal-description"><?php echo $loginView !== '' ? 'Enter your account details to continue.' : 'Choose one option to continue.'; ?></p>
                 </div>
                 <span class="portal-security" title="Secure role-based access">
@@ -277,13 +277,13 @@ header('Expires: 0');
                 </button>
 
                 <button type="button" class="portal-card" id="adminCard" data-login-view="admin"
-                   aria-label="Department Admin login — oversee operations and monitor authentication">
+                   aria-label="OSCA Department login — oversee operations and monitor authentication">
                     <div class="portal-card-icon admin" aria-hidden="true">
                         <i class="fas fa-user-cog"></i>
                     </div>
                     <div class="portal-card-body">
                         <span class="portal-role">Administrator access</span>
-                        <h4>Department Admin sign in</h4>
+                        <h4>OSCA Department sign in</h4>
                         <p>Manage operations and reports.</p>
                     </div>
                     <span class="portal-card-arrow" aria-hidden="true">
@@ -329,7 +329,7 @@ header('Expires: 0');
                     <div class="form-group"><label for="adminUsername">Username</label><input id="adminUsername" name="username" class="form-control" value="<?php echo $loginView === 'admin' ? htmlspecialchars($_POST['username'] ?? '') : ''; ?>" autocomplete="username" required></div>
                     <div class="form-group"><label for="adminPassword">Password</label><div class="password-field"><input type="password" id="adminPassword" name="password" class="form-control" autocomplete="current-password" required><button type="button" class="toggle-password" data-password-target="adminPassword" aria-label="Show password"><i class="fas fa-eye"></i></button></div></div>
                     <div class="portal-login-options"><label class="portal-remember"><input type="checkbox" name="remember"> Remember me</label><div class="portal-login-links"><button type="button" class="portal-signup-action" data-signup-view><i class="fas fa-user-plus" aria-hidden="true"></i> Create staff account</button><button type="button" class="portal-forgot" data-forgot-password>Forgot password?</button></div></div>
-                    <button type="submit" class="portal-login-submit">Sign in as Administrator <i class="fas fa-arrow-right" aria-hidden="true"></i></button>
+                    <button type="submit" class="portal-login-submit">Sign in to OSCA Department <i class="fas fa-arrow-right" aria-hidden="true"></i></button>
                     <div class="forgot-password-message" data-reset-message aria-live="polite"></div>
                     <div class="portal-otp-reset" data-otp-reset hidden>
                         <div class="portal-reset-header">
@@ -564,7 +564,7 @@ header('Expires: 0');
                 document.documentElement.classList.toggle('login-view-open', view === 'staff' || view === 'admin');
                 choices?.classList.add('is-hidden');
                 panels.forEach(panel => panel.classList.toggle('is-active', panel.dataset.loginPanel === view));
-                if (heading) heading.textContent = view === 'staff' ? 'SHDO sign in' : (view === 'admin' ? 'Administrator sign in' : 'Create staff account');
+                if (heading) heading.textContent = view === 'staff' ? 'SHDO sign in' : (view === 'admin' ? 'OSCA Department sign in' : 'Create staff account');
                 if (description) description.textContent = view === 'signup' ? 'Enter the staff member’s details and provide the authorization password.' : 'Enter your account details to continue.';
                 const active = panels.find(panel => panel.dataset.loginPanel === view);
                 window.requestAnimationFrame(() => active?.querySelector('input:not([type="hidden"]), iframe')?.focus());

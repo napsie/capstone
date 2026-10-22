@@ -133,6 +133,19 @@ $oscaData = array_filter(
     static fn($column) => isset($oscaInputMap[$column]) && array_key_exists($oscaInputMap[$column], $_POST),
     ARRAY_FILTER_USE_KEY
 );
+// Validate pension identifiers on edits as well as public submissions.
+if ($applicationType === 'pension') {
+    unset($oscaData['control_no']);
+    if (array_key_exists('atmCardNo', $_POST)) {
+        $atmNumber = trim((string)$_POST['atmCardNo']);
+        if (!isValidAtmOrStubNumber($atmNumber)) {
+            echo json_encode(['success' => false, 'message' => 'ATM or Temporary Cash Card Stub Number must contain digits only, up to 16 digits.']);
+            exit;
+        }
+        $oscaData['atm_card_no'] = $atmNumber;
+    }
+}
+
 // For burial assistance this is the deceased person's existing OSCA ID, not a
 // newly issued ID, so authorized staff may correct it with the rest of F7.
 if ($applicationType === 'burial' && array_key_exists('seniorIdNo', $_POST)) {

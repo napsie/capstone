@@ -57,10 +57,10 @@ body {
     opacity: 0.15;
 }
 .page-bg--root::before {
-    background-image: url('../../images/landing-background-new3.png');
+    background-image: url('../../images/landing-background-new4.png');
 }
 .page-bg--pages::before {
-    background-image: url('../../images/landing-background-new3.png');
+    background-image: url('../../images/landing-background-new4.png');
     background-position: left bottom;
     opacity: 0.82;
     filter: saturate(0.88) contrast(1.03);

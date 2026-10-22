@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['resetPassword'])) {
             background-color: var(--bg);
             background-image:
                 linear-gradient(rgba(15, 23, 34, 0.84), rgba(15, 23, 34, 0.88)),
-                url('../images/landing-background-new3.png');
+                url('../images/landing-background-new4.png');
             background-size: cover;
             background-position: left bottom;
             background-repeat: no-repeat;

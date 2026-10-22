@@ -561,6 +561,8 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
     }
     .benefit-choice-card:disabled:hover { transform: none; border-color: #d8e1ec; box-shadow: none; }
     .benefit-choice-ineligible { display:block; margin-top:10px; color:#b91c1c; font-size:.76rem; font-weight:800; line-height:1.4; }
+    .benefit-choice-ineligible.benefit-choice-complete { color:#15803d; }
+    .benefit-choice-card.benefit-complete:disabled { opacity:1; filter:none; border-color:#bbf7d0; background:#f0fdf4; }
 
     .public-benefit-modal { display:none; position:fixed; inset:0; z-index:3000; align-items:center; justify-content:center; padding:20px; background:rgba(15,23,42,.72); backdrop-filter:blur(4px); }
     .public-benefit-modal.open { display:flex; }
@@ -779,9 +781,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             }
             if ($benefitPortalMode
                 && $selectedPublicBenefit === 'Local Social Pension Assessment'
-                && $verifiedBenefitAge !== null
-                && $verifiedBenefitAge >= 80
-                && empty($hasCompletedLandbankEnrollment)) {
+                && ($verifiedBenefitAge === null || $verifiedBenefitAge < 65 || empty($hasPensionLandbankAccess))) {
                 $selectedPublicBenefit = '';
             }
             $hasSelectedPublicBenefit = $selectedPublicBenefit !== '';
@@ -796,21 +796,21 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                         $ageBlocked = $benefitPortalMode && ($verifiedBenefitAge === null || $verifiedBenefitAge < $minimumBenefitAge);
                         $milestoneBlocked = $benefitPortalMode && $value === 'Milestone Cash Gift' && $verifiedMilestoneAge === null;
                         $alreadyApplied = $benefitPortalMode && array_key_exists($value, $unavailableBenefitRequests);
+                        $benefitComplete = $alreadyApplied && in_array(strtolower(trim((string)$unavailableBenefitRequests[$value])), ['verified', 'approved', 'released', 'completed', 'done'], true);
                         $residencyBlocked = $benefitPortalMode && !empty($transferBenefitsLocked) && $value !== 'Senior Citizen ID Registration';
                         $landbankPrerequisiteBlocked = $benefitPortalMode
                             && $value === 'Local Social Pension Assessment'
-                            && $verifiedBenefitAge !== null
-                            && $verifiedBenefitAge >= 80
-                            && empty($hasCompletedLandbankEnrollment);
+                            && empty($hasPensionLandbankAccess);
                         $benefitBlocked = $ageBlocked || $milestoneBlocked || $alreadyApplied || $residencyBlocked || $landbankPrerequisiteBlocked;
                         ?>
-                        <button type="button" class="benefit-choice-card<?php echo $residencyBlocked ? ' residency-locked' : ''; ?>" style="--benefit-color:<?php echo $color; ?>" data-benefit-value="<?php echo htmlspecialchars($value); ?>" data-residency-locked="<?php echo $residencyBlocked ? 'true' : 'false'; ?>" aria-pressed="false" <?php echo $benefitBlocked ? 'disabled aria-disabled="true"' : ''; ?> onclick="openPublicBenefitModal(<?php echo htmlspecialchars(json_encode($value), ENT_QUOTES, 'UTF-8'); ?>, this)">
+                        <button type="button" class="benefit-choice-card<?php echo $residencyBlocked ? ' residency-locked' : ''; ?><?php echo $benefitComplete ? ' benefit-complete' : ''; ?>" style="--benefit-color:<?php echo $color; ?>" data-benefit-value="<?php echo htmlspecialchars($value); ?>" data-residency-locked="<?php echo $residencyBlocked ? 'true' : 'false'; ?>" aria-pressed="false" <?php echo $benefitBlocked ? 'disabled aria-disabled="true"' : ''; ?> onclick="openPublicBenefitModal(<?php echo htmlspecialchars(json_encode($value), ENT_QUOTES, 'UTF-8'); ?>, this)">
                             <span class="benefit-choice-check"><i class="fas fa-check" aria-hidden="true"></i></span>
                             <span class="benefit-choice-icon"><i class="<?php echo $icon; ?>" aria-hidden="true"></i></span>
                             <span class="benefit-choice-title"><?php echo htmlspecialchars($title); ?></span>
                             <span class="benefit-choice-desc"><?php echo htmlspecialchars($description); ?></span>
-                            <?php if ($residencyBlocked): ?><span class="benefit-choice-ineligible"><i class="fas fa-lock" aria-hidden="true"></i> Available <?php echo htmlspecialchars($transferBenefitEligibleAt->format('F j, Y')); ?> after the 2-year residency period.</span>
-                            <?php elseif ($landbankPrerequisiteBlocked): ?><span class="benefit-choice-ineligible"><i class="fas fa-lock" aria-hidden="true"></i> Complete the Land Bank Cash Card Enrollment application first to unlock Local Pension.</span>
+                            <?php if ($benefitComplete): ?><span class="benefit-choice-ineligible benefit-choice-complete"><i class="fas fa-circle-check" aria-hidden="true"></i> Already applied — <?php echo htmlspecialchars($unavailableBenefitRequests[$value]); ?>.</span>
+                            <?php elseif ($residencyBlocked): ?><span class="benefit-choice-ineligible"><i class="fas fa-lock" aria-hidden="true"></i> Available <?php echo htmlspecialchars($transferBenefitEligibleAt->format('F j, Y')); ?> after the 2-year residency period.</span>
+                            <?php elseif ($landbankPrerequisiteBlocked): ?><span class="benefit-choice-ineligible"><i class="fas fa-lock" aria-hidden="true"></i> Local Pension requires age 65 or older and a Land Bank card or submitted Land Bank Cash Card Enrollment application. Apply for Land Bank first.</span>
                             <?php elseif ($alreadyApplied): ?><span class="benefit-choice-ineligible">Already applied — <?php echo htmlspecialchars($unavailableBenefitRequests[$value]); ?>.</span>
                             <?php elseif ($ageBlocked): ?><span class="benefit-choice-ineligible">Not eligible at current age<?php echo $verifiedBenefitAge !== null ? ' (' . (int)$verifiedBenefitAge . ')' : ''; ?>. Required: <?php echo $minimumBenefitAge; ?> or older.</span>
                             <?php elseif ($milestoneBlocked): ?><span class="benefit-choice-ineligible">Not eligible at current age<?php echo $verifiedBenefitAge !== null ? ' (' . (int)$verifiedBenefitAge . ')' : ''; ?>. Required: 80, 85, 90, 95, or 100+.</span><?php endif; ?>
@@ -1056,12 +1056,11 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                     <h4 class="benefit-panel-title">Local Senior Pension Form</h4>
                     <p class="benefit-panel-copy">Complete the personal and economic-status fields shown on the official Local Senior Pension Form.</p>
                     <div class="form-row">
-                        <div class="form-group"><label for="pensionControlNo">Control Number</label><input type="text" id="pensionControlNo" name="controlNo" class="form-control" value="<?php echo $old('controlNo'); ?>"></div>
-                        <div class="form-group"><label for="atmCardNo">ATM Number or Temporary Cash Card Stub Number <span style="color:#b91c1c;">*</span></label><input type="text" id="atmCardNo" name="atmCardNo" class="form-control" value="<?php echo $old('atmCardNo'); ?>" data-benefit-required></div>
-                    </div>
-                    <div class="form-group">
-                        <label for="pensionSeniorIdNo">Senior Citizen ID Number</label>
-                        <input type="text" id="pensionSeniorIdNo" class="form-control" value="<?php echo htmlspecialchars((string)($verifiedSenior['senior_id_no'] ?? '')); ?>" readonly>
+                        <div class="form-group">
+                            <label for="pensionSeniorIdNo">Senior Citizen ID Number</label>
+                            <input type="text" id="pensionSeniorIdNo" class="form-control" value="<?php echo htmlspecialchars((string)($verifiedSenior['senior_id_no'] ?? '')); ?>" readonly>
+                        </div>
+                        <div class="form-group"><label for="atmCardNo">ATM Number or Temporary Cash Card Stub Number <span style="color:#b91c1c;">*</span></label><input type="text" id="atmCardNo" name="atmCardNo" class="form-control" value="<?php echo $old('atmCardNo'); ?>" inputmode="numeric" maxlength="16" pattern="[0-9]{1,16}" title="Enter digits only, up to 16 digits." placeholder="Enter ATM or temporary stub number" aria-describedby="atmCardNoHint" data-benefit-required><small id="atmCardNoHint" class="form-text">Digits only, maximum 16 digits. No spaces or hyphens.</small></div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">

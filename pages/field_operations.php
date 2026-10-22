@@ -73,7 +73,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (mb_strlen($name) < 2) operationsRedirect('Personnel name must contain at least 2 characters.', false);
             if (mb_strlen($name) > 60) operationsRedirect('Personnel name must not exceed 60 characters.', false);
             if (!preg_match("/^[\\p{L}][\\p{L}\\p{M} .'-]*$/u", $name)) operationsRedirect('Personnel name may contain letters, spaces, periods, apostrophes, and hyphens only.', false);
-            if (!in_array($position, ['Social Worker', 'Nurse', 'Field Officer', 'Other'], true)) operationsRedirect('Select a valid personnel position.', false);
+            if (!in_array($position, ['Social Worker', 'Nurse', 'Field Officer', 'SHDO', 'Other'], true)) operationsRedirect('Select a valid personnel position.', false);
+            if ($position === 'Other') {
+                $position = normalizeWhitespace(strip_tags((string)($_POST['position_other'] ?? '')));
+                if ($position === '') operationsRedirect('Please specify the other personnel position.', false);
+                if (mb_strlen($position) > 100) operationsRedirect('Personnel position must not exceed 100 characters.', false);
+            }
             if ($assignedBarangay !== '' && !in_array($assignedBarangay, $barangays_list, true)) operationsRedirect('Select a valid barangay assignment.', false);
             $contact = normalizePhoneNumber($contact);
             if (!isValidPhilippineMobileNumber($contact)) operationsRedirect('Contact number must contain exactly 11 digits and begin with 09.', false);
@@ -595,7 +600,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
             <div class="panel"><div class="panel-head"><h2>Add Home Visit Personnel</h2></div><div class="panel-body">
                 <form method="post" class="form-grid"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>"><input type="hidden" name="action" value="add_personnel">
                     <div class="field"><label for="personnelFullName">Full Name</label><input id="personnelFullName" name="full_name" maxlength="60" minlength="2" pattern="[A-Za-zÀ-ÖØ-öø-ÿ .'-]+" title="Use letters, spaces, periods, apostrophes, and hyphens only. Maximum 60 characters." autocomplete="name" required><small class="muted">Maximum 60 characters. Letters and name punctuation only.</small></div>
-                      <div class="field"><label>Position</label><select name="position" required><option value="">Select position</option><option>Social Worker</option><option>Nurse</option><option>Field Officer</option><option>Other</option></select></div>
+                      <div class="field"><label for="personnelPosition">Position</label><select id="personnelPosition" name="position" required><option value="">Select position</option><option>Social Worker</option><option>Nurse</option><option>Field Officer</option><option>SHDO</option><option>Other</option></select><div id="personnelPositionOtherField" hidden><label for="personnelPositionOther">Specify Other Position</label><input id="personnelPositionOther" name="position_other" maxlength="100" placeholder="Enter personnel position" disabled></div></div>
                       <div class="field"><label>Contact Number</label><input type="tel" name="contact_number" maxlength="11" pattern="09[0-9]{9}" inputmode="numeric" placeholder="09XXXXXXXXX" title="Enter an 11-digit Philippine mobile number beginning with 09." required></div>
                       <div class="field"><label>Barangay Assignment (optional)</label><select name="barangay"><option value="">City-wide</option><?php foreach ($barangays_list as $barangayOption): ?><option value="<?= htmlspecialchars($barangayOption) ?>"><?= htmlspecialchars($barangayOption) ?></option><?php endforeach; ?></select></div>
                     <div class="full"><button class="btn btn-primary" type="submit"><i class="fas fa-user-plus"></i> Add Personnel</button></div>
@@ -616,6 +621,20 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
 <script src="../assets/js/sidebar-toggle.js?v=3"></script>
 <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 <script>
+const personnelPosition = document.getElementById('personnelPosition');
+const personnelPositionOther = document.getElementById('personnelPositionOther');
+function updatePersonnelPositionOther() {
+    if (!personnelPosition || !personnelPositionOther) return;
+    const isOther = personnelPosition.value === 'Other';
+    document.getElementById('personnelPositionOtherField').hidden = !isOther;
+    personnelPositionOther.disabled = !isOther;
+    personnelPositionOther.required = isOther;
+}
+personnelPosition?.addEventListener('change', () => {
+    updatePersonnelPositionOther();
+    if (personnelPosition.value === 'Other') personnelPositionOther.focus();
+});
+updatePersonnelPositionOther();
     const isDepartmentUser = <?= $isDepartment ? 'true' : 'false' ?>;
     const visitFilterForm = document.querySelector('.visit-filters');
     const visitSearchInput = document.getElementById('visitSearch');

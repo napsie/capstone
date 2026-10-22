@@ -433,7 +433,13 @@ function processProxyRegistration(): array
                 $emergencyContactRelationship = (string)($verifiedSenior['claimant_relationship'] ?? '');
             }
 
-            if (in_array($requestedBenefit, ['Local Social Pension Assessment', 'Burial Assistance'], true)) {
+            if ($requestedBenefit === 'Local Social Pension Assessment'
+                && !hasPensionLandbankPrerequisite($conn, $verifiedSenior)) {
+                $result['message'] = 'Apply for Land Bank Cash Card Enrollment first. Local Pension requires an existing Land Bank card or a submitted Land Bank application and a minimum age of 65.';
+                return $result;
+            }
+
+            if ($requestedBenefit === 'Burial Assistance') {
                 $cashCardStmt = $conn->prepare("SELECT COUNT(*) FROM applications
                     WHERE (parent_senior_id = ? OR senior_id_no = ? OR id_number = ?)
                       AND (application_type = 'landbank' OR COALESCE(landbank_card_no, '') <> '')
@@ -500,6 +506,11 @@ function processProxyRegistration(): array
                 $claimantRelationship = $emergencyContactRelationship;
                 break;
             case 'Local Social Pension Assessment':
+                $controlNo = ''; // Control numbers are not collected for pension applications.
+                if (!isValidAtmOrStubNumber($atmCardNo)) {
+                    $result['message'] = 'ATM or Temporary Cash Card Stub Number is required and must contain digits only, up to 16 digits. Do not include spaces or hyphens.';
+                    return $result;
+                }
                 foreach ([
                     'Pension status' => $isPensioner,
                     'Permanent income status' => $isPermanentIncome,

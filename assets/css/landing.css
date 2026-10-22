@@ -10,7 +10,7 @@ body {
 }
 
 .page-bg--root::before {
-    background-image: url('../../images/landing-background-new3.png');
+    background-image: url('../../images/landing-background-new4.png');
     opacity: 1;
     background-position: left bottom;
     filter: none;
