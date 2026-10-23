@@ -19,6 +19,18 @@ function hasPensionLandbankPrerequisite(PDO $conn, array $senior): bool {
     return (int)$stmt->fetchColumn() > 0;
 }
 
+/** Burial claims require verified enrollment or a verified existing card. */
+function hasBurialLandbankPrerequisite(PDO $conn, array $senior): bool {
+    $stmt = $conn->prepare("SELECT COUNT(*) FROM applications
+        WHERE (parent_senior_id = ? OR (senior_id_no <> '' AND senior_id_no = ?) OR id_number = ?)
+          AND COALESCE(is_archived, 0) = 0
+          AND LOWER(COALESCE(status, '')) NOT IN ('rejected', 'cancelled')
+          AND workflow_state IN ('Verified','Approved','Released')
+          AND (application_type = 'landbank' OR TRIM(COALESCE(landbank_card_no, '')) <> '')");
+    $stmt->execute([$senior['id_number'], $senior['senior_id_no'] ?? '', $senior['id_number']]);
+    return (int)$stmt->fetchColumn() > 0;
+}
+
 function isValidAtmOrStubNumber(string $value): bool {
     return preg_match('/^[0-9]{1,16}$/D', $value) === 1;
 }

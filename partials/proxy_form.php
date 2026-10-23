@@ -785,6 +785,10 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 $selectedPublicBenefit = '';
             }
             $hasSelectedPublicBenefit = $selectedPublicBenefit !== '';
+            if ($benefitPortalMode && $selectedPublicBenefit === 'Burial Assistance' && empty($hasBurialLandbankAccess)) {
+                $selectedPublicBenefit = '';
+                $hasSelectedPublicBenefit = false;
+            }
             ?>
             <div class="public-benefit-selector<?php echo $hasSelectedPublicBenefit ? ' hidden' : ''; ?>" id="publicBenefitSelector">
                 <p class="benefit-choice-hint"><i class="fas fa-hand-pointer" aria-hidden="true"></i> Click a benefit below to view details and requirements before applying.</p>
@@ -799,8 +803,8 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                         $benefitComplete = $alreadyApplied && in_array(strtolower(trim((string)$unavailableBenefitRequests[$value])), ['verified', 'approved', 'released', 'completed', 'done'], true);
                         $residencyBlocked = $benefitPortalMode && !empty($transferBenefitsLocked) && $value !== 'Senior Citizen ID Registration';
                         $landbankPrerequisiteBlocked = $benefitPortalMode
-                            && $value === 'Local Social Pension Assessment'
-                            && empty($hasPensionLandbankAccess);
+                            && (($value === 'Local Social Pension Assessment' && empty($hasPensionLandbankAccess))
+                                || ($value === 'Burial Assistance' && empty($hasBurialLandbankAccess)));
                         $benefitBlocked = $ageBlocked || $milestoneBlocked || $alreadyApplied || $residencyBlocked || $landbankPrerequisiteBlocked;
                         ?>
                         <button type="button" class="benefit-choice-card<?php echo $residencyBlocked ? ' residency-locked' : ''; ?><?php echo $benefitComplete ? ' benefit-complete' : ''; ?>" style="--benefit-color:<?php echo $color; ?>" data-benefit-value="<?php echo htmlspecialchars($value); ?>" data-residency-locked="<?php echo $residencyBlocked ? 'true' : 'false'; ?>" aria-pressed="false" <?php echo $benefitBlocked ? 'disabled aria-disabled="true"' : ''; ?> onclick="openPublicBenefitModal(<?php echo htmlspecialchars(json_encode($value), ENT_QUOTES, 'UTF-8'); ?>, this)">
@@ -810,7 +814,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                             <span class="benefit-choice-desc"><?php echo htmlspecialchars($description); ?></span>
                             <?php if ($benefitComplete): ?><span class="benefit-choice-ineligible benefit-choice-complete"><i class="fas fa-circle-check" aria-hidden="true"></i> Already applied — <?php echo htmlspecialchars($unavailableBenefitRequests[$value]); ?>.</span>
                             <?php elseif ($residencyBlocked): ?><span class="benefit-choice-ineligible"><i class="fas fa-lock" aria-hidden="true"></i> Available <?php echo htmlspecialchars($transferBenefitEligibleAt->format('F j, Y')); ?> after the 2-year residency period.</span>
-                            <?php elseif ($landbankPrerequisiteBlocked): ?><span class="benefit-choice-ineligible"><i class="fas fa-lock" aria-hidden="true"></i> Local Pension requires age 65 or older and a Land Bank card or submitted Land Bank Cash Card Enrollment application. Apply for Land Bank first.</span>
+                            <?php elseif ($landbankPrerequisiteBlocked): ?><span class="benefit-choice-ineligible"><i class="fas fa-lock" aria-hidden="true"></i> <?php echo $value === 'Burial Assistance' ? 'Burial Assistance requires a verified Land Bank enrollment or existing verified Land Bank card. Apply for Land Bank and wait for verification first.' : 'Local Pension requires age 65 or older and a Land Bank card or submitted Land Bank Cash Card Enrollment application. Apply for Land Bank first.'; ?></span>
                             <?php elseif ($alreadyApplied): ?><span class="benefit-choice-ineligible">Already applied — <?php echo htmlspecialchars($unavailableBenefitRequests[$value]); ?>.</span>
                             <?php elseif ($ageBlocked): ?><span class="benefit-choice-ineligible">Not eligible at current age<?php echo $verifiedBenefitAge !== null ? ' (' . (int)$verifiedBenefitAge . ')' : ''; ?>. Required: <?php echo $minimumBenefitAge; ?> or older.</span>
                             <?php elseif ($milestoneBlocked): ?><span class="benefit-choice-ineligible">Not eligible at current age<?php echo $verifiedBenefitAge !== null ? ' (' . (int)$verifiedBenefitAge . ')' : ''; ?>. Required: 80, 85, 90, 95, or 100+.</span><?php endif; ?>

@@ -440,14 +440,8 @@ function processProxyRegistration(): array
             }
 
             if ($requestedBenefit === 'Burial Assistance') {
-                $cashCardStmt = $conn->prepare("SELECT COUNT(*) FROM applications
-                    WHERE (parent_senior_id = ? OR senior_id_no = ? OR id_number = ?)
-                      AND (application_type = 'landbank' OR COALESCE(landbank_card_no, '') <> '')
-                      AND COALESCE(workflow_state, '') IN ('Verified','Approved','Released')
-                      AND COALESCE(is_archived, 0) = 0");
-                $cashCardStmt->execute([$verifiedSenior['id_number'], $verifiedSenior['senior_id_no'] ?? '', $verifiedSenior['id_number']]);
-                if ((int)$cashCardStmt->fetchColumn() === 0) {
-                    $result['message'] = 'A verified Landbank Cash Card is required for Local Pension and Burial Assistance. Cash Gift or Handog Pasasalamat may be selected instead.';
+                if (!hasBurialLandbankPrerequisite($conn, $verifiedSenior)) {
+                    $result['message'] = 'Burial Assistance requires a verified Land Bank enrollment or existing verified Land Bank card. Apply for Land Bank and wait for verification first.';
                     return $result;
                 }
             }

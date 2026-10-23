@@ -97,9 +97,11 @@ $resetUrl = 'senior_benefits.php?reset=1';
 $benefitPortalMode = true;
 $unavailableBenefitRequests = [];
 $hasPensionLandbankAccess = false;
+$hasBurialLandbankAccess = false;
 
 if ($verifiedSenior) {
     $hasPensionLandbankAccess = hasPensionLandbankPrerequisite($conn, $verifiedSenior);
+    $hasBurialLandbankAccess = hasBurialLandbankPrerequisite($conn, $verifiedSenior);
 
     $existingBenefitsStmt = $conn->prepare("SELECT requested_benefit, workflow_state, status
         FROM applications
