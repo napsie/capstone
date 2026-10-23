@@ -2317,10 +2317,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                     <i class="fas fa-download"></i> Download Queue Token
                 </button>
                 <a href="<?php echo htmlspecialchars($resetUrl); ?>" class="btn btn-muted" style="padding:10px;">
-                    <i class="fas fa-redo"></i> Done / Register Another
-                </a>
-                <a href="senior_benefits.php" class="btn btn-muted" style="padding:10px;">
-                    <i class="fas fa-hand-holding-heart"></i> Apply for Benefits After ID Approval
+                    <i class="fas fa-house"></i> Done / Back to Home
                 </a>
             </div>
         </div>

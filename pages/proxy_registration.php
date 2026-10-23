@@ -10,7 +10,7 @@ $proxyTransactionId = $proxyResult['transactionId'];
 $proxyOption = $proxyResult['option'] ?? '';
 $proxyMessage = $proxyResult['message'] ?? '';
 $formAction = 'proxy_registration.php';
-$resetUrl = 'proxy_registration.php';
+$resetUrl = '../index.php';
 ?>
 <!DOCTYPE html>
 <html lang="en">

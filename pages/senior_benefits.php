@@ -10,7 +10,7 @@ $verifiedSenior = null;
 
 if (isset($_GET['reset'])) {
     unset($_SESSION['senior_benefit_access']);
-    header('Location: senior_benefits.php');
+    header('Location: proxy_registration.php');
     exit;
 }
 
@@ -102,7 +102,7 @@ $proxyTransactionId = $proxyResult['transactionId'];
 $proxyOption = $proxyResult['option'] ?? '';
 $proxyMessage = $proxyResult['message'] ?? '';
 $formAction = 'senior_benefits.php';
-$resetUrl = 'senior_benefits.php?reset=1';
+$resetUrl = '../index.php';
 $benefitPortalMode = true;
 $unavailableBenefitRequests = [];
 $hasPensionLandbankAccess = false;
@@ -132,6 +132,12 @@ if ($verifiedSenior) {
             $unavailableBenefitRequests[$request] = (string)($existingBenefit['workflow_state'] ?: $existingBenefit['status'] ?: 'Pending');
         }
     }
+}
+
+// Keep the transaction portal as the single entry point for verification.
+if (!$verifiedSenior && !$proxySuccess) {
+    header('Location: proxy_registration.php');
+    exit;
 }
 
 $benefitPrefill = [];
