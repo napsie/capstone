@@ -30,9 +30,12 @@ try {
         exit;
     }
 
-    // The current replacement, if any, supersedes the original uploaded photo.
+    // Metadata-only public upload rows have no image bytes. Only an actual
+    // replacement supersedes the original photo in private storage.
     $replacementStmt = $conn->prepare("SELECT document_data FROM application_documents
         WHERE application_id = ? AND document_key = 'id_image' AND is_current = 1
+          AND (source <> 'public_application_reference' OR file_size > 0)
+          AND OCTET_LENGTH(document_data) > 0
         ORDER BY id DESC LIMIT 1");
     $replacementStmt->execute([$id]);
     $replacement = $replacementStmt->fetch(PDO::FETCH_ASSOC);
