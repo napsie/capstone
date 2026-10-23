@@ -56,6 +56,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_benefit_access
     }
 }
 
+// The transaction portal verifies in place and navigates only on success.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_benefit_access'])
+    && ($_POST['verification_response'] ?? '') === 'json') {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    echo json_encode(['success' => $verifiedSenior !== null, 'error' => $accessError]);
+    exit;
+}
+
 if (!$verifiedSenior && !empty($_SESSION['senior_benefit_access'])) {
     $access = $_SESSION['senior_benefit_access'];
     if ((int)($access['verified_at'] ?? 0) < time() - 1800) {

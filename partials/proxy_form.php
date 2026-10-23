@@ -734,14 +734,48 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 <p>Enter the approved Senior Citizen ID number and permanent token to open the benefits application.</p>
             </div>
         </div>
-        <form method="post" action="senior_benefits.php">
+        <form method="post" action="senior_benefits.php" id="benefitIdentityForm">
             <input type="hidden" name="verify_benefit_access" value="1">
             <div class="benefit-access-grid">
                 <div><label for="benefitSeniorCitizenId">Senior Citizen ID Number</label><input id="benefitSeniorCitizenId" name="seniorCitizenId" autocomplete="off" required></div>
                 <div><label for="benefitPermanentToken">Permanent ID Token</label><input id="benefitPermanentToken" name="permanentToken" value="PRX-" placeholder="PRX-XXXX" maxlength="16" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="benefitPermanentTokenHint" required><small id="benefitPermanentTokenHint">PRX- is added for you. Enter the remaining letters or numbers.</small></div>
             </div>
             <button class="benefit-access-submit" type="submit"><i class="fas fa-user-check" aria-hidden="true"></i> Verify Identity</button>
+            <div id="benefitIdentityError" class="alert-banner alert-banner-error" role="alert" tabindex="-1" hidden></div>
         </form>
+        <script>
+        (() => {
+            const form = document.getElementById('benefitIdentityForm');
+            const error = document.getElementById('benefitIdentityError');
+            const button = form.querySelector('button[type="submit"]');
+            form.addEventListener('submit', async event => {
+                event.preventDefault();
+                if (button.disabled) return;
+                error.hidden = true;
+                button.disabled = true;
+                form.setAttribute('aria-busy', 'true');
+                try {
+                    const data = new FormData(form);
+                    data.set('verification_response', 'json');
+                    const response = await fetch(form.action, {method: 'POST', body: data, credentials: 'same-origin', headers: {'Accept': 'application/json'}});
+                    if (!response.ok) throw new Error('Verification request failed');
+                    const result = await response.json();
+                    if (result.success) {
+                        window.location.assign(form.action);
+                        return;
+                    }
+                    error.textContent = result.error || 'The Senior ID number and permanent token could not be validated.';
+                } catch (failure) {
+                    error.textContent = 'Unable to verify right now. Please try again.';
+                } finally {
+                    button.disabled = false;
+                    form.removeAttribute('aria-busy');
+                }
+                error.hidden = false;
+                error.focus();
+            });
+        })();
+        </script>
     </div>
     <?php endif; ?>
 
