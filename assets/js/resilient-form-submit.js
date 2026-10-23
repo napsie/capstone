@@ -83,8 +83,8 @@
                     }
                     const serverError = page.querySelector('.alert-banner-error, .alert-error')?.textContent?.trim();
                     const message = serverError || 'The application was not accepted. Review the required information and try again.';
-                    const upload = /upload|file|image|document/i.test(message) ? files[0] : null;
-                    errorBeside(upload || submit, message);
+                    // A general server error does not identify a particular file input.
+                    errorBeside(submit, message);
                 } catch (error) {
                     errorBeside(files[0] || submit, files.length
                         ? 'The upload was interrupted. Your entries and selected files are still here. Check your connection and try again.'

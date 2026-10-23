@@ -11,7 +11,7 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['department_ad
     exit;
 }
 
-$dashboardCacheKey = 'department-dashboard|' . ($_SESSION['role'] ?? '') . '|' . ($_SESSION['user_id'] ?? '');
+$dashboardCacheKey = 'department-dashboard-v2|' . ($_SESSION['role'] ?? '') . '|' . ($_SESSION['user_id'] ?? '');
 if ($cachedResponse = readDashboardResponseCache($dashboardCacheKey)) {
     header('X-Seniorlink-Cache: HIT');
     echo json_encode($cachedResponse);
@@ -101,6 +101,7 @@ try {
         SELECT
             SUM(CASE WHEN workflow_state IN ('Verified','Approved','Released') THEN 1 ELSE 0 END) AS verified_applications,
             SUM(CASE WHEN application_type = 'senior' THEN 1 ELSE 0 END) AS senior_citizen_records,
+            SUM(CASE WHEN application_type = 'senior' AND workflow_state = 'Deceased' THEN 1 ELSE 0 END) AS deceased_records,
             SUM(CASE WHEN application_type = 'senior' AND COALESCE(workflow_state, status, 'Received') NOT IN ('Verified','Approved','Released','Rejected') THEN 1 ELSE 0 END) AS pending_senior_id,
             SUM(CASE WHEN application_type = 'landbank' AND COALESCE(workflow_state, status, 'Received') NOT IN ('Verified','Approved','Released','Rejected') THEN 1 ELSE 0 END) AS pending_landbank,
             SUM(CASE WHEN application_type = 'pension' AND COALESCE(workflow_state, status, 'Received') NOT IN ('Verified','Approved','Released','Rejected') THEN 1 ELSE 0 END) AS pending_local_pension,
@@ -114,6 +115,7 @@ try {
     $summary = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
     $response['data']['verified_applications'] = (int)($summary['verified_applications'] ?? 0);
     $response['data']['senior_citizen_records'] = (int)($summary['senior_citizen_records'] ?? 0);
+    $response['data']['deceased_records'] = (int)($summary['deceased_records'] ?? 0);
     $response['data']['pending_senior_id'] = (int)($summary['pending_senior_id'] ?? 0);
     $response['data']['pending_landbank'] = (int)($summary['pending_landbank'] ?? 0);
     $response['data']['pending_local_pension'] = (int)($summary['pending_local_pension'] ?? 0);

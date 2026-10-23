@@ -679,6 +679,7 @@ try {
                 <a class="stat-card stat-card-link stat-green" href="verify_document.php?type=pension" aria-label="Open pending Local Senior Pension applications"><div class="stat-icon"><i class="fas fa-wallet"></i></div><div class="stat-info"><h3 class="dashboard-loading" id="pendingLocalPension">0</h3><p>Local Senior Pension</p><small>Pending Local Senior Pension</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>
                 <a class="stat-card stat-card-link stat-violet" href="verify_document.php?type=milestone_gift" aria-label="Open pending Octogenarian Benefit applications"><div class="stat-icon"><i class="fas fa-gift"></i></div><div class="stat-info"><h3 class="dashboard-loading" id="pendingOctogenarian">0</h3><p>Octogenarian Benefits</p><small>Pending Octogenarian Benefit</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>
                 <a class="stat-card stat-card-link stat-amber" href="verify_document.php?type=burial" aria-label="Open pending Burial Assistance applications"><div class="stat-icon"><i class="fas fa-ribbon"></i></div><div class="stat-info"><h3 class="dashboard-loading" id="pendingBurial">0</h3><p>Burial Assistance</p><small>Pending Burial Assistance</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>
+                <a class="stat-card stat-card-link stat-violet" href="deceased_records.php" aria-label="Open deceased records"><div class="stat-icon"><i class="fas fa-cross" aria-hidden="true"></i></div><div class="stat-info"><h3 class="dashboard-loading" id="deceasedRecords" aria-live="polite" aria-label="Loading deceased records">0</h3><p>Deceased Records</p><small>View deceased senior profiles</small></div><i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i></a>
             </div>
             
             <div class="dashboard-section-heading"><div><span>Citywide performance</span><h2>Application insights</h2><p>Compare barangay activity and track long-term record trends.</p></div></div>
@@ -886,6 +887,7 @@ try {
             document.getElementById('pendingLocalPension').textContent = data.pending_local_pension ?? 0;
             document.getElementById('pendingOctogenarian').textContent = data.pending_octogenarian ?? 0;
             document.getElementById('pendingBurial').textContent = data.pending_burial ?? 0;
+            document.getElementById('deceasedRecords').textContent = data.deceased_records ?? 0;
             document.querySelectorAll('.dashboard-loading').forEach(node => { node.classList.remove('dashboard-loading'); node.removeAttribute('aria-label'); });
         }
 

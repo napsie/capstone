@@ -824,14 +824,20 @@ function processProxyRegistration(): array
             'auth_letter_file' => $authLetter,
         ];
         $requiredProcessedFiles = [];
+        $failedDocumentLabels = [];
         foreach ($requiredUploads as $key => $label) {
-            if ($key !== $governmentIdField) $requiredProcessedFiles[] = $processedUploads[$key] ?? null;
+            if ($key !== $governmentIdField) {
+                $requiredProcessedFiles[] = $processedUploads[$key] ?? null;
+                if (($processedUploads[$key] ?? null) === null) $failedDocumentLabels[] = $label;
+            }
         }
         if ($requestedBenefit === 'Burial Assistance' && trim((string)($_POST['controlNo'] ?? '')) !== '') {
             $requiredProcessedFiles[] = $authLetter;
+            if ($authLetter === null) $failedDocumentLabels[] = 'Applicable Affidavit';
         }
         if (in_array(null, $requiredProcessedFiles, true)) {
-            $result['message'] = 'One or more documents could not be processed. Upload only valid JPEG, PNG, GIF, or PDF files and try again.';
+            $result['message'] = 'Could not process: ' . implode(', ', $failedDocumentLabels)
+                . '. Each file must be no larger than 10 MB. Use JPEG or PNG for the ID photo; other documents accept JPEG, PNG, GIF, or PDF. If these requirements are met, please contact staff to check document storage.';
             return $result;
         }
         if ($governmentIdField !== null && (!$governmentIdFront || !$governmentIdBack)) {

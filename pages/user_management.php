@@ -177,15 +177,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addUser'])) {
 
 // Fetch users from the database
 try {
-    $barangayFilter = isset($_GET['barangay']) ? $_GET['barangay'] : 'all';
+    $userSearch = is_string($_GET['search'] ?? null) ? trim($_GET['search']) : '';
+    $barangayFilter = is_string($_GET['barangay'] ?? null) ? $_GET['barangay'] : 'all';
     if ($barangayFilter !== 'all' && !in_array($barangayFilter, $barangays_list, true)) $barangayFilter = 'all';
+    $roleFilter = is_string($_GET['role'] ?? null) ? $_GET['role'] : 'all';
+    if (!in_array($roleFilter, ['all', 'department_admin', 'barangay_staff'], true)) $roleFilter = 'all';
     $userPage = max(1, (int)($_GET['user_page'] ?? 1));
     $usersPerPage = 10;
     $userWhere = '(is_archived = 0 OR is_archived IS NULL)';
     $userParams = [];
+    if ($userSearch !== '') {
+        $userWhere .= " AND (CONCAT_WS(' ', first_name, last_name) LIKE :search_name OR email LIKE :search_email OR username LIKE :search_username)";
+        $userParams[':search_name'] = '%' . $userSearch . '%';
+        $userParams[':search_email'] = '%' . $userSearch . '%';
+        $userParams[':search_username'] = '%' . $userSearch . '%';
+    }
     if ($barangayFilter !== 'all') {
         $userWhere .= ' AND barangay = :barangay';
         $userParams[':barangay'] = $barangayFilter;
+    }
+    if ($roleFilter !== 'all') {
+        $userWhere .= ' AND role = :role';
+        $userParams[':role'] = $roleFilter;
     }
     $countStmt = $conn->prepare("SELECT COUNT(*) FROM users WHERE {$userWhere}");
     $countStmt->execute($userParams);
@@ -270,6 +283,17 @@ try {
         .btn-danger { background: var(--accent); }
         .btn-warning { background: var(--warning); }
         .table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .user-filters { display:flex; align-items:end; gap:14px; flex-wrap:wrap; padding:18px; margin:18px 0; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; }
+        .user-filter-field { flex:1 1 220px; }
+        .user-filter-field label { display:block; margin-bottom:7px; color:#475569; font-size:.85rem; font-weight:600; }
+        .user-filter-field input, .user-filter-field select { width:100%; min-height:44px; padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; background:#fff; color:#172033; font:inherit; }
+        .user-filter-field input:focus, .user-filter-field select:focus { outline:2px solid #93c5fd; outline-offset:2px; }
+        .user-filters .btn { min-height:44px; margin:0; }
+        .user-filter-reset { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:10px 18px; border:1px solid #cbd5e1; border-radius:8px; background:#fff; color:#475569; font-size:.9rem; font-weight:600; text-decoration:none; white-space:nowrap; box-shadow:0 1px 2px rgba(15,23,42,.05); transition:background .15s,color .15s,border-color .15s,box-shadow .15s; }
+        .user-filter-reset { background:#2563eb; color:#fff; border-color:#2563eb; box-shadow:0 3px 8px rgba(37,99,235,.22); }
+        .user-filter-reset:hover { background:#1d4ed8; color:#fff; border-color:#1d4ed8; box-shadow:0 4px 10px rgba(37,99,235,.3); }
+        .user-filter-reset:focus-visible { outline:2px solid #2563eb; outline-offset:3px; }
+        .user-filter-reset:active { background:#1e40af; border-color:#1e40af; box-shadow:none; }
         .table th, .table td { padding: 12px; text-align: left; border-bottom: 1px solid #e0e0e0; }
         .table th { background: var(--primary); color: white; font-weight: 600; }
         .form-group { margin-bottom: 15px; }
@@ -498,6 +522,31 @@ try {
             <!-- Users List Card -->
             <div class="card">
                 <h3><i class="fas fa-users"></i> Users List</h3>
+                <form method="get" class="user-filters" role="search" aria-label="Filter user accounts">
+                    <div class="user-filter-field">
+                        <label for="userSearch">Search users</label>
+                        <input type="search" id="userSearch" name="search" placeholder="Name, email, or username" value="<?= htmlspecialchars($userSearch, ENT_QUOTES) ?>">
+                    </div>
+                    <div class="user-filter-field">
+                        <label for="userBarangay">Barangay</label>
+                        <select id="userBarangay" name="barangay">
+                            <option value="all">All barangays</option>
+                            <?php foreach ($barangays_list as $filterBarangay): ?>
+                                <option value="<?= htmlspecialchars($filterBarangay, ENT_QUOTES) ?>" <?= $barangayFilter === $filterBarangay ? 'selected' : '' ?>><?= htmlspecialchars($filterBarangay) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="user-filter-field">
+                        <label for="userRole">Role</label>
+                        <select id="userRole" name="role">
+                            <option value="all">All roles</option>
+                            <option value="department_admin" <?= $roleFilter === 'department_admin' ? 'selected' : '' ?>>Department Admin</option>
+                            <option value="barangay_staff" <?= $roleFilter === 'barangay_staff' ? 'selected' : '' ?>>Barangay Staff (SHDO)</option>
+                        </select>
+                    </div>
+                    <noscript><button type="submit" class="btn btn-primary">Apply Filters</button></noscript>
+                    <a class="user-filter-reset" href="user_management.php" aria-label="Clear all user filters"><i class="fas fa-rotate-left" aria-hidden="true"></i> Clear</a>
+                </form>
                 <div class="table-container">
                     <table class="table">
                         <thead>
@@ -511,6 +560,9 @@ try {
                             </tr>
                         </thead>
                         <tbody id="usersTableBody">
+                            <?php if (!$users): ?>
+                                <tr><td colspan="6" style="text-align:center;padding:28px;color:#64748b;">No users match your filters.</td></tr>
+                            <?php endif; ?>
                             <?php foreach ($users as $user): ?>
                                 <tr>
                                     <td>
@@ -998,6 +1050,43 @@ try {
         });
     });
     </script>
+<script>
+(() => {
+    const form = document.querySelector('.user-filters');
+    const search = document.getElementById('userSearch');
+    const barangay = document.getElementById('userBarangay');
+    const role = document.getElementById('userRole');
+    if (!form || !search || !barangay || !role) return;
+    let timer;
+    let composing = false;
+    const focusKey = 'seniorlink-user-search-focus';
+    function applyFilters(restoreFocus) {
+        clearTimeout(timer);
+        try {
+            if (restoreFocus) sessionStorage.setItem(focusKey, '1');
+            else sessionStorage.removeItem(focusKey);
+        } catch (_) {}
+        form.requestSubmit();
+    }
+    function scheduleSearch() {
+        clearTimeout(timer);
+        if (!composing) timer = setTimeout(() => applyFilters(true), 600);
+    }
+    search.addEventListener('input', scheduleSearch);
+    search.addEventListener('compositionstart', () => { composing = true; clearTimeout(timer); });
+    search.addEventListener('compositionend', () => { composing = false; scheduleSearch(); });
+    barangay.addEventListener('change', () => applyFilters(false));
+    role.addEventListener('change', () => applyFilters(false));
+    form.addEventListener('submit', () => clearTimeout(timer));
+    try {
+        if (sessionStorage.getItem(focusKey)) {
+            sessionStorage.removeItem(focusKey);
+            search.focus({ preventScroll: true });
+            search.setSelectionRange(search.value.length, search.value.length);
+        }
+    } catch (_) {}
+})();
+</script>
 <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 <?php if ($message !== ''): ?>
 <script>window.addEventListener('DOMContentLoaded', () => window.showCarelinkResult(<?= json_encode($message) ?>, true));</script>

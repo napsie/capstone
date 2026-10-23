@@ -317,7 +317,7 @@ if ($visitDateFilter !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $visitDateFi
 $visitBarangayFilter = $isDepartment ? trim((string)($_GET['visit_barangay'] ?? 'all')) : $barangay;
 if ($isDepartment && $visitBarangayFilter !== 'all' && !in_array($visitBarangayFilter, $barangays_list, true)) $visitBarangayFilter = 'all';
 
-$visitSql = "SELECT a.id_number, a.full_name, a.barangay, a.contact_number, a.workflow_state, a.application_type, a.date_submitted,
+$visitSql = "SELECT a.id_number, COALESCE(NULLIF(TRIM(a.proxy_token), ''), a.id_number) AS senior_token, a.full_name, a.barangay, a.contact_number, a.workflow_state, a.application_type, a.date_submitted,
                     a.home_visit_eligibility, a.home_visit_eligibility_reason, a.home_visit_scheduled_at,
                     a.home_visit_status, a.home_visit_notes, a.home_visit_personnel_id,
                     a.living_arrangement, a.is_pensioner, a.pension_source, a.pension_amount,
@@ -338,7 +338,8 @@ if ($isDepartment && $visitBarangayFilter !== 'all') {
     $visitParams[] = $visitBarangayFilter;
 }
 if ($visitSearch !== '') {
-    $visitSql .= ' AND (a.full_name LIKE ? OR a.id_number LIKE ?)';
+    $visitSql .= ' AND (a.full_name LIKE ? OR a.id_number LIKE ? OR a.proxy_token LIKE ?)';
+    $visitParams[] = "%{$visitSearch}%";
     $visitParams[] = "%{$visitSearch}%";
     $visitParams[] = "%{$visitSearch}%";
 }
@@ -516,7 +517,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
                     <div class="field"><label for="visitStatus">Status</label><select id="visitStatus" name="visit_status"><option value="all">All statuses</option><?php foreach (array_slice($allowedVisitStatuses, 1) as $statusOption): ?><option value="<?= htmlspecialchars($statusOption) ?>" <?= $visitStatusFilter === $statusOption ? 'selected' : '' ?>><?= htmlspecialchars($statusOption) ?></option><?php endforeach; ?></select></div>
                     <div class="field"><label for="visitDate">Home Visit Date</label><input id="visitDate" name="visit_date" type="date" value="<?= htmlspecialchars($visitDateFilter) ?>"></div>
                     <?php if ($isDepartment): ?><div class="field"><label for="visitBarangay">Barangay</label><select id="visitBarangay" name="visit_barangay"><option value="all">All barangays</option><?php foreach ($barangays_list as $barangayOption): ?><option value="<?= htmlspecialchars($barangayOption) ?>" <?= $visitBarangayFilter === $barangayOption ? 'selected' : '' ?>><?= htmlspecialchars($barangayOption) ?></option><?php endforeach; ?></select></div><?php endif; ?>
-                    <a class="btn btn-muted" href="field_operations.php">Clear</a>
+                    <a class="btn btn-primary" href="field_operations.php"><i class="fas fa-rotate-left" aria-hidden="true"></i> Clear</a>
                     <p class="filter-note"><i class="fas fa-circle-info" aria-hidden="true"></i> Results update automatically when you change a filter.</p>
                 </form>
                 <div class="table-wrap">
@@ -527,7 +528,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
                         <?php foreach ($visits as $visit): ?>
                             <?php
                                 $visitDeadlineAlerts = applicationDeadlineAlerts($visit);
-                                $displayVisitToken = (string)$visit['id_number'];
+                                $displayVisitToken = (string)$visit['senior_token'];
                             ?>
                             <tr id="visit-row-<?= htmlspecialchars($visit['id_number']) ?>">
                                 <td><strong><?= htmlspecialchars($visit['full_name']) ?></strong><br><span class="muted"><?= htmlspecialchars($displayVisitToken) ?></span></td>
@@ -703,7 +704,7 @@ updatePersonnelPositionOther();
             || Boolean(visit.living_arrangement);
         if (assignmentEditor && !hasEvaluation) {
             document.getElementById('visitApplicationId').value = visit.id_number;
-            document.getElementById('visitEditorName').textContent = visit.full_name + ' (' + visit.id_number + ')';
+            document.getElementById('visitEditorName').textContent = visit.full_name + ' (' + (visit.senior_token || visit.id_number) + ')';
             if (document.getElementById('visitReason')) document.getElementById('visitReason').value = visit.home_visit_eligibility_reason || '';
             if (document.getElementById('visitPersonnel')) document.getElementById('visitPersonnel').value = visit.home_visit_personnel_id || '';
             if (document.getElementById('visitSchedule')) document.getElementById('visitSchedule').value = toDateInput(visit.home_visit_scheduled_at);

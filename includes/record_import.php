@@ -111,7 +111,7 @@ function spreadsheetMainChildren(SimpleXMLElement $element): SimpleXMLElement {
     return $mainNamespace ? $element->children($mainNamespace) : $element;
 }
 
-function excelCellText(SimpleXMLElement $cell, array $sharedStrings): string {
+function excelCellText(SimpleXMLElement $cell, array $sharedStrings, array $numberFormats = []): string {
     $type = (string)$cell->attributes()['t'];
     $cellChildren = spreadsheetMainChildren($cell);
     if ($type === 'inlineStr') {
@@ -125,6 +125,12 @@ function excelCellText(SimpleXMLElement $cell, array $sharedStrings): string {
         return trim(implode('', $parts));
     }
     $value = (string)$cellChildren->v;
+    // Excel stores zero-padded IDs as numbers plus a display format (e.g. 00000).
+    // Apply only integer zero masks; leave dates and other numeric formats raw.
+    $format = $numberFormats[(int)$cell->attributes()['s']] ?? '';
+    if (($type === '' || $type === 'n') && preg_match('/^0+$/', $format) && preg_match('/^\d+$/', $value)) {
+        return str_pad($value, strlen($format), '0', STR_PAD_LEFT);
+    }
     return $type === 's' ? trim((string)($sharedStrings[(int)$value] ?? '')) : trim($value);
 }
 
@@ -168,6 +174,23 @@ function parseXlsxRecords(string $path): array {
     if (!class_exists('ZipArchive')) throw new RuntimeException('Excel import requires the PHP ZIP extension.');
     $zip = new ZipArchive();
     if ($zip->open($path) !== true) throw new RuntimeException('Unable to open the Excel workbook.');
+    $numberFormats = [];
+    $stylesXml = $zip->getFromName('xl/styles.xml');
+    $styles = $stylesXml === false ? null : parseImportXml($stylesXml);
+    if ($styles !== null) {
+        $styleChildren = spreadsheetMainChildren($styles);
+        $customFormats = [];
+        if (isset($styleChildren->numFmts)) {
+            foreach (spreadsheetMainChildren($styleChildren->numFmts)->numFmt as $format) {
+                $customFormats[(int)$format->attributes()['numFmtId']] = (string)$format->attributes()['formatCode'];
+            }
+        }
+        if (isset($styleChildren->cellXfs)) {
+            foreach (spreadsheetMainChildren($styleChildren->cellXfs)->xf as $style) {
+                $numberFormats[] = $customFormats[(int)$style->attributes()['numFmtId']] ?? '';
+            }
+        }
+    }
     $sharedStrings = [];
     $sharedXml = $zip->getFromName('xl/sharedStrings.xml');
     if ($sharedXml !== false) {
@@ -202,7 +225,7 @@ function parseXlsxRecords(string $path): array {
             $letters = $match[0] ?? 'A';
             $index = 0;
             foreach (str_split($letters) as $letter) $index = ($index * 26) + (ord($letter) - 64);
-            $values[$index - 1] = excelCellText($cell, $sharedStrings);
+            $values[$index - 1] = excelCellText($cell, $sharedStrings, $numberFormats);
         }
         if ($values) { ksort($values); $rows[] = $values; }
     }
