@@ -913,7 +913,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 <div class="form-row">
                     <div class="form-group">
                         <label for="birthDate">Birth Date <span style="color:#b91c1c;">*</span></label>
-                        <input type="date" id="birthDate" name="birthDate" class="form-control" value="<?php echo $old('birthDate'); ?>" autocomplete="bday" required onchange="calculateProxyAge2026()">
+                        <input type="date" id="birthDate" name="birthDate" class="form-control" value="<?php echo $old('birthDate'); ?>" min="<?php echo (new DateTimeImmutable('today', new DateTimeZone('Asia/Manila')))->modify('-126 years')->modify('+1 day')->format('Y-m-d'); ?>" max="<?php echo (new DateTimeImmutable('today', new DateTimeZone('Asia/Manila')))->format('Y-m-d'); ?>" autocomplete="bday" required oninput="calculateProxyAge2026()" onchange="calculateProxyAge2026()">
                         <div id="ageCheckStatus" style="margin-top: 8px;"></div>
                     </div>
                     <div class="form-group">
@@ -1510,7 +1510,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             if (dob > today) return null;
             let age = today.getFullYear() - year;
             if (today.getMonth() < month - 1 || (today.getMonth() === month - 1 && today.getDate() < day)) age--;
-            return age;
+            return age <= 125 ? age : null;
         }
 
         function syncMilestoneEligibility(age) {
@@ -1558,7 +1558,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             birthDateInput.setCustomValidity(benefitEligible
                 ? ''
                 : (age === null
-                    ? 'Enter a valid birth date that is not in the future.'
+                    ? 'Check the birth year. Enter a valid birth date with an age of 125 or younger, not in the future.'
                     : `The applicant must be at least ${minimumAge} years old for this service.`));
 
             if (benefitEligible) {
@@ -1575,7 +1575,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 });
             } else {
                 // Fail Rule
-                let reason = 'Enter a valid birth date that is not in the future.';
+                let reason = 'Check the birth year. Enter a valid birth date with an age of 125 or younger, not in the future.';
                 if (age !== null && selectedBenefit === 'Milestone Cash Gift') reason = `Age ${age} is not an eligible milestone. The senior must currently be 80, 85, 90, 95, or 100+.`;
                 else if (age !== null) reason = `Current age is ${age}; this service requires age ${minimumAge} or older.`;
                 ageCheckStatus.innerHTML = `<span style="color: #dc2626; font-weight: 600;"><i class="fas fa-times-circle"></i> Ineligible: ${reason}</span>`;

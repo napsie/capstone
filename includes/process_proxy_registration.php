@@ -691,9 +691,16 @@ function processProxyRegistration(): array
             if ($birthDate === '') {
                 throw new Exception('Missing birth date');
             }
-            $dob = new DateTime($birthDate);
-            $targetDate = new DateTime('today');
+            $dob = DateTimeImmutable::createFromFormat('!Y-m-d', $birthDate, new DateTimeZone('Asia/Manila'));
+            if (!$dob || $dob->format('Y-m-d') !== $birthDate) {
+                throw new Exception('Invalid birth date');
+            }
+            $targetDate = new DateTimeImmutable('today', new DateTimeZone('Asia/Manila'));
             $age = $targetDate->diff($dob)->y;
+            if ($age > 125) {
+                $result['message'] = 'Please check the birth year. The maximum accepted age is 125 years.';
+                return $result;
+            }
             $minimumAge = (int)$benefitDefinition['minimum_age'];
             if ($dob > $targetDate || $age < $minimumAge) {
                 $result['message'] = "Eligibility Check Failed: Applicant must be at least {$minimumAge} years old (current age: {$age}).";
