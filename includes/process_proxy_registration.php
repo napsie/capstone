@@ -865,8 +865,8 @@ function processProxyRegistration(): array
                         name_on_card, tin, id_type_presented, nationality, source_of_funds, milestone_age, landbank_card_no,
                         applicant_name, claimant_name, claimant_relationship, claimant_contact, additional_notes,
                         proxy_birth_date, proxy_email, proxy_address, proxy_id_type, proxy_id_number,
-                        id_image
-                    ) VALUES (" . implode(', ', array_fill(0, 83, '?')) . ")";
+                        id_image, senior_id_no, parent_senior_id
+                    ) VALUES (" . implode(', ', array_fill(0, 85, '?')) . ")";
 
             $stmt = $conn->prepare($sql);
             $stmt->execute([
@@ -891,15 +891,13 @@ function processProxyRegistration(): array
                 $claimantName ?: null, $claimantName ?: null, $claimantRelationship ?: null, $claimantContact ?: null,
                 $otherAssistanceDetails ?: null,
                 $proxyBirthDate ?: null, $proxyEmail ?: null, $proxyAddress ?: null, $proxyIdType ?: null, $proxyIdNumber ?: null,
-                $idImage
+                $idImage,
+                $verifiedSenior ? $verifiedSenior['senior_id_no'] : null,
+                $verifiedSenior ? $verifiedSenior['id_number'] : null
             ]);
             if ($governmentIdField !== null) {
                 $governmentIdStmt = $conn->prepare('UPDATE applications SET government_id_front = ?, government_id_back = ? WHERE id_number = ?');
                 $governmentIdStmt->execute([$governmentIdFront, $governmentIdBack, $transactionId]);
-            }
-            if ($verifiedSenior) {
-                $linkStmt = $conn->prepare('UPDATE applications SET senior_id_no = ?, parent_senior_id = ? WHERE id_number = ?');
-                $linkStmt->execute([$verifiedSenior['senior_id_no'], $verifiedSenior['id_number'], $transactionId]);
             }
             $seniorDocumentLabels = match ($idPurpose) {
                 'change' => ['Original Senior Citizen ID', '', ''],
