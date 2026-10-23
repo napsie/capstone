@@ -16,7 +16,11 @@ if (isset($_GET['reset'])) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_benefit_access'])) {
     $seniorId = strtoupper(trim((string)($_POST['seniorCitizenId'] ?? '')));
-    $token = strtoupper(trim((string)($_POST['permanentToken'] ?? '')));
+    $token = strtoupper(preg_replace('/\s+/u', '', str_replace(
+        ['‐', '‑', '‒', '–', '—', '―', '−', '﹘', '﹣', '－'],
+        '-', trim((string)($_POST['permanentToken'] ?? ''))
+    )) ?? '');
+    $token = preg_replace('/^PRX(?=[A-Z0-9]{4,12}$)/', 'PRX-', $token) ?? $token;
     $attempts = (array)($_SESSION['senior_benefit_attempts'] ?? []);
     $attempts = array_values(array_filter($attempts, static fn($time) => (int)$time > time() - 600));
 
@@ -148,7 +152,7 @@ if ($verifiedSenior) {
     <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/seniorlink-public.css?v=2"><link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
+    <link rel="stylesheet" href="../assets/css/seniorlink-public.css?v=20261023"><link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <link rel="stylesheet" href="../assets/css/benefit-information-modal.css?v=1">
     <style>
         body{font-family:Inter,sans-serif}.page-bg{position:fixed!important;inset:0!important;width:100vw;height:100vh;transform:none!important;animation:none!important}.page-bg::before,.page-bg::after{transform:none!important;animation:none!important}.benefit-portal{padding-top:80px}.benefit-access{max-width:760px;padding:0}.benefit-access h1{margin-bottom:8px}.benefit-access>p{margin-bottom:20px;color:#64748b;line-height:1.55}
@@ -157,6 +161,26 @@ if ($verifiedSenior) {
         .information-change-guide{display:flex;gap:13px;align-items:flex-start;margin:0 0 18px;padding:16px 18px;border:1px solid #93c5fd;border-radius:12px;background:#eff6ff;color:#1e3a8a;line-height:1.5}.information-change-guide[hidden]{display:none}.information-change-guide__icon{display:grid;place-items:center;flex:0 0 36px;height:36px;border-radius:9px;background:#2563eb;color:#fff}.information-change-guide strong{display:block;margin-bottom:5px;font-size:1rem}.information-change-guide ol{margin:0 0 12px;padding-left:20px}.information-change-guide li+li{margin-top:3px}.information-change-guide__button{padding:8px 11px;border:1px solid #93c5fd;border-radius:8px;background:#fff;color:#1d4ed8;font:inherit;font-size:.86rem;font-weight:700;cursor:pointer}.information-change-guide__button:hover{background:#dbeafe}.information-change-guide__button:focus-visible{outline:3px solid rgba(37,99,235,.3);outline-offset:2px}
         .transfer-residency-notice{display:flex;gap:16px;align-items:flex-start;margin:0 0 22px;padding:20px;border:1px solid #f6c453;border-radius:14px;background:#fffbeb;color:#713f12}.transfer-residency-notice__icon{display:grid;place-items:center;flex:0 0 42px;height:42px;border-radius:11px;background:#f59e0b;color:#fff;font-size:1.1rem}.transfer-residency-notice h2{margin:0 0 7px;font-size:1.08rem;color:#78350f}.transfer-residency-notice p{margin:0;line-height:1.55}.transfer-residency-dates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 20px;margin-top:13px;padding-top:13px;border-top:1px solid #fde68a}.transfer-residency-dates span{display:block;font-size:.78rem;font-weight:700;color:#92400e}.transfer-residency-dates strong{display:block;margin-top:3px;color:#451a03}
         @media(max-width:700px){.access-grid{grid-template-columns:1fr}.benefit-portal{padding-top:62px}.verified-banner{margin:72px 12px 16px;align-items:flex-start;flex-direction:column}.transfer-residency-notice{margin-left:0;margin-right:0;padding:16px}.transfer-residency-dates{grid-template-columns:1fr}}
+        .benefit-portal{max-width:860px;padding-top:90px}
+        .benefit-portal .proxy-panel{border:1px solid #dbe4ef;border-radius:22px;box-shadow:0 24px 64px rgba(9,30,60,.24)}
+        .benefit-portal .proxy-panel-header{padding:28px 32px;background:linear-gradient(135deg,#102a4c,#196b49);color:#fff}
+        .benefit-portal .proxy-panel-header h2{margin:0 0 8px;color:#fff;font-size:1.65rem;line-height:1.25}
+        .benefit-portal .proxy-panel-header p{margin:0;color:#dbe9ed;line-height:1.6}
+        .benefit-portal .proxy-panel-header .hero-badge{color:#fde6a3;border-color:#ffffff38;background:#ffffff12}
+        .benefit-portal .proxy-panel-body{padding:30px 32px 32px}
+        .benefit-access{max-width:none}
+        .benefit-access .access-heading{display:flex;align-items:center;gap:9px;margin-bottom:12px;color:#166534;font-size:.8rem;font-weight:700}
+        .benefit-access h1{margin:0 0 10px;font-size:1.4rem;line-height:1.3}
+        .benefit-access>p{margin:0 0 24px;font-size:.95rem}
+        .access-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+        .access-field{min-width:0}.access-field label{text-transform:none;font-size:.86rem}
+        .access-field input{box-sizing:border-box;min-height:50px;background:#f8fafc;color:#172033;font:inherit;transition:border-color .15s,box-shadow .15s}
+        .access-field input:focus{outline:0;border-color:#2563eb;box-shadow:0 0 0 3px #2563eb26;background:#fff}
+        .access-field small{display:block;margin-top:8px;color:#64748b;font-size:.78rem;line-height:1.5}
+        #permanentToken{text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+        .access-btn{min-height:50px;margin-top:24px;font:inherit;font-weight:700;background:#2563eb;display:flex;align-items:center;justify-content:center;gap:9px}
+        .access-btn:hover{background:#1d4ed8}.access-btn:focus-visible{outline:3px solid #93c5fd;outline-offset:3px}
+        @media(max-width:700px){.benefit-portal{padding-top:76px}.benefit-portal .proxy-section{padding:0 14px 32px}.benefit-portal .proxy-panel-header,.benefit-portal .proxy-panel-body{padding:24px 20px}.benefit-portal .proxy-panel-header h2{font-size:1.4rem}.access-grid{grid-template-columns:1fr;gap:18px}}
     </style>
 </head>
 <body>
@@ -173,14 +197,14 @@ if ($verifiedSenior) {
             </div>
             <div class="proxy-panel-body">
                 <div class="benefit-access">
-                    <div class="hero-badge"><i class="fas fa-shield-halved"></i> Verified Senior Access</div>
+                    <div class="access-heading"><i class="fas fa-shield-halved" aria-hidden="true"></i> Verified Senior Access</div>
                     <h1>Apply for Senior Benefits</h1>
                     <p>Benefits are available only after the Senior Citizen ID application is approved. Enter the issued ID number and the permanent token received during the original ID application.</p>
                     <form method="post">
                         <input type="hidden" name="verify_benefit_access" value="1">
                         <div class="access-grid">
-                            <div class="access-field"><label for="seniorCitizenId">Senior Citizen ID Number</label><input id="seniorCitizenId" name="seniorCitizenId" autocomplete="off" required></div>
-                            <div class="access-field"><label for="permanentToken">Permanent ID Token</label><input id="permanentToken" name="permanentToken" placeholder="PRX-XXXX" maxlength="16" autocomplete="off" required></div>
+                            <div class="access-field"><label for="seniorCitizenId">Senior Citizen ID Number</label><input id="seniorCitizenId" name="seniorCitizenId" value="<?php echo htmlspecialchars((string)($_POST['seniorCitizenId'] ?? '')); ?>" autocomplete="off" aria-describedby="seniorIdHint" required><small id="seniorIdHint">Enter the number on your issued Senior Citizen ID.</small></div>
+                            <div class="access-field"><label for="permanentToken">Permanent ID Token</label><input id="permanentToken" name="permanentToken" value="<?php echo htmlspecialchars($token ?? ''); ?>" placeholder="PRX-XXXX" maxlength="16" minlength="8" pattern="PRX-[A-Z0-9]{4,12}" autocapitalize="characters" spellcheck="false" autocomplete="off" aria-describedby="tokenHint" required><small id="tokenHint">The PRX- prefix is added automatically.</small></div>
                         </div>
                         <button class="access-btn" type="submit"><i class="fas fa-user-check"></i> Verify Identity</button>
                         <?php if ($accessError): ?><div class="access-error" role="alert"><?php echo htmlspecialchars($accessError); ?></div><?php endif; ?>
@@ -209,7 +233,9 @@ if ($verifiedSenior) {
     <?php include '../partials/proxy_form.php'; ?>
 </div></div></section></div>
 <?php endif; ?>
+<script src="../assets/js/prx-token-input.js?v=5"></script>
 <script>
+window.initPermanentTokenInput?.(document.getElementById('permanentToken'));
 document.addEventListener('DOMContentLoaded',()=>{
   <?php if ($verifiedSenior): ?>
   const editableChangeFields = new Set(['lastName','firstName','middleName','suffix','birthDate','contactNumber','placeOfBirth','gender','civilStatus','mothersMaidenName','houseNo','street','zipCode','landmark','seniorEmail']);

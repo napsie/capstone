@@ -26,7 +26,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CPRAS Dashboard - Barangay <?php echo $barangayName; ?></title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=4">
+    <link rel="stylesheet" href="../assets/css/barangay-sidebar.css?v=20261023">
     <style>
         /* Page-specific styles for dashboard */
         .welcome-message {
@@ -135,7 +135,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
     <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
-    <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=7">
+    <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=20261023">
     <link rel="stylesheet" href="../assets/css/metric-cards.css?v=2">
     <link rel="stylesheet" href="../assets/css/dashboard-calendar.css?v=12">
 <script src="../assets/js/dashboard-chart-fallback.js?v=1"></script>

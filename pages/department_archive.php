@@ -191,7 +191,7 @@ $auditHasFilters = $search !== '' || $barangayFilter !== 'all' || $auditEventFil
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SENIORLINK — Department Master Archive</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=5">
+    <link rel="stylesheet" href="../assets/css/department-sidebar.css?v=20261023">
     <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <script src="../assets/js/modal-hci.js?v=2" defer></script>
     <style>
