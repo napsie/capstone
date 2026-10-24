@@ -13,12 +13,18 @@ foreach ([['MATCH', null, 'senior', ' JUAN   DELA CRUZ ', '1950-01-01', '', 'Bag
           ['LINKED', 'SELF', 'senior', 'Juan Dela Cruz', '1950-01-01', '', 'Bagong Ilog', '', 0],
           ['BENEFIT', 'SELF', 'pension', 'Juan Dela Cruz', '1950-01-01', '', 'Bagong Ilog', '', 0]] as $row) $insert->execute($row);
 $person = array_combine(['id_number','parent_senior_id','application_type','full_name','birth_date','contact_number','barangay','senior_id_no','is_archived'], $base);
+$person['id_purpose'] = 'new';
 $city = findPossibleDuplicateRecords($conn, $person);
 if ($city['count'] !== 3) throw new RuntimeException('Self or linked requests included, or candidates missed');
 $local = findPossibleDuplicateRecords($conn, $person, 'Bagong Ilog');
 if ($local['count'] !== 2) throw new RuntimeException('Barangay authorization scope failed');
-$person['id_number'] = 'BENEFIT'; $person['parent_senior_id'] = 'SELF';
-if (findPossibleDuplicateRecords($conn, $person)['count'] !== 3) throw new RuntimeException('Linked parent incorrectly flagged');
+$person['id_number'] = 'BENEFIT'; $person['parent_senior_id'] = 'SELF'; $person['application_type'] = 'pension';
+if (findPossibleDuplicateRecords($conn, $person)['count'] !== 0) throw new RuntimeException('Benefit incorrectly flagged');
+$person['application_type'] = 'senior';
+foreach (['lost', 'transfer', 'change', '', null] as $purpose) {
+    $person['id_purpose'] = $purpose;
+    if (findPossibleDuplicateRecords($conn, $person)['count'] !== 0) throw new RuntimeException('Non-new ID application incorrectly flagged');
+}
 echo "PASS database matching, self/parent exclusion, linked requests, archived records, and barangay scope\n";
 require_once __DIR__ . '/../includes/application_record_pagination.php';
 $conn->exec("ALTER TABLE applications ADD date_submitted DATETIME DEFAULT '2026-10-24 10:00:00'");

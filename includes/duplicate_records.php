@@ -25,6 +25,10 @@ function scoreDuplicateRecord(array $person, array $candidate): array {
 }
 
 function findPossibleDuplicateRecords(PDO $conn, array $person, ?string $barangay = null): array {
+    if (($person['application_type'] ?? '') !== 'senior'
+        || strtolower(trim((string)($person['id_purpose'] ?? ''))) !== 'new') {
+        return ['threshold' => 60, 'count' => 0, 'matches' => []];
+    }
     // Compare base registrations, not the legitimate service requests linked to them.
     $sql = "SELECT id_number, parent_senior_id, full_name, birth_date, contact_number, barangay, senior_id_no,
                    is_archived FROM applications WHERE application_type = 'senior'
