@@ -155,12 +155,13 @@ try {
     $application['burial_filing_days'] = $application['application_type'] === 'burial'
         ? filingWorkingDays($application['date_of_death'] ?? '', $application['date_submitted']) : null;
     // A matching-service failure must never prevent staff from opening a record.
-    try {
-        $application['duplicate_review'] = findPossibleDuplicateRecords($conn, $application,
-            $userRole === 'barangay_staff' ? $userBarangay : null);
-    } catch (Throwable $duplicateError) {
-        error_log('Duplicate review failed: ' . $duplicateError->getMessage());
-        $application['duplicate_review'] = ['unavailable' => true];
+    if (in_array($userRole, ['department_admin', 'super_admin'], true)) {
+        try {
+            $application['duplicate_review'] = findPossibleDuplicateRecords($conn, $application);
+        } catch (Throwable $duplicateError) {
+            error_log('Duplicate review failed: ' . $duplicateError->getMessage());
+            $application['duplicate_review'] = ['unavailable' => true];
+        }
     }
     echo json_encode($application);
 

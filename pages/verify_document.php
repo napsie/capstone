@@ -5,6 +5,7 @@ require_once '../includes/application_types.php';
 require_once '../includes/barangays_list.php';
 require_once '../includes/deadline_alerts.php';
 require_once '../includes/verification_queue.php';
+require_once '../includes/duplicate_records.php';
 
 // Check if user is logged in and authorized
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['department_admin', 'super_admin'])) {
@@ -68,7 +69,8 @@ if ($queuePageEnd - $queuePageStart < 4) {
     $queuePageEnd = min($queueTotalPages, $queuePageStart + 4);
 }
 
-$queueSql = "SELECT id_number as id, full_name, application_type, requested_benefit, id_purpose, barangay, date_submitted,
+$queueSql = "SELECT id_number as id, id_number, parent_senior_id, senior_id_no, birth_date, contact_number,
+                    full_name, application_type, requested_benefit, id_purpose, barangay, date_submitted,
                     status, workflow_state, home_visit_status, home_visit_scheduled_at, date_of_death, death_registration_date,
                     COALESCE((SELECT MAX(h.changed_at) FROM application_history h
                               WHERE h.application_id = applications.id_number AND h.new_state = applications.workflow_state), date_submitted) AS workflow_changed_at,
@@ -83,6 +85,15 @@ $queueStmt->bindValue(':queue_offset', $queueOffset, PDO::PARAM_INT);
 foreach ($queueParams as $key => $value) $queueStmt->bindValue(':' . $key, $value, PDO::PARAM_STR);
 $queueStmt->execute();
 $result = $queueStmt->fetchAll(PDO::FETCH_ASSOC);
+foreach ($result as &$queueApplication) {
+    try {
+        $queueApplication['duplicate_review'] = findPossibleDuplicateRecords($conn, $queueApplication);
+    } catch (Throwable $duplicateError) {
+        error_log('Queue duplicate review failed: ' . $duplicateError->getMessage());
+        $queueApplication['duplicate_review'] = ['unavailable' => true];
+    }
+}
+unset($queueApplication);
 $hasQueueFilters = $queueFilters['search'] !== ''
     || $queueFilters['type'] !== 'all'
     || $queueFilters['barangay'] !== 'all';
@@ -234,6 +245,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
         .records-tbl thead tr { background: #f8fafc; border-bottom: 2px solid var(--border); }
         .records-tbl th { padding: 12px 18px; text-align: left; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gray); white-space: nowrap; }
         .records-tbl td { padding: 13px 18px; font-size: 0.86rem; color: var(--primary); border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+        .duplicate-review-tag { display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:8px; padding:5px 9px; border:1px solid #f59e0b; border-radius:8px; background:#fffbeb; color:#92400e; font-size:.75rem; font-weight:700; }
         .records-tbl tbody tr { transition: background 0.15s; }
         .records-tbl tbody tr:nth-child(even) { background: #fafcff; }
         .records-tbl tbody tr:hover { background: #eff6ff; }
@@ -591,6 +603,12 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                                     <div class="name-cell">
                                         <div class="full-name"><?php echo htmlspecialchars($row['full_name']); ?></div>
                                         <div class="app-id"><?php echo htmlspecialchars($row['id']); ?></div>
+                                        <?php $duplicateReview = $row['duplicate_review']; ?>
+                                        <?php if (!empty($duplicateReview['count'])): ?>
+                                            <div><span class="duplicate-review-tag" title="Open Review to compare matching records. This flag does not block submission or verification."><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> Possible duplicate · <?php echo (int)$duplicateReview['matches'][0]['percentage']; ?>% · Manual review</span></div>
+                                        <?php elseif (!empty($duplicateReview['unavailable'])): ?>
+                                            <div><span class="duplicate-review-tag">Duplicate check unavailable · Open Review</span></div>
+                                        <?php endif; ?>
                                         <?php if ($deadlineAlerts): ?><div class="deadline-alerts">
                                             <?php foreach ($deadlineAlerts as $alert): ?><span class="deadline-alert deadline-alert--<?php echo htmlspecialchars($alert['level']); ?>" title="<?php echo htmlspecialchars($alert['detail']); ?>"><i class="fas fa-clock"></i><?php echo htmlspecialchars($alert['label']); ?></span><?php endforeach; ?>
                                         </div><?php endif; ?>

@@ -22,4 +22,8 @@ assert.ok(!context.window.renderApplicationVerificationDetails(app, { separateDu
 const verificationPage = fs.readFileSync(require('node:path').join(__dirname, '../pages/verify_document.php'), 'utf8');
 assert.ok(verificationPage.indexOf('id="verificationDuplicateWarning"') < verificationPage.indexOf('id="complianceList"'));
 assert.ok(verificationPage.includes("document.getElementById('verificationDuplicateWarning').innerHTML = '';"));
+assert.ok(verificationPage.includes('Possible duplicate ·'));
+assert.ok(verificationPage.includes("findPossibleDuplicateRecords($conn, $queueApplication)"));
+const detailsApi = fs.readFileSync(require('node:path').join(__dirname, '../api/get_application_details.php'), 'utf8');
+assert.ok(detailsApi.includes("if (in_array($userRole, ['department_admin', 'super_admin'], true))"));
 console.log('PASS duplicate warning in edit, verification, and record views; escaping, no-match, unavailable states, and prominent verification placement');
