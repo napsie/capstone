@@ -47,6 +47,10 @@
                     return;
                 }
                 clearError();
+                // Capture successful controls before disabling the clicked button.
+                const payload = new FormData(form);
+                const submitter = event.submitter || submit;
+                if (submitter.name) payload.append(submitter.name, submitter.value);
                 busy = true;
                 submit.disabled = true;
                 const originalText = submit.innerHTML;
@@ -54,9 +58,14 @@
                 const files = [...form.querySelectorAll('input[type="file"]')].filter(input => input.files?.length);
                 try {
                     const response = await fetch(form.action, {
-                        method: 'POST', body: new FormData(form), credentials: 'same-origin',
+                        method: 'POST', body: payload, credentials: 'same-origin',
                         headers: { 'X-Requested-With': 'SeniorlinkForm' },
                     });
+                    if ((response.headers.get('content-type') || '').includes('application/json')) {
+                        const result = await response.json();
+                        errorBeside(submit, result.message || 'Submission could not be processed. Please try again.');
+                        return;
+                    }
                     const html = await response.text();
                     const page = new DOMParser().parseFromString(html, 'text/html');
                     if (!response.ok) {
@@ -81,7 +90,9 @@
                         }
                         return;
                     }
-                    const serverError = page.querySelector('.alert-banner-error, .alert-error')?.textContent?.trim();
+                    const serverError = [...page.querySelectorAll('.alert-banner-error, .alert-error')]
+                        .filter(alert => !alert.closest('[hidden]'))
+                        .map(alert => alert.textContent.trim()).find(Boolean);
                     const message = serverError || 'The application was not accepted. Review the required information and try again.';
                     // A general server error does not identify a particular file input.
                     errorBeside(submit, message);

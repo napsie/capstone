@@ -53,6 +53,19 @@ const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
         assert.equal(await page.locator('#seniorName').inputValue(), 'Maria Test');
         console.log('PASS Expired session is explicit and keeps the form.');
 
+        await page.unroute('http://example.test/submit');
+        await page.route('http://example.test/submit', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: false, message: 'Emergency contact name is required.' }) }));
+        await page.locator('button[type=submit]').click();
+        await page.locator('[data-submission-error]').filter({ hasText: 'Emergency contact name is required.' }).waitFor();
+        assert.equal(await page.locator('#proof').evaluate(input => input.files.length), 1);
+        console.log('PASS Direct validation response displays the actual error and retains uploads.');
+
+        await page.unroute('http://example.test/submit');
+        await page.route('http://example.test/submit', route => route.fulfill({ status: 200, contentType: 'text/html', body: '<form id="mainAppForm"></form><div class="alert-banner-error" hidden></div><div class="alert-banner-error">Please select a valid health status.</div>' }));
+        await page.locator('button[type=submit]').click();
+        await page.locator('[data-submission-error]').filter({ hasText: 'Please select a valid health status.' }).waitFor();
+        console.log('PASS Hidden empty alert does not mask the actual server error.');
+
         await page.locator('#seniorName').focus();
         await page.setViewportSize({ width: 390, height: 430 });
         await page.setViewportSize({ width: 390, height: 740 });

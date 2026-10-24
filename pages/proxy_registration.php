@@ -4,6 +4,22 @@ require_once '../includes/barangays_list.php';
 require_once '../includes/application_types.php';
 
 $proxyResult = processProxyRegistration();
+// Failed asynchronous submissions need only the validation result, not the
+// complete form, embedded scripts, and upload widgets again.
+if ($_SERVER['REQUEST_METHOD'] === 'POST'
+    && ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'SeniorlinkForm'
+    && !$proxyResult['success']) {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    $message = trim((string)($proxyResult['message'] ?? ''));
+    if ($message === '') {
+        $message = empty($_POST)
+            ? 'The upload exceeds the server request limit. Choose smaller files and try again.'
+            : 'The submission could not be processed. Reload the page and try again.';
+    }
+    echo json_encode(['success' => false, 'message' => $message]);
+    exit;
+}
 $proxySuccess = $proxyResult['success'];
 $proxyQrUrl = $proxyResult['qrCodeUrl'];
 $proxyTransactionId = $proxyResult['transactionId'];
@@ -422,7 +438,7 @@ $resetUrl = '../index.php';
         <?php endif; ?>
     </script>
     <script src="../assets/js/form-drafts.js?v=1"></script>
-    <script src="../assets/js/resilient-form-submit.js?v=1"></script>
+    <script src="../assets/js/resilient-form-submit.js?v=2"></script>
     <script src="../assets/js/prx-token-input.js?v=1"></script>
     <script>
         SeniorlinkFormDrafts.initialize({ clearOnSuccess: <?php echo $proxySuccess ? 'true' : 'false'; ?> });

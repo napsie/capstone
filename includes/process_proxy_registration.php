@@ -170,7 +170,8 @@ function processProxyRegistration(): array
         return $result;
     }
 
-    reclaimLegacyPublicDocumentStorage($conn);
+    // Legacy document cleanup belongs to the deployment migration, not the
+    // applicant's save request (which must not scan/delete historical rows).
 
     $_POST = normalizeApplicationInput($_POST, $barangays_list);
 
