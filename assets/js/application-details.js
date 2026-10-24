@@ -275,10 +275,31 @@
         return '';
     }
 
+    function duplicateWarning(app) {
+        const review = app.duplicate_review;
+        if (!review) return '';
+        if (review.unavailable) return '<div role="status" style="padding:16px;border:1px solid #d97706;border-radius:10px;margin-bottom:16px">Duplicate checking is temporarily unavailable. Refresh this record before completing manual review.</div>';
+        if (!review.count) return '';
+        return `<section role="status" aria-label="Possible duplicate records" style="padding:18px;border:2px solid #d97706;border-radius:12px;background:#fffbeb;color:#78350f;margin-bottom:20px">
+            <h3 style="margin:0 0 8px">Possible duplicate records — manual review required</h3>
+            <p>${escapeHtml(review.count)} possible match(es). ${escapeHtml(review.scope)}.</p>
+            <p>Match indicator: points capped at 100%, not a probability. Review starts at 60 points. No records are automatically rejected or merged.</p>
+            <details open><summary>Compare matching records</summary>
+            ${review.matches.map(match => `<div style="padding:12px 0;border-top:1px solid #fcd34d">
+                <strong>${escapeHtml(match.percentage)}% match indicator (${escapeHtml(match.score)} points)</strong><br>
+                ${escapeHtml(match.full_name)} · ${escapeHtml(match.id_number)}${Number(match.is_archived) ? ' · Archived' : ''}<br>
+                Birth date: ${escapeHtml(match.birth_date)} · Barangay: ${escapeHtml(match.barangay)}<br>
+                Matching details: ${match.matched_fields.map(escapeHtml).join(', ')}
+            </div>`).join('')}
+            ${review.count > review.matches.length ? '<p>Showing the 20 highest scoring matches.</p>' : ''}</details>
+            <p>Compare the submitted identity documents and confirm whether these records belong to the same person before proceeding.</p>
+        </section>`;
+    }
+
     const wrap = sections => `<div class="application-detail-summary">${sections.filter(Boolean).join('')}</div>`;
 
     // The edit modal already contains the editable form, so its side panel does not repeat it.
-    window.renderApplicationEditContext = app => deadlineAlerts(app) + wrap([
+    window.renderApplicationEditContext = app => duplicateWarning(app) + deadlineAlerts(app) + wrap([
         app.application_type === 'pension' ? section('fa-house-user', 'Home Visit Information', [
                 field('Home Visit Schedule', dateTime(app.home_visit_scheduled_at), { raw: true }),
                 field('Home Visit Status', app.home_visit_status === 'Cancelled' ? 'Rejected' : app.home_visit_status),
@@ -287,7 +308,7 @@
     ]);
 
     // Verification shows only the reference and facts needed to assess this application type.
-    window.renderApplicationVerificationDetails = app => deadlineAlerts(app) + wrap([
+    window.renderApplicationVerificationDetails = app => duplicateWarning(app) + deadlineAlerts(app) + wrap([
         digitalSeniorId(app), applicationIdentity(app, 'Verification Reference'), ...typeSpecificSections(app),
         requestedBenefitSection(app), representativeSection(app),
         hasValue(app.return_reason || app.return_comments)
@@ -296,7 +317,7 @@
     ]);
 
     // Record viewing adds profile facts that are not already in the modal's applicant summary.
-    window.renderApplicationRecordDetails = app => deadlineAlerts(app) + wrap([
+    window.renderApplicationRecordDetails = app => duplicateWarning(app) + deadlineAlerts(app) + wrap([
         digitalSeniorId(app), applicationIdentity(app, 'Record Reference'),
         String(app.is_archived) === '1'
             ? section('fa-box-archive', 'Archive Information', [

@@ -454,7 +454,7 @@ $auditHasFilters = ($activeTab === 'audit' && $search !== '') || $auditEventFilt
 </div>
 
     <script src="../assets/js/sidebar-toggle.js?v=3"></script>
-    <script src="../assets/js/application-details.js?v=16"></script>
+    <script src="../assets/js/application-details.js?v=17"></script>
     <script src="../assets/js/application-modal-data.js?v=1"></script>
     <script src="../assets/js/application-documents.js?v=10"></script>
     <script src="../assets/js/archive-application-modal.js?v=3"></script>

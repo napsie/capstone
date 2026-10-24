@@ -15,7 +15,9 @@ function fetchApplicationRecordPage(
     bool $includeBarangay = false
 ): array {
     $perPage = max(1, min(100, $perPage));
-    $nameExpression = "LOWER(TRIM(REPLACE(REPLACE(full_name, '  ', ' '), '  ', ' ')))";
+    // Only explicit links establish identity. Matching names/birth dates are
+    // possible duplicates for manual review, never permission to merge rows.
+    $identityExpression = "COALESCE(NULLIF(TRIM(parent_senior_id), ''), id_number)";
 
     $bind = static function (PDOStatement $statement, array $values): void {
         foreach ($values as $key => $value) {
@@ -30,7 +32,7 @@ function fetchApplicationRecordPage(
 
     $applicantCountStatement = $conn->prepare(
         'SELECT COUNT(*) FROM (SELECT 1 ' . $fromWhereSql .
-        ' GROUP BY ' . $nameExpression . ', birth_date) applicant_count'
+        ' GROUP BY ' . $identityExpression . ') applicant_count'
     );
     $bind($applicantCountStatement, $params);
     $applicantCountStatement->execute();
@@ -41,9 +43,9 @@ function fetchApplicationRecordPage(
     $offset = ($page - 1) * $perPage;
 
     $groupStatement = $conn->prepare(
-        'SELECT ' . $nameExpression . ' AS normalized_name, birth_date, MAX(date_submitted) AS latest_date ' .
-        $fromWhereSql . ' GROUP BY ' . $nameExpression . ', birth_date ' .
-        'ORDER BY latest_date DESC, normalized_name ASC LIMIT :record_limit OFFSET :record_offset'
+        'SELECT ' . $identityExpression . ' AS identity_key, MAX(date_submitted) AS latest_date ' .
+        $fromWhereSql . ' GROUP BY ' . $identityExpression . ' ' .
+        'ORDER BY latest_date DESC, identity_key ASC LIMIT :record_limit OFFSET :record_offset'
     );
     $bind($groupStatement, $params);
     $groupStatement->bindValue(':record_limit', $perPage, PDO::PARAM_INT);
@@ -58,19 +60,13 @@ function fetchApplicationRecordPage(
     $groupClauses = [];
     $rowParams = $params;
     foreach ($pageApplicants as $index => $applicant) {
-        $nameKey = ':applicant_name_' . $index;
-        $birthKey = ':applicant_birth_' . $index;
-        $rowParams[$nameKey] = (string)$applicant['normalized_name'];
-        if ($applicant['birth_date'] === null || $applicant['birth_date'] === '') {
-            $groupClauses[] = "({$nameExpression} = {$nameKey} AND (birth_date IS NULL OR birth_date = ''))";
-        } else {
-            $rowParams[$birthKey] = (string)$applicant['birth_date'];
-            $groupClauses[] = "({$nameExpression} = {$nameKey} AND birth_date = {$birthKey})";
-        }
+        $identityKey = ':applicant_identity_' . $index;
+        $rowParams[$identityKey] = (string)$applicant['identity_key'];
+        $groupClauses[] = "{$identityExpression} = {$identityKey}";
     }
 
     $rowsStatement = $conn->prepare(
-        'SELECT ' . $selectColumns . ' ' . $fromWhereSql . ' AND (' . implode(' OR ', $groupClauses) . ') ' .
+        'SELECT ' . $selectColumns . ', ' . $identityExpression . ' AS record_identity_key ' . $fromWhereSql . ' AND (' . implode(' OR ', $groupClauses) . ') ' .
         'ORDER BY date_submitted DESC, id_number DESC'
     );
     $bind($rowsStatement, $rowParams);
@@ -78,8 +74,7 @@ function fetchApplicationRecordPage(
 
     $groupsByKey = [];
     foreach ($rowsStatement->fetchAll(PDO::FETCH_ASSOC) as $application) {
-        $normalizedName = mb_strtolower(preg_replace('/\s+/', ' ', trim((string)$application['full_name'])));
-        $groupKey = hash('sha256', $normalizedName . '|' . (string)$application['birth_date']);
+        $groupKey = hash('sha256', (string)$application['record_identity_key']);
         if (!isset($groupsByKey[$groupKey])) {
             $groupsByKey[$groupKey] = [
                 'key' => substr($groupKey, 0, 12),
@@ -97,7 +92,7 @@ function fetchApplicationRecordPage(
 
     $orderedGroups = [];
     foreach ($pageApplicants as $applicant) {
-        $groupKey = hash('sha256', (string)$applicant['normalized_name'] . '|' . (string)$applicant['birth_date']);
+        $groupKey = hash('sha256', (string)$applicant['identity_key']);
         if (isset($groupsByKey[$groupKey])) $orderedGroups[] = $groupsByKey[$groupKey];
     }
 

@@ -7,6 +7,7 @@ try {
     require_once '../includes/application_types.php';
     require_once '../includes/filing_deadline.php';
     require_once '../includes/deadline_alerts.php';
+    require_once '../includes/duplicate_records.php';
 } catch (Throwable $boot_err) {
     header('Content-Type: application/json');
     http_response_code(500);
@@ -153,6 +154,14 @@ try {
 
     $application['burial_filing_days'] = $application['application_type'] === 'burial'
         ? filingWorkingDays($application['date_of_death'] ?? '', $application['date_submitted']) : null;
+    // A matching-service failure must never prevent staff from opening a record.
+    try {
+        $application['duplicate_review'] = findPossibleDuplicateRecords($conn, $application,
+            $userRole === 'barangay_staff' ? $userBarangay : null);
+    } catch (Throwable $duplicateError) {
+        error_log('Duplicate review failed: ' . $duplicateError->getMessage());
+        $application['duplicate_review'] = ['unavailable' => true];
+    }
     echo json_encode($application);
 
 } catch (Exception $e) {

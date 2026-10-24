@@ -169,7 +169,7 @@ function deceasedRecordsUrl(array $changes = []): string {
         </div>
     </div>
 </div>
-<script src="../assets/js/sidebar-toggle.js?v=3"></script><script src="../assets/js/application-documents.js?v=10"></script><script src="../assets/js/application-details.js?v=16"></script><script src="../assets/js/application-modal-data.js?v=1"></script><script>
+<script src="../assets/js/sidebar-toggle.js?v=3"></script><script src="../assets/js/application-documents.js?v=10"></script><script src="../assets/js/application-details.js?v=17"></script><script src="../assets/js/application-modal-data.js?v=1"></script><script>
 function closeApplicationRecordModal(){
     var modal=document.getElementById('applicationModal');
     modal.style.display='none';

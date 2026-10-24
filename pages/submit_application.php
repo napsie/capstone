@@ -715,7 +715,7 @@ unset($_SESSION['application_submission_notice']);
 <script src="../assets/js/sidebar-toggle.js?v=3"></script>
 <script src="../assets/js/osca-form-fields.js?v=4"></script>
 <script src="../assets/js/application-documents.js?v=10"></script>
-<script src="../assets/js/application-details.js?v=16"></script>
+<script src="../assets/js/application-details.js?v=17"></script>
 <script src="../assets/js/application-modal-data.js?v=1"></script>
 <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 <script src="../assets/js/application-form-generator.js?v=1"></script>
