@@ -33,7 +33,7 @@ if ($token !== '') {
         $error = 'Enter a valid permanent PRX Token ID, such as PRX-7K2M.';
     } else {
         $stmt = $conn->prepare("SELECT id_number, parent_senior_id, proxy_token, full_name, application_type, requested_benefit, workflow_state, status, home_visit_status, date_submitted, id_purpose,
-                                       senior_id_no, birth_date, complete_address, barangay, contact_number
+                                       senior_id_no, birth_date, complete_address, barangay, contact_number, expected_release_date
                                 FROM applications
                                 WHERE (id_number = ? OR proxy_token = ?) AND COALESCE(is_archived, 0) = 0
                                 ORDER BY CASE WHEN id_number = ? THEN 0 ELSE 1 END, date_submitted ASC
@@ -52,7 +52,7 @@ if ($token !== '') {
                 : $token;
             $applicantName = trim((string)($root['full_name'] ?? $matchedApplication['full_name'] ?? ''));
             $servicesStmt = $conn->prepare("SELECT id_number, parent_senior_id, proxy_token, full_name, application_type, requested_benefit, workflow_state, status, home_visit_status, date_submitted, id_purpose,
-                                                   senior_id_no, birth_date, complete_address, barangay, contact_number
+                                                   senior_id_no, birth_date, complete_address, barangay, contact_number, expected_release_date
                                             FROM applications
                                             WHERE (id_number = ? OR parent_senior_id = ? OR (senior_id_no <> '' AND senior_id_no = ?))
                                               AND COALESCE(is_archived, 0) = 0
@@ -341,6 +341,7 @@ if ($application && $seniorBirthDateValue !== '') {
                     <div class="fact"><span>Request Type</span><?php echo htmlspecialchars($tokenType); ?></div>
                     <div class="fact"><span>Service</span><?php echo htmlspecialchars($serviceLabel); ?></div>
                     <div class="fact"><span>Date Submitted</span><?php echo $application['date_submitted'] ? htmlspecialchars(date('F j, Y g:i A', strtotime($application['date_submitted']))) : '—'; ?></div>
+                    <div class="fact"><span>Scheduled Release Date</span><?php echo !empty($application['expected_release_date']) ? htmlspecialchars(date('F j, Y', strtotime($application['expected_release_date']))) : 'No date set yet'; ?></div>
                     <div class="fact"><span>Actual Release Date</span><?php echo $releasedAt !== '' ? htmlspecialchars(date('F j, Y g:i A', strtotime($releasedAt))) : 'Not yet released'; ?></div>
                 </div>
 

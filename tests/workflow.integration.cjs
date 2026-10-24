@@ -84,11 +84,16 @@ async function main() {
     check((await request('/api/get_application_details.php?id=PRX-BENE', admin)).data.expected_release_date === releaseDate,
         'Verified record details show the saved date');
     const scheduledTracker = await request('/pages/benefit_tracker.php?token=PRX-BENE&service=senior', '', undefined, true);
-    check(!scheduledTracker.data.includes('Expected Release Date') && scheduledTracker.data.includes('Actual Release Date'),
-        'Tracker shows only the actual release date');
+    const trackerDate = value => new Date(value + 'T00:00:00Z').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+    check(scheduledTracker.data.includes('<span>Scheduled Release Date</span>' + trackerDate(releaseDate))
+        && scheduledTracker.data.includes('<span>Actual Release Date</span>Not yet released'),
+        'Tracker shows the saved schedule separately from actual release');
     const rescheduled = await request('/api/set_release_date.php', admin, releaseForm('PRX-BENE', laterReleaseDate));
     check(rescheduled.data.success && rescheduled.data.expected_release_date === laterReleaseDate,
         'Administrator can reschedule the expected release');
+    check((await request('/pages/benefit_tracker.php?token=PRX-BENE&service=senior', '', undefined, true)).data
+        .includes('<span>Scheduled Release Date</span>' + trackerDate(laterReleaseDate)),
+        'Tracker reflects a rescheduled date');
     const clearedSchedule = await request('/api/set_release_date.php', admin, releaseForm('PRX-BENE', '', 'clear'));
     check(clearedSchedule.data.success && clearedSchedule.data.expected_release_date === null,
         'Administrator can remove an expected release date');
@@ -97,8 +102,9 @@ async function main() {
         && releaseDetails.history.some(h => h.comments.includes('Release date changed'))
         && releaseDetails.history.some(h => h.comments.includes('Release date removed')),
         'Schedule edits are audited without changing verification status');
-    check(!(await request('/pages/benefit_tracker.php?token=PRX-BENE&service=senior', '', undefined, true)).data.includes('Expected Release Date'),
-        'Tracker keeps the internal expected date hidden after schedule removal');
+    check((await request('/pages/benefit_tracker.php?token=PRX-BENE&service=senior', '', undefined, true)).data
+        .includes('<span>Scheduled Release Date</span>No date set yet'),
+        'Tracker reflects schedule removal');
     const settingsBefore = await request('/pages/system_settings.php', admin, undefined, true);
     check(settingsBefore.status === 200 && settingsBefore.data.includes('System and Report Logo')
         && !settingsBefore.data.includes('System Maintenance') && !settingsBefore.data.includes('Security Settings'),

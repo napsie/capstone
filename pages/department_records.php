@@ -1085,6 +1085,7 @@ function getStatusBadge($status) {
             status.textContent = result.message;
             window.loadApplicationModalData(appId).then(app => {
                 if (app && section.dataset.applicationId === appId) {
+                    document.getElementById('modalAppTitle').textContent = `${app.full_name} - ${getOfficialApplicationFormLabel(app.application_type)}`;
                     window.renderApplicationAuditHistory(app.history, 'timelineList', { pageSize: 5 });
                 }
             }).catch(() => {});
