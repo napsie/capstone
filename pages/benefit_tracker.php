@@ -131,13 +131,6 @@ if ($isLandbankVerified) {
     }
     if ($landbankForwardingAt === '') $landbankForwardingAt = (string)$application['date_submitted'];
 }
-$releasedAt = '';
-foreach (array_reverse($history) as $event) {
-    if (($event['new_state'] ?? '') === 'Released') {
-        $releasedAt = (string)($event['changed_at'] ?? '');
-        break;
-    }
-}
 $digitalSeniorId = trim((string)($application['senior_id_no'] ?? ''));
 $showDigitalId = $application
     && ($application['application_type'] ?? '') === 'senior'
@@ -342,7 +335,6 @@ if ($application && $seniorBirthDateValue !== '') {
                     <div class="fact"><span>Service</span><?php echo htmlspecialchars($serviceLabel); ?></div>
                     <div class="fact"><span>Date Submitted</span><?php echo $application['date_submitted'] ? htmlspecialchars(date('F j, Y g:i A', strtotime($application['date_submitted']))) : '—'; ?></div>
                     <div class="fact"><span>Scheduled Release Date</span><?php echo !empty($application['expected_release_date']) ? htmlspecialchars(date('F j, Y', strtotime($application['expected_release_date']))) : 'No date set yet'; ?></div>
-                    <div class="fact"><span>Actual Release Date</span><?php echo $releasedAt !== '' ? htmlspecialchars(date('F j, Y g:i A', strtotime($releasedAt))) : 'Not yet released'; ?></div>
                 </div>
 
                 <?php if ($isTransferredSenior): ?>

@@ -86,8 +86,8 @@ async function main() {
     const scheduledTracker = await request('/pages/benefit_tracker.php?token=PRX-BENE&service=senior', '', undefined, true);
     const trackerDate = value => new Date(value + 'T00:00:00Z').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
     check(scheduledTracker.data.includes('<span>Scheduled Release Date</span>' + trackerDate(releaseDate))
-        && scheduledTracker.data.includes('<span>Actual Release Date</span>Not yet released'),
-        'Tracker shows the saved schedule separately from actual release');
+        && !scheduledTracker.data.includes('Actual Release Date'),
+        'Tracker shows the saved schedule without an actual release field');
     const rescheduled = await request('/api/set_release_date.php', admin, releaseForm('PRX-BENE', laterReleaseDate));
     check(rescheduled.data.success && rescheduled.data.expected_release_date === laterReleaseDate,
         'Administrator can reschedule the expected release');
