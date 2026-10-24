@@ -675,6 +675,8 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                 </div>
             </div>
 
+            <div id="verificationDuplicateWarning" aria-live="polite"></div>
+
             <!-- Manual review checklist -->
             <div class="compliance-card">
                 <div class="compliance-title"><i class="fas fa-clipboard-check"></i> Compliance & Verification Checklist</div>
@@ -835,7 +837,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
 
 <script src="../assets/js/sidebar-toggle.js?v=3"></script>
 <script src="../assets/js/application-documents.js?v=10"></script>
-<script src="../assets/js/application-details.js?v=17"></script>
+<script src="../assets/js/application-details.js?v=18"></script>
 <script src="../assets/js/application-modal-data.js?v=1"></script>
 <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 <script src="../assets/js/application-form-generator.js?v=2"></script>
@@ -1009,6 +1011,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
         currentAppId = appId;
 
         // Reset placeholders
+        document.getElementById('verificationDuplicateWarning').innerHTML = '';
         document.getElementById('modalAppTitle').textContent  = 'Loading…';
         document.getElementById('statusComment').value = "";
         document.getElementById('correctionDocuments').value = "";
@@ -1106,7 +1109,8 @@ $hasQueueFilters = $queueFilters['search'] !== ''
 
                 document.getElementById('complianceList').innerHTML = ch;
                 /* ── Dynamic Details (Complete details rendering) ── */
-                document.getElementById('dynamicDetailsSection').innerHTML = window.renderApplicationVerificationDetails(app);
+                document.getElementById('verificationDuplicateWarning').innerHTML = window.renderApplicationDuplicateWarning(app);
+                document.getElementById('dynamicDetailsSection').innerHTML = window.renderApplicationVerificationDetails(app, { separateDuplicateWarning: true });
 
                 /* ── All Documents ── */
                 document.getElementById('allDocumentsSection').innerHTML = buildAllDocumentsHtml(app, appId);

@@ -296,6 +296,7 @@
         </section>`;
     }
 
+    window.renderApplicationDuplicateWarning = duplicateWarning;
     const wrap = sections => `<div class="application-detail-summary">${sections.filter(Boolean).join('')}</div>`;
 
     // The edit modal already contains the editable form, so its side panel does not repeat it.
@@ -308,7 +309,7 @@
     ]);
 
     // Verification shows only the reference and facts needed to assess this application type.
-    window.renderApplicationVerificationDetails = app => duplicateWarning(app) + deadlineAlerts(app) + wrap([
+    window.renderApplicationVerificationDetails = (app, options = {}) => (options.separateDuplicateWarning ? '' : duplicateWarning(app)) + deadlineAlerts(app) + wrap([
         digitalSeniorId(app), applicationIdentity(app, 'Verification Reference'), ...typeSpecificSections(app),
         requestedBenefitSection(app), representativeSection(app),
         hasValue(app.return_reason || app.return_comments)

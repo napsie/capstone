@@ -17,4 +17,9 @@ for (const method of ['renderApplicationEditContext', 'renderApplicationVerifica
     assert.ok(!context.window[method]({ ...app, duplicate_review: { count: 0, matches: [] } }).includes('manual review required'));
     assert.ok(context.window[method]({ ...app, duplicate_review: { unavailable: true } }).includes('temporarily unavailable'));
 }
-console.log('PASS duplicate warning in edit, verification, and record views; escaping, no-match, and unavailable states');
+assert.ok(context.window.renderApplicationDuplicateWarning(app).includes('80% match indicator'));
+assert.ok(!context.window.renderApplicationVerificationDetails(app, { separateDuplicateWarning: true }).includes('manual review required'));
+const verificationPage = fs.readFileSync(require('node:path').join(__dirname, '../pages/verify_document.php'), 'utf8');
+assert.ok(verificationPage.indexOf('id="verificationDuplicateWarning"') < verificationPage.indexOf('id="complianceList"'));
+assert.ok(verificationPage.includes("document.getElementById('verificationDuplicateWarning').innerHTML = '';"));
+console.log('PASS duplicate warning in edit, verification, and record views; escaping, no-match, unavailable states, and prominent verification placement');
