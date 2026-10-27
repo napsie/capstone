@@ -30,7 +30,7 @@ $error = '';
 
 if ($token !== '') {
     if (!preg_match('/^PRX-[A-Z0-9]{4,12}$/', $token)) {
-        $error = 'Enter a valid permanent PRX Token ID, such as PRX-7K2M.';
+        $error = 'Enter a valid permanent Tracking Number, such as PRX-7K2M.';
     } else {
         $stmt = $conn->prepare("SELECT id_number, parent_senior_id, proxy_token, full_name, application_type, requested_benefit, workflow_state, status, home_visit_status, date_submitted, id_purpose,
                                        senior_id_no, birth_date, complete_address, barangay, contact_number, expected_release_date
@@ -94,7 +94,7 @@ if ($token !== '') {
             $historyStmt->execute([$application['id_number']]);
             $history = $historyStmt->fetchAll(PDO::FETCH_ASSOC);
         } else {
-            $error = 'No application was found for that token. Check the code and try again.';
+            $error = 'No application was found for that Tracking Number. Check the code and try again.';
         }
     }
 }
@@ -280,15 +280,15 @@ if ($application && $seniorBirthDateValue !== '') {
     <section class="tracker-card">
         <header class="tracker-head">
             <h1>Track Your Application</h1>
-            <p>Enter the senior's permanent PRX Token ID, scan the QR code, or upload a QR image to check all linked applications.</p>
+            <p>Enter the senior's permanent Tracking Number, scan the QR code, or upload a QR image to check all linked applications.</p>
         </header>
         <div class="tracker-body">
             <?php $announcementSurface = 'public'; $announcementVariant = 'compact'; include '../partials/announcement_feed.php'; ?>
             <form method="get" class="lookup">
-                <label for="token" class="sr-only">Application token</label>
+                <label for="token" class="sr-only">Tracking Number</label>
                 <input id="token" name="token" value="<?php echo htmlspecialchars($token); ?>" placeholder="PRX-7K2M" aria-describedby="tokenFormatHelp" maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
                 <button type="submit"><i class="fas fa-magnifying-glass" aria-hidden="true"></i> Check Status</button>
-                <small id="tokenFormatHelp" class="token-format-help">Use the senior's one permanent PRX token. The PRX- prefix and dash are formatted automatically.</small>
+                <small id="tokenFormatHelp" class="token-format-help">Use the senior's one permanent Tracking Number. The PRX- prefix and dash are formatted automatically.</small>
             </form>
             <details class="qr-tools">
                 <summary><i class="fas fa-camera" aria-hidden="true"></i> Scan QR Code <span aria-hidden="true">|</span> <i class="fas fa-image" aria-hidden="true"></i> Upload QR Image</summary>
@@ -328,7 +328,7 @@ if ($application && $seniorBirthDateValue !== '') {
                     </section>
                 <?php endif; ?>
                 <div class="summary">
-                    <div class="fact"><span>Permanent Token ID</span><?php echo htmlspecialchars($permanentToken); ?></div>
+                    <div class="fact"><span>Tracking Number</span><?php echo htmlspecialchars($permanentToken); ?></div>
                     <div class="fact"><span>Current Status</span><?php echo htmlspecialchars($displayStatus ?: 'Received'); ?></div>
                     <div class="fact"><span>Applicant</span><?php echo htmlspecialchars($applicantName); ?></div>
                     <div class="fact"><span>Request Type</span><?php echo htmlspecialchars($tokenType); ?></div>
@@ -342,7 +342,7 @@ if ($application && $seniorBirthDateValue !== '') {
                 <?php endif; ?>
 
                 <p class="status-note <?php echo $isRejected ? 'rejected' : ($isLandbankApplication ? 'landbank' : ''); ?>" role="status">
-                    <?php if ($serviceNotApplied): ?><strong><?php echo htmlspecialchars($serviceDefinitions[$selectedService]); ?></strong> has not been applied for under this permanent Token ID.
+                    <?php if ($serviceNotApplied): ?><strong><?php echo htmlspecialchars($serviceDefinitions[$selectedService]); ?></strong> has not been applied for under this Tracking Number.
                     <?php elseif ($isRejected): ?>This application is marked <strong><?php echo htmlspecialchars($displayStatus); ?></strong>. Please contact your local senior services office for assistance.
                     <?php elseif ($homeVisitStatus === 'Rejected'): ?>The required home visit was <strong>Rejected</strong>. Contact the reviewing office if you need more information.
                     <?php elseif ($homeVisitStatus !== '' && $homeVisitStatus !== 'Completed'): ?>Your Local Pension application is <strong>Pending</strong> until the required home visit is completed. The reviewing office manages the visit schedule.

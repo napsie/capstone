@@ -71,7 +71,7 @@ $embedded = ($_GET['embed'] ?? '') === '1';
   <main class="page">
     <div class="topbar"><h1>Temporary Digital Senior Citizen ID</h1><div class="actions"><button class="button" type="button" onclick="history.back()"><i class="fas fa-arrow-left"></i> Back</button><button class="button primary" type="button" onclick="window.print()"><i class="fas fa-print"></i> Print / Save PDF</button></div></div>
     <section class="panel">
-        <div class="intro"><div><h2>Approved digital credential</h2><p>Available while the applicant waits for the physical OSCA card.<br><strong>Application Token:</strong> <?= htmlspecialchars($application['id_number']) ?> — use this token to track the application.</p></div><span class="badge">TEMPORARY</span></div>
+        <div class="intro"><div><h2>Approved digital credential</h2><p>Available while the applicant waits for the physical OSCA card.<br><strong>Tracking Number:</strong> <?= htmlspecialchars($application['id_number']) ?> — use this Tracking Number to track the application.</p></div><span class="badge">TEMPORARY</span></div>
         <div class="id-card">
             <div class="card-head"><img class="logo" src="<?= htmlspecialchars(systemLogoUrl($conn)) ?>" alt="SENIORLINK logo"><div class="agency"><small>Republic of the Philippines</small><strong>City Government of Pasig</strong><span>Office for Senior Citizens Affairs</span></div></div>
             <div class="card-body">

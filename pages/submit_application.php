@@ -434,7 +434,7 @@ unset($_SESSION['application_submission_notice']);
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <button class="btn btn-accent" id="scanQrBtn" onclick="openProxyModal()"><i class="fas fa-qrcode"></i> Scan Token</button>
+                <button class="btn btn-accent" id="scanQrBtn" onclick="openProxyModal()"><i class="fas fa-qrcode"></i> Scan QR Code</button>
             </div>
 
             <!-- Table -->
@@ -698,10 +698,10 @@ unset($_SESSION['application_submission_notice']);
         </div>
         <div class="modal-scroller" style="padding:20px;">
             <p style="font-size:0.82rem; color:var(--gray); margin-bottom:14px;">
-                Paste the encrypted QR token link or enter the permanent PRX token (e.g. PRX-XXXXXX) to load the profile.
+                Paste the QR link or enter the permanent Tracking Number (e.g. PRX-XXXXXX) to load the profile.
             </p>
             <div class="form-group" style="margin-bottom:14px;">
-                <label style="font-weight:700; font-size:0.75rem;">Token Payload</label>
+                <label style="font-weight:700; font-size:0.75rem;">Tracking Number or QR Link</label>
                 <textarea id="modalToken" class="form-control" rows="3" placeholder="Paste scan payload here…" style="width:100%; border:1px solid var(--border); border-radius:8px; padding:10px; font-family:monospace; resize:none; outline:none;"></textarea>
             </div>
             <button type="button" class="btn btn-accent" style="width:100%; justify-content:center;" onclick="searchByQrToken()">
@@ -1447,9 +1447,9 @@ unset($_SESSION['application_submission_notice']);
     async function searchByQrToken() {
         const tokenInput = document.getElementById('modalToken').value.trim();
         const errDiv     = document.getElementById('modalError');
-        if (!tokenInput) { errDiv.textContent = 'Token payload cannot be empty.'; return; }
+        if (!tokenInput) { errDiv.textContent = 'Enter a Tracking Number or QR link.'; return; }
 
-        errDiv.innerHTML = '<span style="color:#2563eb;"><i class="fas fa-spinner fa-spin"></i> Parsing token…</span>';
+        errDiv.innerHTML = '<span style="color:#2563eb;"><i class="fas fa-spinner fa-spin"></i> Reading Tracking Number…</span>';
         let token = tokenInput;
 
         if (tokenInput.includes('token=')) {
@@ -1463,7 +1463,7 @@ unset($_SESSION['application_submission_notice']);
                 if (r.success && r.data && r.data.transactionId) {
                     txId = r.data.transactionId;
                 } else {
-                    errDiv.textContent = 'Failed to decrypt representative token.';
+                    errDiv.textContent = 'Failed to decrypt representative QR link.';
                     return;
                 }
             }
@@ -1477,12 +1477,12 @@ unset($_SESSION['application_submission_notice']);
             }
         } catch(err) {
             console.error(err);
-            errDiv.textContent = 'Connection error during QR token retrieval.';
+            errDiv.textContent = 'Connection error during Tracking Number lookup.';
         }
     }
 </script>
 <script src="../assets/js/vendor/html5-qrcode.min.js?v=2.3.8"></script>
-<script src="../assets/js/simple-code-scanner.js?v=3"></script>
+<script src="../assets/js/simple-code-scanner.js?v=4"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const selector = 'input[type="tel"],input[name*="contact" i]:not([type="hidden"]),input[id*="contact" i]:not([type="hidden"]),input[name="phone" i],input[id="phone" i],input[oninput*="contactNumber"],input[oninput*="emergencyContact"]';

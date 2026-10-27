@@ -14,7 +14,7 @@
         "select the requested benefit, then enter the senior's details exactly as they appear in official records.": 'Piliin ang hinihiling na benepisyo, pagkatapos ay ilagay ang detalye ng senior ayon sa opisyal na rekord.',
         'use an active 11-digit philippine mobile number.': 'Gumamit ng aktibong 11-digit na Philippine mobile number.',
         'senior citizen id number': 'Numero ng Senior Citizen ID',
-        'permanent id token': 'Permanenteng ID Token',
+        'tracking number': 'Tracking Number',
         'last name': 'Apelyido', 'first name': 'Pangalan', 'middle name': 'Gitnang Pangalan', 'suffix': 'Hulapi',
         'full name': 'Buong Pangalan', 'birth date': 'Petsa ng Kapanganakan', 'date of birth': 'Petsa ng Kapanganakan',
         'contact number': 'Numero ng Telepono', 'mobile number': 'Numero ng Cellphone',

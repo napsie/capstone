@@ -37,7 +37,7 @@ require_once '../includes/barangays_list.php';
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addUser'])) {
     // Verify CSRF token
     if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
-        $error = 'CSRF token validation failed.';
+        $error = 'Your session could not be verified. Refresh the page and try again.';
     } else {
         $masterPassword = (string)($_POST['masterPassword'] ?? '');
 

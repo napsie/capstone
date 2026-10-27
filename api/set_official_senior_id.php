@@ -22,7 +22,7 @@ if ($applicationId === '' || (!$generate && !preg_match('/^[A-Z0-9][A-Z0-9 -]{2,
 }
 if (!$generate && ($seniorId === strtoupper($applicationId) || preg_match('/^(PRX|PEN)-/i', $seniorId))) {
     http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'The Senior Citizen ID must be different from the permanent PRX application token.']);
+    echo json_encode(['success' => false, 'message' => 'The Senior Citizen ID must be different from the permanent Tracking Number.']);
     exit;
 }
 try {

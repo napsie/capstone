@@ -147,7 +147,7 @@ function generateCompactApplicationToken(PDO $conn, string $prefix): string
         }
     }
 
-    throw new RuntimeException('Unable to generate a unique application token.');
+    throw new RuntimeException('Unable to generate a unique tracking number.');
 }
 
 /**
@@ -188,7 +188,7 @@ function processProxyRegistration(): array
                 || (int)($access['verified_at'] ?? 0) < time() - 1800
                 || !hash_equals((string)($access['senior_id_no'] ?? ''), $postedSeniorId)
                 || !hash_equals((string)($access['token'] ?? ''), $postedToken)) {
-                $result['message'] = 'Benefit access expired or the ID credentials do not match. Verify the Senior ID and permanent token again.';
+                $result['message'] = 'Benefit access expired or the ID credentials do not match. Verify the Senior ID and permanent Tracking Number again.';
                 return $result;
             }
             $verifyStmt = $conn->prepare("SELECT id_number, full_name, lastName, firstName, middleName, suffix, birth_date, contact_number, complete_address, barangay, senior_id_no, proxy_token, id_image, email_address, place_of_birth, gender, civil_status, mothers_maiden_name, house_no, street, zip_code, landmark, health_status, health_condition, emergency_contact_name, emergency_contact, claimant_relationship, id_purpose, date_submitted FROM applications
@@ -202,7 +202,7 @@ function processProxyRegistration(): array
             $verifiedSenior = $verifyStmt->fetch(PDO::FETCH_ASSOC);
             if (!$verifiedSenior) {
                 unset($_SESSION['senior_benefit_access']);
-                $result['message'] = 'Senior identity validation failed. Use the official Senior ID and its original permanent token.';
+                $result['message'] = 'Senior identity validation failed. Use the official Senior ID and its original permanent Tracking Number.';
                 return $result;
             }
         }
@@ -777,7 +777,7 @@ function processProxyRegistration(): array
             return $result;
         }
 
-        // A person receives one permanent PRX token on the root Senior ID
+        // A person receives one permanent Tracking Number on the root Senior ID
         // application. Later service requests use internal APP references and
         // repeat the root PRX in proxy_token for unified public tracking.
         $transactionId = generateCompactApplicationToken($conn, $portalOption === 'verified_benefits' ? 'APP' : 'PRX');
@@ -1021,7 +1021,7 @@ function processProxyRegistration(): array
     } else if ($portalOption === 'existing_benefits') {
         // Retired ID-only route. All benefit applications must pass the
         // permanent-token validation performed by senior_benefits.php.
-        $result['message'] = 'Use the Senior Benefits page and verify both the official Senior ID and permanent token.';
+        $result['message'] = 'Use the Senior Benefits page and verify both the official Senior ID and permanent Tracking Number.';
         return $result;
 
         // --- OPTION B: PENSION CLAIM FOR EXISTING SENIOR ---
@@ -1034,7 +1034,7 @@ function processProxyRegistration(): array
 
         try {
             // The benefit request must reference the official Senior Citizen ID;
-            // The permanent PRX token is only for status tracking.
+            // The permanent Tracking Number is only for status tracking.
             $stmtVerify = $conn->prepare("SELECT id_number, full_name, lastName, firstName, middleName, suffix,
                                                  birth_date, contact_number, complete_address, barangay,
                                                  senior_id_no, proxy_token, id_image FROM applications
@@ -1052,7 +1052,7 @@ function processProxyRegistration(): array
             }
 
             // Generate an internal application reference. Public tracking
-            // continues to use the senior's original permanent PRX token.
+            // continues to use the senior's original permanent Tracking Number.
             $pensionTransactionId = generateCompactApplicationToken($conn, 'APP');
             $permanentPrxToken = trim((string)($senior['proxy_token'] ?? '')) ?: (string)$senior['id_number'];
 

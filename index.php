@@ -215,7 +215,7 @@ header('Expires: 0');
                     </span>
                     <span class="hero-track-copy">
                         <strong>Track your application</strong>
-                        <small>Check status using your permanent PRX Token ID</small>
+                        <small>Check status using your permanent Tracking Number</small>
                     </span>
                     <i class="fas fa-arrow-right hero-track-arrow" aria-hidden="true"></i>
                 </a>
@@ -371,15 +371,15 @@ header('Expires: 0');
                 <button class="close-btn" type="button" aria-label="Close application tracker">&times;</button>
             </div>
             <div class="track-modal-body">
-            <p class="track-intro">Enter your permanent PRX Token ID, scan your QR code, or upload a QR image to check all applications linked to the senior.</p>
+            <p class="track-intro">Enter your permanent Tracking Number, scan your QR code, or upload a QR image to check all applications linked to the senior.</p>
             <form class="portal-tracker track-modal-form" action="pages/benefit_tracker.php" method="get">
-                <label for="landingTrackerToken">Permanent Token ID</label>
+                <label for="landingTrackerToken">Tracking Number</label>
                 <div class="portal-tracker-controls">
                     <input id="landingTrackerToken" name="token" type="text" value="" placeholder="PRX-7K2M" aria-describedby="landingTokenHint"
                            maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
                     <button type="submit"><span>Check Status</span><i class="fas fa-arrow-right" aria-hidden="true"></i></button>
                 </div>
-                <small id="landingTokenHint" class="track-format-help">Use the senior's one permanent PRX token. The PRX- prefix and dash are formatted automatically.</small>
+                <small id="landingTokenHint" class="track-format-help">Use the senior's one permanent Tracking Number. The PRX- prefix and dash are formatted automatically.</small>
                 <div class="tracking-qr-actions" aria-label="QR tracking options">
                     <button type="button" id="landingScanQr"><i class="fas fa-camera" aria-hidden="true"></i> Scan QR Code</button>
                     <button type="button" id="landingUploadQr"><i class="fas fa-image" aria-hidden="true"></i> Upload QR Image</button>
@@ -429,7 +429,7 @@ header('Expires: 0');
                 input.value = normalizeTrackerToken(input.value);
                 if (!/^PRX-[A-Z0-9]{4,12}$/.test(input.value)) {
                     event.preventDefault();
-                    setScannerStatus('Enter the complete permanent token, such as PRX-7K2M.', 'error');
+                    setScannerStatus('Enter the complete permanent Tracking Number, such as PRX-7K2M.', 'error');
                     input.focus();
                 }
             });
@@ -449,12 +449,12 @@ header('Expires: 0');
             const useQrResult = async decoded => {
                 const token = extractPrx(decoded);
                 if (!token) {
-                    setScannerStatus('This QR image does not contain a valid PRX Token ID.', 'error');
+                    setScannerStatus('This QR image does not contain a valid Tracking Number.', 'error');
                     return;
                 }
                 input.value = token;
                 await stopScanner();
-                setScannerStatus('Token ID detected. Retrieving tracking information…', 'success');
+                setScannerStatus('Tracking Number detected. Retrieving tracking information…', 'success');
                 form?.requestSubmit();
             };
 
@@ -479,7 +479,7 @@ header('Expires: 0');
             closeButton?.addEventListener('click', closeTracker);
             scanButton?.addEventListener('click', async () => {
                 if (typeof Html5Qrcode !== 'function') {
-                    setScannerStatus('QR scanner could not load. Enter the PRX Token ID manually.', 'error');
+                    setScannerStatus('QR scanner could not load. Enter the Tracking Number manually.', 'error');
                     return;
                 }
                 scanner ||= new Html5Qrcode('landingQrReader');
@@ -505,7 +505,7 @@ header('Expires: 0');
                 if (!file || typeof Html5Qrcode !== 'function') return;
                 await stopScanner();
                 scanner ||= new Html5Qrcode('landingQrReader');
-                setScannerStatus('Reading PRX Token ID from the QR image…');
+                setScannerStatus('Reading Tracking Number from the QR image…');
                 try { await useQrResult(await scanner.scanFile(file, true)); }
                 catch (error) { setScannerStatus('No valid PRX QR code was found in that image.', 'error'); }
                 fileInput.value = '';

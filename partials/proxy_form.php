@@ -40,7 +40,7 @@ if ($benefitPortalMode) {
             'Keep the request connected to the senior citizen’s verified OSCA record',
         ];
         $publicBenefitDefinitions['Senior Citizen ID Registration']['requirements'] = [
-            'An approved Senior Citizen ID and permanent token are required',
+            'An approved Senior Citizen ID and permanent Tracking Number are required',
             'Select Information Change or Lost ID Replacement',
             'Submit the purpose-specific supporting documents for verification',
         ];
@@ -719,7 +719,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 <i class="fas fa-hand-holding-heart"></i>
             </div>
             <h4>Apply for Senior Benefits</h4>
-            <p>For approved senior citizens. Verify the official Senior ID number and permanent token to continue.</p>
+            <p>For approved senior citizens. Verify the official Senior ID number and permanent Tracking Number to continue.</p>
         </div>
 
     </div>
@@ -731,14 +731,14 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             <div class="option-icon"><i class="fas fa-shield-halved" aria-hidden="true"></i></div>
             <div>
                 <h3>Verify Senior Identity</h3>
-                <p>Enter the approved Senior Citizen ID number and permanent token to open the benefits application.</p>
+                <p>Enter the approved Senior Citizen ID number and permanent Tracking Number to open the benefits application.</p>
             </div>
         </div>
         <form method="post" action="senior_benefits.php" id="benefitIdentityForm">
             <input type="hidden" name="verify_benefit_access" value="1">
             <div class="benefit-access-grid">
                 <div><label for="benefitSeniorCitizenId">Senior Citizen ID Number</label><input id="benefitSeniorCitizenId" name="seniorCitizenId" autocomplete="off" required></div>
-                <div><label for="benefitPermanentToken">Permanent ID Token</label><input id="benefitPermanentToken" name="permanentToken" value="PRX-" placeholder="PRX-XXXX" maxlength="16" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="benefitPermanentTokenHint" required><small id="benefitPermanentTokenHint">PRX- is added for you. Enter the remaining letters or numbers.</small></div>
+                <div><label for="benefitPermanentToken">Tracking Number</label><input id="benefitPermanentToken" name="permanentToken" value="PRX-" placeholder="PRX-XXXX" maxlength="16" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="benefitPermanentTokenHint" required><small id="benefitPermanentTokenHint">PRX- is added for you. Enter the remaining letters or numbers.</small></div>
             </div>
             <button class="benefit-access-submit" type="submit"><i class="fas fa-user-check" aria-hidden="true"></i> Verify Identity</button>
             <div id="benefitIdentityError" class="alert-banner alert-banner-error" role="alert" tabindex="-1" hidden></div>
@@ -764,7 +764,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                         window.location.assign(form.action);
                         return;
                     }
-                    error.textContent = result.error || 'The Senior ID number and permanent token could not be validated.';
+                    error.textContent = result.error || 'The Senior ID number and permanent Tracking Number could not be validated.';
                 } catch (failure) {
                     error.textContent = 'Unable to verify right now. Please try again.';
                 } finally {
@@ -2293,13 +2293,13 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             <h3 style="color:#0f172a; font-weight:800; font-size:1.45rem; margin-bottom:10px;">Pre-registration successful.</h3>
             <p style="color:#64748b; font-size:0.95rem; line-height:1.5; margin:0 0 15px 0;">
                 The senior citizen's application was sent directly to the <strong>Department Admin verification queue</strong>.
-                Save this permanent token. After the ID is approved, the senior must use this token together with the issued Senior Citizen ID number to apply for benefits.
+                Save this permanent Tracking Number. After the ID is approved, the senior must use this Tracking Number together with the issued Senior Citizen ID number to apply for benefits.
             </p>
             
             <div class="qr-image-wrapper">
                 <img id="queueTokenQr" src="<?php echo htmlspecialchars($proxyQrUrl); ?>" crossorigin="anonymous" alt="Application tracking QR code">
                 <div>
-                    <span class="qr-token-label">PERMANENT ID TOKEN: <?php echo htmlspecialchars($proxyTransactionId); ?></span>
+                    <span class="qr-token-label">TRACKING NUMBER: <?php echo htmlspecialchars($proxyTransactionId); ?></span>
                 </div>
             </div>
 
@@ -2308,13 +2308,13 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 <i class="fas fa-qrcode"></i>
                 <div>
                     <h5>Track Your Application Status</h5>
-                    <p>Download and save this token. Scan its QR code anytime to check the latest status of your application. Please also bring the <strong>physical original documents</strong> to the selected barangay office for verification.</p>
+                    <p>Download and save this Tracking Number. Scan its QR code anytime to check the latest status of your application. Please also bring the <strong>physical original documents</strong> to the selected barangay office for verification.</p>
                 </div>
             </div>
 
             <div style="display:flex; flex-direction:column; gap:10px; margin-top:25px;">
                 <button type="button" class="btn btn-primary" id="downloadQueueToken" style="padding:12px; font-weight:600;">
-                    <i class="fas fa-download"></i> Download Queue Token
+                    <i class="fas fa-download"></i> Download Tracking Number
                 </button>
                 <a href="<?php echo htmlspecialchars($resetUrl); ?>" class="btn btn-muted" style="padding:10px;">
                     <i class="fas fa-house"></i> Done / Back to Home
@@ -2351,11 +2351,11 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
 
                     ctx.fillStyle = '#0f172a';
                     ctx.font = '700 42px Arial, sans-serif';
-                    ctx.fillText('Application Queue Token', 450, 155);
+                    ctx.fillText('Application Tracking Number', 450, 155);
 
                     ctx.fillStyle = '#475569';
                     ctx.font = '24px Arial, sans-serif';
-                    ctx.fillText('Keep this token for ID verification and benefit access.', 450, 205);
+                    ctx.fillText('Keep this Tracking Number for ID verification and benefit access.', 450, 205);
 
                     ctx.fillStyle = '#f8fafc';
                     ctx.strokeStyle = '#e2e8f0';
@@ -2368,7 +2368,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
 
                     ctx.fillStyle = '#64748b';
                     ctx.font = '700 20px Arial, sans-serif';
-                    ctx.fillText('PERMANENT ID TOKEN', 450, 780);
+                    ctx.fillText('TRACKING NUMBER', 450, 780);
                     ctx.fillStyle = '#0f172a';
                     ctx.font = '700 30px monospace';
                     ctx.fillText(token, 450, 830);
@@ -2387,13 +2387,13 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                     const link = document.createElement('a');
                     const objectUrl = URL.createObjectURL(blob);
                     link.href = objectUrl;
-                    link.download = 'SENIORLINK-Queue-Token-' + token.replace(/[^a-z0-9_-]/gi, '-') + '.png';
+                    link.download = 'SENIORLINK-Tracking-Number-' + token.replace(/[^a-z0-9_-]/gi, '-') + '.png';
                     document.body.appendChild(link);
                     link.click();
                     link.remove();
                     setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
                 } catch (error) {
-                    window.showCarelinkResult?.('The queue token could not be downloaded. Please check your connection and try again.', false);
+                    window.showCarelinkResult?.('The Tracking Number could not be downloaded. Please check your connection and try again.', false);
                 } finally {
                     button.disabled = false;
                     button.innerHTML = originalHtml;
@@ -2417,7 +2417,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
             <div class="qr-image-wrapper" style="border-color:#bfdbfe; background:#f0f7ff;">
                 <img src="<?php echo htmlspecialchars($proxyQrUrl); ?>" alt="Benefit Tracking Receipt">
                 <div>
-                    <span class="qr-token-label" style="background:#dbeafe; color:#1e40af;">PERMANENT TOKEN ID: <?php echo htmlspecialchars($proxyTransactionId); ?></span>
+                    <span class="qr-token-label" style="background:#dbeafe; color:#1e40af;">TRACKING NUMBER: <?php echo htmlspecialchars($proxyTransactionId); ?></span>
                 </div>
             </div>
 
@@ -2425,7 +2425,7 @@ $old = static function (string $key, string $default = '') use ($benefitPrefill)
                 <i class="fas fa-info-circle" style="color:#16a34a;"></i>
                 <div>
                     <h5 style="color:#14532d;">Tracking Access Activated</h5>
-                    <p style="color:#15803d;">Use this senior citizen's permanent Token ID to track this service and every future application from the service selector.</p>
+                    <p style="color:#15803d;">Use this senior citizen's Tracking Number to track this service and every future application from the service selector.</p>
                 </div>
             </div>
 

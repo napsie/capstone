@@ -272,7 +272,7 @@ $resetUrl = '../index.php';
                         Public Senior Service
                     </div>
                     <h2 id="proxy-heading">Senior Application Portal</h2>
-                    <p>Choose whether to apply for a Senior Citizen ID or access benefits using an approved ID and permanent token.</p>
+                    <p>Choose whether to apply for a Senior Citizen ID or access benefits using an approved ID and permanent Tracking Number.</p>
                 </div>
                 <div class="proxy-panel-body">
                     <?php include '../partials/proxy_form.php'; ?>

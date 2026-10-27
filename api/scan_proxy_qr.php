@@ -13,7 +13,7 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'] ?? '', ['baranga
 $token = isset($_GET['token']) ? trim($_GET['token']) : '';
 
 if (empty($token)) {
-    echo json_encode(['success' => false, 'message' => 'Token is required.']);
+    echo json_encode(['success' => false, 'message' => 'Tracking Number is required.']);
     exit();
 }
 

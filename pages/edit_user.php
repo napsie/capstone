@@ -92,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['updateUser'])) {
     try {
         // Verify CSRF token
         if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
-            $response['message'] = 'CSRF token validation failed.'; // Changed from $response['error']
+            $response['message'] = 'Your session could not be verified. Refresh the page and try again.'; // Changed from $response['error']
             error_log("ERROR: edit_user.php: CSRF token validation failed for POST request.");
         } else {
             $id = filter_var($_POST['id'], FILTER_SANITIZE_NUMBER_INT);

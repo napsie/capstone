@@ -26,7 +26,7 @@
         <input type="file" id="codeScannerFile" accept="image/*" capture="environment" hidden>
         <div id="${scannerId}" class="simple-code-scanner__reader" hidden></div>
         <p id="codeScannerStatus" class="simple-code-scanner__status" role="status" aria-live="polite">
-            Point the camera at the whole QR code, upload a saved QR photo, or enter the permanent PRX token below.
+            Point the camera at the whole QR code, upload a saved QR photo, or enter the permanent Tracking Number below.
         </p>`;
 
     const tokenGroup = tokenField.closest('.form-group') || tokenField.parentElement;
@@ -52,7 +52,7 @@
 
     function ensureLibrary() {
         if (typeof window.Html5Qrcode !== 'function') {
-            setStatus('Scanner could not load. Enter the token manually and continue.', 'error');
+            setStatus('Scanner could not load. Enter the Tracking Number manually and continue.', 'error');
             return false;
         }
 
@@ -166,7 +166,7 @@
                 cameraRequestTimer = null;
             }
             setCameraState(false);
-            setStatus('Camera unavailable. Allow camera access, scan an image, or enter the token manually.', 'error');
+            setStatus('Camera unavailable. Allow camera access, scan an image, or enter the Tracking Number manually.', 'error');
         }
     }
 
@@ -192,7 +192,7 @@
     startButton.addEventListener('click', startScanner);
     stopButton.addEventListener('click', async function () {
         await stopScanner();
-        setStatus('Scanner stopped. You can scan again or enter the token manually.', 'info');
+        setStatus('Scanner stopped. You can scan again or enter the Tracking Number manually.', 'info');
     });
     imageButton.addEventListener('click', function () { fileInput.click(); });
     fileInput.addEventListener('change', function () { scanImage(fileInput.files[0]); });

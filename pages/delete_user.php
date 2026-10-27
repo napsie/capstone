@@ -12,7 +12,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'department_admin') {
 // Check for POST request and CSRF token
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && (isset($_POST['deleteUser']) || isset($_POST['archiveUser']))) {
     if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
-        $_SESSION['error'] = 'CSRF token validation failed.';
+        $_SESSION['error'] = 'Your session could not be verified. Refresh the page and try again.';
         header('Location: user_management.php');
         exit;
     }
