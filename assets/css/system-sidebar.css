@@ -6,6 +6,7 @@
 }
 
 .system-sidebar {
+    box-sizing: border-box;
     position: fixed;
     inset: 0 auto 0 0;
     width: var(--system-sidebar-expanded);
@@ -27,11 +28,13 @@
 }
 
 .system-sidebar .sidebar-header {
+    flex: 0 0 auto;
     margin: 0;
     padding: 0;
 }
 
 .system-sidebar .logo {
+    flex-shrink: 0;
     min-height: 58px;
     display: flex;
     align-items: center;
@@ -121,11 +124,12 @@
 }
 
 /* Let the last action use the remaining vertical space in both sidebar variants. */
-.system-sidebar .sidebar-menu ul {
+.system-sidebar .sidebar-menu > .sidebar-root-menu {
     min-height: 100%;
 }
 
 .system-sidebar :is(.nav-links, .sidebar-menu) li {
+    flex: 0 0 auto;
     position: relative;
     width: 100%;
     margin: 0;
@@ -194,7 +198,7 @@
 
 /* Department navigation groups */
 .system-sidebar .sidebar-nav-group {
-    overflow: hidden;
+    overflow: visible;
     background: transparent;
     border: 1px solid transparent;
     transition: background .18s ease, border-color .18s ease;
@@ -218,6 +222,7 @@
 .system-sidebar .sidebar-nav-group.is-open .sidebar-group-chevron { transform: rotate(180deg); }
 .system-sidebar .sidebar-nav-group > .sidebar-submenu {
     width: auto !important; min-height: 0 !important; display: none !important; gap: 2px;
+    height: auto; max-height: none; flex: 0 0 auto;
     margin: 2px 8px 0 18px; padding: 3px 0 3px 9px;
     border-left: 1px solid rgba(255,255,255,.2);
 }
@@ -244,6 +249,17 @@
 /* Keep every desktop page aligned to the authoritative sidebar width. Several
    older pages still declare a 220px offset in their local styles. */
 @media (min-width: 1025px) {
+    /* Scroll the navigation instead of shrinking open groups and clipping links. */
+    .system-sidebar { overflow: hidden; }
+    .system-sidebar > :is(.sidebar-menu, .nav-links) {
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255,255,255,.3) transparent;
+        padding-bottom: 4px;
+    }
+
     .system-sidebar ~ .main-content,
     .system-sidebar ~ main.main-content {
         width: calc(100% - var(--system-sidebar-expanded)) !important;

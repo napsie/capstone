@@ -41,10 +41,10 @@ function requireOperationsCsrf(): void {
 
 function fetchScopedApplication(PDO $conn, string $id, bool $isDepartment, string $barangay): ?array {
     if ($isDepartment) {
-        $stmt = $conn->prepare('SELECT id_number, application_type, workflow_state, home_visit_notes FROM applications WHERE id_number = ? AND COALESCE(is_archived, 0) = 0');
+        $stmt = $conn->prepare('SELECT id_number, application_type, workflow_state, home_visit_status, home_visit_notes FROM applications WHERE id_number = ? AND COALESCE(is_archived, 0) = 0');
         $stmt->execute([$id]);
     } else {
-        $stmt = $conn->prepare('SELECT id_number, application_type, workflow_state, home_visit_notes FROM applications WHERE id_number = ? AND barangay = ? AND COALESCE(is_archived, 0) = 0');
+        $stmt = $conn->prepare('SELECT id_number, application_type, workflow_state, home_visit_status, home_visit_notes FROM applications WHERE id_number = ? AND barangay = ? AND COALESCE(is_archived, 0) = 0');
         $stmt->execute([$id, $barangay]);
     }
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -184,17 +184,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $applicationId = trim((string)($_POST['application_id'] ?? ''));
             $app = fetchScopedApplication($conn, $applicationId, $isDepartment, $barangay);
             if (!$app) operationsRedirect('Application not found.', false);
+            if (in_array($app['workflow_state'] ?? '', ['Verified','Approved','Released','Rejected','Deceased'], true)) {
+                operationsRedirect('This application has a final decision. Its home-visit findings are read-only.', false);
+            }
             if (($app['home_visit_status'] ?? '') === 'Completed') {
                 operationsRedirect('This SHDO evaluation has already been submitted and is now read-only.', false);
             }
             $status = (string)($_POST['visit_status'] ?? '');
-            $allowed = ['Scheduled', 'In Progress', 'Completed', 'Rejected'];
+            $allowed = ['Scheduled', 'In Progress', 'Completed'];
             if (!in_array($status, $allowed, true)) operationsRedirect('Invalid visit status.', false);
             $notes = trim(strip_tags((string)($_POST['notes'] ?? '')));
             if ($status === 'Completed' && $notes === '') operationsRedirect('Completion notes are required.', false);
             $eligibility = trim((string)($_POST['eligibility'] ?? ''));
             $eligibilityReason = trim(strip_tags((string)($_POST['eligibility_reason'] ?? '')));
-            if ($status === 'Completed' && !in_array($eligibility, ['Eligible', 'Not Eligible'], true)) operationsRedirect('Select the final evaluation.', false);
+            if ($status === 'Completed' && !in_array($eligibility, ['Eligible', 'Not Eligible'], true)) operationsRedirect('Select the SHDO recommendation.', false);
             if ($status === 'Completed' && $eligibility === 'Not Eligible' && $eligibilityReason === '') operationsRedirect('Enter the reason for a Not Eligible decision.', false);
             if ($status === 'Completed' && trim((string)($_POST['living_arrangement'] ?? '')) === '') operationsRedirect('Select the senior\'s living arrangement.', false);
             if ($status === 'Completed' && ($_POST['is_pensioner'] ?? '') === '') operationsRedirect('Indicate whether the senior receives a pension.', false);
@@ -203,28 +206,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($status === 'Completed' && ($_POST['is_pensioner'] ?? '') === '1' && ($_POST['pension_amount'] ?? '') === '') operationsRedirect('Enter the pension amount.', false);
             if ($status === 'Completed' && ($_POST['family_support'] ?? '') === '1' && ($_POST['family_support_amount'] ?? '') === '') operationsRedirect('Enter the family support amount.', false);
             if ($status === 'Completed' && ($_POST['personal_income'] ?? '') === '1' && ($_POST['personal_income_amount'] ?? '') === '') operationsRedirect('Enter the personal income amount.', false);
-            if ($status === 'Rejected') {
-                $previousState = $app['workflow_state'] ?: 'Received';
-                $rejectionReason = $notes ?: 'Required home visit was rejected.';
-                $archiveActor = (string)($_SESSION['username'] ?? $_SESSION['user_id'] ?? 'SHDO');
-
-                $conn->beginTransaction();
-                $stmt = $conn->prepare("UPDATE applications
-                    SET home_visit_status = 'Rejected', home_visit_notes = ?, home_visit_completed_at = NULL,
-                        workflow_state = 'Rejected', status = 'rejected', return_reason = ?,
-                        is_archived = 1, archived_at = CURRENT_TIMESTAMP, archived_by = ?
-                    WHERE id_number = ? AND COALESCE(is_archived, 0) = 0");
-                $stmt->execute([$rejectionReason, $rejectionReason, $archiveActor, $applicationId]);
-                if ($stmt->rowCount() !== 1) {
-                    throw new RuntimeException('The application could not be rejected and archived.');
-                }
-                if ($previousState !== 'Rejected') {
-                    $history = $conn->prepare('INSERT INTO application_history (application_id, previous_state, new_state, changed_by, comments) VALUES (?, ?, ?, ?, ?)');
-                    $history->execute([$applicationId, $previousState, 'Rejected', $archiveActor, $rejectionReason]);
-                }
-                logAudit($conn, 'ARCHIVE_REJECTED_APPLICATION', "{$applicationId}: rejected after home visit and moved to archive.");
-                $conn->commit();
-            } else {
                 $livingArrangement = trim(strip_tags((string)($_POST['living_arrangement'] ?? '')));
                 $isPensioner = ($_POST['is_pensioner'] ?? '') === '' ? null : (int)$_POST['is_pensioner'];
                 $pensionSource = trim(strip_tags((string)($_POST['pension_source'] ?? '')));
@@ -284,10 +265,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $familySupport, $familySupportAmount, $personalIncome, $personalIncomeAmount, $healthCondition ?: null,
                     $withMaintenance, $maintenanceSpec ?: null, $notes ?: null, $confirmationName ?: null, $confirmationContact ?: null, $applicationId]);
                 logAudit($conn, 'UPDATE_HOME_VISIT_STATUS', "{$applicationId}: home visit changed to {$status}.");
-            }
-            operationsRedirect($status === 'Rejected'
-                ? 'Application rejected and moved to the barangay and department archives.'
-                : 'Home visit status updated.');
+            operationsRedirect('Home-visit findings saved for Main OSCA review.');
         }
 
     } catch (Throwable $e) {
@@ -513,7 +491,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
             <div class="panel">
                 <div class="panel-head"><h2>Home Visit Monitoring</h2><span class="muted"><?= count($visits) ?> local pension record(s)</span></div>
                 <form class="visit-filters" method="get" aria-label="Filter home visits">
-                    <div class="field"><label for="visitSearch">Search</label><input id="visitSearch" name="visit_search" type="search" value="<?= htmlspecialchars($visitSearch) ?>" maxlength="100" placeholder="Senior name or tracking number"></div>
+                    <div class="field"><label for="visitSearch">Search</label><input id="visitSearch" name="visit_search" type="search" value="<?= htmlspecialchars($visitSearch) ?>" maxlength="100" placeholder="Senior name or tracking no."></div>
                     <div class="field"><label for="visitStatus">Status</label><select id="visitStatus" name="visit_status"><option value="all">All statuses</option><?php foreach (array_slice($allowedVisitStatuses, 1) as $statusOption): ?><option value="<?= htmlspecialchars($statusOption) ?>" <?= $visitStatusFilter === $statusOption ? 'selected' : '' ?>><?= htmlspecialchars($statusOption) ?></option><?php endforeach; ?></select></div>
                     <div class="field"><label for="visitDate">Home Visit Date</label><input id="visitDate" name="visit_date" type="date" value="<?= htmlspecialchars($visitDateFilter) ?>"></div>
                     <?php if ($isDepartment): ?><div class="field"><label for="visitBarangay">Barangay</label><select id="visitBarangay" name="visit_barangay"><option value="all">All barangays</option><?php foreach ($barangays_list as $barangayOption): ?><option value="<?= htmlspecialchars($barangayOption) ?>" <?= $visitBarangayFilter === $barangayOption ? 'selected' : '' ?>><?= htmlspecialchars($barangayOption) ?></option><?php endforeach; ?></select></div><?php endif; ?>
@@ -578,7 +556,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
                     <dl class="evaluation-senior-summary"><div><dt>Senior</dt><dd id="evaluationSenior">—</dd></div><div><dt>Barangay</dt><dd id="evaluationBarangay">—</dd></div><div><dt>Home Visit Date</dt><dd id="evaluationDate">—</dd></div><div><dt>Assigned Personnel</dt><dd id="evaluationPersonnel">—</dd></div></dl>
                     <form method="post" class="form-grid<?= $isDepartment ? ' evaluation-readonly' : '' ?>" id="visitStatusForm">
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>"><input type="hidden" name="action" value="update_visit_status"><input type="hidden" name="ajax" value="1"><input type="hidden" name="application_id" id="statusApplicationId">
-                        <div class="field"><label>Visit Status</label><select name="visit_status" required><option>Scheduled</option><option>In Progress</option><option>Completed</option><option>Rejected</option></select></div>
+                        <div class="field"><label>Visit Status</label><select name="visit_status" required><option>Scheduled</option><option>In Progress</option><option>Completed</option></select></div>
                         <div class="field"><label>Living Arrangement</label><select name="living_arrangement"><option value="">Select</option><option>Owned</option><option>Living Alone</option><option>Living with Relatives</option><option>Rent</option><option>Others</option></select></div>
                         <div class="field"><label>Pensioner?</label><select name="is_pensioner"><option value="">Select</option><option value="1">Yes</option><option value="0">No</option></select></div>
                         <div class="field"><label>Pension Source</label><input name="pension_source"></div><div class="field"><label>Pension Amount</label><input type="number" min="0" step="0.01" name="pension_amount"></div>
@@ -587,7 +565,7 @@ if (!file_exists($profilePath) || is_dir($profilePath)) $profilePath = '../image
                         <fieldset class="field full"><legend>Condition / Illness</legend><div class="condition-picker" id="healthConditionVisit"><?php foreach (getHealthConditionOptions() as $condition): ?><?php if ($condition === 'Other medical condition') continue; ?><label class="condition-choice"><input type="checkbox" name="health_conditions[]" value="<?= htmlspecialchars($condition) ?>"><span><?= htmlspecialchars($condition) ?></span></label><?php endforeach; ?><label class="condition-choice"><input type="checkbox" name="health_conditions[]" value="Other" id="otherHealthConditionToggle"><span>Other</span></label></div><div class="condition-other" id="otherHealthConditionWrap" hidden><label for="otherHealthCondition">Other medical condition</label><input id="otherHealthCondition" name="health_condition_other" maxlength="120" placeholder="Describe the condition"></div></fieldset>
                         <div class="field"><label>With Maintenance?</label><select name="with_maintenance"><option value="">Select</option><option value="1">Yes</option><option value="0">No</option></select></div><div class="field"><label>Maintenance Details</label><input name="maintenance_spec"></div>
                         <div class="field"><label for="confirmationName">Confirmation Made With</label><input id="confirmationName" name="confirmation_name" minlength="2" maxlength="100" pattern="[\p{L}\p{M} .'\-]+" title="Use letters, spaces, periods, apostrophes, and hyphens only." autocomplete="name"></div><div class="field"><label>Confirmation Contact No.</label><input type="tel" name="confirmation_contact" maxlength="11" pattern="09[0-9]{9}"></div>
-                        <div class="field"><label>Final Evaluation</label><select name="eligibility"><option value="">Select</option><option>Eligible</option><option>Not Eligible</option></select></div><div class="field"><label>Reason for Decision</label><input name="eligibility_reason"></div>
+                        <div class="field"><label>SHDO Recommendation</label><select name="eligibility"><option value="">Select</option><option>Eligible</option><option>Not Eligible</option></select></div><div class="field"><label>Reason for Recommendation</label><input name="eligibility_reason"></div>
                         <div class="field full"><label>Observations / Visit Summary</label><textarea name="notes" placeholder="Required when completing a visit"></textarea></div>
                         <p class="evaluation-message full" id="evaluationMessage" aria-live="polite" hidden></p>
                     </form>
@@ -862,10 +840,8 @@ updatePersonnelPositionOther();
         updateEvaluationDependencies();
         if (!evaluationForm.reportValidity()) return;
 
-        if (!evaluationConfirmationAccepted && (status === 'Completed' || status === 'Rejected')) {
-            const confirmation = status === 'Rejected'
-                ? 'Reject this home visit? The record will be removed from the active home-visit list.'
-                : 'Mark this home visit as completed? The submitted evaluation will become part of the senior’s record.';
+        if (!evaluationConfirmationAccepted && status === 'Completed') {
+            const confirmation = 'Submit these home-visit findings for Main OSCA review? The submitted evaluation will become read-only.';
             window.showCarelinkConfirm(confirmation, () => {
                 evaluationConfirmationAccepted = true;
                 evaluationForm.requestSubmit();
@@ -885,9 +861,7 @@ updatePersonnelPositionOther();
 
             const applicationId = evaluationForm.elements.namedItem('application_id').value;
             const row = document.getElementById('visit-row-' + CSS.escape(applicationId));
-            if (status === 'Rejected') {
-                row?.remove();
-            } else if (row) {
+            if (row) {
                 const badge = row.querySelector('.visit-status-badge');
                 if (badge) {
                     badge.textContent = status;

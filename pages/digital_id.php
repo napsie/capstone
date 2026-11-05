@@ -11,10 +11,11 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'] ?? '', ['baranga
 $applicationId = trim((string)($_GET['id'] ?? ''));
 if ($applicationId === '' || mb_strlen($applicationId) > 255) {
     http_response_code(400);
-    exit('A valid application ID is required.');
+    exit('A valid transaction ID is required.');
 }
 
-$sql = "SELECT id_number, full_name, birth_date, complete_address, barangay, senior_id_no, date_submitted
+$sql = "SELECT id_number, COALESCE(NULLIF(proxy_token, ''), id_number) AS tracking_number,
+               full_name, birth_date, complete_address, barangay, senior_id_no, date_submitted
         FROM applications
         WHERE id_number = ? AND application_type = 'senior'
           AND workflow_state IN ('Verified', 'Approved', 'Released')
@@ -71,7 +72,7 @@ $embedded = ($_GET['embed'] ?? '') === '1';
   <main class="page">
     <div class="topbar"><h1>Temporary Digital Senior Citizen ID</h1><div class="actions"><button class="button" type="button" onclick="history.back()"><i class="fas fa-arrow-left"></i> Back</button><button class="button primary" type="button" onclick="window.print()"><i class="fas fa-print"></i> Print / Save PDF</button></div></div>
     <section class="panel">
-        <div class="intro"><div><h2>Approved digital credential</h2><p>Available while the applicant waits for the physical OSCA card.<br><strong>Tracking Number:</strong> <?= htmlspecialchars($application['id_number']) ?> — use this Tracking Number to track the application.</p></div><span class="badge">TEMPORARY</span></div>
+        <div class="intro"><div><h2>Approved digital credential</h2><p>Available while the applicant waits for the physical OSCA card.<br><strong>Tracking No.:</strong> <?= htmlspecialchars($application['tracking_number']) ?> — use this Tracking No. to track the application.</p></div><span class="badge">TEMPORARY</span></div>
         <div class="id-card">
             <div class="card-head"><img class="logo" src="<?= htmlspecialchars(systemLogoUrl($conn)) ?>" alt="SENIORLINK logo"><div class="agency"><small>Republic of the Philippines</small><strong>City Government of Pasig</strong><span>Office for Senior Citizens Affairs</span></div></div>
             <div class="card-body">

@@ -33,7 +33,7 @@ $_POST = normalizeApplicationInput($_POST, $barangays_list);
 
 $appId = sanitize_str($_POST['applicationId'] ?? null);
 if (empty($appId)) {
-    echo json_encode(['success' => false, 'message' => 'Application ID is missing.']);
+    echo json_encode(['success' => false, 'message' => 'Transaction ID is missing.']);
     exit();
 }
 

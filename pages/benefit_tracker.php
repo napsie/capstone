@@ -3,6 +3,7 @@ session_start();
 require_once '../includes/db_connect.php';
 require_once '../includes/application_types.php';
 require_once '../includes/system_branding.php';
+require_once '../includes/digital_id_notifications.php';
 
 header('Cache-Control: private, no-store');
 
@@ -30,7 +31,7 @@ $error = '';
 
 if ($token !== '') {
     if (!preg_match('/^PRX-[A-Z0-9]{4,12}$/', $token)) {
-        $error = 'Enter a valid permanent Tracking Number, such as PRX-7K2M.';
+        $error = 'Enter a valid permanent Tracking No., such as PRX-7K2M.';
     } else {
         $stmt = $conn->prepare("SELECT id_number, parent_senior_id, proxy_token, full_name, application_type, requested_benefit, workflow_state, status, home_visit_status, date_submitted, id_purpose,
                                        senior_id_no, birth_date, complete_address, barangay, contact_number, expected_release_date
@@ -70,7 +71,7 @@ if ($token !== '') {
                 }
             }
             if ($selectedService === '') $selectedService = (string)($matchedApplication['application_type'] ?? 'senior');
-            // Backward compatibility: old tracker links used the application ID
+            // Backward compatibility: old tracker links used the transaction ID
             // itself in the service parameter.
             if (!isset($serviceDefinitions[$selectedService])) {
                 foreach ($applications as $candidate) {
@@ -94,7 +95,7 @@ if ($token !== '') {
             $historyStmt->execute([$application['id_number']]);
             $history = $historyStmt->fetchAll(PDO::FETCH_ASSOC);
         } else {
-            $error = 'No application was found for that Tracking Number. Check the code and try again.';
+            $error = 'No application was found for that Tracking No. Check the code and try again.';
         }
     }
 }
@@ -138,6 +139,11 @@ $showDigitalId = $application
     && $digitalSeniorId !== ''
     && !preg_match('/^OSCA-[0-9]{4}-[0-9A-F]{6}$/i', $digitalSeniorId);
 $digitalIdIssuedAt = (string)($application['date_submitted'] ?? '');
+$digitalIdNotice = null;
+if ($application) {
+    try { $digitalIdNotice = trackerDigitalIdNotice($conn, $permanentToken); }
+    catch (Throwable $e) { error_log('Tracker notification unavailable: ' . $e->getMessage()); }
+}
 if ($showDigitalId) {
     $_SESSION['tracker_photo_access'] = [
         'id' => (string)$application['id_number'],
@@ -280,15 +286,15 @@ if ($application && $seniorBirthDateValue !== '') {
     <section class="tracker-card">
         <header class="tracker-head">
             <h1>Track Your Application</h1>
-            <p>Enter the senior's permanent Tracking Number, scan the QR code, or upload a QR image to check all linked applications.</p>
+            <p>Enter the senior's permanent Tracking No., scan the QR code, or upload a QR image to check all linked applications.</p>
         </header>
         <div class="tracker-body">
             <?php $announcementSurface = 'public'; $announcementVariant = 'compact'; include '../partials/announcement_feed.php'; ?>
             <form method="get" class="lookup">
-                <label for="token" class="sr-only">Tracking Number</label>
+                <label for="token" class="sr-only">Tracking No.</label>
                 <input id="token" name="token" value="<?php echo htmlspecialchars($token); ?>" placeholder="PRX-7K2M" aria-describedby="tokenFormatHelp" maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
                 <button type="submit"><i class="fas fa-magnifying-glass" aria-hidden="true"></i> Check Status</button>
-                <small id="tokenFormatHelp" class="token-format-help">Use the senior's one permanent Tracking Number. The PRX- prefix and dash are formatted automatically.</small>
+                <small id="tokenFormatHelp" class="token-format-help">Use the senior's one permanent Tracking No. The PRX- prefix and dash are formatted automatically.</small>
             </form>
             <details class="qr-tools">
                 <summary><i class="fas fa-camera" aria-hidden="true"></i> Scan QR Code <span aria-hidden="true">|</span> <i class="fas fa-image" aria-hidden="true"></i> Upload QR Image</summary>
@@ -311,6 +317,12 @@ if ($application && $seniorBirthDateValue !== '') {
                         <?php endforeach; ?>
                     </select>
                 </form>
+                <section data-digital-id-notification data-tracking-token="<?= htmlspecialchars($permanentToken, ENT_QUOTES, 'UTF-8') ?>" <?= $digitalIdNotice ? '' : 'hidden' ?> role="status" aria-live="polite" style="margin:0 0 22px;padding:16px;border:1px solid #a7d7bb;border-radius:12px;background:#effaf3;color:#164b32">
+                    <strong data-notice-title><?= htmlspecialchars($digitalIdNotice['title'] ?? '') ?></strong>
+                    <p data-notice-message style="margin:8px 0;line-height:1.5"><?= htmlspecialchars($digitalIdNotice['message'] ?? '') ?></p>
+                    <p style="margin:8px 0"><a href="?<?= htmlspecialchars(http_build_query(['token' => $permanentToken, 'service' => 'senior']), ENT_QUOTES, 'UTF-8') ?>#digital-id">View digital ID</a></p>
+                    <details><summary>Notification history</summary><small data-notice-date><?= $digitalIdNotice ? 'Notification recorded: ' . htmlspecialchars($digitalIdNotice['created_at']) : '' ?></small></details>
+                </section>
                 <?php if ($isBirthday || $milestoneAge !== null): ?>
                     <section class="senior-notices" aria-label="Senior citizen notices" aria-live="polite">
                         <?php if ($isBirthday): ?>
@@ -328,7 +340,8 @@ if ($application && $seniorBirthDateValue !== '') {
                     </section>
                 <?php endif; ?>
                 <div class="summary">
-                    <div class="fact"><span>Tracking Number</span><?php echo htmlspecialchars($permanentToken); ?></div>
+                    <div class="fact"><span>Tracking No.</span><?php echo htmlspecialchars($permanentToken); ?></div>
+                    <div class="fact"><span>Transaction ID</span><?php echo htmlspecialchars($application['id_number']); ?></div>
                     <div class="fact"><span>Current Status</span><?php echo htmlspecialchars($displayStatus ?: 'Received'); ?></div>
                     <div class="fact"><span>Applicant</span><?php echo htmlspecialchars($applicantName); ?></div>
                     <div class="fact"><span>Request Type</span><?php echo htmlspecialchars($tokenType); ?></div>
@@ -342,7 +355,7 @@ if ($application && $seniorBirthDateValue !== '') {
                 <?php endif; ?>
 
                 <p class="status-note <?php echo $isRejected ? 'rejected' : ($isLandbankApplication ? 'landbank' : ''); ?>" role="status">
-                    <?php if ($serviceNotApplied): ?><strong><?php echo htmlspecialchars($serviceDefinitions[$selectedService]); ?></strong> has not been applied for under this Tracking Number.
+                    <?php if ($serviceNotApplied): ?><strong><?php echo htmlspecialchars($serviceDefinitions[$selectedService]); ?></strong> has not been applied for under this Tracking No.
                     <?php elseif ($isRejected): ?>This application is marked <strong><?php echo htmlspecialchars($displayStatus); ?></strong>. Please contact your local senior services office for assistance.
                     <?php elseif ($homeVisitStatus === 'Rejected'): ?>The required home visit was <strong>Rejected</strong>. Contact the reviewing office if you need more information.
                     <?php elseif ($homeVisitStatus !== '' && $homeVisitStatus !== 'Completed'): ?>Your Local Pension application is <strong>Pending</strong> until the required home visit is completed. The reviewing office manages the visit schedule.
@@ -362,7 +375,7 @@ if ($application && $seniorBirthDateValue !== '') {
                 </div>
 
                 <?php if ($showDigitalId): ?>
-                    <section class="digital-id-section" aria-labelledby="digitalIdHeading">
+                    <section id="digital-id" class="digital-id-section" aria-labelledby="digitalIdHeading">
                         <div class="digital-id-heading">
                             <div><h2 id="digitalIdHeading">Temporary Digital Senior Citizen ID</h2><p>Available while waiting for the physical OSCA card.</p></div>
                             <span class="temporary-badge">TEMPORARY</span>
@@ -429,5 +442,6 @@ if ($application && $seniorBirthDateValue !== '') {
 })();
 </script>
 <script src="../assets/js/form-language.js?v=4" defer></script>
+<script src="../assets/js/digital-id-notifications.js?v=2" defer></script>
 </body>
 </html>

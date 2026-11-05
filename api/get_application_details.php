@@ -57,7 +57,7 @@ try {
     $appId = isset($_GET['id']) ? trim($_GET['id']) : '';
 
     if (empty($appId)) {
-        echo json_encode(['error' => 'Application ID is required.']);
+        echo json_encode(['error' => 'Transaction ID is required.']);
         exit();
     }
 

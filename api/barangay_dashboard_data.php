@@ -3,6 +3,8 @@ session_start();
 header('Content-Type: application/json');
 require_once '../includes/db_connect.php';
 require_once '../includes/dashboard_response_cache.php';
+require_once '../includes/dashboard_data.php';
+require_once '../includes/dashboard_report_snapshot.php';
 
 // Authenticate and authorize
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'barangay_staff' || !isset($_SESSION['barangay'])) {
@@ -11,14 +13,16 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'barangay_staff' || !i
 }
 
 $barangay = $_SESSION['barangay'];
-$dashboardCacheKey = 'barangay-dashboard|' . $barangay;
+$dashboardCacheKey = 'barangay-dashboard-v2|' . $dbname . '|' . $barangay;
 if ($cachedResponse = readDashboardResponseCache($dashboardCacheKey)) {
     header('X-Seniorlink-Cache: HIT');
+    rememberDashboardReportSnapshot($cachedResponse,$_SESSION);
     echo json_encode($cachedResponse);
     exit;
 }
 $response = [
     'success' => true,
+    'timestamp' => date('Y-m-d H:i:s'),
     'data'    => [
         'stats'          => [],
         'workflow_stats' => [],
@@ -32,137 +36,7 @@ $response = [
 ];
 
 try {
-    // 1. Get data for Status Distribution Chart (old status column)
-    $statusStmt = $conn->prepare("
-        SELECT status, COUNT(*) as count 
-        FROM applications 
-        WHERE barangay = :barangay 
-          AND (is_archived = 0 OR is_archived IS NULL)
-        GROUP BY status
-    ");
-    $statusStmt->execute(['barangay' => $barangay]);
-    $response['data']['stats'] = $statusStmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // 2. Get workflow status distribution chart data
-    $workflowStmt = $conn->prepare("
-        SELECT 
-            CASE
-                WHEN COALESCE(home_visit_status, '') IN ('Rejected', 'Cancelled') THEN 'Rejected'
-                WHEN workflow_state = 'Needs Correction' THEN 'Needs Correction'
-                WHEN (application_type = 'pension' OR requested_benefit = 'Local Social Pension Assessment')
-                     AND COALESCE(home_visit_status, '') NOT IN ('Completed', 'Rejected', 'Cancelled') THEN 'Pending'
-                WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') IN ('Approved','Released') THEN 'Verified'
-                ELSE COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received')
-            END as workflow_state,
-            COUNT(*) as count 
-        FROM applications 
-        WHERE barangay = :barangay 
-          AND (is_archived = 0 OR is_archived IS NULL)
-        GROUP BY CASE
-                     WHEN COALESCE(home_visit_status, '') IN ('Rejected', 'Cancelled') THEN 'Rejected'
-                     WHEN workflow_state = 'Needs Correction' THEN 'Needs Correction'
-                WHEN (application_type = 'pension' OR requested_benefit = 'Local Social Pension Assessment')
-                          AND COALESCE(home_visit_status, '') NOT IN ('Completed', 'Rejected', 'Cancelled') THEN 'Pending'
-                     WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') IN ('Approved','Released') THEN 'Verified'
-                     ELSE COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received')
-                 END
-    ");
-    $workflowStmt->execute(['barangay' => $barangay]);
-    $response['data']['workflow_stats'] = $workflowStmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // 3. Get the monthly female/male trend for senior citizens in this barangay.
-    $genderStmt = $conn->prepare("
-        SELECT
-            MONTH(date_submitted) AS month_num,
-            YEAR(date_submitted) AS year,
-            CASE
-                WHEN LOWER(TRIM(gender)) = 'female' THEN 'Female'
-                WHEN LOWER(TRIM(gender)) = 'male' THEN 'Male'
-            END AS gender,
-            COUNT(*) AS count
-        FROM applications
-        WHERE barangay = :barangay
-          AND (is_archived = 0 OR is_archived IS NULL)
-          AND application_type = 'senior'
-          AND COALESCE(parent_senior_id, '') = ''
-          AND LOWER(TRIM(gender)) IN ('female', 'male')
-          AND date_submitted >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
-        GROUP BY YEAR(date_submitted), MONTH(date_submitted), CASE
-                     WHEN LOWER(TRIM(gender)) = 'female' THEN 'Female'
-                     WHEN LOWER(TRIM(gender)) = 'male' THEN 'Male'
-                 END
-        ORDER BY YEAR(date_submitted), MONTH(date_submitted)
-    ");
-    $genderStmt->execute(['barangay' => $barangay]);
-    $response['data']['gender_stats'] = $genderStmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // 4. Compute summary counts in one scan instead of three near-identical queries.
-    $summaryStmt = $conn->prepare("
-        SELECT
-            COUNT(*) AS total_count,
-            SUM(CASE WHEN priority_level = 'high'
-                AND COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') = 'Received'
-                THEN 1 ELSE 0 END) AS priority_count,
-            SUM(CASE WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received')
-                IN ('Received', 'Submitted', 'For Review', 'Needs Correction') THEN 1 ELSE 0 END) AS queue_count
-            ,SUM(CASE WHEN application_type = 'senior' AND COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') NOT IN ('Verified','Approved','Released','Rejected') THEN 1 ELSE 0 END) AS pending_senior_id
-            ,SUM(CASE WHEN application_type = 'landbank' AND COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') NOT IN ('Verified','Approved','Released','Rejected') THEN 1 ELSE 0 END) AS pending_landbank
-        FROM applications 
-        WHERE barangay = :barangay 
-          AND (is_archived = 0 OR is_archived IS NULL)
-    ");
-    $summaryStmt->execute(['barangay' => $barangay]);
-    $summary = $summaryStmt->fetch(PDO::FETCH_ASSOC) ?: [];
-    $response['data']['priority_count'] = (int)($summary['priority_count'] ?? 0);
-    $response['data']['queue_count'] = (int)($summary['queue_count'] ?? 0);
-    $response['data']['total_count'] = (int)($summary['total_count'] ?? 0);
-    $response['data']['pending_senior_id'] = (int)($summary['pending_senior_id'] ?? 0);
-    $response['data']['pending_landbank'] = (int)($summary['pending_landbank'] ?? 0);
-
-    // 5. Get data for Monthly Applications Chart (last 12 months)
-    $monthlyStmt = $conn->prepare("
-        SELECT
-            MONTHNAME(date_submitted) as month,
-            MONTH(date_submitted) as month_num,
-            YEAR(date_submitted) as year,
-            application_type,
-            COUNT(*) as count
-        FROM applications
-        WHERE barangay = :barangay 
-          AND (is_archived = 0 OR is_archived IS NULL)
-          AND date_submitted >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
-        GROUP BY YEAR(date_submitted), MONTH(date_submitted), MONTHNAME(date_submitted), application_type
-        ORDER BY YEAR(date_submitted), MONTH(date_submitted)
-    ");
-    $monthlyStmt->execute(['barangay' => $barangay]);
-    $response['data']['monthly'] = $monthlyStmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // 6. Get recent applications for notifications (including workflow status)
-    $notifStmt = $conn->prepare("
-        SELECT 
-            id_number as id,
-            full_name,
-            application_type,
-            status,
-            CASE
-                WHEN COALESCE(home_visit_status, '') IN ('Rejected', 'Cancelled') THEN 'Rejected'
-                WHEN workflow_state = 'Needs Correction' THEN 'Needs Correction'
-                WHEN (application_type = 'pension' OR requested_benefit = 'Local Social Pension Assessment')
-                     AND COALESCE(home_visit_status, '') NOT IN ('Completed', 'Rejected', 'Cancelled') THEN 'Pending'
-                WHEN COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received') IN ('Approved','Released') THEN 'Verified'
-                ELSE COALESCE(NULLIF(workflow_state, ''), NULLIF(status, ''), 'Received')
-            END as workflow_state,
-            priority_level,
-            date_submitted
-        FROM applications
-        WHERE barangay = :barangay
-          AND (is_archived = 0 OR is_archived IS NULL)
-        ORDER BY date_submitted DESC, CASE WHEN priority_level = 'high' THEN 0 ELSE 1 END
-        LIMIT 8
-    ");
-    $notifStmt->execute(['barangay' => $barangay]);
-    $response['data']['notifications'] = $notifStmt->fetchAll(PDO::FETCH_ASSOC);
-
+    $response['data']=barangayDashboardData($conn,$barangay);
 } catch (PDOException $e) {
     $response['success'] = false;
     $response['message'] = 'Database error: ' . $e->getMessage();
@@ -171,5 +45,6 @@ try {
 
 if ($response['success']) writeDashboardResponseCache($dashboardCacheKey, $response);
 header('X-Seniorlink-Cache: MISS');
+if (($response['status']??'')==='success' || ($response['success']??false)) rememberDashboardReportSnapshot($response,$_SESSION);
 echo json_encode($response);
 ?>

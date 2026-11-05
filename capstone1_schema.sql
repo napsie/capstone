@@ -18,6 +18,7 @@ DROP TABLE IF EXISTS `application_documents`;
 DROP TABLE IF EXISTS `application_history`;
 DROP TABLE IF EXISTS `audit_trail`;
 DROP TABLE IF EXISTS `sms_notifications`;
+DROP TABLE IF EXISTS `digital_id_notifications`;
 DROP TABLE IF EXISTS `hardcopy_batch_items`;
 DROP TABLE IF EXISTS `hardcopy_batches`;
 DROP TABLE IF EXISTS `home_visit_personnel`;
@@ -342,6 +343,12 @@ CREATE TABLE `notifications` (
   `type`       varchar(50)  NOT NULL,
   `created_at` timestamp    NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- One availability notification per senior profile
+CREATE TABLE `digital_id_notifications` (
+  `application_id` varchar(255) NOT NULL PRIMARY KEY,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- SMS confirmation outbox for scheduled home visits

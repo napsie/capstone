@@ -23,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
 $proxySuccess = $proxyResult['success'];
 $proxyQrUrl = $proxyResult['qrCodeUrl'];
 $proxyTransactionId = $proxyResult['transactionId'];
+$proxyApplicationId = $proxyResult['applicationId'] ?? '';
 $proxyOption = $proxyResult['option'] ?? '';
 $proxyMessage = $proxyResult['message'] ?? '';
 $formAction = 'proxy_registration.php';
@@ -272,7 +273,7 @@ $resetUrl = '../index.php';
                         Public Senior Service
                     </div>
                     <h2 id="proxy-heading">Senior Application Portal</h2>
-                    <p>Choose whether to apply for a Senior Citizen ID or access benefits using an approved ID and permanent Tracking Number.</p>
+                    <p>Choose whether to apply for a Senior Citizen ID or access benefits using an approved ID and permanent Tracking No.</p>
                 </div>
                 <div class="proxy-panel-body">
                     <?php include '../partials/proxy_form.php'; ?>

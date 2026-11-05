@@ -27,9 +27,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_benefit_access
     if (count($attempts) >= 8) {
         $accessError = 'Too many unsuccessful attempts. Please wait 10 minutes before trying again.';
     } elseif ($seniorId === '' || $token === '') {
-        $accessError = 'Enter both the official Senior Citizen ID number and permanent Tracking Number.';
+        $accessError = 'Enter both the official Senior Citizen ID number and permanent Tracking No.';
     } elseif (!preg_match('/^PRX-[A-Z0-9]{4,12}$/', $token)) {
-        $accessError = 'The Senior ID number and permanent Tracking Number could not be validated.';
+        $accessError = 'The Senior ID number and permanent Tracking No. could not be validated.';
     } else {
         $stmt = $conn->prepare("SELECT id_number, full_name, lastName, firstName, middleName, suffix, birth_date, contact_number, complete_address, barangay, senior_id_no, id_image, email_address, place_of_birth, gender, civil_status, mothers_maiden_name, house_no, street, zip_code, landmark, health_status, health_condition, emergency_contact_name, emergency_contact, claimant_relationship, id_purpose, date_submitted FROM applications
             WHERE application_type = 'senior'
@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_benefit_access
         } else {
             $attempts[] = time();
             $_SESSION['senior_benefit_attempts'] = $attempts;
-            $accessError = 'The Senior ID number and permanent Tracking Number could not be validated. The ID application must already be approved.';
+            $accessError = 'The Senior ID number and permanent Tracking No. could not be validated. The ID application must already be approved.';
         }
     }
 }
@@ -99,6 +99,7 @@ $proxyResult = processProxyRegistration();
 $proxySuccess = $proxyResult['success'];
 $proxyQrUrl = $proxyResult['qrCodeUrl'];
 $proxyTransactionId = $proxyResult['transactionId'];
+$proxyApplicationId = $proxyResult['applicationId'] ?? '';
 $proxyOption = $proxyResult['option'] ?? '';
 $proxyMessage = $proxyResult['message'] ?? '';
 $formAction = 'senior_benefits.php';
@@ -216,12 +217,12 @@ if ($verifiedSenior) {
                 <div class="benefit-access">
                     <div class="access-heading"><i class="fas fa-shield-halved" aria-hidden="true"></i> Verified Senior Access</div>
                     <h1>Apply for Senior Benefits</h1>
-                    <p>Benefits are available only after the Senior Citizen ID application is approved. Enter the issued ID number and the permanent Tracking Number received during the original ID application.</p>
+                    <p>Benefits are available only after the Senior Citizen ID application is approved. Enter the issued ID number and the permanent Tracking No. received during the original ID application.</p>
                     <form method="post">
                         <input type="hidden" name="verify_benefit_access" value="1">
                         <div class="access-grid">
                             <div class="access-field"><label for="seniorCitizenId">Senior Citizen ID Number</label><input id="seniorCitizenId" name="seniorCitizenId" value="<?php echo htmlspecialchars((string)($_POST['seniorCitizenId'] ?? '')); ?>" autocomplete="off" aria-describedby="seniorIdHint" required><small id="seniorIdHint">Enter the number on your issued Senior Citizen ID.</small></div>
-                            <div class="access-field"><label for="permanentToken">Tracking Number</label><input id="permanentToken" name="permanentToken" value="<?php echo htmlspecialchars($token ?? ''); ?>" placeholder="PRX-XXXX" maxlength="16" minlength="8" pattern="PRX-[A-Z0-9]{4,12}" autocapitalize="characters" spellcheck="false" autocomplete="off" aria-describedby="tokenHint" required><small id="tokenHint">The PRX- prefix is added automatically.</small></div>
+                            <div class="access-field"><label for="permanentToken">Tracking No.</label><input id="permanentToken" name="permanentToken" value="<?php echo htmlspecialchars($token ?? ''); ?>" placeholder="PRX-XXXX" maxlength="16" minlength="8" pattern="PRX-[A-Z0-9]{4,12}" autocapitalize="characters" spellcheck="false" autocomplete="off" aria-describedby="tokenHint" required><small id="tokenHint">The PRX- prefix is added automatically.</small></div>
                         </div>
                         <button class="access-btn" type="submit"><i class="fas fa-user-check"></i> Verify Identity</button>
                         <?php if ($accessError): ?><div class="access-error" role="alert"><?php echo htmlspecialchars($accessError); ?></div><?php endif; ?>

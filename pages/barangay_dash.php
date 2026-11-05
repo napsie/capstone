@@ -134,8 +134,8 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
     </style>
     <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
-    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
-    <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=20261023">
+    <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=22">
+    <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=20261104">
     <link rel="stylesheet" href="../assets/css/metric-cards.css?v=2">
     <link rel="stylesheet" href="../assets/css/dashboard-calendar.css?v=12">
 <script src="../assets/js/dashboard-chart-fallback.js?v=1"></script>
@@ -154,7 +154,6 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                     <h1>Barangay <span><?php echo $barangayName; ?></span> Dashboard</h1>
                 </div>
                 <div class="header-actions">
-                    
                     <div class="user-info">
                         <div class="user-avatar">
                             <img src="../images/profile_pictures/<?php echo htmlspecialchars($_SESSION['profile_picture'] ?? 'default.jpg'); ?>" alt="Profile Picture">
@@ -176,6 +175,7 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
                 <nav class="dashboard-quick-actions" aria-label="Barangay quick actions">
                     <button class="quick-action primary announcement-launch" type="button" data-announcement-open aria-controls="dashboardAnnouncementDrawer" aria-expanded="false"><i class="fas fa-bullhorn" aria-hidden="true"></i><span><strong>Announcements</strong><small>View official updates</small></span></button>
                     <button class="quick-action calendar-launch" type="button" data-calendar-open aria-controls="dashboardCalendarDrawer" aria-expanded="false"><i class="fas fa-calendar-days" aria-hidden="true"></i><span><strong>Calendar</strong><small>Check dates quickly</small></span></button>
+                    <button class="quick-action primary report-launch" type="button" data-dashboard-report-open aria-haspopup="dialog" aria-controls="dashboardReportDialog"><i class="fas fa-file-export" aria-hidden="true"></i><span><strong>Generate Report</strong><small>Export dashboard summary</small></span></button>
                 </nav>
             </section>
 
@@ -662,5 +662,6 @@ $barangayName = htmlspecialchars($_SESSION['barangay'] ?? 'Unknown Barangay');
             document.querySelectorAll('.chart-wrapper').forEach(el => el.classList.remove('is-loading'));
     }
     </script>
+<?php include '../partials/dashboard_report_modal.php'; ?>
 </body>
 </html>

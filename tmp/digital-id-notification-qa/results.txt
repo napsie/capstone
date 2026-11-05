@@ -1,0 +1,26 @@
+PASS Login test-admin
+PASS Login test-staff
+PASS Missing tracking reference rejected
+PASS Array tracking input rejected
+PASS Existing approved IDs receive backfilled alert
+PASS Alert does not disclose ID credentials or name
+PASS Unknown token receives no notice
+PASS Unapproved application has no notice
+PASS Browser hides notice before ID is ready
+PASS Senior application verification works
+PASS Verification without ID waits for issuance
+PASS Official ID generation succeeds
+PASS Issuance immediately creates dated tracker notification
+PASS Open tracker announces readiness automatically without reloading
+PASS View digital ID opens the credential on the tracker
+PASS Notice and tracker fit a mobile screen
+PASS Saving same ID retains the original notification
+PASS SHDO cannot issue ID to trigger an alert
+PASS Existing official ID followed by verification triggers alert
+PASS Tracker renders notice, history, and digital ID target
+PASS Tracker loads automatic update script
+PASS Archived record cannot advertise an available ID
+PASS Live notice disappears when the record becomes archived
+PASS Archived credential is hidden on the open tracker
+PASS Requests finish without PHP errors
+25 HTTP checks passed.

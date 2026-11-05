@@ -45,14 +45,14 @@ try {
             --bg: #f1f5f9;
             --text: #0f172a;
         }
-        
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
             font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        
+
         body {
             background-color: var(--bg);
             color: var(--text);
@@ -60,11 +60,11 @@ try {
             min-height: 100vh;
             overflow-x: hidden;
         }
-        
+
         /* Sidebar styles are handled by department-sidebar.css */
-        
+
         /* Main Content Styles */
-        
+
         .header {
             display: flex;
             justify-content: space-between;
@@ -73,18 +73,18 @@ try {
             padding-bottom: 15px;
             border-bottom: 1px solid #ddd;
         }
-        
+
         .header-content {
             display: flex;
             flex-direction: column;
         }
-        
+
         .welcome-message {
             font-size: 1.2rem;
             color: var(--gray);
             margin-bottom: 5px;
         }
-        
+
         .header h1 {
             font-family: 'Inter', sans-serif;
             color: var(--primary);
@@ -109,13 +109,13 @@ try {
             color: #2563eb;
             font-weight: 700;
         }
-        
+
         .user-info {
             display: flex;
             align-items: center;
             gap: 10px;
         }
-        
+
         .user-avatar {
             width: 40px;
             height: 40px;
@@ -127,7 +127,7 @@ try {
             color: white;
             font-weight: bold;
         }
-        
+
         /* Stats Cards */
         .stats-container {
             display: grid;
@@ -135,7 +135,7 @@ try {
             gap: 20px;
             margin-bottom: 30px;
         }
-        
+
         .stat-card {
             background: white;
             border-radius: 10px;
@@ -146,11 +146,11 @@ try {
             gap: 15px;
             transition: transform 0.3s;
         }
-        
+
         .stat-card:hover {
             transform: translateY(-5px);
         }
-        
+
         .stat-icon {
             width: 60px;
             height: 60px;
@@ -161,22 +161,22 @@ try {
             font-size: 1.5rem;
             color: white;
         }
-        
+
         .stat-info h3 {
             font-size: 1.8rem;
             margin-bottom: 5px;
         }
-        
+
         .stat-info p {
             color: var(--gray);
             font-size: 0.9rem;
         }
-        
+
         .bg-primary { background: var(--primary); }
         .bg-success { background: var(--success); }
         .bg-warning { background: var(--warning); }
         .bg-danger { background: var(--danger); }
-        
+
         /* Dashboard Panels Layout */
         .dashboard-panels {
             display: grid;
@@ -370,7 +370,7 @@ try {
             font-size: 0.8rem;
             color: #aaa;
         }
-        
+
         .notifications-list {
             max-height: 300px; /* Adjust as needed */
             overflow-y: auto;
@@ -386,7 +386,7 @@ try {
             flex: 1;
             max-height: none;
         }
-        
+
         /* Dashboard Sections */
         .dashboard-section {
             background: white;
@@ -395,7 +395,7 @@ try {
             margin-bottom: 30px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-        
+
         .section-header {
             display: flex;
             justify-content: space-between;
@@ -404,7 +404,7 @@ try {
             padding-bottom: 10px;
             border-bottom: 1px solid #eee;
         }
-        
+
         .section-header h2 {
             color: white;
             font-size: 1.4rem;
@@ -414,12 +414,12 @@ try {
             display: inline-flex;
             align-items: center;
         }
-        
+
         .section-actions {
             display: flex;
             gap: 10px;
         }
-        
+
         .btn {
             padding: 8px 15px;
             border: none;
@@ -431,81 +431,81 @@ try {
             gap: 5px;
             transition: all 0.3s;
         }
-        
+
         .btn-primary {
             background: var(--secondary);
             color: white;
         }
-        
+
         .btn-success {
             background: var(--success);
             color: white;
         }
-        
+
         .btn-warning {
             background: var(--warning);
             color: white;
         }
-        
+
         .btn-danger {
             background: var(--danger);
             color: white;
         }
-        
+
         .btn:hover {
             background: #153860;
             opacity: 0.95;
             transform: translateY(-1px);
         }
-        
+
         /* Table Styles */
         .table-container {
             overflow-x: auto;
         }
-        
+
         table {
             width: 100%;
             border-collapse: collapse;
         }
-        
+
         th, td {
             padding: 12px 15px;
             text-align: left;
             border-bottom: 1px solid #eee;
         }
-        
+
         th {
             background: var(--light-gray);
             color: var(--dark);
             font-weight: 600;
         }
-        
+
         tr:hover {
             background: #f9f9f9;
         }
-        
+
         .status {
             padding: 5px 10px;
             border-radius: 20px;
             font-size: 0.8rem;
             font-weight: 500;
         }
-        
+
         .status-pending {
             background: #fff3cd;
             color: #856404;
         }
-        
+
         .status-verified {
             background: #d1edff;
             color: #0c5460;
         }
-        
+
         .status-rejected {
             background: #f8d7da;
             color: #721c24;
         }
-        
+
         /* Records Section */
         .records-grid {
             display: grid;
@@ -513,7 +513,7 @@ try {
             gap: 20px;
             margin-top: 20px;
         }
-        
+
         .record-card {
             background: white;
             border-radius: 8px;
@@ -521,11 +521,11 @@ try {
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             transition: transform 0.3s;
         }
-        
+
         .record-card:hover {
             transform: translateY(-5px);
         }
-        
+
         .record-card h3 {
             color: var(--primary);
             margin-bottom: 15px;
@@ -533,12 +533,12 @@ try {
             align-items: center;
             gap: 10px;
         }
-        
+
         .record-card ul {
             list-style: none;
             margin-left: 10px;
         }
-        
+
         .record-card li {
             padding: 8px 0;
             border-bottom: 1px solid #eee;
@@ -546,40 +546,40 @@ try {
             align-items: center;
             gap: 10px;
         }
-        
+
         .record-card li:last-child {
             border-bottom: none;
         }
-        
+
         .record-card i {
             color: var(--secondary);
         }
-        
+
         /* Responsive */
         @media (max-width: 768px) {
             .container {
                 flex-direction: column;
             }
-            
+
             .sidebar {
                 width: 100%;
                 height: auto;
             }
-            
+
             .stats-container {
                 grid-template-columns: 1fr;
             }
-            
+
             .records-grid {
                 grid-template-columns: 1fr;
             }
-            
+
             .header {
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 15px;
             }
-            
+
             .user-info {
                 align-self: flex-end;
             }
@@ -588,7 +588,7 @@ try {
     <link rel="stylesheet" href="../assets/css/seniorlink-ui.css?v=20">
     <link rel="stylesheet" href="../assets/css/system-header.css?v=1">
     <link rel="stylesheet" href="../assets/css/system-sidebar.css?v=3">
-    <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=20261023">
+    <link rel="stylesheet" href="../assets/css/dashboard-hci.css?v=20261103">
     <link rel="stylesheet" href="../assets/css/metric-cards.css?v=3">
     <link rel="stylesheet" href="../assets/css/dashboard-calendar.css?v=12">
 <script src="../assets/js/dashboard-chart-fallback.js?v=1"></script>
@@ -599,7 +599,7 @@ try {
 <body class="dashboard-page department-dashboard">
     <div class="container">
         <?php include '../partials/department_sidebar.php'; ?>
-        
+
         <!-- Main Content -->
         <div class="main-content">
             <div class="header">
@@ -607,7 +607,7 @@ try {
                     <div class="welcome-message" data-first-name="<?php echo htmlspecialchars($_SESSION['first_name']); ?>" data-last-name="<?php echo htmlspecialchars($_SESSION['last_name']); ?>" data-role="<?php echo htmlspecialchars($_SESSION['role']); ?>"></div>
                     <h1>Centralized Profiling Dashboard</h1>
                 </div>
-                <div class="header-actions">        
+                <div class="header-actions">
                     <div class="user-info">
                         <div class="user-avatar">
                             <?php
@@ -636,6 +636,7 @@ try {
                 <nav class="dashboard-quick-actions" aria-label="Department quick actions">
                     <a class="quick-action" href="department_records.php"><i class="fas fa-database" aria-hidden="true"></i><span><strong>Citywide records</strong><small>Browse all barangays</small></span></a>
                     <button class="quick-action calendar-launch" type="button" data-calendar-open aria-controls="dashboardCalendarDrawer" aria-expanded="false"><i class="fas fa-calendar-days" aria-hidden="true"></i><span><strong>Calendar</strong><small>Check dates quickly</small></span></button>
+                    <button class="quick-action primary report-launch" type="button" data-dashboard-report-open aria-haspopup="dialog" aria-controls="dashboardReportDialog"><i class="fas fa-file-export" aria-hidden="true"></i><span><strong>Generate Report</strong><small>Export dashboard summary</small></span></button>
                 </nav>
             </section>
 
@@ -651,7 +652,7 @@ try {
                     </div>
                     <i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i>
                 </a>
-                
+
                 <a class="stat-card stat-card-link stat-green" href="department_records.php" aria-label="Open senior citizen records from all barangays">
                     <div class="stat-icon bg-success">
                         <i class="fas fa-user-check"></i>
@@ -662,7 +663,7 @@ try {
                     </div>
                     <i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i>
                 </a>
-                
+
                 <a class="stat-card stat-card-link stat-violet" href="department_records.php" aria-label="Open all processed records">
                     <div class="stat-icon bg-danger">
                         <i class="fas fa-chart-line"></i>
@@ -673,7 +674,7 @@ try {
                     </div>
                     <i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i>
                 </a>
-                <a class="stat-card stat-card-link stat-blue" href="user_management.php" aria-label="Open active system users"><div class="stat-icon"><i class="fas fa-users-gear"></i></div><div class="stat-info"><h3><?php echo number_format($systemUserCount); ?></h3><p>Active system users</p><small><?php echo number_format($barangayStaffCount); ?> barangay staff accounts</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>
+                <a class="stat-card stat-card-link stat-blue" href="user_management.php" aria-label="Open active system users"><div class="stat-icon"><i class="fas fa-users-gear"></i></div><div class="stat-info"><h3 id="dashboardSystemUsers"><?php echo number_format($systemUserCount); ?></h3><p>Active system users</p><small id="dashboardBarangayStaff"><?php echo number_format($barangayStaffCount); ?> barangay staff accounts</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>
                 <a class="stat-card stat-card-link stat-amber" href="verify_document.php?type=senior" aria-label="Open pending Senior ID applications"><div class="stat-icon"><i class="fas fa-id-card"></i></div><div class="stat-info"><h3 class="dashboard-loading" id="pendingSeniorId">0</h3><p>Pending Senior ID</p><small>Awaiting completion</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>
                 <a class="stat-card stat-card-link stat-blue" href="verify_document.php?type=landbank" aria-label="Open Landbank applications"><div class="stat-icon"><i class="fas fa-building-columns"></i></div><div class="stat-info"><h3 class="dashboard-loading" id="pendingLandbank">0</h3><p>Landbank</p><small>Awaiting completion</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>
                 <a class="stat-card stat-card-link stat-green" href="verify_document.php?type=pension" aria-label="Open pending Local Senior Pension applications"><div class="stat-icon"><i class="fas fa-wallet"></i></div><div class="stat-info"><h3 class="dashboard-loading" id="pendingLocalPension">0</h3><p>Local Senior Pension</p><small>Pending Local Senior Pension</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>
@@ -681,7 +682,7 @@ try {
                 <a class="stat-card stat-card-link stat-amber" href="verify_document.php?type=burial" aria-label="Open pending Burial Assistance applications"><div class="stat-icon"><i class="fas fa-ribbon"></i></div><div class="stat-info"><h3 class="dashboard-loading" id="pendingBurial">0</h3><p>Burial Assistance</p><small>Pending Burial Assistance</small></div><i class="fas fa-arrow-right stat-arrow"></i></a>
                 <a class="stat-card stat-card-link stat-violet" href="deceased_records.php" aria-label="Open deceased records"><div class="stat-icon"><i class="fas fa-cross" aria-hidden="true"></i></div><div class="stat-info"><h3 class="dashboard-loading" id="deceasedRecords" aria-live="polite" aria-label="Loading deceased records">0</h3><p>Deceased Records</p><small>View deceased senior profiles</small></div><i class="fas fa-arrow-right stat-arrow" aria-hidden="true"></i></a>
             </div>
-            
+
             <div class="dashboard-section-heading"><div><span>Citywide performance</span><h2>Application insights</h2><p>Compare barangay activity and track long-term record trends.</p></div></div>
             <div class="dashboard-panels">
                         <div class="left-panel">
@@ -700,7 +701,7 @@ try {
                                 </div>
                             </div>
                         </div>
-        
+
                         <div class="right-panel">
                             <div class="notifications-card recent-apps-card">
                                 <h3><span class="notification-heading"><span><i class="fas fa-bell"></i> Recent applications</span><b class="important-label"><i class="fas fa-circle" aria-hidden="true"></i> Important updates</b></span><small>Latest activity from all barangays — review new items promptly</small></h3>
@@ -783,7 +784,7 @@ try {
                             </div>
                         </div>
                     </div>
-        
+
                     <div class="footer">                <p>Centralized Profiling and Record Authentication System | Department Admin &copy; <?php echo date('Y'); ?></p>
             </div>
         </div>
@@ -878,6 +879,8 @@ try {
         }
 
         function updateStatCards(data) {
+            document.getElementById('dashboardSystemUsers').textContent = Number(data.system_user_count ?? 0).toLocaleString();
+            document.getElementById('dashboardBarangayStaff').textContent = Number(data.barangay_staff_count ?? 0).toLocaleString() + ' barangay staff accounts';
             // Update stat card values from live API data
             document.querySelector('.stat-card:nth-child(1) h3').textContent = data.verified_applications ?? 0;
             document.querySelector('.stat-card:nth-child(2) h3').textContent = data.senior_citizen_records ?? 0;
@@ -1069,5 +1072,6 @@ try {
             document.querySelectorAll('.chart-wrapper').forEach(el => el.classList.remove('is-loading'));
         }
     </script>
+<?php include '../partials/dashboard_report_modal.php'; ?>
 </body>
 </html>

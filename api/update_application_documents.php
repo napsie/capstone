@@ -15,7 +15,7 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'] ?? '', ['baranga
 
 $appId = trim((string)($_POST['applicationId'] ?? ''));
 if ($appId === '') {
-    echo json_encode(['success' => false, 'message' => 'Application ID is missing.']);
+    echo json_encode(['success' => false, 'message' => 'Transaction ID is missing.']);
     exit;
 }
 

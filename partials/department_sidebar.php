@@ -13,7 +13,7 @@ require_once __DIR__ . '/../includes/system_branding.php';
 })();
 </script>
 <link rel="stylesheet" href="../assets/css/department-mobile.css?v=12">
-<link rel="stylesheet" href="../assets/css/system-sidebar.css?v=20">
+<link rel="stylesheet" href="../assets/css/system-sidebar.css?v=21">
 <div class="sidebar system-sidebar">
     <div class="mobile-nav-bar">
         <button class="mobile-nav-toggle" type="button" aria-expanded="false" aria-controls="mobileSystemNavigation"><i class="fas fa-bars" aria-hidden="true"></i><span>Menu</span></button>
@@ -34,7 +34,7 @@ require_once __DIR__ . '/../includes/system_branding.php';
         <ul class="sidebar-root-menu">
             <li class="<?php echo ($current_page == 'department_dashboard.php') ? 'active' : ''; ?>"><a href="department_dashboard.php" data-tooltip="Dashboard" aria-label="Dashboard"><i class="fas fa-tachometer-alt"></i> <span class="link-text">Dashboard</span></a></li>
 
-            <?php $seniorRecordsOpen = in_array($current_page, ['department_records.php', 'digital_ids.php', 'digital_id.php', 'deceased_records.php', 'department_archive.php'], true); ?>
+            <?php $seniorRecordsOpen = in_array($current_page, ['senior_classifications.php', 'department_records.php', 'digital_ids.php', 'digital_id.php', 'deceased_records.php', 'department_archive.php'], true); ?>
             <li class="sidebar-nav-group<?php echo $seniorRecordsOpen ? ' is-open has-active-child' : ''; ?>">
                 <button class="sidebar-group-toggle" type="button" aria-expanded="<?php echo $seniorRecordsOpen ? 'true' : 'false'; ?>" aria-controls="departmentSeniorRecordsMenu" data-tooltip="Senior Records">
                     <i class="fas fa-folder-open" aria-hidden="true"></i><span class="link-text">Senior Records</span><i class="fas fa-chevron-down sidebar-group-chevron" aria-hidden="true"></i>
@@ -42,6 +42,7 @@ require_once __DIR__ . '/../includes/system_branding.php';
                 <ul class="sidebar-submenu" id="departmentSeniorRecordsMenu"<?php echo $seniorRecordsOpen ? '' : ' hidden'; ?>>
                     <li class="<?php echo ($current_page == 'department_records.php') ? 'active' : ''; ?>"><a href="department_records.php"><i class="fas fa-database"></i><span class="link-text">Records</span></a></li>
                     <li class="<?php echo ($current_page == 'digital_ids.php' || $current_page == 'digital_id.php') ? 'active' : ''; ?>"><a href="digital_ids.php"><i class="fas fa-id-card"></i><span class="link-text">Digital IDs</span></a></li>
+                    <li class="<?php echo ($current_page == 'senior_classifications.php') ? 'active' : ''; ?>"><a href="senior_classifications.php"><i class="fas fa-users"></i><span class="link-text">Classifications</span></a></li>
                     <li class="<?php echo ($current_page == 'deceased_records.php') ? 'active' : ''; ?>"><a href="deceased_records.php"><i class="fas fa-ribbon"></i><span class="link-text">Deceased Records</span></a></li>
                     <li class="<?php echo ($current_page == 'department_archive.php') ? 'active' : ''; ?>"><a href="department_archive.php"><i class="fas fa-archive"></i><span class="link-text">Archive</span></a></li>
                 </ul>
@@ -77,7 +78,7 @@ require_once __DIR__ . '/../includes/system_branding.php';
     </div>
 </div>
 <script src="../assets/js/mobile-navigation.js?v=4"></script>
-<script src="../assets/js/sidebar-toggle.js?v=9"></script>
+<script src="../assets/js/sidebar-toggle.js?v=10"></script>
 <script src="../assets/js/sidebar-groups.js?v=2"></script>
 <script src="../assets/js/session-timeout.js?v=6"></script>
 <script src="../assets/js/form-language.js?v=4" defer></script>

@@ -5,6 +5,8 @@ require_once '../includes/password_validation.php'; // Include the password vali
 require_once '../includes/master_password.php';
 require_once '../includes/data_normalizer.php';
 require_once '../includes/image_optimizer.php';
+require_once '../includes/account_creation.php';
+require_once '../includes/audit_logger.php';
 
 // Check if the user is logged in and has the correct role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'department_admin') {
@@ -35,6 +37,8 @@ require_once '../includes/barangays_list.php';
 
 // Handle Add User Form Submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addUser'])) {
+    try { accountCreationScope(accountCreator($conn, $_SESSION), (string)($_POST['role'] ?? ''), isset($_POST['barangay']) ? (string)$_POST['barangay'] : null); }
+    catch (RuntimeException $e) { http_response_code(403); exit(htmlspecialchars($e->getMessage())); }
     // Verify CSRF token
     if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
         $error = 'Your session could not be verified. Refresh the page and try again.';
@@ -159,6 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['addUser'])) {
                                             'password' => $hashedPassword,
                                             'profile_picture' => $profilePicture
                                         ]);
+                                        logAudit($conn, 'CREATE_STAFF_ACCOUNT', "Created {$role} account {$username}" . ($barangay ? " in {$barangay}." : '.'));
                                         $message = 'User added successfully!';
                                         // Regenerate CSRF token after successful submission
                                         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));

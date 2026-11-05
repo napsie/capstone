@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         desktopQuery.addEventListener?.('change', function() {
             setCollapsed(savedCollapsedState());
-            if (desktopQuery.matches) closeMobileNavigation();
+            if (desktopQuery.matches && !window.__seniorlinkMobileNavigationReady) closeMobileNavigation();
         });
 
         // mobile-navigation.js is the authoritative drawer controller on pages

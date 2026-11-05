@@ -521,7 +521,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
                         <label for="queueSearch">Search applicant or ID</label>
                         <div class="queue-search-wrap">
                             <i class="fas fa-search" aria-hidden="true"></i>
-                            <input type="search" id="queueSearch" name="search" value="<?php echo htmlspecialchars($queueFilters['search']); ?>" placeholder="Name or application ID">
+                            <input type="search" id="queueSearch" name="search" value="<?php echo htmlspecialchars($queueFilters['search']); ?>" placeholder="Name or transaction ID">
                         </div>
                     </div>
                     <div class="queue-filter-field">
@@ -855,7 +855,7 @@ $hasQueueFilters = $queueFilters['search'] !== ''
 
 <script src="../assets/js/sidebar-toggle.js?v=3"></script>
 <script src="../assets/js/application-documents.js?v=10"></script>
-<script src="../assets/js/application-details.js?v=18"></script>
+<script src="../assets/js/application-details.js?v=19"></script>
 <script src="../assets/js/application-modal-data.js?v=1"></script>
 <script src="../assets/js/seniorlink-feedback.js?v=1"></script>
 <script src="../assets/js/application-form-generator.js?v=2"></script>

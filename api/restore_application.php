@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 if (isset($_POST['id'])) {
     $id = trim((string)$_POST['id']);
     if ($id === '') {
-        echo json_encode(['success' => false, 'message' => 'Application ID is empty.']);
+        echo json_encode(['success' => false, 'message' => 'Transaction ID is empty.']);
         exit;
     }
 
@@ -75,5 +75,5 @@ if (isset($_POST['id'])) {
         echo json_encode(['success' => false, 'message' => 'A server error occurred. Please try again later.']);
     }
 } else {
-    echo json_encode(['success' => false, 'message' => 'No application ID provided.']);
+    echo json_encode(['success' => false, 'message' => 'No transaction ID provided.']);
 }

@@ -57,11 +57,13 @@ async function main() {
     const admin = await login('test-admin', true);
     const staff = await login('test-staff');
     const other = await login('test-other', false, 'Ugong');
-    const signup = await request('/pages/signup.php', '', new URLSearchParams({ firstName: 'New', lastName: 'Staff', email: 'new-staff@example.invalid', phone: '09170001111', username: 'test-signup', password: 'TestOnly!2026', confirmPassword: 'TestOnly!2026', role: 'barangay_staff', barangay: 'Bambang', masterPassword: testMasterPassword }), true);
+    const signupPage = await request('/pages/signup.php', admin, undefined, true);
+    const signupCsrf = signupPage.data.match(/name="csrf_token" value="([^"]+)"/)[1];
+    const signup = await request('/pages/signup.php', admin, new URLSearchParams({ csrf_token: signupCsrf, firstName: 'New', lastName: 'Staff', email: 'new-staff@example.invalid', phone: '09170001111', username: 'test-signup', password: 'TestOnly!2026', confirmPassword: 'TestOnly!2026', role: 'barangay_staff', barangay: 'Bambang', masterPassword: testMasterPassword }), true);
     check(signup.status === 200 && signup.data.includes('User registered successfully'), 'Staff account can be created');
     const createdStaff = await login('test-signup', false, 'Bambang');
     check((await request('/pages/barangay_dash.php', createdStaff, undefined, true)).status === 200, 'Created staff account opens its dashboard');
-    const adminSignup = await request('/pages/signup.php', '', new URLSearchParams({ firstName: 'New', lastName: 'Admin', email: 'new-admin@example.invalid', phone: '09170002222', username: 'test-new-admin', password: 'TestOnly!2026', confirmPassword: 'TestOnly!2026', role: 'department_admin', masterPassword: testMasterPassword }), true);
+    const adminSignup = await request('/pages/signup.php', admin, new URLSearchParams({ csrf_token: signupCsrf, firstName: 'New', lastName: 'Admin', email: 'new-admin@example.invalid', phone: '09170002222', username: 'test-new-admin', password: 'TestOnly!2026', confirmPassword: 'TestOnly!2026', role: 'department_admin', masterPassword: testMasterPassword }), true);
     check(adminSignup.status === 200 && adminSignup.data.includes('User registered successfully'), 'Administrator account can be created');
     const createdAdmin = await login('test-new-admin', true);
     check((await request('/pages/department_dashboard.php', createdAdmin, undefined, true)).status === 200, 'Created administrator opens its dashboard');
@@ -279,7 +281,7 @@ async function main() {
     check(landbankTracker.data.includes('being forwarded to <strong>LANDBANK</strong>'), 'Verified Land Bank tracker shows forwarding notice');
     const penTracker = await request('/pages/benefit_tracker.php?token=PEN-LBANK', '', undefined, true);
     check(penTracker.status === 200
-        && penTracker.data.includes('Enter a valid permanent PRX Token ID'),
+        && penTracker.data.includes('Enter a valid permanent Tracking No.'),
         'Public tracker rejects legacy PEN application IDs');
     check((await action(admin, 'CHANGE-REQUEST', 'next')).data.current_status === 'Verified', 'Information Change request verifies');
     const updatedSenior = await request('/api/get_application_details.php?id=PRX-BENE', admin);

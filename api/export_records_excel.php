@@ -239,7 +239,7 @@ if ($format === 'pdf') {
     $oscaDisplayHeight = $oscaHeight * $oscaPointScale;
 
     $columns = [
-        ['#', 28, 4], ['APPLICANT NAME', 185, 31], ['APPLICATION ID', 105, 17],
+        ['#', 28, 4], ['APPLICANT NAME', 185, 31], ['TRANSACTION ID', 105, 17],
         ['APPLICATION TYPE', 170, 28], ['BARANGAY', 110, 17], ['DATE', 85, 12], ['STATUS', 87, 13],
     ];
     $pageWidth = 842;
@@ -354,7 +354,7 @@ if (!class_exists('ZipArchive')) {
     exit('Excel export is unavailable because the PHP ZIP extension is not enabled.');
 }
 
-$headers = ['#', 'Applicant Name', 'Application ID', 'Application Type', 'Barangay', 'Date Submitted', 'Status'];
+$headers = ['#', 'Applicant Name', 'Transaction ID', 'Application Type', 'Barangay', 'Date Submitted', 'Status'];
 $headerRow = 14;
 $firstDataRow = $headerRow + 1;
 $lastDataRow = $headerRow + $totalRecords;

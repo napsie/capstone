@@ -14,7 +14,7 @@ $userBarangay = $_SESSION['barangay'] ?? null;
 $appId        = trim($_GET['id'] ?? '');
 
 if (empty($appId)) {
-    echo '<h2>Error: No application ID provided.</h2>';
+    echo '<h2>Error: No transaction ID provided.</h2>';
     exit();
 }
 

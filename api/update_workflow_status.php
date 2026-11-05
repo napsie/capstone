@@ -5,6 +5,7 @@ require_once '../includes/audit_logger.php';
 require_once '../includes/filing_deadline.php';
 require_once '../includes/request_security.php';
 require_once '../includes/application_types.php';
+require_once '../includes/digital_id_notifications.php';
 requireSameOriginMutation();
 
 header('Content-Type: application/json');
@@ -405,6 +406,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             );
         }
 
+        recordDigitalIdReady($conn, $appId);
         $conn->commit();
 
         // Build enhanced response with OSCA ID if newly generated

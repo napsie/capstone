@@ -6,6 +6,23 @@ require_once '../includes/password_validation.php';
 require_once '../includes/master_password.php';
 require_once '../includes/data_normalizer.php';
 
+require_once '../includes/account_creation.php';
+require_once '../includes/audit_logger.php';
+require_once '../includes/request_security.php';
+$isPublicRegistration = empty($_SESSION['user_id']);
+if ($isPublicRegistration) {
+    // The login-page form requires the authorization password before any account is created.
+    $creator = ['id' => null, 'role' => 'department_admin', 'barangay' => null];
+} else {
+    try { $creator = accountCreator($conn, $_SESSION); }
+    catch (RuntimeException $e) { http_response_code(403); exit(htmlspecialchars($e->getMessage())); }
+    if (!in_array($creator['role'], ['department_admin', 'super_admin'], true)) {
+        http_response_code(403);
+        exit('Only Main OSCA administrators can create staff accounts.');
+    }
+}
+$_SESSION['signup_csrf'] ??= bin2hex(random_bytes(32));
+
 $success = '';
 $error = '';
 $isEmbedded = isset($_GET['embed']) && $_GET['embed'] === '1';
@@ -47,11 +64,17 @@ function saveSignupProfilePicture(array $file): string
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    requireSameOriginMutation();
+    if (!hash_equals($_SESSION['signup_csrf'], (string)($_POST['csrf_token'] ?? ''))) {
+        http_response_code(403); exit('Your session could not be verified. Reload and try again.');
+    }
     $masterPassword = (string)($_POST['masterPassword'] ?? '');
 
     if (!verifyMasterPassword($masterPassword)) {
         $error = 'Invalid Master Password. Please try again.';
     } else {
+        try { accountCreationScope($creator, (string)($_POST['role'] ?? ''), isset($_POST['barangay']) ? (string)$_POST['barangay'] : null); }
+        catch (RuntimeException $e) { http_response_code(403); exit(htmlspecialchars($e->getMessage())); }
         $firstName = trim((string)($_POST['firstName'] ?? ''));
         $lastName = trim((string)($_POST['lastName'] ?? ''));
         $email = trim((string)($_POST['email'] ?? ''));
@@ -60,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $password = (string)($_POST['password'] ?? '');
         $confirmPassword = (string)($_POST['confirmPassword'] ?? '');
         $role = (string)($_POST['role'] ?? '');
-        $barangay = isset($_POST['barangay']) ? $_POST['barangay'] : null;
+        $barangay = accountCreationScope($creator, $role, isset($_POST['barangay']) ? (string)$_POST['barangay'] : null);
 
         if (empty($firstName) || empty($lastName) || empty($email) || empty($phone) || empty($username) || empty($password) || empty($confirmPassword) || empty($role)) {
             $error = 'Please fill in all required fields.';
@@ -133,6 +156,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             $stmt = $conn->prepare("INSERT INTO settings (user_id) VALUES (:user_id)");
                             $stmt->execute(['user_id' => $user_id]);
 
+                            if (!logAudit($conn, 'CREATE_STAFF_ACCOUNT', "Created {$role} account {$username}" . ($barangay ? " in {$barangay}." : '.'), $creator['id'] === null ? null : (int)$creator['id'], ['role'=>$isPublicRegistration?'authorized_registration':$creator['role'], 'username'=>$isPublicRegistration?'Authorized registration':($_SESSION['username']??'Main OSCA')])) {
+                                throw new RuntimeException('Unable to record account creation in the audit history.');
+                            }
                             $conn->commit();
 
                             $login_page = '../index.php?view=' . ($role === 'barangay_staff' ? 'staff' : 'admin');
@@ -594,6 +620,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <?php endif; ?>
 
             <form method="post" action="" enctype="multipart/form-data">
+<input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['signup_csrf']); ?>">
                 <div class="form-fields">
                 <div class="form-row">
                     <div class="form-group">
@@ -634,15 +661,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <label for="role">Role</label>
                     <select id="role" name="role" class="form-control" onchange="toggleBarangayField()" required>
                         <option value="barangay_staff">SHDO</option>
-                        <option value="department_admin">Department Admin</option>
+                        <?php if ($creator['role'] !== 'barangay_staff'): ?><option value="department_admin">Department Admin</option><?php endif; ?>
                     </select>
                 </div>
                 <div class="form-group" id="barangayField">
                     <label for="barangay">Barangay</label>
                     <select id="barangay" name="barangay" class="form-control">
                         <option value="">Select barangay</option>
-                        <?php foreach ($barangays_list as $b): ?>
-                            <option value="<?php echo htmlspecialchars($b); ?>"><?php echo htmlspecialchars($b); ?></option>
+                        <?php foreach ($barangays_list as $b): if ($creator['role'] === 'barangay_staff' && $b !== $creator['barangay']) continue; ?>
+                            <option value="<?php echo htmlspecialchars($b); ?>" <?php echo $creator['role'] === 'barangay_staff' ? 'selected' : ''; ?>><?php echo htmlspecialchars($b); ?></option>
                         <?php endforeach; ?>
                     </select>
                     <span id="barangayError" class="error-message-inline" aria-live="polite"></span>

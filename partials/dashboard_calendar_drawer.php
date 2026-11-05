@@ -1,4 +1,4 @@
-<link rel="stylesheet" href="../assets/css/dashboard-calendar-drawer.css?v=1">
+<link rel="stylesheet" href="../assets/css/dashboard-calendar-drawer.css?v=2">
 <div class="dashboard-calendar-backdrop" id="dashboardCalendarBackdrop" hidden></div>
 <aside class="dashboard-calendar-drawer" id="dashboardCalendarDrawer" role="dialog" aria-modal="true" aria-labelledby="dashboardCalendarTitle" aria-hidden="true">
     <header class="dashboard-calendar-drawer__header">

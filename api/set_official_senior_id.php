@@ -4,6 +4,7 @@ require_once '../includes/db_connect.php';
 require_once '../includes/request_security.php';
 require_once '../includes/audit_logger.php';
 require_once '../includes/data_normalizer.php';
+require_once '../includes/digital_id_notifications.php';
 requireSameOriginMutation();
 header('Content-Type: application/json');
 
@@ -22,7 +23,7 @@ if ($applicationId === '' || (!$generate && !preg_match('/^[A-Z0-9][A-Z0-9 -]{2,
 }
 if (!$generate && ($seniorId === strtoupper($applicationId) || preg_match('/^(PRX|PEN)-/i', $seniorId))) {
     http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'The Senior Citizen ID must be different from the permanent Tracking Number.']);
+    echo json_encode(['success' => false, 'message' => 'The Senior Citizen ID must be different from the permanent Tracking No.']);
     exit;
 }
 try {
@@ -64,6 +65,7 @@ try {
     $actor = $_SESSION['username'] ?? 'Department Admin';
     $history->execute([$applicationId, $actor, 'Official Senior Citizen ID assigned/corrected: ' . $seniorId]);
     logAudit($conn, 'ASSIGN_SENIOR_ID', "Assigned official Senior Citizen ID {$seniorId} to application {$applicationId}.");
+    recordDigitalIdReady($conn, $applicationId);
     $conn->commit();
     echo json_encode(['success' => true, 'message' => 'Official Senior Citizen ID saved.', 'seniorIdNo' => $seniorId]);
 } catch (DomainException $e) {

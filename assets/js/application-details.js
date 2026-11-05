@@ -127,7 +127,8 @@
 
     function applicationIdentity(app, title) {
         return section('fa-clipboard-list', title, [
-            field('Application ID', app.id_number),
+            field('Transaction ID', app.id_number),
+            field('Tracking No.', app.proxy_token || (/^PRX-/i.test(app.id_number || '') ? app.id_number : '')),
             field('Application Type', window.getApplicationRecordTypeLabel(app.application_type, app.id_purpose)),
             field('Requested Benefit / Service', app.requested_benefit),
             field('Senior Citizen ID No.', seniorId(app), { raw: true }),

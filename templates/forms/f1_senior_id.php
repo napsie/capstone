@@ -122,7 +122,7 @@ if ($addr === ', , Pasig City') $addr = $app['complete_address'] ?? '';
     ]); ?>
 
     <div class="stub">
-        <strong>Application ID:</strong> <?php echo oscaVal($app['id_number']); ?> |
+        <strong>Transaction ID:</strong> <?php echo oscaVal($app['id_number']); ?> |
         <strong>Barangay:</strong> <?php echo oscaVal($app['barangay']); ?> |
         <strong>Status:</strong> <?php echo oscaVal($app['workflow_state'] ?? 'Received'); ?>
     </div>

@@ -215,7 +215,7 @@ header('Expires: 0');
                     </span>
                     <span class="hero-track-copy">
                         <strong>Track your application</strong>
-                        <small>Check status using your permanent Tracking Number</small>
+                        <small>Check status using your permanent Tracking No.</small>
                     </span>
                     <i class="fas fa-arrow-right hero-track-arrow" aria-hidden="true"></i>
                 </a>
@@ -324,7 +324,7 @@ header('Expires: 0');
                 <button type="button" class="portal-login-back" data-login-back><i class="fas fa-arrow-left" aria-hidden="true"></i> Back to access choices</button>
                 <?php if ($loginView === 'admin' && $loginError): ?><div class="portal-login-error" role="alert" tabindex="-1"><?php echo htmlspecialchars($loginError); ?></div><?php endif; ?>
                 <form method="post" action="index.php?view=admin" class="portal-login-form">
-                    <div class="portal-signup-note" role="note"><i class="fas fa-shield-halved" aria-hidden="true"></i><span><strong>Authorized staff registration</strong>Create an account only if you have the system authorization password.</span></div>
+                    <div class="portal-signup-note" role="note"><i class="fas fa-shield-halved" aria-hidden="true"></i><span><strong>Authorized staff registration</strong>Create an account with the system authorization password.</span></div>
                     <input type="hidden" name="login_role" value="department_admin">
                     <div class="form-group"><label for="adminUsername">Username</label><input id="adminUsername" name="username" class="form-control" value="<?php echo $loginView === 'admin' ? htmlspecialchars($_POST['username'] ?? '') : ''; ?>" autocomplete="username" required></div>
                     <div class="form-group"><label for="adminPassword">Password</label><div class="password-field"><input type="password" id="adminPassword" name="password" class="form-control" autocomplete="current-password" required><button type="button" class="toggle-password" data-password-target="adminPassword" aria-label="Show password"><i class="fas fa-eye"></i></button></div></div>
@@ -349,7 +349,7 @@ header('Expires: 0');
 
             <div class="portal-login-view portal-signup-view" id="signupView" data-login-panel="signup">
                 <button type="button" class="portal-login-back" data-login-back><i class="fas fa-arrow-left" aria-hidden="true"></i> Back to access choices</button>
-                <iframe class="signup-frame" id="signupFrame" src="pages/signup.php?embed=1" title="Create a SENIORLINK staff account" scrolling="yes"></iframe>
+                <iframe class="signup-frame" id="signupFrame" data-src="pages/signup.php?embed=1" title="Create a SENIORLINK staff account" scrolling="yes"></iframe>
             </div>
 
         </section>
@@ -371,15 +371,15 @@ header('Expires: 0');
                 <button class="close-btn" type="button" aria-label="Close application tracker">&times;</button>
             </div>
             <div class="track-modal-body">
-            <p class="track-intro">Enter your permanent Tracking Number, scan your QR code, or upload a QR image to check all applications linked to the senior.</p>
+            <p class="track-intro">Enter your permanent Tracking No., scan your QR code, or upload a QR image to check all applications linked to the senior.</p>
             <form class="portal-tracker track-modal-form" action="pages/benefit_tracker.php" method="get">
-                <label for="landingTrackerToken">Tracking Number</label>
+                <label for="landingTrackerToken">Tracking No.</label>
                 <div class="portal-tracker-controls">
                     <input id="landingTrackerToken" name="token" type="text" value="" placeholder="PRX-7K2M" aria-describedby="landingTokenHint"
                            maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
                     <button type="submit"><span>Check Status</span><i class="fas fa-arrow-right" aria-hidden="true"></i></button>
                 </div>
-                <small id="landingTokenHint" class="track-format-help">Use the senior's one permanent Tracking Number. The PRX- prefix and dash are formatted automatically.</small>
+                <small id="landingTokenHint" class="track-format-help">Use the senior's one permanent Tracking No. The PRX- prefix and dash are formatted automatically.</small>
                 <div class="tracking-qr-actions" aria-label="QR tracking options">
                     <button type="button" id="landingScanQr"><i class="fas fa-camera" aria-hidden="true"></i> Scan QR Code</button>
                     <button type="button" id="landingUploadQr"><i class="fas fa-image" aria-hidden="true"></i> Upload QR Image</button>
@@ -429,7 +429,7 @@ header('Expires: 0');
                 input.value = normalizeTrackerToken(input.value);
                 if (!/^PRX-[A-Z0-9]{4,12}$/.test(input.value)) {
                     event.preventDefault();
-                    setScannerStatus('Enter the complete permanent Tracking Number, such as PRX-7K2M.', 'error');
+                    setScannerStatus('Enter the complete permanent Tracking No., such as PRX-7K2M.', 'error');
                     input.focus();
                 }
             });
@@ -449,12 +449,12 @@ header('Expires: 0');
             const useQrResult = async decoded => {
                 const token = extractPrx(decoded);
                 if (!token) {
-                    setScannerStatus('This QR image does not contain a valid Tracking Number.', 'error');
+                    setScannerStatus('This QR image does not contain a valid Tracking No.', 'error');
                     return;
                 }
                 input.value = token;
                 await stopScanner();
-                setScannerStatus('Tracking Number detected. Retrieving tracking information…', 'success');
+                setScannerStatus('Tracking No. detected. Retrieving tracking information…', 'success');
                 form?.requestSubmit();
             };
 
@@ -479,7 +479,7 @@ header('Expires: 0');
             closeButton?.addEventListener('click', closeTracker);
             scanButton?.addEventListener('click', async () => {
                 if (typeof Html5Qrcode !== 'function') {
-                    setScannerStatus('QR scanner could not load. Enter the Tracking Number manually.', 'error');
+                    setScannerStatus('QR scanner could not load. Enter the Tracking No. manually.', 'error');
                     return;
                 }
                 scanner ||= new Html5Qrcode('landingQrReader');
@@ -505,7 +505,7 @@ header('Expires: 0');
                 if (!file || typeof Html5Qrcode !== 'function') return;
                 await stopScanner();
                 scanner ||= new Html5Qrcode('landingQrReader');
-                setScannerStatus('Reading Tracking Number from the QR image…');
+                setScannerStatus('Reading Tracking No. from the QR image…');
                 try { await useQrResult(await scanner.scanFile(file, true)); }
                 catch (error) { setScannerStatus('No valid PRX QR code was found in that image.', 'error'); }
                 fileInput.value = '';
@@ -560,6 +560,10 @@ header('Expires: 0');
             };
 
             const showLogin = view => {
+                if (view === 'signup') {
+                    const frame = document.getElementById('signupFrame');
+                    if (frame && !frame.getAttribute('src')) frame.src = frame.dataset.src;
+                }
                 document.documentElement.classList.toggle('signup-view-open', view === 'signup');
                 document.documentElement.classList.toggle('login-view-open', view === 'staff' || view === 'admin');
                 choices?.classList.add('is-hidden');
